@@ -18,6 +18,12 @@ tasks:
     outputs:
       - 'dist'
 
+  typecheck:
+    command: 'bun run typecheck'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+
   deploy:
     command: 'bun run deploy'
     deps:

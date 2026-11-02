@@ -16,16 +16,32 @@
 
 ## Status
 
-**OpenCut is being rewritten from the ground up.** What's coming:
+The rewrite now ships the complete editor in the browser. The editor from
+[opencut-app/opencut-classic](https://github.com/opencut-app/opencut-classic)
+(the previous codebase, MIT) was ported into `apps/web` on top of the new
+stack (Vite, TanStack Start, Cloudflare Workers): projects, media import,
+multi-track timeline, GPU-composited preview, text, stickers, effects, masks,
+keyframes, captions, sounds and MP4/WebM export. See `changelog/0.4.0.md` and
+`ATTRIBUTION.md`.
 
-- An Editor API
-- First-class third party plugins (made possible by a plugin-first architecture)
+What this repository contains today:
+
+| App | State |
+| --- | --- |
+| `apps/web` | Full editor, type-checked, 193 unit tests, production build |
+| `apps/api` | Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
+| `apps/desktop` | GPUI shell with the four panels laid out; no editing yet |
+| `crates/media` | FFmpeg setup script for the future Rust core |
+
+Still planned, from the original rewrite goals:
+
+- An Editor API and first-class third party plugins (plugin-first architecture)
 - Desktop, mobile, and browser from one codebase (Rust core)
-- MCP server (for AI agents)
-- Headless mode (automation, batch rendering)
+- MCP server (for AI agents), headless mode (automation, batch rendering)
 - A scripting tab directly in the editor
 
-You can still find the previous version at [opencut-app/opencut-classic](https://github.com/opencut-app/opencut-classic), which is the one to reach for today. [opencut.app](https://opencut.app) still runs the classic version. The rewrite will live at [new.opencut.app](https://new.opencut.app) until it's ready to take over.
+[opencut.app](https://opencut.app) still runs the classic version. The rewrite
+lives at [new.opencut.app](https://new.opencut.app) until it takes over.
 
 ## Development
 
@@ -60,6 +76,19 @@ moon run web:dev       # localhost:5173
 moon run api:dev       # localhost:8787
 moon run desktop:dev   # see apps/desktop/README.md
 ```
+
+Each app installs its own dependencies (`bun install` inside `apps/web` and
+`apps/api`; `proto use` gives you the pinned Bun). Checks:
+
+```sh
+moon run web:typecheck web:test web:build
+moon run api:typecheck api:build
+```
+
+The web app talks to the API worker for sound search and feedback. Without the
+worker, or without its `FREESOUND_API_KEY` secret and `FEEDBACK` KV binding,
+those two features report that they are unavailable and everything else works.
+See `apps/web/README.md` and `apps/api/wrangler.jsonc`.
 
 ## Contributing
 

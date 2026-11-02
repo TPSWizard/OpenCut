@@ -1,75 +1,55 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { TooltipProvider } from '../components/ui/tooltip'
+import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SITE_INFO } from "@/site/brand";
 
-import appCss from '../styles.css?url'
+import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'OpenCut rewrite | beta.opencut.app',
-      },
-    ],
-    links: [
-      {
-        rel: 'icon',
-        href: '/favicon.ico',
-        type: 'image/x-icon',
-      },
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.googleapis.com',
-      },
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
-        crossOrigin: 'anonymous',
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400..900&display=swap',
-      },
-      {
-        rel: 'stylesheet',
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootDocument,
-})
+	head: () => ({
+		meta: [
+			{ charSet: "utf-8" },
+			{ name: "viewport", content: "width=device-width, initial-scale=1" },
+			{ title: SITE_INFO.title },
+			{ name: "description", content: SITE_INFO.description },
+			{ name: "theme-color", content: "#0d0d0d" },
+		],
+		links: [
+			{ rel: "icon", href: SITE_INFO.favicon, type: "image/x-icon" },
+			{ rel: "manifest", href: "/manifest.json" },
+			{ rel: "stylesheet", href: appCss },
+		],
+	}),
+	shellComponent: RootDocument,
+	component: RootComponent,
+});
+
+function RootComponent() {
+	return (
+		<ThemeProvider
+			attribute="class"
+			defaultTheme="system"
+			disableTransitionOnChange={true}
+		>
+			<TooltipProvider>
+				<Toaster />
+				<Outlet />
+			</TooltipProvider>
+		</ThemeProvider>
+	);
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
-        <Scripts />
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				<HeadContent />
+			</head>
+			<body className="font-sans antialiased">
+				{children}
+				<Scripts />
+			</body>
+		</html>
+	);
 }

@@ -14,17 +14,29 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'public/**/*'
+      - '/changelog/**/*'
       - 'vite.config.ts'
       - 'tsconfig.json'
       - 'package.json'
     outputs:
       - 'dist'
 
+  typecheck:
+    command: 'bun run typecheck'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vitest.config.ts'
+      - 'vitest.setup.ts'
+
   test:
     command: 'bun run test'
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
+      - 'vitest.config.ts'
+      - 'vitest.setup.ts'
 
   deploy:
     command: 'bun run deploy'

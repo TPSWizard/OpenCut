@@ -3,5 +3,22 @@
   "name": "opencut-api",
   "main": "src/index.ts",
   // Minimum date required for CloudflareAdapter AoT support
-  "compatibility_date": "2025-06-01"
+  "compatibility_date": "2025-06-01",
+  "observability": { "enabled": true },
+
+  // Every integration below is optional. Without it the matching endpoint
+  // answers 503 and the editor degrades gracefully.
+  //
+  // Sound search (Freesound):   wrangler secret put FREESOUND_API_KEY
+  //
+  // Feedback storage:
+  //   "kv_namespaces": [{ "binding": "FEEDBACK", "id": "<namespace id>" }],
+  //
+  // Per-IP rate limiting for the proxied endpoints:
+  //   "ratelimits": [{ "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
+  //
+  // Restrict CORS to the deployed web app by setting CORS_ORIGIN to its origin.
+  "vars": {
+    "CORS_ORIGIN": "*"
+  }
 }
