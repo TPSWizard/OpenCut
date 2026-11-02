@@ -1,0 +1,16 @@
+[package]
+name = "effects"
+description = "GPU effect pipeline (blur and friends)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/effects.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+bytemuck = { workspace = true }
+gpu = { workspace = true }
+thiserror = { workspace = true }
+wgpu = { workspace = true }

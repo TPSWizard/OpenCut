@@ -1,0 +1,15 @@
+[package]
+name = "masks"
+description = "Signed-distance-field masks with feathering, computed on the GPU"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/masks.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+bytemuck = { workspace = true }
+gpu = { workspace = true }
+wgpu = { workspace = true }

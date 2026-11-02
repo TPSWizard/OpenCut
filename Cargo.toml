@@ -1,8 +1,16 @@
 [workspace]
 resolver = "3"
+# Members are listed explicitly rather than via 'crates/*' because
+# crates/media holds only a setup script and has no Cargo.toml.
 members = [
   'apps/desktop',
-  # 'crates/*',
+  'crates/bridge',
+  'crates/compositor',
+  'crates/effects',
+  'crates/gpu',
+  'crates/masks',
+  'crates/time',
+  'crates/wasm',
 ]
 
 [workspace.package]
@@ -11,4 +19,33 @@ edition = "2024"
 license = "MIT"
 
 [workspace.dependencies]
+# Internal crates
+bridge = { path = "crates/bridge" }
+compositor = { path = "crates/compositor" }
+effects = { path = "crates/effects" }
+gpu = { path = "crates/gpu" }
+masks = { path = "crates/masks" }
+time = { path = "crates/time" }
+
+# Desktop
 gpui = "0.2.2"
+
+# Core
+bytemuck = { version = "1.25.0", features = ["derive"] }
+num-traits = "0.2.19"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
+wgpu = "29.0.1"
+
+# Proc-macro
+quote = "1.0.45"
+syn = { version = "2.0.117", features = ["full"] }
+
+# Web / wasm
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3.93"
+serde-wasm-bindgen = "0.6.5"
+tsify-next = "0.5"
+wasm-bindgen = "0.2.116"
+wasm-bindgen-futures = "0.4.66"
+web-sys = "0.3.93"

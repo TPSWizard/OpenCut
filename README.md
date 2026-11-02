@@ -16,29 +16,27 @@
 
 ## Status
 
-The rewrite now ships the complete editor in the browser. The editor from
+The rewrite ships the complete editor in the browser, plus the pieces the
+rewrite set out to add. The editor from
 [opencut-app/opencut-classic](https://github.com/opencut-app/opencut-classic)
 (the previous codebase, MIT) was ported into `apps/web` on top of the new
-stack (Vite, TanStack Start, Cloudflare Workers): projects, media import,
-multi-track timeline, GPU-composited preview, text, stickers, effects, masks,
-keyframes, captions, sounds and MP4/WebM export. See `changelog/0.4.0.md` and
+stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 `ATTRIBUTION.md`.
 
-What this repository contains today:
-
-| App | State |
+| Goal | Where it lives |
 | --- | --- |
-| `apps/web` | Full editor, type-checked, 193 unit tests, production build |
-| `apps/api` | Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
-| `apps/desktop` | GPUI shell with the four panels laid out; no editing yet |
-| `crates/media` | FFmpeg setup script for the future Rust core |
+| Editor | `apps/web` – projects, media import, multi-track timeline, GPU-composited preview, text, stickers, effects, masks, keyframes, captions, sounds, MP4/WebM export |
+| Editor API | `apps/web/src/api` – one typed, JSON surface (`window.opencut`) over the editor; [reference](apps/web/reference/editor-api.md) |
+| Plugins | `apps/web/src/plugins` – manifest-based plugins with sandboxed panels and background workers, installed from Settings → Plugins; [guide](apps/web/reference/plugins.md) |
+| Scripting tab | `apps/web/src/scripting` – CodeMirror editor in the assets panel; scripts run in a Worker against the Editor API |
+| Headless mode | `apps/headless` – CLI and library that drive the editor in headless Chromium: job files, scripts, batch rendering |
+| MCP server | `apps/mcp` – Model Context Protocol server so AI agents can open projects, import media, edit and render |
+| Rust core | `crates/` – time, compositor, effects, masks, gpu, bridge and the `opencut-wasm` package built from this repo; consumed by the web app (wasm) and the desktop app (native) |
+| Desktop | `apps/desktop` – GPUI shell; the timeline panel renders a ruler from the `time` crate. Editing UI is not built yet |
+| API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
 
-Still planned, from the original rewrite goals:
-
-- An Editor API and first-class third party plugins (plugin-first architecture)
-- Desktop, mobile, and browser from one codebase (Rust core)
-- MCP server (for AI agents), headless mode (automation, batch rendering)
-- A scripting tab directly in the editor
+Not there yet: a native desktop/mobile editing UI on top of the Rust core (the
+crates compile for both targets; the GPUI app only has the shell).
 
 [opencut.app](https://opencut.app) still runs the classic version. The rewrite
 lives at [new.opencut.app](https://new.opencut.app) until it takes over.
@@ -83,7 +81,16 @@ Each app installs its own dependencies (`bun install` inside `apps/web` and
 ```sh
 moon run web:typecheck web:test web:build
 moon run api:typecheck api:build
+moon run headless:typecheck headless:test
+moon run mcp:typecheck
+moon run wasm:check wasm:test        # Rust core (needs the pinned Rust toolchain)
+moon run desktop:check
 ```
+
+Headless rendering and the MCP server are documented in
+[`apps/headless/README.md`](apps/headless/README.md) and
+[`apps/mcp/README.md`](apps/mcp/README.md); the Rust crates in
+[`crates/README.md`](crates/README.md).
 
 The web app talks to the API worker for sound search and feedback. Without the
 worker, or without its `FREESOUND_API_KEY` secret and `FEEDBACK` KV binding,

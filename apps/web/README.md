@@ -51,6 +51,25 @@ does not cope with them.
 - `wasm/` – typed wrappers around `opencut-wasm` (integer-tick `MediaTime`).
 - `lib/api.ts` – base URL of the API worker.
 
+## Editor API, plugins, scripting
+
+- `src/api/` exposes the editor as `window.opencut` and over a message
+  bridge. See [reference/editor-api.md](reference/editor-api.md).
+- `src/plugins/` loads manifest-based plugins: sandboxed panel iframes and
+  background Workers that talk to the API. See [reference/plugins.md](reference/plugins.md).
+  A sample lives in `public/plugins/timeline-stats/`; the browser SDK is
+  `public/plugin-sdk/opencut-plugin.js`.
+- `src/scripting/` is the Scripting tab: a CodeMirror editor whose code runs
+  in a Worker with `opencut` bound to the API (examples in `examples.ts`).
+
+## Rust core
+
+The web app consumes the Rust core as the `opencut-wasm` npm package. The same
+crates live in `../../crates`; `wasm-pack build crates/wasm --target bundler
+--out-dir pkg --release` from the repo root produces an identical package. To
+run the app against a local build: `cd crates/wasm/pkg && bun link`, then
+`bun link opencut-wasm` here.
+
 ## Tests
 
 Vitest runs the unit tests under `src/**/__tests__` in jsdom.

@@ -19,6 +19,7 @@ import {
 	SectionTitle,
 } from "@/components/section";
 import { BackgroundContent } from "./background";
+import { PluginsSettings } from "@/plugins/components/plugins-settings";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/ui/number-field";
@@ -32,10 +33,12 @@ import { formatNumberForDisplay } from "@/utils/math";
 import { OcSquarePlusIcon } from "@/components/icons";
 import type { TCanvasSize } from "@/project/types";
 
-type SettingsView = "project-info" | "background";
+type SettingsView = "project-info" | "background" | "plugins";
 
 function isSettingsView(value: string): value is SettingsView {
-	return value === "project-info" || value === "background";
+	return (
+		value === "project-info" || value === "background" || value === "plugins"
+	);
 }
 
 const PRESET_LABELS: Record<string, string> = {
@@ -224,6 +227,7 @@ export function SettingsView() {
 					<TabsList>
 						<TabsTrigger value="project-info">Project info</TabsTrigger>
 						<TabsTrigger value="background">Background</TabsTrigger>
+						<TabsTrigger value="plugins">Plugins</TabsTrigger>
 					</TabsList>
 				</Tabs>
 			}
@@ -317,6 +321,11 @@ export function SettingsView() {
 				</div>
 			)}
 			{view === "background" && <BackgroundContent />}
+			{view === "plugins" && (
+				<div className="px-2">
+					<PluginsSettings />
+				</div>
+			)}
 		</PanelView>
 	);
 }

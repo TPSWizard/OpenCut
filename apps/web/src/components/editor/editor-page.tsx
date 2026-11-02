@@ -15,6 +15,7 @@ import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
+import { PluginHost } from "@/plugins/plugin-host";
 import { useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
@@ -44,6 +45,7 @@ export function EditorPage({ projectId }: { projectId: string }) {
 					<div className="min-h-0 min-w-0 flex-1">
 						<EditorLayout />
 					</div>
+					<PluginHost />
 					<Onboarding />
 					<MigrationDialog />
 					<ChangelogNotification />

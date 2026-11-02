@@ -11,6 +11,8 @@ import {
 	TextIcon,
 	Settings01Icon,
 	SlidersHorizontalIcon,
+	SourceCodeIcon,
+	PuzzleIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -23,10 +25,13 @@ export const TAB_KEYS = [
 	"transitions",
 	"captions",
 	"adjustment",
+	"scripting",
 	"settings",
 ] as const;
 
-export type Tab = (typeof TAB_KEYS)[number];
+export type BuiltinTab = (typeof TAB_KEYS)[number];
+/** Built-in tabs plus one `plugin:<id>` tab per plugin that contributes a panel. */
+export type Tab = BuiltinTab | `plugin:${string}`;
 
 const createHugeiconsIcon =
 	({ icon }: { icon: IconSvgElement }) =>
@@ -67,14 +72,20 @@ export const tabs = {
 		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),
 		label: "Adjustment",
 	},
+	scripting: {
+		icon: createHugeiconsIcon({ icon: SourceCodeIcon }),
+		label: "Scripting",
+	},
 	settings: {
 		icon: createHugeiconsIcon({ icon: Settings01Icon }),
 		label: "Settings",
 	},
 } satisfies Record<
-	Tab,
+	BuiltinTab,
 	{ icon: ElementType<{ className?: string }>; label: string }
 >;
+
+export const PluginTabIcon = createHugeiconsIcon({ icon: PuzzleIcon });
 
 export type MediaViewMode = "grid" | "list";
 export type MediaSortKey = "name" | "type" | "duration" | "size";

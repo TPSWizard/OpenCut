@@ -1,0 +1,22 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'typescript'
+layer: 'application'
+
+tasks:
+  typecheck:
+    command: 'bun run typecheck'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+
+  test:
+    command: 'bun run test'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+
+  start:
+    command: 'bun run start'
+    options:
+      runInCI: false

@@ -3,6 +3,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_INFO } from "@/site/brand";
+import { EditorApiRoot } from "@/api/api-root";
 
 import appCss from "../styles.css?url";
 
@@ -34,6 +35,7 @@ function RootComponent() {
 		>
 			<TooltipProvider>
 				<Toaster />
+				<EditorApiRoot />
 				<Outlet />
 			</TooltipProvider>
 		</ThemeProvider>

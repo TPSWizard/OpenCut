@@ -11,3 +11,6 @@ docs/
 
 # wrangler local state
 .wrangler/
+
+# wasm-pack output (regenerate with `moon run wasm:build`)
+crates/wasm/pkg/

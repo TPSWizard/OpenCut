@@ -1,0 +1,19 @@
+[package]
+name = "gpu"
+description = "wgpu device/queue context shared by the GPU crates"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bytemuck = { workspace = true }
+thiserror = { workspace = true }
+wgpu = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { workspace = true }
+web-sys = { workspace = true, features = ["Document", "Window", "HtmlCanvasElement", "CanvasRenderingContext2d", "OffscreenCanvasRenderingContext2d", "ImageData"] }
+
+[features]
+default = []
+wasm = ["wgpu/webgl"]

@@ -1,0 +1,13 @@
+{
+  "id": "app.opencut.timeline-stats",
+  "name": "Timeline stats",
+  "version": "1.0.0",
+  "description": "Shows clip counts per track and the total duration, and can add a title card at the playhead. A sample plugin that exercises the Editor API.",
+  "author": "OpenCut",
+  "apiVersion": "1",
+  "panel": {
+    "title": "Stats",
+    "url": "./panel.html"
+  },
+  "entry": "./worker.js"
+}

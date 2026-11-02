@@ -1,0 +1,20 @@
+[package]
+name = "time"
+description = "Tick-based media time, frame rates and timecode formatting"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/time.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+bridge = { workspace = true }
+num-traits = { workspace = true }
+serde = { workspace = true }
+tsify-next = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[features]
+wasm = ["dep:wasm-bindgen", "dep:tsify-next", "tsify-next/js"]

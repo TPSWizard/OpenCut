@@ -9,13 +9,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/ui";
 import {
+	PluginTabIcon,
 	TAB_KEYS,
 	tabs,
 	useAssetsPanelStore,
+	type Tab,
 } from "@/components/editor/panels/assets/assets-panel-store";
+import { useEnabledPlugins } from "@/plugins/plugins-store";
+import { pluginTabKey } from "@/plugins/types";
 
 export function TabBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
+	const plugins = useEnabledPlugins();
+	const entries: Array<{
+		key: Tab;
+		label: string;
+		icon: (typeof tabs)[keyof typeof tabs]["icon"];
+	}> = [
+		...TAB_KEYS.map((key) => ({ key, label: tabs[key].label, icon: tabs[key].icon })),
+		...plugins
+			.filter((plugin) => plugin.panelUrl)
+			.map((plugin) => ({
+				key: pluginTabKey(plugin.manifest.id),
+				label: plugin.manifest.panel?.title ?? plugin.manifest.name,
+				icon: PluginTabIcon,
+			})),
+	];
 	const [showTopFade, setShowTopFade] = useState(false);
 	const [showBottomFade, setShowBottomFade] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,8 +70,8 @@ export function TabBar() {
 				ref={scrollRef}
 				className="scrollbar-hidden relative flex size-full p-1 flex-col items-center justify-start gap-0.5 overflow-y-auto"
 			>
-				{TAB_KEYS.map((tabKey) => {
-					const tab = tabs[tabKey];
+				{entries.map((tab) => {
+					const tabKey = tab.key;
 					return (
 						<Tooltip key={tabKey} delayDuration={10}>
 							<TooltipTrigger asChild>

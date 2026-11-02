@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Timeline stats</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 13px;
+      }
+      body {
+        margin: 0;
+        padding: 12px;
+        color: CanvasText;
+        background: transparent;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 4px 0;
+        border-bottom: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+        font-weight: normal;
+      }
+      th {
+        opacity: 0.7;
+      }
+      td:last-child,
+      th:last-child {
+        text-align: right;
+      }
+      button {
+        font: inherit;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+        background: color-mix(in srgb, CanvasText 6%, transparent);
+        color: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        background: color-mix(in srgb, CanvasText 12%, transparent);
+      }
+      .status {
+        margin-top: 10px;
+        opacity: 0.7;
+        min-height: 1.2em;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Timeline</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Track</th>
+          <th>Type</th>
+          <th>Clips</th>
+        </tr>
+      </thead>
+      <tbody id="tracks"></tbody>
+      <tfoot>
+        <tr>
+          <th colspan="2">Total duration</th>
+          <th id="duration">–</th>
+        </tr>
+      </tfoot>
+    </table>
+    <button id="title" type="button">Add title card at playhead</button>
+    <div class="status" id="status">Connecting to the editor…</div>
+
+    <script type="module">
+      import { connect } from "../../plugin-sdk/opencut-plugin.js";
+
+      const tracksEl = document.getElementById("tracks");
+      const durationEl = document.getElementById("duration");
+      const statusEl = document.getElementById("status");
+      const titleButton = document.getElementById("title");
+
+      const format = (seconds) => `${seconds.toFixed(2)} s`;
+
+      async function refresh(opencut) {
+        const timeline = await opencut.timeline.get();
+        tracksEl.replaceChildren(
+          ...timeline.tracks.map((track) => {
+            const row = document.createElement("tr");
+            for (const text of [track.name, `${track.lane} · ${track.type}`, String(track.elements.length)]) {
+              const cell = document.createElement("td");
+              cell.textContent = text;
+              row.appendChild(cell);
+            }
+            return row;
+          }),
+        );
+        durationEl.textContent = format(timeline.duration);
+      }
+
+      try {
+        const opencut = await connect();
+        statusEl.textContent = `Connected · Editor API ${opencut.apiVersion}`;
+        await refresh(opencut);
+        opencut.on("timeline", () => refresh(opencut).catch(console.error));
+        titleButton.addEventListener("click", async () => {
+          try {
+            const state = await opencut.playback.getState();
+            const element = await opencut.timeline.addText({
+              text: `Title at ${format(state.time)}`,
+              duration: 3,
+            });
+            statusEl.textContent = `Added "${element.name}"`;
+          } catch (error) {
+            statusEl.textContent = error.message;
+          }
+        });
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    </script>
+  </body>
+</html>

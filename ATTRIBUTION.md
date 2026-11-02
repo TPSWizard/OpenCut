@@ -23,6 +23,15 @@ port:
 `apps/web/reference/` keeps the classic architecture notes (actions,
 keyframes, effects renderer, country search) for the ported subsystems.
 
+## Rust core (`crates/`)
+
+`crates/bridge`, `crates/time`, `crates/gpu`, `crates/effects`, `crates/masks`,
+`crates/compositor` and `crates/wasm` were copied on 2026-11-02 from the
+classic repository's `rust/crates/*` and `rust/wasm` (MIT, Copyright 2025-2026
+OpenCut), with only their `Cargo.toml` files rewritten to use the workspace
+dependency table. `crates/wasm` builds the same `opencut-wasm` package that is
+published on npm.
+
 ## Shared logic (`opencut-wasm`)
 
 [`opencut-wasm`](https://www.npmjs.com/package/opencut-wasm) 0.2.x is the

@@ -1,0 +1,42 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'rust'
+layer: 'library'
+
+# Builds the `opencut-wasm` npm package that apps/web imports.
+# Requires `wasm-pack` (`cargo install wasm-pack --locked`) and the
+# `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`).
+tasks:
+  check:
+    command: 'cargo check --target wasm32-unknown-unknown'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+      - '/crates/*/src/**/*'
+      - '/crates/*/Cargo.toml'
+      - '/Cargo.toml'
+      - '/Cargo.lock'
+
+  test:
+    # Core crate unit tests run natively; the desktop app is excluded because
+    # it pulls in GPUI.
+    command: 'cargo test --workspace --exclude opencut-desktop'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+      - '/crates/*/src/**/*'
+      - '/crates/*/Cargo.toml'
+      - '/Cargo.toml'
+      - '/Cargo.lock'
+
+  build:
+    command: 'wasm-pack build . --target bundler --out-dir pkg --release'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+      - '/crates/*/src/**/*'
+      - '/crates/*/Cargo.toml'
+      - '/Cargo.toml'
+      - '/Cargo.lock'
+    outputs:
+      - 'pkg'

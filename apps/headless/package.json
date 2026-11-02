@@ -1,0 +1,26 @@
+{
+  "name": "@opencut/headless",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Run OpenCut without a UI: build timelines from a job file or script and render them with a headless browser.",
+  "bin": {
+    "opencut-headless": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "render": "bun run src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.58.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^6.0.2"
+  }
+}
