@@ -20,6 +20,9 @@ struct OpenEditor {
     state: Entity<EditorState>,
     layout: Entity<ResizablePanelGroup>,
     export_dialog: Option<Entity<ExportDialog>>,
+    /// The editor takes keyboard focus on its first render, so shortcuts
+    /// work before anything has been clicked.
+    focus_pending: bool,
 }
 
 pub(crate) struct Shell {
@@ -78,6 +81,7 @@ impl Shell {
             state,
             layout,
             export_dialog: None,
+            focus_pending: true,
         });
         cx.notify();
     }
@@ -142,7 +146,7 @@ impl Render for Shell {
         let theme = window.theme();
         let colors = theme.colors;
 
-        let Some(open) = &self.editor else {
+        let Some(open) = &mut self.editor else {
             window.set_window_title("OpenCut");
             return div()
                 .size_full()
@@ -151,6 +155,12 @@ impl Render for Shell {
                 .child(self.projects.clone())
                 .into_any_element();
         };
+        if open.focus_pending {
+            open.focus_pending = false;
+            let handle = open.state.read(cx).focus_handle.clone();
+            window.focus(&handle);
+        }
+        let open = &*open;
 
         let state = open.state.read(cx);
         let project = state.project();
