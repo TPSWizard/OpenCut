@@ -21,7 +21,8 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   target is busy.
 - **Preview**: the composited frame at the playhead, rendered at the size it
   is shown; play/pause (`Space`), frame stepping (`←`/`→`), home/end. Audio
-  plays through the default output device, mixed from every audible clip.
+  plays through the default output device, mixed from every audible clip,
+  and the picture follows the device's clock so the two never drift.
 - **Inspector**: name, transform (position, scale, rotation, opacity), text
   (content, font, size, color, alignment, bold/italic, line height, letter
   spacing), audio volume (keyframeable) and mute; project name, background (a colour, or the
