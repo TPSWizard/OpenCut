@@ -254,6 +254,11 @@ export async function readProjectBundle({
 		if (!bytes) {
 			throw new ProjectBundleError(`The bundle is missing ${item.file}`);
 		}
+		if (typeof item.size === "number" && item.size !== bytes.byteLength) {
+			throw new ProjectBundleError(
+				`${item.file} is ${bytes.byteLength} bytes but the manifest says ${item.size}`,
+			);
+		}
 		const { file: _entry, ...data } = item;
 		media.push({
 			data,

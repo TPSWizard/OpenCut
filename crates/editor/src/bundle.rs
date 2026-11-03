@@ -327,12 +327,18 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
     let mut writer = zip::ZipWriter::new(file);
     let deflated = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated);
-    let stored = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Stored)
-        .large_file(true);
+    // Media is already compressed, so it is stored. ZIP64 fields are only
+    // written for files that need them: fflate, which the web app reads
+    // bundles with, cannot read a local header with ZIP64 placeholders and
+    // would run every entry on to the end of the archive.
+    let stored = |size: u64| {
+        zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .large_file(size >= u32::MAX as u64)
+    };
 
     let mut media = Vec::with_capacity(project.media.len());
-    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    let mut entries: Vec<(String, PathBuf, u64)> = Vec::new();
     for item in &project.media {
         let extension = item
             .path
@@ -360,7 +366,7 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
             has_audio: Some(item.has_audio),
             file: entry.clone(),
         });
-        entries.push((entry, item.path.clone()));
+        entries.push((entry, item.path.clone(), metadata.len()));
     }
 
     let (overlay, main, audio) = web_tracks(project);
@@ -402,8 +408,8 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
     let json = serde_json::to_vec_pretty(&bundle).map_err(io::Error::other)?;
     writer.start_file(PROJECT_ENTRY, deflated)?;
     writer.write_all(&json)?;
-    for (entry, source) in entries {
-        writer.start_file(&entry, stored)?;
+    for (entry, source, size) in entries {
+        writer.start_file(&entry, stored(size))?;
         let mut input = File::open(&source)?;
         io::copy(&mut input, &mut writer)?;
     }
@@ -586,7 +592,15 @@ mod tests {
         assert_eq!(value["project"]["scenes"][0]["tracks"]["main"]["type"], "video");
         assert_eq!(value["project"]["scenes"][0]["tracks"]["overlay"][0]["type"], "text");
         assert_eq!(value["media"][0]["file"], "media/img.png");
-        assert!(archive.by_name("media/img.png").is_ok());
+        assert_eq!(value["media"][0]["size"], 15);
+        let entry = archive.by_name("media/img.png").unwrap();
+        assert_eq!(entry.size(), 15);
+        assert_eq!(entry.compression(), zip::CompressionMethod::Stored);
+        drop(entry);
+        // Plain local headers (no ZIP64 fields) for ordinary files.
+        let raw = std::fs::read(&bundle_path).unwrap();
+        let header = raw.windows(4).position(|w| w == b"PK\x03\x04").unwrap();
+        assert_ne!(&raw[header + 18..header + 22], &[0xFF; 4], "no ZIP64 size placeholder");
 
         let store = ProjectStore::new(dir.path().join("projects"));
         let report = import_bundle(&bundle_path, &store).unwrap();

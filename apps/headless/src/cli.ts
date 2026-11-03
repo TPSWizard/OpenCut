@@ -12,10 +12,13 @@ Usage:
   opencut-headless run <script.js> [--project <id>]      run a script against a project
   opencut-headless inspect --project <id>                 print the timeline as JSON
   opencut-headless list                                   list projects in the profile
+  opencut-headless import <bundle.opencut.zip>            import a project bundle, print its id
+  opencut-headless export --project <id> --output <path>  save a project as a bundle
 
 Options:
   --url <origin>       use a running OpenCut web app instead of starting one
   --profile <dir>      browser profile holding the projects (default: ${defaultProfileDir()})
+  --port <port>        port of the local preview server (default 4173; keep it fixed so projects persist)
   --headed             show the browser window
   --timeout <ms>       per-step timeout (default 180000)
   --output <path>      (run) export after the script finishes
@@ -36,6 +39,7 @@ async function main() {
 		options: {
 			url: { type: "string" },
 			profile: { type: "string" },
+			port: { type: "string" },
 			headed: { type: "boolean", default: false },
 			timeout: { type: "string" },
 			project: { type: "string" },
@@ -54,6 +58,7 @@ async function main() {
 	const runner = new HeadlessRunner({
 		url: values.url,
 		profileDir: values.profile,
+		port: values.port ? Number(values.port) : undefined,
 		headed: values.headed,
 		timeoutMs: values.timeout ? Number(values.timeout) : undefined,
 	});
@@ -108,6 +113,25 @@ async function main() {
 				await runner.openProject({ projectId: values.project });
 				const timeline = await runner.getTimeline();
 				console.log(JSON.stringify(timeline, null, 2));
+				break;
+			}
+			case "import": {
+				const [bundlePath] = rest;
+				if (!bundlePath) fail("import needs a bundle file");
+				const absolute = resolve(bundlePath);
+				if (!existsSync(absolute)) fail(`${absolute} does not exist`);
+				await runner.start();
+				const id = await runner.importBundle({ path: absolute });
+				console.log(id);
+				break;
+			}
+			case "export": {
+				if (!values.project) fail("export needs --project <id>");
+				if (!values.output) fail("export needs --output <path>");
+				await runner.start();
+				await runner.openProject({ projectId: values.project });
+				const written = await runner.exportBundle({ output: resolve(values.output) });
+				console.log(written);
 				break;
 			}
 			case "list": {

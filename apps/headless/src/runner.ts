@@ -14,6 +14,12 @@ export interface HeadlessOptions {
 	headed?: boolean;
 	/** Persistent browser profile; projects are stored in it between runs. */
 	profileDir?: string;
+	/**
+	 * Port for the local preview server (default 4173). Browser storage is
+	 * per origin, so the port has to stay the same for projects to persist
+	 * between runs; when it is busy a free one is used and a warning logged.
+	 */
+	port?: number;
 	/** Per-step timeout in milliseconds. */
 	timeoutMs?: number;
 	log?: (line: string) => void;
@@ -69,6 +75,18 @@ export function defaultProfileDir(): string {
 	return resolve(homedir(), ".opencut", "headless-profile");
 }
 
+/** The preview server's default port; stable so stored projects persist. */
+export const DEFAULT_PREVIEW_PORT = 4173;
+
+function portIsFree(port: number): Promise<boolean> {
+	return new Promise((resolveFree) => {
+		const server = createServer();
+		server.unref();
+		server.once("error", () => resolveFree(false));
+		server.listen(port, "127.0.0.1", () => server.close(() => resolveFree(true)));
+	});
+}
+
 async function freePort(): Promise<number> {
 	return new Promise((resolvePort, reject) => {
 		const server = createServer();
@@ -104,7 +122,10 @@ export class LocalWebServer {
 	private child: ChildProcess | null = null;
 	url = "";
 
-	constructor(private readonly log: (line: string) => void) {}
+	constructor(
+		private readonly log: (line: string) => void,
+		private readonly preferredPort: number = DEFAULT_PREVIEW_PORT,
+	) {}
 
 	async start(): Promise<string> {
 		const distIndex = resolve(webAppDir, "dist/client/index.html");
@@ -113,7 +134,13 @@ export class LocalWebServer {
 			this.log("apps/web has no production build yet; running `bun run build` (this takes a minute)");
 			await runCommand("bun", ["run", "build"], webAppDir);
 		}
-		const port = await freePort();
+		let port = this.preferredPort;
+		if (!(await portIsFree(port))) {
+			port = await freePort();
+			this.log(
+				`port ${this.preferredPort} is busy; using ${port}. Browser storage is per origin, so projects saved under another port will not show up here.`,
+			);
+		}
 		this.url = `http://localhost:${port}`;
 		this.log(`starting vite preview on ${this.url}`);
 		this.child = spawn("bun", ["run", "preview", "--", "--port", String(port), "--strictPort"], {
@@ -129,15 +156,29 @@ export class LocalWebServer {
 		return this.url;
 	}
 
+	/** Stops the server and waits until it is gone, so the port is free for the next run. */
 	async stop(): Promise<void> {
 		if (!this.child) return;
 		const child = this.child;
 		this.child = null;
+		const exited = new Promise<void>((resolveExit) => {
+			if (child.exitCode !== null || child.signalCode !== null) {
+				resolveExit();
+				return;
+			}
+			child.once("exit", () => resolveExit());
+			setTimeout(resolveExit, 10_000).unref();
+		});
 		if (process.platform === "win32" && child.pid) {
-			spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+			await new Promise<void>((resolveKill) => {
+				const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+				killer.once("exit", () => resolveKill());
+				killer.once("error", () => resolveKill());
+			});
 		} else {
 			child.kill("SIGTERM");
 		}
+		await exited;
 	}
 }
 
@@ -183,7 +224,7 @@ export class HeadlessRunner {
 		if (this.options.url) {
 			this.baseUrl = this.options.url.replace(/\/+$/, "");
 		} else {
-			this.localServer = new LocalWebServer(this.log);
+			this.localServer = new LocalWebServer(this.log, this.options.port);
 			this.baseUrl = await this.localServer.start();
 		}
 
@@ -414,6 +455,39 @@ export class HeadlessRunner {
 
 	async getTimeline(): Promise<TimelineInfo> {
 		return this.call<TimelineInfo>("timeline.get");
+	}
+
+	/**
+	 * Import a project bundle (`.opencut.zip`, from the web app's "Export
+	 * project…" or the desktop editor's "Save bundle…") through the projects
+	 * page, and open it. Returns the project id.
+	 */
+	async importBundle({ path }: { path: string }): Promise<string> {
+		const page = this.requirePage();
+		await this.gotoProjects();
+		const input = page.locator('input[type="file"][accept*="zip"]');
+		await input.waitFor({ state: "attached", timeout: this.timeoutMs });
+		await input.setInputFiles(path);
+		await page.waitForURL(/\/editor\//, { timeout: this.timeoutMs });
+		await page.evaluate(() => {
+			(window as unknown as { __opencutReady?: boolean }).__opencutReady = undefined;
+		});
+		await this.waitForApi({ needProject: true });
+		const id = page.url().split("/editor/")[1]?.split(/[?#]/)[0] ?? "";
+		this.log(`imported bundle as project ${id}`);
+		return id;
+	}
+
+	/** Export the open project and its media as a bundle to `output`. Returns the written path. */
+	async exportBundle({ output }: { output: string }): Promise<string> {
+		const page = this.requirePage();
+		const [download] = await Promise.all([
+			page.waitForEvent("download", { timeout: this.timeoutMs }),
+			this.call("project.exportBundle", {}),
+		]);
+		mkdirSync(dirname(output), { recursive: true });
+		await download.saveAs(output);
+		return output;
 	}
 
 	/** Render the active scene and save it to `output`. Returns the written path. */

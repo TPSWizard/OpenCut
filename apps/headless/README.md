@@ -17,11 +17,20 @@ bun run render a.json b.json c.json         # batch
 bun run src/cli.ts list                     # projects in the profile
 bun run src/cli.ts inspect --project <id>   # timeline as JSON
 bun run src/cli.ts run script.js --new "Promo" --output promo.mp4
+bun run src/cli.ts import promo.opencut.zip                     # project bundle → project id
+bun run src/cli.ts export --project <id> --output promo.opencut.zip
 ```
 
+Project bundles (`.opencut.zip`: the project JSON plus its media) are what the
+web app's *Export project…* and the desktop editor's *Save bundle…* write, so
+`import` and `export` move projects between the two editors without a UI.
+
 Without `--url`, the CLI serves the production build of `apps/web` with
-`vite preview` (building it first when `dist/` is missing). Point it at a
-running app with `--url http://localhost:5173` during development.
+`vite preview` on port 4173 (building it first when `dist/` is missing).
+Browser storage is per origin, so the port stays fixed between runs for the
+profile's projects to be found again; `--port` changes it, and a busy port
+falls back to a free one with a warning. Point the CLI at a running app with
+`--url http://localhost:5173` during development.
 
 ## Job files
 
