@@ -21,7 +21,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, Download01Icon, Logout05Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "@/compat/image";
@@ -48,9 +48,34 @@ function ProjectDropdown() {
 		"delete" | "rename" | "shortcuts" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
+	const [isExportingBundle, setIsExportingBundle] = useState(false);
 	const router = useRouter();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
+
+	const handleExportBundle = async () => {
+		if (isExportingBundle) return;
+		setIsExportingBundle(true);
+		try {
+			const { blob, fileName } = await editor.project.exportProjectBundle();
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = fileName;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			toast.success("Project exported", { description: fileName });
+		} catch (error) {
+			toast.error("Failed to export project", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+		} finally {
+			setIsExportingBundle(false);
+		}
+	};
 
 	const handleExit = async () => {
 		if (isExiting) return;
@@ -135,6 +160,14 @@ function ProjectDropdown() {
 						icon={<HugeiconsIcon icon={CommandIcon} />}
 					>
 						Shortcuts
+					</DropdownMenuItem>
+
+					<DropdownMenuItem
+						onClick={handleExportBundle}
+						disabled={isExportingBundle}
+						icon={<HugeiconsIcon icon={Download01Icon} />}
+					>
+						{isExportingBundle ? "Exporting project…" : "Export project…"}
 					</DropdownMenuItem>
 
 					<DropdownMenuSeparator />

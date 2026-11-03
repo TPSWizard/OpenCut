@@ -29,12 +29,25 @@ import { DEFAULTS } from "@/timeline/defaults";
 import { getElementFontFamilies } from "@/timeline/element-utils";
 import { getRaisedProjectFpsForImportedMedia } from "@/fps/utils";
 import type { MediaAsset } from "@/media/types";
+import {
+	PROJECT_BUNDLE_EXTENSION,
+	buildProjectBundle,
+	readProjectBundle,
+} from "@/project/bundle";
 
 export interface MigrationState {
 	isMigrating: boolean;
 	fromVersion: number | null;
 	toVersion: number | null;
 	projectName: string | null;
+}
+
+function bundleFileName({ name }: { name: string }): string {
+	const safe = name
+		.replace(/[\\/:*?"<>|]+/g, "-")
+		.replace(/\s+/g, " ")
+		.trim();
+	return safe.length > 0 ? safe : "project";
 }
 
 export class ProjectManager {
@@ -207,6 +220,61 @@ export class ProjectManager {
 		} catch (error) {
 			console.error("Failed to save project:", error);
 		}
+	}
+
+	/**
+	 * The open project and its media as a bundle (a zip the native desktop
+	 * editor reads and writes too), after saving it.
+	 */
+	async exportProjectBundle(): Promise<{ blob: Blob; fileName: string }> {
+		const project = this.getActive();
+		await this.saveCurrentProject();
+		const mediaAssets = await storageService.loadAllMediaAssets({
+			projectId: project.metadata.id,
+		});
+		const blob = await buildProjectBundle({ project, mediaAssets });
+		return {
+			blob,
+			fileName: `${bundleFileName({ name: project.metadata.name })}${PROJECT_BUNDLE_EXTENSION}`,
+		};
+	}
+
+	/**
+	 * Creates a project from a bundle and stores its media. A project id
+	 * already in storage gets a fresh one, so importing never overwrites.
+	 * Returns the new project's id.
+	 */
+	async importProjectBundle({ file }: { file: Blob }): Promise<string> {
+		const { project, media } = await readProjectBundle({ file });
+		const existing = await storageService.loadProject({
+			id: project.metadata.id,
+		});
+		const id = existing ? generateUUID() : project.metadata.id;
+		const imported: TProject = {
+			...project,
+			metadata: { ...project.metadata, id, updatedAt: new Date() },
+		};
+		await storageService.saveProject({ project: imported });
+		for (const { data, file: mediaFile } of media) {
+			await storageService.saveMediaAsset({
+				projectId: id,
+				mediaAsset: {
+					id: data.id,
+					name: data.name,
+					type: data.type,
+					width: data.width,
+					height: data.height,
+					duration: data.duration,
+					fps: data.fps,
+					hasAudio: data.hasAudio,
+					ephemeral: data.ephemeral,
+					thumbnailUrl: data.thumbnailUrl,
+					file: mediaFile,
+				},
+			});
+		}
+		await this.loadAllProjects();
+		return id;
 	}
 
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {

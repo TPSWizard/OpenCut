@@ -171,6 +171,17 @@ export interface EditorApiMethods {
 		result: ApiProjectInfo;
 	};
 	"project.save": { params: Record<string, never>; result: { saved: true } };
+	/**
+	 * Download the open project and its media as a project bundle (a zip the
+	 * desktop editor reads and writes too). `fileName` is without the
+	 * `.opencut.zip` extension, which is added.
+	 */
+	"project.exportBundle": {
+		params: { fileName?: string };
+		result: { fileName: string; bytes: number };
+	};
+	/** Create a project from a bundle; open it by navigating to `/editor/<id>`. */
+	"project.importBundle": { params: { file: File }; result: ApiProjectSummary };
 
 	"scenes.list": { params: Record<string, never>; result: ApiSceneInfo[] };
 	"scenes.switch": { params: { sceneId: string }; result: ApiSceneInfo[] };

@@ -39,6 +39,8 @@ methods answer with the error code `no_project` before that.
 | `project.rename` | `{ name }` | `ApiProjectInfo` |
 | `project.updateSettings` | `{ fps?, canvas?, background? }` | `ApiProjectInfo` |
 | `project.save` | – | `{ saved: true }` |
+| `project.exportBundle` | `{ fileName? }` | `{ fileName, bytes }` — downloads a project bundle (`.opencut.zip`: the project JSON plus its media; the desktop editor reads and writes the same file) |
+| `project.importBundle` | `{ file: File }` | `ApiProjectSummary` (in page / structured clone only) |
 | `scenes.list` / `scenes.switch` | – / `{ sceneId }` | `ApiSceneInfo[]` |
 | `media.list` | – | `ApiMediaInfo[]` |
 | `media.importUrl` | `{ url, name? }` | `ApiMediaInfo` |

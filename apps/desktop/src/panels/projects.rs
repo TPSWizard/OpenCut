@@ -1,6 +1,7 @@
 use editor::{Project, ProjectStore, ProjectSummary};
 use gpui::{
-    ClickEvent, Context, EventEmitter, FontWeight, PromptLevel, Window, div, prelude::*, px,
+    ClickEvent, Context, EventEmitter, FontWeight, PathPromptOptions, PromptLevel, Window, div,
+    prelude::*, px,
 };
 
 use crate::components::{Button, ButtonSize, ButtonVariant, eid};
@@ -50,6 +51,45 @@ impl ProjectsView {
             Err(error) => self.error = Some(format!("Could not create a project: {error}")),
         }
         cx.notify();
+    }
+
+    /// Picks a project bundle (`.opencut.zip`, from this editor or the web
+    /// app), copies it into the store and opens it.
+    fn import_bundle(&mut self, cx: &mut Context<Self>) {
+        let store = self.store.clone();
+        let receiver = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some("Import".into()),
+        });
+        cx.spawn(async move |this, cx| {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
+            let result = cx
+                .background_executor()
+                .spawn(async move { editor::import_bundle(&path, &store) })
+                .await;
+            this.update(cx, |view, cx| {
+                match result {
+                    Ok(report) => {
+                        view.refresh();
+                        view.error = (!report.skipped.is_empty()).then(|| {
+                            format!("Imported without: {}", report.skipped.join("; "))
+                        });
+                        cx.emit(ProjectsEvent::Open(report.project));
+                    }
+                    Err(error) => view.error = Some(format!("Could not import the bundle: {error}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     fn open(&mut self, id: &str, cx: &mut Context<Self>) {
@@ -181,8 +221,18 @@ impl Render for ProjectsView {
                                     ),
                             )
                             .child(
-                                Button::new("new-project", "New project")
-                                    .on_click(cx.listener(|this, _, _, cx| this.create(cx))),
+                                div()
+                                    .flex()
+                                    .gap(px(8.))
+                                    .child(
+                                        Button::new("import-bundle", "Import bundle…")
+                                            .variant(ButtonVariant::Outline)
+                                            .on_click(cx.listener(|this, _, _, cx| this.import_bundle(cx))),
+                                    )
+                                    .child(
+                                        Button::new("new-project", "New project")
+                                            .on_click(cx.listener(|this, _, _, cx| this.create(cx))),
+                                    ),
                             ),
                     )
                     .when_some(self.error.clone(), |this, error| {

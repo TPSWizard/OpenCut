@@ -1,5 +1,6 @@
 import type { EditorCore } from "@/core";
 import { processMediaAssets } from "@/media/processing";
+import { PROJECT_BUNDLE_EXTENSION } from "@/project/bundle";
 import type { MediaAsset } from "@/media/types";
 import { floatToFrameRate, frameRateToFloat } from "@/fps/utils";
 import { getExportFileExtension, getExportMimeType } from "@/export";
@@ -166,6 +167,18 @@ function fileNameFromUrl(url: string): string {
  * input, converts seconds to ticks, runs through the editor's undoable
  * commands and returns plain JSON.
  */
+/** Hands a blob to the browser as a download. */
+function downloadBlob({ blob, fileName }: { blob: Blob; fileName: string }) {
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = fileName;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
+}
+
 export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 	const requireProject = (): TProject => {
 		const project = editor.project.getActiveOrNull();
@@ -385,6 +398,34 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			return {
 				id,
 				name: metadata?.name ?? projectName,
+				duration: metadata ? seconds(metadata.duration) : 0,
+				createdAt: new Date(metadata?.createdAt ?? Date.now()).toISOString(),
+				updatedAt: new Date(metadata?.updatedAt ?? Date.now()).toISOString(),
+			};
+		},
+		"project.exportBundle": async ({ fileName }) => {
+			const bundle = await editor.project.exportProjectBundle();
+			const requested =
+				typeof fileName === "string" && fileName.trim().length > 0
+					? `${fileName.trim()}${PROJECT_BUNDLE_EXTENSION}`
+					: bundle.fileName;
+			downloadBlob({ blob: bundle.blob, fileName: requested });
+			return { fileName: requested, bytes: bundle.blob.size };
+		},
+		"project.importBundle": async ({ file }) => {
+			if (!(file instanceof Blob)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "file must be a File",
+				});
+			}
+			const id = await editor.project.importProjectBundle({ file });
+			const metadata = editor.project
+				.getSavedProjects()
+				.find((item) => item.id === id);
+			return {
+				id,
+				name: metadata?.name ?? "Imported project",
 				duration: metadata ? seconds(metadata.duration) : 0,
 				createdAt: new Date(metadata?.createdAt ?? Date.now()).toISOString(),
 				updatedAt: new Date(metadata?.updatedAt ?? Date.now()).toISOString(),
@@ -730,14 +771,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		"export.download": async (options) => {
 			const rendered = await renderExport(options);
 			const blob = new Blob([rendered.bytes], { type: rendered.mimeType });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = rendered.fileName;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
+			downloadBlob({ blob, fileName: rendered.fileName });
 			return {
 				fileName: rendered.fileName,
 				mimeType: rendered.mimeType,

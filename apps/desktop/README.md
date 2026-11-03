@@ -126,7 +126,11 @@ resolution and pipes BGRA frames into `media::Encoder`.
   captions are read from project files but not rendered; freeform masks can
   be rendered but not drawn; text masks have no stroke; colour keyframes
   (`color`, `background.color`) are not animated.
-- Project files are not yet interchangeable with the web app's IndexedDB
-  projects (same concepts and parameter names, different storage).
+- Project bundles move projects between the two editors: **Save bundle…**
+  in the header writes `<name>.opencut.zip` (the project in the web app's
+  JSON shape plus copies of its media), and **Import bundle…** on the
+  projects page reads one, from here or from the web app's *Export project…*
+  menu item. Web-only content (stickers, graphics, effect tracks, library
+  sounds, extra scenes) is left out of an import and listed on the page.
 - Audio playback follows the picture from the playhead on each play/seek; it
   is not sample-locked to the frame clock.

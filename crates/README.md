@@ -73,7 +73,9 @@ screen at a time, how they are transformed, which effects apply and which
 mask shape clips them, all with keyframes resolved, plus the main-track
 backdrops of a blurred background; `plan_audio` says which
 parts of which files are audible and at what gain (`AudioClipPlan::gain_at`
-follows `volume` keyframes). `ProjectStore` reads and writes
+follows `volume` keyframes). `import_bundle` / `export_bundle` read and write project bundles (zip: the
+web app's project JSON + media files), the interchange format with the web
+app. `ProjectStore` reads and writes
 `<root>/<id>/project.json` (format version 1).
 
 ## Media I/O (`crates/media`)

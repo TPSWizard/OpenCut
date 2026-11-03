@@ -116,6 +116,45 @@ impl Shell {
         cx.notify();
     }
 
+    /// Saves the project and writes it with copies of its media as a
+    /// project bundle (`.opencut.zip`), which the web app can import.
+    fn export_bundle(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let name = state.read(cx).project().name.clone();
+        let suggested = format!("{}.opencut.zip", bundle_file_name(&name));
+        let directory = std::env::current_dir().unwrap_or_default();
+        let receiver = cx.prompt_for_new_path(&directory, Some(&suggested));
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(mut path))) = receiver.await else {
+                return;
+            };
+            if path.extension().is_none() {
+                path.set_extension("zip");
+            }
+            let Ok(project) = state.update(cx, |state, cx| {
+                state.save_now(cx);
+                state.project().clone()
+            }) else {
+                return;
+            };
+            let shown = path.display().to_string();
+            let result = cx
+                .background_executor()
+                .spawn(async move { editor::export_bundle(&project, &path) })
+                .await;
+            state
+                .update(cx, |state, cx| match result {
+                    Ok(()) => state.set_status(format!("Saved bundle {shown}"), cx),
+                    Err(error) => state.set_status(format!("Bundle not saved: {error}"), cx),
+                })
+                .ok();
+        })
+        .detach();
+    }
+
     fn with_state(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut EditorState, &mut Context<EditorState>)) {
         if let Some(open) = &self.editor {
             open.state.update(cx, f);
@@ -139,6 +178,17 @@ impl Render for InspectorSlot {
             .size_full()
             .child(self.inspector.clone().expect("created above"))
     }
+}
+
+/// A file name for the project: no path separators or characters Windows
+/// refuses, and never empty.
+fn bundle_file_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '-' } else { c })
+        .collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() { "project".to_owned() } else { trimmed.to_owned() }
 }
 
 impl Render for Shell {
@@ -208,6 +258,12 @@ impl Render for Shell {
                     .size(ButtonSize::Small)
                     .on_click(move |_, _, cx| MediaPanel::import(&state, cx))
             })
+            .child(
+                Button::new("export-bundle", "Save bundle…")
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.export_bundle(cx))),
+            )
             .child(
                 Button::new("export-header", if export_running { "Exporting…" } else { "Export" })
                     .size(ButtonSize::Small)

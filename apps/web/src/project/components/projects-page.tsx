@@ -4,7 +4,7 @@ import Image from "@/compat/image";
 import Link from "@/compat/link";
 import { useRouter } from "@/compat/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/project/components/migration-dialog";
@@ -184,6 +184,7 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
+					<ImportProjectButton />
 					<NewProjectButton />
 				</div>
 			</div>
@@ -501,6 +502,57 @@ function SortDropdown({ children }: { children: React.ReactNode }) {
 				</DropdownMenuCheckboxItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+function ImportProjectButton() {
+	const editor = useEditor();
+	const router = useRouter();
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [isImporting, setIsImporting] = useState(false);
+
+	const handleFiles = async (files: FileList | null) => {
+		const file = files?.[0];
+		if (!file || isImporting) return;
+		setIsImporting(true);
+		try {
+			const projectId = await editor.project.importProjectBundle({ file });
+			toast.success("Project imported");
+			router.push(`/editor/${projectId}`);
+		} catch (error) {
+			toast.error("Failed to import project", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+		} finally {
+			setIsImporting(false);
+			if (inputRef.current) inputRef.current.value = "";
+		}
+	};
+
+	return (
+		<>
+			<input
+				ref={inputRef}
+				type="file"
+				accept=".zip,.opencut,application/zip"
+				className="hidden"
+				onChange={(event) => void handleFiles(event.target.files)}
+			/>
+			<Button
+				variant="outline"
+				size="lg"
+				className="flex px-5 md:px-6"
+				disabled={isImporting}
+				onClick={() => inputRef.current?.click()}
+				title="Open a project bundle (.opencut.zip) exported from this app or the desktop editor"
+			>
+				<span className="text-sm font-medium hidden md:block">
+					{isImporting ? "Importing…" : "Import project"}
+				</span>
+				<span className="text-sm font-medium block md:hidden">Import</span>
+			</Button>
+		</>
 	);
 }
 

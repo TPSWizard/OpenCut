@@ -10,6 +10,7 @@
 
 mod animation;
 mod audio;
+mod bundle;
 mod commands;
 mod document;
 mod editor;
@@ -23,6 +24,7 @@ pub use animation::{
     resolve_object_params, resolve_params, split_animations,
 };
 pub use audio::{AudioClipPlan, plan_audio};
+pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, import_bundle};
 pub use commands::{
     Command, Edge, ElementPatch, ElementRef, Outcome, SettingsPatch, TrackPlacement, apply,
     nearest_free_start,
