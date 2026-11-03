@@ -51,6 +51,12 @@ impl ExportState {
     }
 }
 
+/// A freeform mask being drawn with the pen.
+pub(crate) struct PenTool {
+    pub element_id: String,
+    pub mask_id: String,
+}
+
 pub(crate) struct EditorState {
     /// Focus for the editor's own shortcuts; panels focus it on click so a
     /// text field stops receiving keys.
@@ -70,6 +76,8 @@ pub(crate) struct EditorState {
     preview_size: (u32, u32),
     pub status: Option<String>,
     pub thumbnails: HashMap<String, Arc<RenderImage>>,
+    /// The freeform mask being drawn on the preview, if any.
+    pub pen: Option<PenTool>,
     pub export: Option<ExportState>,
     render: RenderHandle,
     audio: Option<AudioOutput>,
@@ -131,6 +139,7 @@ impl EditorState {
             preview_size: (640, 360),
             status,
             thumbnails: HashMap::new(),
+            pen: None,
             export: None,
             render,
             audio,
@@ -232,6 +241,9 @@ impl EditorState {
     }
 
     pub(crate) fn select(&mut self, element_id: &str, extend: bool, cx: &mut Context<Self>) {
+        if self.pen.is_some() && (extend || !self.is_selected(element_id)) {
+            self.finish_pen(cx);
+        }
         if extend {
             if let Some(index) = self.selection.iter().position(|id| id == element_id) {
                 self.selection.remove(index);
@@ -245,11 +257,19 @@ impl EditorState {
     }
 
     pub(crate) fn select_only(&mut self, element_ids: Vec<String>, cx: &mut Context<Self>) {
+        if self.pen.is_some() {
+            self.finish_pen(cx);
+        }
         self.selection = element_ids;
         cx.notify();
     }
 
     pub(crate) fn clear_selection(&mut self, cx: &mut Context<Self>) {
+        // Escape while drawing cancels the drawing, not the selection.
+        if self.pen.is_some() {
+            self.cancel_pen(cx);
+            return;
+        }
         if !self.selection.is_empty() {
             self.selection.clear();
             cx.notify();
@@ -257,6 +277,9 @@ impl EditorState {
     }
 
     pub(crate) fn select_all(&mut self, cx: &mut Context<Self>) {
+        if self.pen.is_some() {
+            self.finish_pen(cx);
+        }
         self.selection = self
             .project()
             .elements()
@@ -522,6 +545,126 @@ impl EditorState {
             },
             cx,
         );
+    }
+
+    /// Starts drawing a freeform mask on the selected clip: it replaces any
+    /// mask the clip has, and points are added by clicking on the preview.
+    pub(crate) fn start_pen(&mut self, cx: &mut Context<Self>) {
+        if self.pen.is_some() {
+            self.finish_pen(cx);
+        }
+        let Some(element) = self.selected_element() else { return };
+        if !element.can_be_masked() {
+            return;
+        }
+        let element_id = element.id.clone();
+        let existing: Vec<String> = element.masks.iter().map(|mask| mask.id.clone()).collect();
+        for mask_id in existing {
+            self.execute(Command::RemoveMask { element_id: element_id.clone(), mask_id }, cx);
+        }
+        let mask = Mask::shape(Mask::FREEFORM);
+        let mask_id = mask.id.clone();
+        self.execute(Command::AddMask { element_id: element_id.clone(), mask }, cx);
+        self.pen = Some(PenTool { element_id, mask_id });
+        self.set_status(
+            "Pen: click on the picture to add points; double-click or Enter closes the path, Escape cancels",
+            cx,
+        );
+    }
+
+    /// The pen's mask, as long as its element is still the selection.
+    fn pen_mask(&self) -> Option<(&Element, &Mask)> {
+        let pen = self.pen.as_ref()?;
+        let element = self.selected_element().filter(|element| element.id == pen.element_id)?;
+        let mask = element.mask(&pen.mask_id)?;
+        Some((element, mask))
+    }
+
+    /// Adds a corner point at a canvas pixel.
+    pub(crate) fn pen_add_point(&mut self, canvas_x: f64, canvas_y: f64, cx: &mut Context<Self>) {
+        let playhead = self.playhead();
+        let Some((element, mask)) = self.pen_mask() else {
+            self.pen = None;
+            return;
+        };
+        let Some(quad) = editor::element_quad(self.project(), element, playhead) else { return };
+        let (x, y) = editor::canvas_to_freeform_local(&quad, &mask.params, canvas_x, canvas_y);
+        let mut points = editor::read_freeform_path(&mask.params);
+        points.push(editor::FreeformPoint::corner(x, y));
+        let count = points.len();
+        let (element_id, mask_id) = (element.id.clone(), mask.id.clone());
+        let mut params = Params::new();
+        params.set("path", editor::write_freeform_path(&points));
+        self.execute(Command::UpdateMask { element_id, mask_id, params }, cx);
+        self.set_status(
+            format!("Pen: {count} point(s); double-click or Enter closes the path, Escape cancels"),
+            cx,
+        );
+    }
+
+    /// Closes the path (three points or more) or drops it.
+    pub(crate) fn finish_pen(&mut self, cx: &mut Context<Self>) {
+        let Some(pen) = self.pen.take() else { return };
+        let count = self
+            .pen_mask_by(&pen)
+            .map(|mask| editor::read_freeform_path(&mask.params).len())
+            .unwrap_or(0);
+        if count >= 3 {
+            let mut params = Params::new();
+            params.set("closed", true);
+            self.execute(
+                Command::UpdateMask {
+                    element_id: pen.element_id,
+                    mask_id: pen.mask_id,
+                    params,
+                },
+                cx,
+            );
+            self.set_status(format!("Freeform mask closed with {count} points"), cx);
+        } else {
+            self.execute(
+                Command::RemoveMask {
+                    element_id: pen.element_id,
+                    mask_id: pen.mask_id,
+                },
+                cx,
+            );
+            self.set_status("Pen: a path needs at least three points; nothing was kept", cx);
+        }
+        cx.notify();
+    }
+
+    /// Drops the path being drawn.
+    pub(crate) fn cancel_pen(&mut self, cx: &mut Context<Self>) {
+        let Some(pen) = self.pen.take() else { return };
+        self.execute(
+            Command::RemoveMask {
+                element_id: pen.element_id,
+                mask_id: pen.mask_id,
+            },
+            cx,
+        );
+        self.set_status("Pen cancelled", cx);
+        cx.notify();
+    }
+
+    fn pen_mask_by(&self, pen: &PenTool) -> Option<&Mask> {
+        self.project()
+            .element(&pen.element_id)
+            .and_then(|(_, element)| element.mask(&pen.mask_id))
+    }
+
+    /// The selected clip's freeform path in canvas pixels, with whether it
+    /// is closed, for the preview overlay.
+    pub(crate) fn freeform_overlay(&self) -> Option<(Vec<(f64, f64)>, bool)> {
+        let element = self.selected_element()?;
+        let mask = element.masks.first().filter(|mask| mask.kind == Mask::FREEFORM)?;
+        let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        let points = editor::read_freeform_path(&mask.params)
+            .iter()
+            .map(|point| editor::freeform_local_to_canvas(&quad, &mask.params, point.x, point.y))
+            .collect();
+        Some((points, mask.params.bool("closed", false)))
     }
 
     pub(crate) fn add_mask(&mut self, mask: Mask, cx: &mut Context<Self>) {

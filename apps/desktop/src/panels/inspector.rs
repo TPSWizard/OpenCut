@@ -224,6 +224,7 @@ impl Render for InspectorPanel {
         let playhead = state.playhead();
         let selected = state.selected_element().cloned();
         let selection_count = state.selection.len();
+        let pen_active = state.pen.is_some();
         let track_kind = selected
             .as_ref()
             .and_then(|element| project.element(&element.id))
@@ -667,7 +668,14 @@ impl Render for InspectorPanel {
                                         .on_click(move |_, _, cx| {
                                             state.update(cx, |state, cx| state.add_mask(Mask::shape(kind), cx))
                                         })
-                                })),
+                                }))
+                                .child({
+                                    let state = self.state.clone();
+                                    Button::new("draw-mask-path", "Draw path (pen)")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.start_pen(cx)))
+                                }),
                         );
                     }
                     if let Some(mask) = element.masks.first() {
@@ -705,6 +713,43 @@ impl Render for InspectorPanel {
                                     })
                             });
                         content = content.child(header);
+                        if mask.kind == Mask::FREEFORM {
+                            let points = editor::read_freeform_path(&mask.params).len();
+                            let closed = mask.params.bool("closed", false);
+                            let mut pen_row = div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(format!(
+                                    "{points} point(s), {}",
+                                    if pen_active { "drawing" } else if closed { "closed" } else { "open" }
+                                )));
+                            if pen_active {
+                                let state = self.state.clone();
+                                pen_row = pen_row.child(
+                                    Button::new("pen-close", "Close path")
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.finish_pen(cx))),
+                                );
+                                let state = self.state.clone();
+                                pen_row = pen_row.child(
+                                    Button::new("pen-cancel", "Cancel")
+                                        .variant(ButtonVariant::Ghost)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.cancel_pen(cx))),
+                                );
+                            } else {
+                                let state = self.state.clone();
+                                pen_row = pen_row.child(
+                                    Button::new("pen-redraw", "Redraw")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.start_pen(cx))),
+                                );
+                            }
+                            content = content.child(pen_row);
+                        }
                         let size_mode = mask.size_mode();
                         let is_text = mask.kind == Mask::TEXT;
                         let shown = |key: &str| match key {

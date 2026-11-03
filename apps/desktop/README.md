@@ -48,8 +48,9 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   clips, sized and offset as percentages of the clip, rotated, feathered
   (GPU distance field) or inverted, with an optional stroke along the edge
   (width, colour, inside/centre/outside; not on text); the same shapes and
-  parameters as the web editor. Freeform pen-tool paths from web projects
-  are rendered too (there is no pen tool here yet).
+  parameters as the web editor. **Draw path (pen)** draws a freeform mask:
+  click points on the preview, double-click or `Enter` closes it (three
+  points or more), `Escape` cancels; paths drawn in the web app render too.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -125,9 +126,9 @@ resolution and pipes BGRA frames into `media::Encoder`.
 ## Not there yet
 
 - Only the blur effect exists natively. The web editor's stickers and
-  captions are read from project files but not rendered; freeform masks can
-  be rendered but not drawn; text masks have no stroke; colour keys can be
-  played and cut but not set here.
+  captions are read from project files but not rendered; freeform paths have
+  corner points only (no curve handles yet); text masks have no stroke;
+  colour keys can be played and cut but not set here.
 - Project bundles move projects between the two editors: **Save bundle…**
   in the header writes `<name>.opencut.zip` (the project in the web app's
   JSON shape plus copies of its media), and **Import bundle…** on the

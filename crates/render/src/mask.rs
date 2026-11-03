@@ -117,9 +117,6 @@ pub fn rasterize_mask_stroke(
     // The band needs exact distances out to its outer edge.
     geometry.margin = stroke_width / 2.0 + 1.0;
     let shape = Shape::new(kind, params, &geometry)?;
-    if matches!(shape, Shape::Empty) {
-        return None;
-    }
     // Negative distances are inside, so an inside stroke sits at -w/2.
     let offset = match params.text("strokeAlign", "center").as_ref() {
         "inside" => -stroke_width / 2.0,
@@ -154,8 +151,6 @@ enum Shape {
     Split,
     Diamond,
     Polygon(Polygon),
-    /// Shows nothing (an open freeform path).
-    Empty,
 }
 
 impl Shape {
@@ -168,19 +163,18 @@ impl Shape {
             Mask::DIAMOND => Self::Diamond,
             Mask::STAR => Self::Polygon(Polygon::new(star_vertices(geometry.half))),
             Mask::HEART => Self::Polygon(Polygon::new(heart_vertices(geometry.half))),
-            Mask::FREEFORM => match freeform_vertices(params, geometry.element_size) {
-                Some(vertices) => Self::Polygon(Polygon::new(vertices)),
-                None => Self::Empty,
-            },
+            // An open path is not active yet (the web app's `isActive`), so
+            // the element shows unmasked while it is being drawn.
+            Mask::FREEFORM => Self::Polygon(Polygon::new(freeform_vertices(params, geometry.element_size)?)),
             _ => return None,
         })
     }
 }
 
 /// A freeform path flattened into a polygon in shape space, or `None`
-/// when it is open or has fewer than three points (the web app shows
-/// nothing then). Points are in units of the element's size, scaled by
-/// `scale`; each segment is a cubic Bézier through the points' handles.
+/// when it is open or has fewer than three points (not an active mask).
+/// Points are in units of the element's size, scaled by `scale`; each
+/// segment is a cubic Bézier through the points' handles.
 fn freeform_vertices(params: &Params, (element_width, element_height): (f64, f64)) -> Option<Vec<(f64, f64)>> {
     if !params.bool("closed", false) {
         return None;
@@ -407,7 +401,6 @@ impl Geometry {
                     / (1.0 / (half_width * half_width) + 1.0 / (half_height * half_height)).sqrt()
             }
             Shape::Polygon(polygon) => polygon.distance(lx, ly, self.margin),
-            Shape::Empty => f64::INFINITY,
         };
         distance
     }
@@ -506,10 +499,11 @@ mod tests {
         assert_eq!(alpha(&pixels, 100, 25, 25), 255, "inside the square");
         assert_eq!(alpha(&pixels, 100, 15, 50), 0, "outside the square");
 
-        // Open: the web app shows nothing.
+        // Open: not an active mask yet, so the element shows whole.
         mask.params.set("closed", false);
         let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
-        assert!(pixels.iter().all(|&value| value == 0));
+        assert!(pixels.iter().all(|&value| value == 255));
+        assert!(rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 1.0).is_none());
 
         // The path may also arrive as JSON text; scale doubles it, so the
         // edge moves from 20 to 10; centre and rotation apply as usual.

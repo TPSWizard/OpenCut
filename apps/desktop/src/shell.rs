@@ -341,6 +341,9 @@ impl Render for Shell {
             .on_action(cx.listener(|this, _: &SelectAll, _, cx| {
                 this.with_state(cx, |s, cx| s.select_all(cx))
             }))
+            .on_action(cx.listener(|this, _: &FinishPenPath, _, cx| {
+                this.with_state(cx, |s, cx| s.finish_pen(cx))
+            }))
             .on_action(cx.listener(|this, _: &ClearSelection, _, cx| {
                 this.with_state(cx, |s, cx| s.clear_selection(cx))
             }))

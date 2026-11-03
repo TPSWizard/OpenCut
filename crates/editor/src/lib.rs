@@ -16,6 +16,7 @@ mod document;
 mod editor;
 mod error;
 mod frame;
+mod freeform;
 mod params;
 mod store;
 
@@ -33,6 +34,10 @@ pub use document::{
     Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, now_millis,
+};
+pub use freeform::{
+    ElementQuad, FreeformPoint, canvas_to_freeform_local, element_quad, freeform_local_to_canvas,
+    read_freeform_path, write_freeform_path,
 };
 pub use editor::Editor;
 pub use error::EditorError;
