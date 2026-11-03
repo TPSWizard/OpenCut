@@ -104,6 +104,13 @@ pub const FONT_SIZE_REFERENCE: f32 = 90.0;
 /// Background padding scales with `fontSize` over this.
 pub const FONT_SIZE_RATIO_REFERENCE: f32 = 15.0;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextDecoration {
+    None,
+    Underline,
+    LineThrough,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
     pub content: String,
@@ -117,6 +124,7 @@ pub struct TextStyle {
     pub italic: bool,
     pub line_height: f32,
     pub letter_spacing: f32,
+    pub decoration: TextDecoration,
     pub background: Option<TextBackground>,
 }
 
@@ -165,6 +173,11 @@ impl TextStyle {
             italic: params.text("fontStyle", "normal").as_ref() == "italic",
             line_height: params.number("lineHeight", 1.2).max(0.5) as f32,
             letter_spacing: params.number("letterSpacing", 0.0) as f32,
+            decoration: match params.text("textDecoration", "none").as_ref() {
+                "underline" => TextDecoration::Underline,
+                "line-through" => TextDecoration::LineThrough,
+                _ => TextDecoration::None,
+            },
             background,
         }
     }

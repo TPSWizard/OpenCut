@@ -124,8 +124,8 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 - Only the blur effect exists natively. The web editor's stickers and
   captions are read from project files but not rendered; freeform masks can
-  be rendered but not drawn; text masks have no stroke and text decoration
-  (underline, strikethrough) is not drawn.
+  be rendered but not drawn; text masks have no stroke; colour keyframes
+  (`color`, `background.color`) are not animated.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it

@@ -5,7 +5,7 @@ use cosmic_text::{
     Align, Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, Style, SwashCache, Weight,
     Wrap,
 };
-use editor::{TextAlign, TextStyle};
+use editor::{TextAlign, TextDecoration, TextStyle};
 
 /// A rasterised text block: straight-alpha BGRA, tightly packed.
 #[derive(Clone, Debug, PartialEq)]
@@ -92,6 +92,41 @@ impl TextRasterizer {
             measured.max(text_height).ceil().max(1.0)
         };
 
+        // Underline or strike-through per line, placed as the web app does:
+        // the underline just under the lowest glyph pixel, the strike
+        // through the middle of the glyphs' extent (measured from the em
+        // middle). (x, top, width) in text-block pixels.
+        let thickness = (font_size * 0.07).max(1.0);
+        let mut decorations: Vec<(f32, f32, f32)> = Vec::new();
+        let mut decoration_bottom = text_height;
+        if style.decoration != TextDecoration::None {
+            for run in buffer.layout_runs() {
+                if run.glyphs.is_empty() {
+                    continue;
+                }
+                let x_start = run.glyphs.iter().map(|glyph| glyph.x).fold(f32::INFINITY, f32::min);
+                let (mut ascent, mut descent, mut middle) = (0.0f32, 0.0f32, 0.0f32);
+                for glyph in run.glyphs {
+                    let physical = glyph.physical((0.0, 0.0), 1.0);
+                    if let Some(image) = self.cache.get_image(&mut self.font_system, physical.cache_key) {
+                        ascent = ascent.max(image.placement.top as f32);
+                        descent = descent.max(image.placement.height as f32 - image.placement.top as f32);
+                    }
+                    if let Some(font) = self.font_system.get_font(glyph.font_id) {
+                        let metrics = font.as_swash().metrics(&[]).scale(glyph.font_size);
+                        middle = middle.max((metrics.ascent - metrics.descent) / 2.0);
+                    }
+                }
+                let top = match style.decoration {
+                    TextDecoration::Underline => run.line_y + descent + thickness,
+                    TextDecoration::LineThrough => run.line_y - 0.3 * middle - 0.35 * (ascent - descent),
+                    TextDecoration::None => continue,
+                };
+                decoration_bottom = decoration_bottom.max(top + thickness);
+                decorations.push((x_start, top, run.line_w));
+            }
+        }
+
         // The background box around the text, in text-block coordinates
         // (the block's top-left is the origin).
         let background_box = style.background.as_ref().map(|background| {
@@ -106,6 +141,7 @@ impl TextRasterizer {
         // Half extents from the text's centre that hold both the text and
         // the box, so the raster stays centred on the text.
         let (mut half_width, mut half_height) = (text_width / 2.0, text_height / 2.0);
+        half_height = half_height.max(decoration_bottom - text_height / 2.0);
         if let Some((left, top, box_width, box_height)) = background_box {
             let (cx, cy) = (text_width / 2.0, text_height / 2.0);
             half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
@@ -159,6 +195,19 @@ impl TextRasterizer {
                 }
             },
         );
+
+        for (x, top, line_width) in decorations {
+            let x0 = (origin_x + x).round().max(0.0) as u32;
+            let x1 = ((origin_x + x + line_width).round().max(0.0) as u32).min(width);
+            let y0 = (origin_y + top).round().max(0.0) as u32;
+            let y1 = ((origin_y + top + thickness).round().max(0.0) as u32).min(height);
+            for py in y0..y1 {
+                for px in x0..x1 {
+                    let index = ((py * width + px) * 4) as usize;
+                    blend_over(&mut bgra[index..index + 4], color);
+                }
+            }
+        }
 
         TextRaster {
             width,
@@ -287,8 +336,47 @@ mod tests {
             italic: false,
             line_height: 1.2,
             letter_spacing: 0.0,
+            decoration: TextDecoration::None,
             background: None,
         }
+    }
+
+    /// Opaque pixels in row `y`.
+    fn opaque_in_row(raster: &TextRaster, y: u32) -> usize {
+        (0..raster.width)
+            .filter(|&x| raster.bgra[((y * raster.width + x) * 4 + 3) as usize] > 128)
+            .count()
+    }
+
+    #[test]
+    fn draws_underline_and_strike_through() {
+        let mut rasterizer = TextRasterizer::new();
+        let plain = rasterizer.rasterize(&style("Hello"));
+        let mut underlined = style("Hello");
+        underlined.decoration = TextDecoration::Underline;
+        let underlined = rasterizer.rasterize(&underlined);
+        // The underline is a full-width bar below the lowest glyph row
+        // (within the line-height block for a 1.2 line height).
+        let last_glyph_row = (0..plain.height).rev().find(|&y| opaque_in_row(&plain, y) > 0).unwrap();
+        let (bar_row, bar) = (0..underlined.height)
+            .map(|y| (y, opaque_in_row(&underlined, y)))
+            .max_by_key(|&(_, count)| count)
+            .unwrap();
+        assert!(bar as f32 > underlined.width as f32 * 0.8, "underline covers {bar} of {}", underlined.width);
+        assert!(bar_row > last_glyph_row, "underline row {bar_row} is below the glyphs ({last_glyph_row})");
+        let plain_widest = (0..plain.height).map(|y| opaque_in_row(&plain, y)).max().unwrap();
+        assert!(plain_widest < plain.width as usize * 3 / 4, "plain text has no full-width row: {plain_widest}");
+
+        let mut struck = style("Hello");
+        struck.decoration = TextDecoration::LineThrough;
+        let struck = rasterizer.rasterize(&struck);
+        assert_eq!(struck.height, plain.height, "a strike stays within the block");
+        let (strike_row, widest) = (0..struck.height)
+            .map(|y| (y, opaque_in_row(&struck, y)))
+            .max_by_key(|&(_, count)| count)
+            .unwrap();
+        assert!(widest as f32 > struck.width as f32 * 0.8, "strike covers {widest} of {}", struck.width);
+        assert!(strike_row < last_glyph_row && strike_row > last_glyph_row / 2, "strike row {strike_row} crosses the glyphs");
     }
 
     #[test]
