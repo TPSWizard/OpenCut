@@ -49,8 +49,8 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   clips, sized and offset as percentages of the clip, rotated, feathered
   (GPU distance field) or inverted, with an optional stroke along the edge
   (width, colour, inside/centre/outside; on text with round joins); the same shapes and
-  parameters as the web editor. **Draw path (pen)** draws a freeform mask:
-  click points on the preview (drag while placing one to pull out its curve
+  parameters as the web editor. **Draw path (pen)** (or `P`) draws a freeform
+  mask: click points on the preview (drag while placing one to pull out its curve
   handles), double-click or `Enter` closes it (three points or more),
   `Escape` cancels; paths drawn in the web app render too.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
@@ -69,6 +69,7 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 | `Ctrl/Cmd-D`, `Ctrl/Cmd-A`, `Esc` | Duplicate, select all, clear selection |
 | `Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z` (`Ctrl-Y`) | Undo, redo |
 | `T` | Add a text element at the playhead |
+| `P`, `Enter` | Draw a freeform mask path on the selected clip, close the path |
 | `Ctrl/Cmd-I`, `Ctrl/Cmd-E`, `Ctrl/Cmd-S`, `Ctrl/Cmd-W` | Import, export, save, close project |
 
 ## Requirements
