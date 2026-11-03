@@ -97,6 +97,9 @@ impl Encoder {
             ));
         }
         let args = build_args(settings);
+        if std::env::var_os("OPENCUT_FFMPEG_TRACE").is_some() {
+            eprintln!("ffmpeg {}", args.join(" "));
+        }
         let mut command = ffmpeg.command();
         command.args(args).stdin(Stdio::piped()).stdout(Stdio::null());
         let mut child = command.spawn()?;
@@ -219,10 +222,17 @@ pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
             labels.push(format!("[{label}]"));
         }
         filter.push_str(&labels.concat());
+        // Cut or pad the mix to exactly the video's length. `apad` gets the
+        // whole duration so the audio stream ends by itself. With an
+        // unbounded `apad` followed by `atrim`, ffmpeg 9 kept buffering once
+        // the video arrived at render speed rather than instantly, and
+        // exports longer than about ten seconds failed with ENOSPC (or grew
+        // without bound when `-shortest` was absent). `asetnsamples` keeps
+        // the encoder fed with even frames.
+        let duration = settings.duration_seconds.max(0.0);
         filter.push_str(&format!(
-            "amix=inputs={}:duration=longest:normalize=0,apad,atrim=end={:.6}[aout]",
+            "amix=inputs={}:duration=longest:normalize=0,atrim=end={duration:.6},apad=whole_dur={duration:.6},asetnsamples=n=1024:p=0[aout]",
             settings.audio.len(),
-            settings.duration_seconds.max(0.0)
         ));
         args.push("-filter_complex".into());
         args.push(filter);
@@ -329,7 +339,7 @@ mod tests {
         assert!(filter.contains("[2:a]atrim=start=0.000000:end=2.500000"));
         assert!(filter.contains("volume=0.500000"));
         assert!(filter.contains("adelay=3250|3250[a1]"));
-        assert!(filter.ends_with("[a0][a1]amix=inputs=2:duration=longest:normalize=0,apad,atrim=end=10.000000[aout]"));
+        assert!(filter.ends_with("[a0][a1]amix=inputs=2:duration=longest:normalize=0,atrim=end=10.000000,apad=whole_dur=10.000000,asetnsamples=n=1024:p=0[aout]"));
         assert!(joined.contains("-map 0:v -map [aout] -c:v libx264"));
         assert!(joined.contains("-crf 19"));
         assert!(joined.contains("-c:a aac"));

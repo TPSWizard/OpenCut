@@ -79,7 +79,8 @@ same formats on every platform, and needs no headers at build time.
 `.cache/media/*/bin` (from `moon run media:setup`, which downloads the
 prebuilt in `crates/media/setup/ffmpeg.json` or builds the pinned source),
 next to the executable, then `PATH`. Images are decoded in-process with
-`image`.
+`image`. Set `OPENCUT_FFMPEG_TRACE=1` to print every encoder command line
+as it is spawned.
 
 ## How the web app consumes the core
 
@@ -139,6 +140,10 @@ cargo check -p opencut-wasm --target wasm32-unknown-unknown   # or: moon run was
 # Desktop app (compiles GPUI from source; 15-30 min cold)
 cargo check -p opencut-desktop                        # or: moon run desktop:check
 cargo test -p opencut-desktop                         # or: moon run desktop:test
+
+# Reproduce an export outside the app: exports <root>/<id>/project.json at
+# its canvas size into a temporary directory and fails with ffmpeg's message
+OPENCUT_EXPORT_PROJECT=~/.opencut/projects/<id> cargo test -p opencut-desktop exports_the_project_named
 ```
 
 ## Adding a new crate

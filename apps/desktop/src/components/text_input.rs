@@ -76,6 +76,8 @@ pub(crate) struct TextInput {
     last_bounds: Option<Bounds<Pixels>>,
     is_selecting: bool,
     on_commit: Option<CommitHandler>,
+    /// Where focus goes after Enter or Escape; with none, the window blurs.
+    return_focus: Option<FocusHandle>,
 }
 
 impl TextInput {
@@ -101,6 +103,21 @@ impl TextInput {
             last_bounds: None,
             is_selecting: false,
             on_commit: None,
+            return_focus: None,
+        }
+    }
+
+    /// Focuses `handle` when editing ends, so keyboard shortcuts bound to
+    /// that part of the window keep working after a field is committed.
+    pub(crate) fn focus_after(mut self, handle: FocusHandle) -> Self {
+        self.return_focus = Some(handle);
+        self
+    }
+
+    fn leave(&self, window: &mut Window) {
+        match &self.return_focus {
+            Some(handle) => window.focus(handle),
+            None => window.blur(),
         }
     }
 
@@ -144,7 +161,7 @@ impl TextInput {
 
     fn commit(&mut self, _: &Commit, window: &mut Window, cx: &mut Context<Self>) {
         self.commit_if_changed(window, cx);
-        window.blur();
+        self.leave(window);
     }
 
     fn cancel(&mut self, _: &Cancel, window: &mut Window, cx: &mut Context<Self>) {
@@ -152,7 +169,7 @@ impl TextInput {
         let end = self.content.len();
         self.selected_range = end..end;
         cx.notify();
-        window.blur();
+        self.leave(window);
     }
 
     fn left(&mut self, _: &Left, _: &mut Window, cx: &mut Context<Self>) {

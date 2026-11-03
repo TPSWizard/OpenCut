@@ -424,4 +424,42 @@ mod tests {
         assert!(result.is_err());
         assert!(!cancelled.exists());
     }
+
+    /// Exports the project `<root>/<id>/project.json` named by
+    /// `OPENCUT_EXPORT_PROJECT=<root>/<id>` at its canvas size into a
+    /// temporary directory. A developer aid for reproducing an export
+    /// failure outside the app; skipped otherwise.
+    #[test]
+    fn exports_the_project_named_by_the_environment() {
+        let Ok(path) = std::env::var("OPENCUT_EXPORT_PROJECT") else {
+            return;
+        };
+        let Ok(ffmpeg) = Ffmpeg::locate() else {
+            eprintln!("ffmpeg not found; skipping");
+            return;
+        };
+        let path = PathBuf::from(path);
+        let id = path.file_name().unwrap().to_string_lossy().into_owned();
+        let store = editor::ProjectStore::new(path.parent().unwrap());
+        let project = store.load(&id).expect("project loads");
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("out.mp4");
+        let (events, _receiver) = unbounded();
+        let cancel = AtomicBool::new(false);
+        let result = export(
+            &project,
+            &ExportSettings {
+                output: output.clone(),
+                format: EncodeFormat::Mp4,
+                quality: EncodeQuality::High,
+                include_audio: true,
+            },
+            &cancel,
+            &events,
+            Some(ffmpeg.clone()),
+        );
+        let written = result.expect("export succeeds");
+        let info = media::probe(&ffmpeg, &written).unwrap();
+        eprintln!("exported {} s, audio {}", info.duration.unwrap().to_seconds_f64(), info.has_audio);
+    }
 }

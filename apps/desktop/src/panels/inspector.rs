@@ -41,6 +41,7 @@ const TEXT_STRING_PARAMS: &[(&str, &str, &str)] = &[
 impl InspectorPanel {
     pub(crate) fn new(state: Entity<EditorState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        let editor_focus = state.read(cx).focus_handle.clone();
         let mut fields = HashMap::new();
 
         for (key, _, _) in NUMBER_PARAMS.iter().chain(TEXT_NUMBER_PARAMS) {
@@ -49,7 +50,7 @@ impl InspectorPanel {
             fields.insert(
                 param,
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         if let Ok(value) = text.trim().parse::<f64>() {
                             let mut params = Params::new();
                             params.set(param, value);
@@ -65,7 +66,7 @@ impl InspectorPanel {
             fields.insert(
                 param,
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         let mut params = Params::new();
                         params.set(param, text.to_owned());
                         state_for_field.update(cx, |state, cx| state.update_selected_params(params, cx));
@@ -78,7 +79,7 @@ impl InspectorPanel {
             fields.insert(
                 "volume",
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "0").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "0").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         if let Ok(value) = text.trim().parse::<f64>() {
                             let mut params = Params::new();
                             params.set("volume", value.clamp(-60.0, 20.0));
@@ -93,7 +94,7 @@ impl InspectorPanel {
             fields.insert(
                 "element.name",
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "Name").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "Name").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         let name = text.trim().to_owned();
                         if !name.is_empty() {
                             state_for_field.update(cx, |state, cx| {
@@ -115,7 +116,7 @@ impl InspectorPanel {
             fields.insert(
                 "project.name",
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "Project name").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "Project name").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         state_for_field.update(cx, |state, cx| state.rename_project(text.to_owned(), cx));
                     })
                 }),
@@ -126,7 +127,7 @@ impl InspectorPanel {
             fields.insert(
                 "project.background",
                 cx.new(|cx| {
-                    TextInput::new(window, cx, "#000000").on_commit(move |text, _, cx| {
+                    TextInput::new(window, cx, "#000000").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
                         if editor::parse_hex_color(text).is_some() {
                             let color = text.trim().to_owned();
                             state_for_field.update(cx, |state, cx| {
