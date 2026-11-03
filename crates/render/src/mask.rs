@@ -57,6 +57,66 @@ pub fn rasterize_text_mask(
     if params.text("content", "").trim().is_empty() {
         return vec![255; (width * height * 4) as usize];
     }
+    let coverage = text_coverage(params, quad, width, height, glyphs);
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    for (index, value) in coverage.iter().enumerate() {
+        let value = (value * 255.0).round() as u8;
+        if value > 0 {
+            pixels[index * 4..index * 4 + 4].copy_from_slice(&[value, value, value, value]);
+        }
+    }
+    pixels
+}
+
+/// The outline of a text mask's glyphs as a stroke layer (see
+/// [`rasterize_mask_stroke`]): the band is measured from the glyph
+/// coverage with a distance transform, which gives the round joins the web
+/// app strokes text with.
+pub fn rasterize_text_mask_stroke(
+    params: &Params,
+    quad: &QuadTransformDescriptor,
+    width: u32,
+    height: u32,
+    glyphs: &TextRaster,
+    scale: f32,
+) -> Option<Vec<u8>> {
+    let stroke_width = params.number("strokeWidth", 0.0) * scale.max(0.0) as f64;
+    if stroke_width <= 0.0 || params.text("content", "").trim().is_empty() {
+        return None;
+    }
+    let color = parse_hex_color(&params.text("strokeColor", "#ffffff"))?;
+    let offset = match params.text("strokeAlign", "center").as_ref() {
+        "inside" => -stroke_width / 2.0,
+        "outside" => stroke_width / 2.0,
+        _ => 0.0,
+    };
+    let coverage = text_coverage(params, quad, width, height, glyphs);
+    let distance = signed_distance(&coverage, width as usize, height as usize);
+    let rgb = [
+        (color[2] * 255.0).round() as u8,
+        (color[1] * 255.0).round() as u8,
+        (color[0] * 255.0).round() as u8,
+    ];
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    for (index, distance) in distance.iter().enumerate() {
+        let band = (0.5 - ((distance - offset).abs() - stroke_width / 2.0)).clamp(0.0, 1.0);
+        if band <= 0.0 {
+            continue;
+        }
+        let alpha = (band * color[3] as f64 * 255.0).round() as u8;
+        pixels[index * 4..index * 4 + 4].copy_from_slice(&[rgb[0], rgb[1], rgb[2], alpha]);
+    }
+    Some(pixels)
+}
+
+/// Glyph coverage (0–1) of every frame pixel for a text mask.
+fn text_coverage(
+    params: &Params,
+    quad: &QuadTransformDescriptor,
+    width: u32,
+    height: u32,
+    glyphs: &TextRaster,
+) -> Vec<f64> {
     let geometry = Geometry::new(Mask::TEXT, params, quad);
     let scale = params.number("scale", 1.0).max(0.01);
     let (glyph_width, glyph_height) = (glyphs.width as f64, glyphs.height as f64);
@@ -66,7 +126,7 @@ pub fn rasterize_text_mask(
         }
         glyphs.bgra[((y as u32 * glyphs.width + x as u32) * 4 + 3) as usize] as f64 / 255.0
     };
-    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    let mut coverage = vec![0.0f64; (width * height) as usize];
     for y in 0..height {
         for x in 0..width {
             let (lx, ly) = geometry.local(x as f64 + 0.5, y as f64 + 0.5);
@@ -79,19 +139,96 @@ pub fn rasterize_text_mask(
             let (x0, y0) = (gx.floor(), gy.floor());
             let (fx, fy) = (gx - x0, gy - y0);
             let (x0, y0) = (x0 as i64, y0 as i64);
-            let coverage = alpha(x0, y0) * (1.0 - fx) * (1.0 - fy)
+            let value = alpha(x0, y0) * (1.0 - fx) * (1.0 - fy)
                 + alpha(x0 + 1, y0) * fx * (1.0 - fy)
                 + alpha(x0, y0 + 1) * (1.0 - fx) * fy
                 + alpha(x0 + 1, y0 + 1) * fx * fy;
-            let value = (coverage.clamp(0.0, 1.0) * 255.0).round() as u8;
-            if value == 0 {
-                continue;
-            }
-            let index = ((y * width + x) * 4) as usize;
-            pixels[index..index + 4].copy_from_slice(&[value, value, value, value]);
+            coverage[(y * width + x) as usize] = value.clamp(0.0, 1.0);
         }
     }
-    pixels
+    coverage
+}
+
+/// Signed distance (negative inside) of every pixel to the edge of the
+/// covered area, from two exact Euclidean distance transforms
+/// (Felzenszwalb & Huttenlocher) with half-pixel anti-aliasing at the edge.
+fn signed_distance(coverage: &[f64], width: usize, height: usize) -> Vec<f64> {
+    const FAR: f64 = 1e12;
+    let inside: Vec<f64> = coverage.iter().map(|&c| if c >= 0.5 { 0.0 } else { FAR }).collect();
+    let outside: Vec<f64> = coverage.iter().map(|&c| if c < 0.5 { 0.0 } else { FAR }).collect();
+    let to_covered = euclidean_distance_squared(inside, width, height);
+    let to_clear = euclidean_distance_squared(outside, width, height);
+    coverage
+        .iter()
+        .enumerate()
+        .map(|(index, &c)| {
+            // The edge runs halfway between a covered and a clear pixel
+            // centre; a partly covered pixel moves it by its coverage.
+            if c >= 0.5 {
+                1.5 - c - to_clear[index].sqrt()
+            } else {
+                to_covered[index].sqrt() - 0.5 - c
+            }
+        })
+        .collect()
+}
+
+/// Squared distance of every cell to the nearest cell whose value is zero.
+fn euclidean_distance_squared(mut grid: Vec<f64>, width: usize, height: usize) -> Vec<f64> {
+    let mut row = vec![0.0; width.max(height)];
+    let mut out = vec![0.0; width.max(height)];
+    let mut v = vec![0usize; width.max(height)];
+    let mut z = vec![0.0f64; width.max(height) + 1];
+    for y in 0..height {
+        row[..width].copy_from_slice(&grid[y * width..(y + 1) * width]);
+        distance_transform_1d(&row[..width], &mut out[..width], &mut v, &mut z);
+        grid[y * width..(y + 1) * width].copy_from_slice(&out[..width]);
+    }
+    for x in 0..width {
+        for y in 0..height {
+            row[y] = grid[y * width + x];
+        }
+        distance_transform_1d(&row[..height], &mut out[..height], &mut v, &mut z);
+        for y in 0..height {
+            grid[y * width + x] = out[y];
+        }
+    }
+    grid
+}
+
+fn distance_transform_1d(f: &[f64], out: &mut [f64], v: &mut [usize], z: &mut [f64]) {
+    let n = f.len();
+    if n == 0 {
+        return;
+    }
+    let mut k = 0usize;
+    v[0] = 0;
+    z[0] = f64::NEG_INFINITY;
+    z[1] = f64::INFINITY;
+    for q in 1..n {
+        let mut s;
+        loop {
+            let p = v[k];
+            s = ((f[q] + (q * q) as f64) - (f[p] + (p * p) as f64)) / (2.0 * (q as f64 - p as f64));
+            if s <= z[k] && k > 0 {
+                k -= 1;
+            } else {
+                break;
+            }
+        }
+        k += 1;
+        v[k] = q;
+        z[k] = s;
+        z[k + 1] = f64::INFINITY;
+    }
+    k = 0;
+    for q in 0..n {
+        while z[k + 1] < q as f64 {
+            k += 1;
+        }
+        let p = v[k];
+        out[q] = (q as f64 - p as f64).powi(2) + f[p];
+    }
 }
 
 /// The mask's outline as a straight-alpha BGRA layer the size of the frame:
@@ -564,6 +701,49 @@ mod tests {
         mask.params.set("content", "  ");
         let pixels = rasterize_text_mask(&mask.params, &frame, 100, 100, &glyphs);
         assert!(pixels.iter().all(|&value| value == 255));
+    }
+
+    #[test]
+    fn text_mask_strokes_follow_the_glyph_edges() {
+        let frame = quad(50.0, 50.0, 100.0, 100.0, 0.0);
+        // The 10x10 "glyph" raster again: opaque in its left half (x 45..50 on the frame).
+        let mut bgra = vec![0u8; 10 * 10 * 4];
+        for y in 0..10 {
+            for x in 0..5 {
+                bgra[(y * 10 + x) * 4 + 3] = 255;
+            }
+        }
+        let glyphs = TextRaster { width: 10, height: 10, bgra };
+        let mut mask = Mask::shape(Mask::TEXT);
+        assert!(rasterize_text_mask_stroke(&mask.params, &frame, 100, 100, &glyphs, 1.0).is_none());
+        mask.params.set("strokeWidth", 2.0).set("strokeColor", "#00ff00");
+        let pixels = rasterize_text_mask_stroke(&mask.params, &frame, 100, 100, &glyphs, 1.0).unwrap();
+        let at = |x: u32, y: u32| pixels[((y * 100 + x) * 4 + 3) as usize];
+        assert!(at(50, 50) > 0 && at(49, 50) > 0, "the band straddles the right edge at x=50");
+        assert_eq!(at(47, 50), 0, "inside, off the band");
+        assert_eq!(at(53, 50), 0, "outside, off the band");
+        assert!(at(47, 45) > 0, "the top edge is stroked too");
+        assert_eq!(at(5, 5), 0, "far away");
+        let index = ((50 * 100 + 50) * 4) as usize;
+        assert_eq!(&pixels[index..index + 3], &[0, 255, 0], "green in BGRA");
+
+        // Outside alignment: the band moves out of the glyph.
+        mask.params.set("strokeAlign", "outside");
+        let pixels = rasterize_text_mask_stroke(&mask.params, &frame, 100, 100, &glyphs, 1.0).unwrap();
+        assert_eq!(pixels[((50 * 100 + 48) * 4 + 3) as usize], 0);
+        assert!(pixels[((50 * 100 + 51) * 4 + 3) as usize] > 0);
+    }
+
+    #[test]
+    fn distance_transform_measures_to_the_nearest_covered_pixel() {
+        // A 5x5 grid with one covered pixel in the middle.
+        let mut coverage = vec![0.0; 25];
+        coverage[12] = 1.0;
+        let distance = signed_distance(&coverage, 5, 5);
+        assert!((distance[12] - -0.5).abs() < 1e-9, "centre: half a pixel inside: {}", distance[12]);
+        assert!((distance[13] - 0.5).abs() < 1e-9, "next door: half a pixel outside: {}", distance[13]);
+        assert!((distance[0] - (8f64.sqrt() - 0.5)).abs() < 1e-9, "corner: {}", distance[0]);
+        assert!((distance[2] - 1.5).abs() < 1e-9, "{}", distance[2]);
     }
 
     #[test]

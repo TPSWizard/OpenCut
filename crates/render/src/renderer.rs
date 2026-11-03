@@ -12,7 +12,7 @@ use time::MediaTime;
 
 use crate::effects::{backdrop_blur_passes, effect_pass_groups};
 use crate::error::RenderError;
-use crate::mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask};
+use crate::mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask, rasterize_text_mask_stroke};
 use crate::text::TextRasterizer;
 
 #[derive(Clone, Debug, Default)]
@@ -305,12 +305,21 @@ impl Renderer {
     ) -> (LayerMaskDescriptor, Option<LayerDescriptor>) {
         let texture_id = format!("mask:{element_id}");
         let key = format!("{}:{:?}:{quad:?}:{width}x{height}", mask.kind, mask.params);
+        // A text mask's glyphs, sized against the element's own height like
+        // the web app's mask canvas; the mask's params carry the text
+        // settings. Rasterised once for the mask and its stroke.
+        let mut glyphs = None;
+        let mut glyphs_for = |text: &mut TextRasterizer| {
+            glyphs
+                .get_or_insert_with(|| {
+                    let style = TextStyle::from_params(&mask.params, quad.height.max(1.0));
+                    text.rasterize(&style)
+                })
+                .clone()
+        };
         if self.masks.get(element_id) != Some(&key) {
             let pixels = if mask.kind == Mask::TEXT {
-                // Sized against the element's own height, like the web app's
-                // mask canvas; the mask's params carry the text settings.
-                let style = TextStyle::from_params(&mask.params, quad.height.max(1.0));
-                let glyphs = self.text.rasterize(&style);
+                let glyphs = glyphs_for(&mut self.text);
                 rasterize_text_mask(&mask.params, quad, width, height, &glyphs)
             } else {
                 rasterize_mask(&mask.kind, &mask.params, quad, width, height)
@@ -328,9 +337,12 @@ impl Renderer {
             let key = format!("{}:{:?}:{quad:?}:{width}x{height}:{scale}", mask.kind, mask.params);
             let uploaded = if self.strokes.get(element_id) == Some(&key) {
                 true
-            } else if let Some(pixels) =
+            } else if let Some(pixels) = if mask.kind == Mask::TEXT {
+                let glyphs = glyphs_for(&mut self.text);
+                rasterize_text_mask_stroke(&mask.params, quad, width, height, &glyphs, scale)
+            } else {
                 rasterize_mask_stroke(&mask.kind, &mask.params, quad, width, height, scale)
-            {
+            } {
                 self.upload(&stroke_id, width, height, &pixels);
                 self.strokes.insert(element_id.to_owned(), key);
                 true

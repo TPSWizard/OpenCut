@@ -47,7 +47,7 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   cinematic bars or text (its own words, font and size) on video and image
   clips, sized and offset as percentages of the clip, rotated, feathered
   (GPU distance field) or inverted, with an optional stroke along the edge
-  (width, colour, inside/centre/outside; not on text); the same shapes and
+  (width, colour, inside/centre/outside; on text with round joins); the same shapes and
   parameters as the web editor. **Draw path (pen)** draws a freeform mask:
   click points on the preview, double-click or `Enter` closes it (three
   points or more), `Escape` cancels; paths drawn in the web app render too.
@@ -127,8 +127,8 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 - Only the blur effect exists natively. The web editor's stickers and
   captions are read from project files but not rendered; freeform paths have
-  corner points only (no curve handles yet); text masks have no stroke;
-  colour keys can be played and cut but not set here.
+  corner points only (no curve handles yet); colour keys can be played and
+  cut but not set here.
 - Project bundles move projects between the two editors: **Save bundle…**
   in the header writes `<name>.opencut.zip` (the project in the web app's
   JSON shape plus copies of its media), and **Import bundle…** on the
