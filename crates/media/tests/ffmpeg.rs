@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use media::{
-    AudioMixClip, AudioReader, AudioSettings, EncodeFormat, EncodeQuality, EncodeSettings, Encoder,
+    AudioMixClip, AudioReader, AudioSettings, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey,
     Ffmpeg, MediaKind, VideoSource, decode_image, probe, thumbnail,
 };
 
@@ -108,6 +108,11 @@ fn probes_decodes_and_encodes() {
             source_end_seconds: 1.5,
             timeline_start_seconds: 0.0,
             gain: 0.8,
+            // A fade-in, so ffmpeg parses the keyframed volume expression.
+            gain_keys: vec![
+                GainKey { seconds: 0.0, db: -30.0, ease: GainEase::Smooth },
+                GainKey { seconds: 0.5, db: -2.0, ease: GainEase::Linear },
+            ],
         }],
     };
     let mut encoder = Encoder::start(&ffmpeg, &settings).unwrap();

@@ -9,10 +9,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::thread;
 
-use editor::{MediaItem, MediaKind, Project, plan_audio};
+use editor::{MediaItem, MediaKind, Project, Segment, plan_audio};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::RenderImage;
-use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg};
+use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey};
 use render::{Renderer, RendererOptions};
 use time::MediaTime;
 
@@ -281,6 +281,20 @@ fn export(
                 source_end_seconds: clip.source_end.to_seconds_f64(),
                 timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
                 gain: clip.gain(),
+                gain_keys: clip
+                    .volume
+                    .keys
+                    .iter()
+                    .map(|key| GainKey {
+                        seconds: key.time.to_seconds_f64(),
+                        db: key.value,
+                        ease: match key.segment_to_next {
+                            Segment::Step => GainEase::Hold,
+                            Segment::Linear => GainEase::Linear,
+                            Segment::Bezier => GainEase::Smooth,
+                        },
+                    })
+                    .collect(),
             })
             .collect()
     } else {
@@ -374,7 +388,22 @@ mod tests {
         )
         .unwrap();
         let element = Element::from_media(project.media_item("clip").unwrap(), MediaTime::ZERO);
+        let clip_id = element.id.clone();
         apply(&mut project, &Command::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+        // A keyframed fade-out, so the export runs ffmpeg's volume expression.
+        for (seconds, value) in [(0.0, 0.0), (2.0, -40.0)] {
+            apply(
+                &mut project,
+                &Command::SetKeyframe {
+                    element_id: clip_id.clone(),
+                    path: "volume".to_owned(),
+                    time: MediaTime::from_seconds_f64(seconds).unwrap(),
+                    value,
+                    segment: None,
+                },
+            )
+            .unwrap();
+        }
         let mut title = Element::text("Exported", MediaTime::ZERO);
         title.duration = MediaTime::from_seconds_f64(1.0).unwrap();
         apply(&mut project, &Command::InsertElement { element: title, placement: TrackPlacement::Auto }).unwrap();

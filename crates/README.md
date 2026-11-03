@@ -71,7 +71,8 @@ Every edit is an `editor::Command` applied with `editor::apply`; `editor::Editor
 wraps a project with undo and redo. `plan_frame` says which layers are on
 screen at a time, how they are transformed, which effects apply and which
 mask shape clips them, all with keyframes resolved; `plan_audio` says which
-parts of which files are audible. `ProjectStore` reads and writes
+parts of which files are audible and at what gain (`AudioClipPlan::gain_at`
+follows `volume` keyframes). `ProjectStore` reads and writes
 `<root>/<id>/project.json` (format version 1).
 
 ## Media I/O (`crates/media`)

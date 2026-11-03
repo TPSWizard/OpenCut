@@ -508,7 +508,7 @@ impl Render for InspectorPanel {
                         "volume",
                         "0",
                         number_text(params.number("volume", 0.0)),
-                        None,
+                        Some(key_state("volume")),
                         window,
                         cx,
                         Box::new(|text, state, cx| {

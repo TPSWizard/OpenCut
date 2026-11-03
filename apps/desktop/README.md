@@ -24,7 +24,7 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   plays through the default output device, mixed from every audible clip.
 - **Inspector**: name, transform (position, scale, rotation, opacity), text
   (content, font, size, color, alignment, bold/italic, line height, letter
-  spacing), audio volume and mute; project name, background color, frame rate
+  spacing), audio volume (keyframeable) and mute; project name, background color, frame rate
   and canvas presets.
 - **Keyframes**: the diamond next to a numeric field adds a key at the
   playhead (or removes the one there); once a parameter has keys, typing a
@@ -32,7 +32,9 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   linear by default (`step` and eased `bezier` segments are read from
   project files), stay with their source frames when a clip is trimmed, and
   are split with the clip. The selected clip shows its keys as dots; click one
-  to jump to it, or use `Shift-←`/`Shift-→`.
+  to jump to it, or use `Shift-←`/`Shift-→`. Audio volume keys are followed
+  by the preview mixer and written into the export as a per-frame `volume`
+  expression.
 - **Effects**: a Gaussian blur per element (intensity 0–100, keyframeable),
   with the same strength scaling as the web app; several can be stacked and
   switched off without removing them.
@@ -117,7 +119,7 @@ resolution and pipes BGRA frames into `media::Encoder`.
   the web editor's other mask shapes (split, bars, heart, star, text,
   freeform), mask strokes, custom keyframe curve handles, stickers, captions
   and the blurred-background setting are read from project files but not
-  rendered. Audio volume cannot be keyframed yet.
+  rendered.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it

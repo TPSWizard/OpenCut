@@ -19,7 +19,7 @@ mod probe;
 mod video;
 
 pub use audio::{AudioReader, AudioSettings};
-pub use encode::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder};
+pub use encode::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey};
 pub use error::MediaError;
 pub use ffmpeg::Ffmpeg;
 pub use image_decode::{decode_image, is_image_path};

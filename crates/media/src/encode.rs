@@ -55,6 +55,25 @@ impl EncodeQuality {
     }
 }
 
+/// How a volume key's value reaches the next key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GainEase {
+    Hold,
+    Linear,
+    /// A symmetric ease in and out (smoothstep).
+    Smooth,
+}
+
+/// One key of a keyframed volume.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GainKey {
+    /// Seconds from the start of the clip (its `source_start_seconds`).
+    pub seconds: f64,
+    /// Volume in decibels; 0 is unchanged.
+    pub db: f64,
+    pub ease: GainEase,
+}
+
 /// A piece of a source file to mix into the output's audio track.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AudioMixClip {
@@ -62,8 +81,56 @@ pub struct AudioMixClip {
     pub source_start_seconds: f64,
     pub source_end_seconds: f64,
     pub timeline_start_seconds: f64,
-    /// Linear gain; 1.0 is unchanged.
+    /// Linear gain; 1.0 is unchanged. Ignored when `gain_keys` is not empty.
     pub gain: f64,
+    /// Keyframed volume; the value is held before the first and after the
+    /// last key.
+    pub gain_keys: Vec<GainKey>,
+}
+
+/// The `volume` filter for a clip: a constant, or an expression in `t`
+/// (seconds from the clip's start, which `asetpts` resets) evaluated per
+/// frame when the volume is keyframed.
+fn volume_filter(clip: &AudioMixClip) -> String {
+    if clip.gain_keys.is_empty() {
+        return format!("volume={:.6}", clip.gain.max(0.0));
+    }
+    format!("volume='pow(10,({})/20)':eval=frame", db_expression(&clip.gain_keys))
+}
+
+/// A piecewise expression giving the volume in decibels at `t`. Values are
+/// parenthesised because ffmpeg's expression parser does not take `--`.
+fn db_expression(keys: &[GainKey]) -> String {
+    let mut keys: Vec<&GainKey> = keys.iter().collect();
+    keys.sort_by(|a, b| a.seconds.total_cmp(&b.seconds));
+    let first = keys[0];
+    let last = keys[keys.len() - 1];
+    let mut expression = format!("({:.6})", last.db);
+    for pair in keys.windows(2).rev() {
+        let (a, b) = (pair[0], pair[1]);
+        let span = b.seconds - a.seconds;
+        let segment = if span <= 0.0 {
+            format!("({:.6})", a.db)
+        } else {
+            let progress = format!("((t-{:.6})/{:.6})", a.seconds, span);
+            match a.ease {
+                GainEase::Hold => format!("({:.6})", a.db),
+                GainEase::Linear => format!(
+                    "(({a:.6})+(({b:.6})-({a:.6}))*{progress})",
+                    a = a.db,
+                    b = b.db,
+                ),
+                GainEase::Smooth => format!(
+                    "(({a:.6})+(({b:.6})-({a:.6}))*(3*{p}*{p}-2*{p}*{p}*{p}))",
+                    a = a.db,
+                    b = b.db,
+                    p = progress,
+                ),
+            }
+        };
+        expression = format!("if(lt(t,{:.6}),{segment},{expression})", b.seconds);
+    }
+    format!("if(lt(t,{:.6}),({:.6}),{expression})", first.seconds, first.db)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -212,11 +279,11 @@ pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
             let label = format!("a{index}");
             let delay_ms = (clip.timeline_start_seconds.max(0.0) * 1000.0).round() as u64;
             filter.push_str(&format!(
-                "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,volume={gain:.6},aresample=48000,aformat=channel_layouts=stereo,adelay={delay}|{delay}[{label}];",
+                "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,{volume},aresample=48000,aformat=channel_layouts=stereo,adelay={delay}|{delay}[{label}];",
                 input = index + 1,
                 start = clip.source_start_seconds.max(0.0),
                 end = clip.source_end_seconds.max(clip.source_start_seconds),
-                gain = clip.gain.max(0.0),
+                volume = volume_filter(clip),
                 delay = delay_ms,
             ));
             labels.push(format!("[{label}]"));
@@ -321,6 +388,7 @@ mod tests {
                     source_end_seconds: 4.0,
                     timeline_start_seconds: 0.0,
                     gain: 1.0,
+                    gain_keys: Vec::new(),
                 },
                 AudioMixClip {
                     path: PathBuf::from("b.mp3"),
@@ -328,6 +396,7 @@ mod tests {
                     source_end_seconds: 2.5,
                     timeline_start_seconds: 3.25,
                     gain: 0.5,
+                    gain_keys: Vec::new(),
                 },
             ],
         };
@@ -344,6 +413,50 @@ mod tests {
         assert!(joined.contains("-crf 19"));
         assert!(joined.contains("-c:a aac"));
         assert!(joined.ends_with("-shortest out.mp4"));
+    }
+
+    #[test]
+    fn keyframed_volume_becomes_a_per_frame_expression() {
+        let key = |seconds: f64, db: f64, ease: GainEase| GainKey { seconds, db, ease };
+        let clip = AudioMixClip {
+            path: PathBuf::from("a.mp3"),
+            source_start_seconds: 0.0,
+            source_end_seconds: 4.0,
+            timeline_start_seconds: 0.0,
+            gain: 1.0,
+            // Out of order on purpose: keys are sorted by time.
+            gain_keys: vec![
+                key(2.0, 0.0, GainEase::Smooth),
+                key(0.5, -20.0, GainEase::Linear),
+                key(1.0, 0.0, GainEase::Hold),
+                key(3.0, -6.0, GainEase::Linear),
+            ],
+        };
+        let filter = volume_filter(&clip);
+        let u = "((t-2.000000)/1.000000)";
+        let expected = format!(
+            "volume='pow(10,(if(lt(t,0.500000),(-20.000000),\
+             if(lt(t,1.000000),((-20.000000)+((0.000000)-(-20.000000))*((t-0.500000)/0.500000)),\
+             if(lt(t,2.000000),(0.000000),\
+             if(lt(t,3.000000),((0.000000)+((-6.000000)-(0.000000))*(3*{u}*{u}-2*{u}*{u}*{u})),\
+             (-6.000000))))))/20)':eval=frame"
+        );
+        assert_eq!(filter, expected);
+        assert!(!filter.contains("--"));
+        let settings = EncodeSettings {
+            output: PathBuf::from("out.mp4"),
+            width: 320,
+            height: 180,
+            fps: 30.0,
+            format: EncodeFormat::Mp4,
+            quality: EncodeQuality::Low,
+            duration_seconds: 4.0,
+            audio: vec![clip],
+        };
+        let args = build_args(&settings);
+        let graph = &args[args.iter().position(|a| a == "-filter_complex").unwrap() + 1];
+        assert!(graph.contains(",asetpts=PTS-STARTPTS,volume='pow(10,(if(lt(t,0.500000)"));
+        assert!(graph.contains(":eval=frame,aresample=48000,"));
     }
 
     #[test]

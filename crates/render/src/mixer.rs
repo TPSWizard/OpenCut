@@ -24,6 +24,10 @@ pub struct Mixer {
 /// Decoder drift this large (in seconds) means the reader is reopened.
 const RESYNC_TOLERANCE_SECONDS: f64 = 0.05;
 
+/// A keyframed volume is evaluated once per this many frames (0.7 ms at
+/// 48 kHz), which is well under what the ear resolves.
+const GAIN_BLOCK_FRAMES: usize = 32;
+
 impl Mixer {
     pub fn new(ffmpeg: Arc<Ffmpeg>, settings: AudioSettings) -> Self {
         Self {
@@ -113,10 +117,24 @@ impl Mixer {
                 },
                 None => 0,
             };
-            let gain = self.clips[clip_index].gain() as f32;
+            let clip = &self.clips[clip_index];
             let offset = (overlap_start - buffer_start) as usize * channels;
-            for (index, sample) in scratch[..read].iter().enumerate() {
-                out[offset + index] += sample * gain;
+            if clip.is_animated() {
+                // Keyframed volume: one gain per short block of frames.
+                let block_samples = GAIN_BLOCK_FRAMES * channels;
+                for (block_index, block) in scratch[..read].chunks(block_samples).enumerate() {
+                    let frame = overlap_start + (block_index * GAIN_BLOCK_FRAMES) as i64;
+                    let gain = clip.gain_at_seconds(frame as f64 / sample_rate) as f32;
+                    let start = offset + block_index * block_samples;
+                    for (index, sample) in block.iter().enumerate() {
+                        out[start + index] += sample * gain;
+                    }
+                }
+            } else {
+                let gain = clip.gain() as f32;
+                for (index, sample) in scratch[..read].iter().enumerate() {
+                    out[offset + index] += sample * gain;
+                }
             }
             self.scratch = scratch;
         }
