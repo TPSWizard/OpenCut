@@ -59,6 +59,12 @@ impl Ring {
         self.played_frames = 0;
     }
 
+    /// Drops buffered sound without touching the clock (the mixer's part
+    /// of a seek; the clock was reset when the seek was asked for).
+    fn drop_buffered(&mut self) {
+        self.samples.clear();
+    }
+
     fn position_seconds(&self, sample_rate: u32) -> Option<f64> {
         self.playing
             .then(|| self.base_seconds + self.played_frames as f64 / sample_rate.max(1) as f64)
@@ -180,7 +186,7 @@ fn mix_loop(receiver: Receiver<AudioCommand>, ring: Arc<Mutex<Ring>>, mut mixer:
                 Ok(AudioCommand::SetClips(clips)) => mixer.set_clips(clips),
                 Ok(AudioCommand::Seek(seconds)) => {
                     mixer.seek(seconds);
-                    ring.lock().unwrap_or_else(|e| e.into_inner()).seek(seconds);
+                    ring.lock().unwrap_or_else(|e| e.into_inner()).drop_buffered();
                 }
                 Ok(AudioCommand::Play) => {
                     playing = true;
@@ -205,7 +211,7 @@ fn mix_loop(receiver: Receiver<AudioCommand>, ring: Arc<Mutex<Ring>>, mut mixer:
                         AudioCommand::SetClips(clips) => mixer.set_clips(clips),
                         AudioCommand::Seek(seconds) => {
                             mixer.seek(seconds);
-                            ring.lock().unwrap_or_else(|e| e.into_inner()).seek(seconds);
+                            ring.lock().unwrap_or_else(|e| e.into_inner()).drop_buffered();
                         }
                         AudioCommand::Play => {
                             playing = true;

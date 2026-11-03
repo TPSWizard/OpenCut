@@ -627,10 +627,12 @@ impl EditorState {
     /// Closes the path (three points or more) or drops it.
     pub(crate) fn finish_pen(&mut self, cx: &mut Context<Self>) {
         let Some(pen) = self.pen.take() else { return };
-        let count = self
-            .pen_mask_by(&pen)
-            .map(|mask| editor::read_freeform_path(&mask.params).len())
-            .unwrap_or(0);
+        let Some(mask) = self.pen_mask_by(&pen) else {
+            // Undone away while drawing: nothing to close or remove.
+            cx.notify();
+            return;
+        };
+        let count = editor::read_freeform_path(&mask.params).len();
         if count >= 3 {
             let mut params = Params::new();
             params.set("closed", true);
@@ -659,6 +661,10 @@ impl EditorState {
     /// Drops the path being drawn.
     pub(crate) fn cancel_pen(&mut self, cx: &mut Context<Self>) {
         let Some(pen) = self.pen.take() else { return };
+        if self.pen_mask_by(&pen).is_none() {
+            cx.notify();
+            return;
+        }
         self.execute(
             Command::RemoveMask {
                 element_id: pen.element_id,

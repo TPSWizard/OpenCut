@@ -487,11 +487,13 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             let (reference, element) = element_mut(project, element_id)?;
             let local = *time - element.start_time;
-            element
-                .animations
-                .entry(path.clone())
-                .or_default()
-                .upsert(local, *value, *segment);
+            let channel = element.animations.entry(path.clone()).or_default();
+            if channel.is_color() {
+                return Err(EditorError::InvalidParams(format!(
+                    "{path} is a colour channel; colour keys cannot be set here"
+                )));
+            }
+            channel.upsert(local, *value, *segment);
             Outcome::Elements(vec![reference])
         }
         Command::RemoveKeyframe {

@@ -250,16 +250,16 @@ pub fn rasterize_mask_stroke(
         return None;
     }
     let color = parse_hex_color(&params.text("strokeColor", "#ffffff"))?;
-    let mut geometry = Geometry::new(kind, params, quad);
-    // The band needs exact distances out to its outer edge.
-    geometry.margin = stroke_width / 2.0 + 1.0;
-    let shape = Shape::new(kind, params, &geometry)?;
     // Negative distances are inside, so an inside stroke sits at -w/2.
     let offset = match params.text("strokeAlign", "center").as_ref() {
         "inside" => -stroke_width / 2.0,
         "outside" => stroke_width / 2.0,
         _ => 0.0,
     };
+    let mut geometry = Geometry::new(kind, params, quad);
+    // The band needs exact distances out to its outer edge.
+    geometry.margin = offset.abs() + stroke_width / 2.0 + 1.0;
+    let shape = Shape::new(kind, params, &geometry)?;
     let rgb = [
         (color[2] * 255.0).round() as u8,
         (color[1] * 255.0).round() as u8,
@@ -787,6 +787,14 @@ mod tests {
         assert_eq!(pixels[((5 * 100 + 5) * 4 + 3) as usize], 0, "far corner");
         assert_eq!(pixels[((50 * 100 + 50) * 4 + 3) as usize], 0, "centre");
         assert!(pixels[((30 * 100 + 50) * 4 + 3) as usize] > 0, "on the notch");
+
+        // An outside stroke hugs the shape, not its bounding box: the star's
+        // box corner is far from any point of the star.
+        let mut star = Mask::shape(Mask::STAR);
+        star.params.set("strokeWidth", 10.0).set("strokeAlign", "outside");
+        let pixels = rasterize_mask_stroke(&star.kind, &star.params, &frame, 100, 100, 1.0).unwrap();
+        assert_eq!(pixels[((22 * 100 + 78) * 4 + 3) as usize], 0, "box corner is clear");
+        assert!(pixels[((20 * 100 + 50) * 4 + 3) as usize] > 0, "just above the top point");
     }
 
     #[test]

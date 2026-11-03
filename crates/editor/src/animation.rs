@@ -398,6 +398,13 @@ impl Channel {
         }
         let mut boundary_left = Keyframe::new(at, boundary, segment_at_boundary);
         let mut boundary_right = Keyframe::new(MediaTime::ZERO, boundary, segment_at_boundary);
+        // A key right on the cut is split in two that keep its handles.
+        if let Some(key) = self.keys.iter().find(|key| key.time == at) {
+            boundary_left.left_handle = key.left_handle;
+            boundary_right.right_handle = key.right_handle;
+            boundary_right.segment_to_next = key.segment_to_next;
+            boundary_right.tangent_mode = key.tangent_mode.clone();
+        }
         // Cutting through a Bézier segment: split the curve so both halves
         // keep its shape (de Casteljau at the boundary's curve parameter).
         let cut = self
@@ -650,6 +657,17 @@ mod tests {
             let original = channel.value_at(ticks(time)).unwrap();
             let split = right.value_at(ticks(time - 1500)).unwrap();
             assert!((original - split).abs() < 1e-3, "right at {time}: {original} vs {split}");
+        }
+
+        // Cutting exactly on the second key keeps its left handle on the
+        // left part, so the curve before it is unchanged.
+        let (left, _) = channel.split(ticks(4000));
+        assert_eq!(left.keys.len(), 2);
+        assert_eq!(left.keys[1].left_handle, channel.keys[1].left_handle);
+        for time in [500, 2000, 3500] {
+            let original = channel.value_at(ticks(time)).unwrap();
+            let split = left.value_at(ticks(time)).unwrap();
+            assert!((original - split).abs() < 1e-9, "at {time}: {original} vs {split}");
         }
     }
 

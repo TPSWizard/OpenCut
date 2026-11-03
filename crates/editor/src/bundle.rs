@@ -170,8 +170,10 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     }
 
     let web = bundle.project;
+    // The id names a directory under the store, so anything that is not a
+    // plain single path component gets a fresh id; so does a taken one.
     let mut id = web.metadata.id.clone();
-    if id.is_empty() || store.load(&id).is_ok() {
+    if !is_plain_id(&id) || store.load(&id).is_ok() {
         id = crate::new_id();
     }
     let media_dir = store.project_dir(&id).join("media");
@@ -262,6 +264,15 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     project.tracks = tracks;
     store.save(&project)?;
     Ok(ImportReport { project, skipped })
+}
+
+/// Letters, digits, `-` and `_` only: safe as a directory name anywhere.
+fn is_plain_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 /// A web track as a native one, or `None` for a kind that has no native
@@ -477,6 +488,9 @@ fn parse_iso_millis(text: &str) -> Option<u64> {
     let (date, time) = text.split_once('T')?;
     let mut date = date.split('-').map(|part| part.parse::<i64>().ok());
     let (year, month, day) = (date.next()??, date.next()??, date.next()??);
+    if !(1970..=9999).contains(&year) || !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return None;
+    }
     let mut time = time.split(':');
     let hour: i64 = time.next()?.parse().ok()?;
     let minute: i64 = time.next()?.parse().ok()?;
@@ -539,6 +553,9 @@ mod tests {
         assert_eq!(iso_from_millis(1_715_000_000_123), "2024-05-06T12:53:20.123Z");
         assert_eq!(parse_iso_millis("2024-05-06T12:53:20.123Z"), Some(1_715_000_000_123));
         assert_eq!(parse_iso_millis("nope"), None);
+        assert_eq!(parse_iso_millis("9000000000000000000-01-01T00:00:00Z"), None);
+        assert_eq!(parse_iso_millis("1969-12-31T00:00:00Z"), None);
+        assert!(is_plain_id("demo-1_B") && !is_plain_id("../x") && !is_plain_id("C:/x") && !is_plain_id(""));
         for millis in [1u64, 951_782_400_000, 4_102_444_800_000] {
             assert_eq!(parse_iso_millis(&iso_from_millis(millis)), Some(millis));
         }
@@ -622,6 +639,16 @@ mod tests {
         // Importing again does not overwrite: the copy gets a new id.
         let again = import_bundle(&bundle_path, &store).unwrap().project;
         assert_ne!(again.id, imported.id);
+
+        // An id that is a path gets a fresh one and writes nothing outside the store.
+        let mut hostile = project.clone();
+        hostile.id = "../../escaped".to_owned();
+        let hostile_path = dir.path().join("hostile.opencut.zip");
+        export_bundle(&hostile, &hostile_path).unwrap();
+        let report = import_bundle(&hostile_path, &store).unwrap();
+        assert!(is_plain_id(&report.project.id));
+        assert!(report.project.media[0].path.starts_with(store.root()));
+        assert!(!dir.path().join("escaped").exists() && !dir.path().parent().unwrap().join("escaped").exists());
     }
 
     #[test]

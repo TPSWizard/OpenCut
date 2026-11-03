@@ -147,8 +147,11 @@ impl TextRasterizer {
             half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
             half_height = half_height.max((top - cy).abs()).max((top + box_height - cy).abs());
         }
-        let width = (2.0 * half_width).ceil().max(1.0) as u32;
-        let height = (2.0 * half_height).ceil().max(1.0) as u32;
+        // Bounded so a wild size cannot ask for gigabytes; glyphs past the
+        // edge are simply cut.
+        const MAX_SIDE: f32 = 16_384.0;
+        let width = (2.0 * half_width).ceil().clamp(1.0, MAX_SIDE) as u32;
+        let height = (2.0 * half_height).ceil().clamp(1.0, MAX_SIDE) as u32;
         let origin_x = width as f32 / 2.0 - text_width / 2.0;
         let origin_y = height as f32 / 2.0 - text_height / 2.0;
         let mut bgra = vec![0u8; (width * height * 4) as usize];

@@ -160,10 +160,12 @@ impl Render for PreviewPanel {
                     };
                     pen_press.set(None);
                     state.update(cx, |state, cx| {
-                        state.pen_add_point(x as f64, y as f64, cx);
+                        // The first click of a double-click already placed
+                        // the last point; the second only closes the path.
                         if event.click_count >= 2 {
                             state.finish_pen(cx);
                         } else {
+                            state.pen_add_point(x as f64, y as f64, cx);
                             pen_press.set(Some((x, y)));
                         }
                     });

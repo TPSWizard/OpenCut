@@ -152,7 +152,8 @@ impl TextStyle {
         };
         let weight = params.text("fontWeight", "normal");
         let bold = matches!(weight.as_ref(), "bold" | "600" | "700" | "800" | "900");
-        let font_size_param = params.number("fontSize", 15.0).max(0.1) as f32;
+        // The web app's limits for the parameter.
+        let font_size_param = params.number("fontSize", 15.0).clamp(5.0, 300.0) as f32;
         let ratio = font_size_param / FONT_SIZE_RATIO_REFERENCE;
         let background = params.bool("background.enabled", false).then(|| TextBackground {
             color: parse_hex_color(&params.text("background.color", "#000000"))
