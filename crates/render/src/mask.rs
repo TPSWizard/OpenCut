@@ -9,6 +9,8 @@
 use compositor::QuadTransformDescriptor;
 use editor::{Mask, Params, parse_hex_color};
 
+use crate::text::TextRaster;
+
 /// The web app's floor for a mask's width and height (fraction of the element).
 const MIN_MASK_DIMENSION: f64 = 0.01;
 /// Straight pieces per Bézier segment of a freeform path.
@@ -34,6 +36,57 @@ pub fn rasterize_mask(
         for x in 0..width {
             let coverage = geometry.coverage(&shape, x as f64 + 0.5, y as f64 + 0.5);
             let value = (coverage * 255.0).round() as u8;
+            let index = ((y * width + x) * 4) as usize;
+            pixels[index..index + 4].copy_from_slice(&[value, value, value, value]);
+        }
+    }
+    pixels
+}
+
+/// Coverage of a text mask: `glyphs` (the mask's text rasterised white
+/// against the element's height) centred on the mask's centre, scaled by
+/// `scale` and rotated, sampled bilinearly. Blank text is an inactive mask
+/// and covers everything, as in the web app.
+pub fn rasterize_text_mask(
+    params: &Params,
+    quad: &QuadTransformDescriptor,
+    width: u32,
+    height: u32,
+    glyphs: &TextRaster,
+) -> Vec<u8> {
+    if params.text("content", "").trim().is_empty() {
+        return vec![255; (width * height * 4) as usize];
+    }
+    let geometry = Geometry::new(Mask::TEXT, params, quad);
+    let scale = params.number("scale", 1.0).max(0.01);
+    let (glyph_width, glyph_height) = (glyphs.width as f64, glyphs.height as f64);
+    let alpha = |x: i64, y: i64| -> f64 {
+        if x < 0 || y < 0 || x >= glyphs.width as i64 || y >= glyphs.height as i64 {
+            return 0.0;
+        }
+        glyphs.bgra[((y as u32 * glyphs.width + x as u32) * 4 + 3) as usize] as f64 / 255.0
+    };
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    for y in 0..height {
+        for x in 0..width {
+            let (lx, ly) = geometry.local(x as f64 + 0.5, y as f64 + 0.5);
+            // Glyph raster coordinates, pixel centres at .5.
+            let gx = lx / scale + glyph_width / 2.0 - 0.5;
+            let gy = ly / scale + glyph_height / 2.0 - 0.5;
+            if gx < -1.0 || gy < -1.0 || gx > glyph_width || gy > glyph_height {
+                continue;
+            }
+            let (x0, y0) = (gx.floor(), gy.floor());
+            let (fx, fy) = (gx - x0, gy - y0);
+            let (x0, y0) = (x0 as i64, y0 as i64);
+            let coverage = alpha(x0, y0) * (1.0 - fx) * (1.0 - fy)
+                + alpha(x0 + 1, y0) * fx * (1.0 - fy)
+                + alpha(x0, y0 + 1) * (1.0 - fx) * fy
+                + alpha(x0 + 1, y0 + 1) * fx * fy;
+            let value = (coverage.clamp(0.0, 1.0) * 255.0).round() as u8;
+            if value == 0 {
+                continue;
+            }
             let index = ((y * width + x) * 4) as usize;
             pixels[index..index + 4].copy_from_slice(&[value, value, value, value]);
         }
@@ -319,9 +372,9 @@ impl Geometry {
         (0.5 - self.distance(shape, x, y)).clamp(0.0, 1.0)
     }
 
-    /// Signed distance from a frame pixel to the shape's edge, negative
-    /// inside, in frame pixels (approximate for ellipses).
-    fn distance(&self, shape: &Shape, x: f64, y: f64) -> f64 {
+    /// A frame pixel in the shape's local space: element pixels from the
+    /// shape's centre, with the element's and the shape's rotation undone.
+    fn local(&self, x: f64, y: f64) -> (f64, f64) {
         // Frame → element pixels (centred, unrotated, unflipped).
         let dx = x - self.quad_center.0;
         let dy = y - self.quad_center.1;
@@ -332,8 +385,13 @@ impl Geometry {
         let sx = ex - self.shape_center.0;
         let sy = ey - self.shape_center.1;
         let (cos, sin) = self.shape_rotation;
-        let lx = sx * cos - sy * sin;
-        let ly = sx * sin + sy * cos;
+        (sx * cos - sy * sin, sx * sin + sy * cos)
+    }
+
+    /// Signed distance from a frame pixel to the shape's edge, negative
+    /// inside, in frame pixels (approximate for ellipses).
+    fn distance(&self, shape: &Shape, x: f64, y: f64) -> f64 {
+        let (lx, ly) = self.local(x, y);
         let (half_width, half_height) = self.half;
         let distance = match shape {
             Shape::Rectangle => (lx.abs() - half_width).max(ly.abs() - half_height),
@@ -475,6 +533,43 @@ mod tests {
         let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
         assert_eq!(alpha(&pixels, 100, 90, 50), 255, "the bow reaches past x=80");
         assert_eq!(alpha(&pixels, 100, 96, 22), 0, "but not near the corners");
+    }
+
+    #[test]
+    fn text_masks_sample_the_glyph_raster() {
+        let frame = quad(50.0, 50.0, 100.0, 100.0, 0.0);
+        // A fake 10x10 "glyph" raster: opaque in its left half only.
+        let mut bgra = vec![0u8; 10 * 10 * 4];
+        for y in 0..10 {
+            for x in 0..5 {
+                bgra[(y * 10 + x) * 4 + 3] = 255;
+            }
+        }
+        let glyphs = TextRaster { width: 10, height: 10, bgra };
+        let mut mask = Mask::shape(Mask::TEXT);
+        let pixels = rasterize_text_mask(&mask.params, &frame, 100, 100, &glyphs);
+        assert_eq!(alpha(&pixels, 100, 47, 50), 255, "left half of the glyph box, centred on the element");
+        assert_eq!(alpha(&pixels, 100, 53, 50), 0, "right half is clear");
+        assert_eq!(alpha(&pixels, 100, 47, 60), 0, "below the glyph box");
+
+        // Scaled 4x and shifted a quarter to the right: box is 40 wide at x 55..95.
+        mask.params.set("scale", 4.0).set("centerX", 0.25);
+        let pixels = rasterize_text_mask(&mask.params, &frame, 100, 100, &glyphs);
+        assert_eq!(alpha(&pixels, 100, 60, 50), 255);
+        assert_eq!(alpha(&pixels, 100, 80, 50), 0);
+        assert_eq!(alpha(&pixels, 100, 60, 40), 255, "20 px tall above the centre");
+        assert_eq!(alpha(&pixels, 100, 60, 25), 0);
+
+        // Rotated 90°: the opaque half turns to the top.
+        mask.params.set("centerX", 0.0).set("rotation", 90.0);
+        let pixels = rasterize_text_mask(&mask.params, &frame, 100, 100, &glyphs);
+        assert_eq!(alpha(&pixels, 100, 50, 40), 255, "above the centre");
+        assert_eq!(alpha(&pixels, 100, 50, 60), 0, "below");
+
+        // Blank text is no mask at all.
+        mask.params.set("content", "  ");
+        let pixels = rasterize_text_mask(&mask.params, &frame, 100, 100, &glyphs);
+        assert!(pixels.iter().all(|&value| value == 255));
     }
 
     #[test]

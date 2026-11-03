@@ -35,22 +35,17 @@ impl TextRasterizer {
         }
     }
 
-    /// Lays `style.content` out within `max_width` pixels (wrapping at
-    /// words) and rasterises it, including any background box.
-    pub fn rasterize(&mut self, style: &TextStyle, max_width: f32) -> TextRaster {
+    /// Lays `style.content` out (lines break only at newlines, as in the
+    /// web app) and rasterises it, including any background box. The
+    /// raster stays centred on the text, so a box offset does not move it.
+    pub fn rasterize(&mut self, style: &TextStyle) -> TextRaster {
         let font_size = style.font_size.max(1.0);
         let line_height = (font_size * style.line_height).max(1.0);
         let metrics = Metrics::new(font_size, line_height);
-        let (padding_x, padding_y) = style
-            .background
-            .as_ref()
-            .map(|background| (background.padding_x.max(0.0), background.padding_y.max(0.0)))
-            .unwrap_or((0.0, 0.0));
-        let wrap_width = (max_width - 2.0 * padding_x).max(font_size);
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_wrap(&mut self.font_system, Wrap::WordOrGlyph);
-        buffer.set_size(&mut self.font_system, Some(wrap_width), None);
+        buffer.set_wrap(&mut self.font_system, Wrap::None);
+        buffer.set_size(&mut self.font_system, None, None);
         let family = style.font_family.trim();
         let attrs = Attrs::new()
             .family(if family.is_empty() {
@@ -68,7 +63,8 @@ impl TextRasterizer {
             } else {
                 Style::Normal
             })
-            .letter_spacing(style.letter_spacing);
+            // cosmic-text takes letter spacing in ems; the parameter is pixels.
+            .letter_spacing(style.letter_spacing / font_size);
         let content = if style.content.is_empty() {
             " "
         } else {
@@ -80,12 +76,9 @@ impl TextRasterizer {
             TextAlign::Center => Align::Center,
             TextAlign::Right => Align::Right,
         };
-        for line in &mut buffer.lines {
-            line.set_align(Some(align));
-        }
         buffer.shape_until_scroll(&mut self.font_system, false);
 
-        // Shrink the box to the widest line so alignment is relative to the
+        // Size the box to the widest line so alignment is relative to the
         // text itself, not to the whole canvas.
         let (text_width, text_height) = measure(&buffer);
         let text_width = text_width.ceil().max(1.0);
@@ -94,22 +87,47 @@ impl TextRasterizer {
             line.set_align(Some(align));
         }
         buffer.shape_until_scroll(&mut self.font_system, false);
-        let (_, text_height) = {
+        let text_height = {
             let (_, measured) = measure(&buffer);
-            (text_width, measured.max(text_height))
+            measured.max(text_height).ceil().max(1.0)
         };
 
-        let width = (text_width + 2.0 * padding_x).ceil().max(1.0) as u32;
-        let height = (text_height + 2.0 * padding_y).ceil().max(1.0) as u32;
+        // The background box around the text, in text-block coordinates
+        // (the block's top-left is the origin).
+        let background_box = style.background.as_ref().map(|background| {
+            let (padding_x, padding_y) = (background.padding_x.max(0.0), background.padding_y.max(0.0));
+            (
+                -padding_x + background.offset_x,
+                -padding_y + background.offset_y,
+                text_width + 2.0 * padding_x,
+                text_height + 2.0 * padding_y,
+            )
+        });
+        // Half extents from the text's centre that hold both the text and
+        // the box, so the raster stays centred on the text.
+        let (mut half_width, mut half_height) = (text_width / 2.0, text_height / 2.0);
+        if let Some((left, top, box_width, box_height)) = background_box {
+            let (cx, cy) = (text_width / 2.0, text_height / 2.0);
+            half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
+            half_height = half_height.max((top - cy).abs()).max((top + box_height - cy).abs());
+        }
+        let width = (2.0 * half_width).ceil().max(1.0) as u32;
+        let height = (2.0 * half_height).ceil().max(1.0) as u32;
+        let origin_x = width as f32 / 2.0 - text_width / 2.0;
+        let origin_y = height as f32 / 2.0 - text_height / 2.0;
         let mut bgra = vec![0u8; (width * height * 4) as usize];
 
-        if let Some(background) = &style.background {
+        if let (Some(background), Some((left, top, box_width, box_height))) =
+            (&style.background, background_box)
+        {
+            let radius = (box_width.min(box_height) / 2.0) * (background.corner_radius.clamp(0.0, 100.0) / 100.0);
             fill_rounded_rect(
                 &mut bgra,
                 width,
                 height,
+                (origin_x + left, origin_y + top, box_width, box_height),
                 background.color,
-                background.corner_radius.max(0.0),
+                radius,
             );
         }
 
@@ -119,8 +137,8 @@ impl TextRasterizer {
             to_byte(style.color[2]),
             to_byte(style.color[3]),
         );
-        let offset_x = padding_x.round() as i32;
-        let offset_y = padding_y.round() as i32;
+        let offset_x = origin_x.round() as i32;
+        let offset_y = origin_y.round() as i32;
         buffer.draw(
             &mut self.font_system,
             &mut self.cache,
@@ -185,17 +203,36 @@ fn blend_over(dst: &mut [u8], src: Color) {
     dst[3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
 }
 
-fn fill_rounded_rect(bgra: &mut [u8], width: u32, height: u32, color: [f32; 4], radius: f32) {
-    let radius = radius.min(width as f32 / 2.0).min(height as f32 / 2.0);
+/// Fills `rect` (x, y, width, height in raster pixels) with a rounded box.
+fn fill_rounded_rect(
+    bgra: &mut [u8],
+    width: u32,
+    height: u32,
+    rect: (f32, f32, f32, f32),
+    color: [f32; 4],
+    radius: f32,
+) {
+    let (left, top, box_width, box_height) = rect;
+    let radius = radius.min(box_width / 2.0).min(box_height / 2.0).max(0.0);
     let pixel = [
         to_byte(color[2]),
         to_byte(color[1]),
         to_byte(color[0]),
         to_byte(color[3]),
     ];
-    for y in 0..height {
-        for x in 0..width {
-            let coverage = rounded_rect_coverage(x as f32 + 0.5, y as f32 + 0.5, width as f32, height as f32, radius);
+    let x0 = left.floor().max(0.0) as u32;
+    let y0 = top.floor().max(0.0) as u32;
+    let x1 = ((left + box_width).ceil().max(0.0) as u32).min(width);
+    let y1 = ((top + box_height).ceil().max(0.0) as u32).min(height);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let coverage = rounded_rect_coverage(
+                x as f32 + 0.5 - left,
+                y as f32 + 0.5 - top,
+                box_width,
+                box_height,
+                radius,
+            );
             if coverage <= 0.0 {
                 continue;
             }
@@ -210,6 +247,9 @@ fn fill_rounded_rect(bgra: &mut [u8], width: u32, height: u32, color: [f32; 4], 
 
 /// 1 inside the rounded rectangle, fading over one pixel at the corners.
 fn rounded_rect_coverage(x: f32, y: f32, width: f32, height: f32, radius: f32) -> f32 {
+    if x < 0.0 || y < 0.0 || x > width || y > height {
+        return 0.0;
+    }
     if radius <= 0.0 {
         return 1.0;
     }
@@ -254,7 +294,7 @@ mod tests {
     #[test]
     fn rasterises_text_with_the_requested_color() {
         let mut rasterizer = TextRasterizer::new();
-        let raster = rasterizer.rasterize(&style("Hello"), 1000.0);
+        let raster = rasterizer.rasterize(&style("Hello"));
         assert!(raster.width > 40 && raster.width < 400, "width {}", raster.width);
         assert!(raster.height >= 40 && raster.height <= 60, "height {}", raster.height);
         let opaque: Vec<&[u8]> = raster
@@ -267,27 +307,52 @@ mod tests {
     }
 
     #[test]
-    fn wraps_and_adds_a_background() {
+    fn letter_spacing_is_in_pixels() {
         let mut rasterizer = TextRasterizer::new();
-        let one_line = rasterizer.rasterize(&style("one two three four"), 2000.0);
-        let wrapped = rasterizer.rasterize(&style("one two three four"), 150.0);
-        assert!(wrapped.height > one_line.height);
-        assert!(wrapped.width <= 150);
+        let plain = rasterizer.rasterize(&style("OPENCUT"));
+        let mut spaced = style("OPENCUT");
+        spaced.letter_spacing = 4.0;
+        let spaced = rasterizer.rasterize(&spaced);
+        // Six gaps of 4 px (the last glyph may carry one more).
+        let extra = spaced.width as i64 - plain.width as i64;
+        assert!((20..=34).contains(&extra), "spaced {} vs plain {}", spaced.width, plain.width);
+    }
+
+    #[test]
+    fn breaks_lines_only_at_newlines_and_adds_a_background() {
+        let mut rasterizer = TextRasterizer::new();
+        let one_line = rasterizer.rasterize(&style("one two three four five six seven"));
+        let two_lines = rasterizer.rasterize(&style("one\ntwo"));
+        assert!(two_lines.height > one_line.height * 3 / 2, "{} vs {}", two_lines.height, one_line.height);
+        assert!(two_lines.width < one_line.width);
 
         let mut boxed = style("Hi");
         boxed.background = Some(TextBackground {
             color: [0.0, 0.0, 1.0, 1.0],
-            corner_radius: 8.0,
+            corner_radius: 50.0,
             padding_x: 10.0,
             padding_y: 6.0,
+            offset_x: 0.0,
+            offset_y: 0.0,
         });
-        let raster = rasterizer.rasterize(&boxed, 1000.0);
-        let plain = rasterizer.rasterize(&style("Hi"), 1000.0);
+        let raster = rasterizer.rasterize(&boxed);
+        let plain = rasterizer.rasterize(&style("Hi"));
         assert_eq!(raster.width, plain.width + 20);
         assert_eq!(raster.height, plain.height + 12);
         // Corner pixel is outside the rounded corner; the edge midpoint is blue.
         assert_eq!(raster.bgra[3], 0);
         let mid = ((raster.height / 2) * raster.width * 4) as usize;
         assert_eq!(&raster.bgra[mid..mid + 4], &[255, 0, 0, 255]);
+
+        // A shifted box grows the raster on both sides, keeping the text centred.
+        let mut shifted = boxed.clone();
+        shifted.background.as_mut().unwrap().offset_x = 10.0;
+        let raster = rasterizer.rasterize(&shifted);
+        assert_eq!(raster.width, plain.width + 40);
+        assert_eq!(raster.height, plain.height + 12);
+        let left_mid = ((raster.height / 2) * raster.width * 4) as usize;
+        assert_eq!(raster.bgra[left_mid + 3], 0, "no box at the far left");
+        let right_mid = left_mid + ((raster.width - 1) * 4) as usize;
+        assert_eq!(&raster.bgra[right_mid..right_mid + 4], &[255, 0, 0, 255], "box reaches the right edge");
     }
 }

@@ -314,6 +314,9 @@ impl Mask {
     /// list of `{x, y, inX, inY, outX, outY}` points in units of the
     /// element's size, `closed` says whether it is filled.
     pub const FREEFORM: &'static str = "freeform";
+    /// The glyphs of `content`, sized like a text element but against the
+    /// element's own height, centred, then scaled and rotated.
+    pub const TEXT: &'static str = "text";
 
     /// The shapes that can be added and rendered natively, in menu order.
     pub const SHAPES: &'static [&'static str] = &[
@@ -324,6 +327,7 @@ impl Mask {
         Self::STAR,
         Self::SPLIT,
         Self::CINEMATIC_BARS,
+        Self::TEXT,
     ];
 
     pub fn rectangle() -> Self {
@@ -348,9 +352,30 @@ impl Mask {
             .set("strokeColor", "#ffffff")
             .set("strokeWidth", 0.0)
             .set("strokeAlign", "center");
-        if kind != Self::SPLIT {
-            let width = if kind == Self::CINEMATIC_BARS { std::f64::consts::SQRT_2 } else { 0.6 };
-            params.set("width", width).set("height", 0.6).set("scale", 1.0);
+        match kind {
+            Self::SPLIT => {}
+            Self::TEXT => {
+                params
+                    .set("content", "Mask")
+                    .set("fontSize", 15.0)
+                    .set("fontFamily", "Arial")
+                    .set("fontWeight", "normal")
+                    .set("fontStyle", "normal")
+                    .set("textDecoration", "none")
+                    .set("letterSpacing", 0.0)
+                    .set("lineHeight", 1.2)
+                    .set("scale", 1.0);
+            }
+            Self::FREEFORM => {
+                params
+                    .set("path", serde_json::Value::Array(Vec::new()))
+                    .set("closed", false)
+                    .set("scale", 1.0);
+            }
+            _ => {
+                let width = if kind == Self::CINEMATIC_BARS { std::f64::consts::SQRT_2 } else { 0.6 };
+                params.set("width", width).set("height", 0.6).set("scale", 1.0);
+            }
         }
         Self {
             id: crate::new_id(),
@@ -369,13 +394,14 @@ impl Mask {
             Self::SPLIT => "Split",
             Self::CINEMATIC_BARS => "Cinematic bars",
             Self::FREEFORM => "Freeform",
+            Self::TEXT => "Text",
             other => other,
         }
     }
 
     pub fn size_mode(&self) -> MaskSize {
         match self.kind.as_str() {
-            Self::SPLIT | Self::FREEFORM => MaskSize::None,
+            Self::SPLIT | Self::FREEFORM | Self::TEXT => MaskSize::None,
             Self::CINEMATIC_BARS => MaskSize::HeightOnly,
             _ => MaskSize::WidthHeight,
         }

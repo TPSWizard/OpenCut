@@ -35,7 +35,7 @@ pub use document::{
 pub use editor::Editor;
 pub use error::EditorError;
 pub use frame::{
-    BackdropPlan, EffectPlan, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
+    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
     TextBackground, TextStyle, fit_contain, parse_hex_color, plan_frame,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};

@@ -34,7 +34,7 @@ const NUMBER_PARAMS: &[(&str, &str, f64)] = &[
 ];
 
 const TEXT_NUMBER_PARAMS: &[(&str, &str, f64)] = &[
-    ("fontSize", "Font size", 72.0),
+    ("fontSize", "Font size", 15.0),
     ("lineHeight", "Line height", 1.2),
     ("letterSpacing", "Letter spacing", 0.0),
 ];
@@ -51,6 +51,7 @@ const MASK_PERCENT_PARAMS: &[(&str, &str)] = &[
     ("centerY", "Y (%)"),
     ("width", "Width (%)"),
     ("height", "Height (%)"),
+    ("scale", "Scale (%)"),
 ];
 
 /// Where a parameter stands with respect to keyframes.
@@ -705,11 +706,52 @@ impl Render for InspectorPanel {
                             });
                         content = content.child(header);
                         let size_mode = mask.size_mode();
+                        let is_text = mask.kind == Mask::TEXT;
                         let shown = |key: &str| match key {
                             "width" => size_mode == MaskSize::WidthHeight,
                             "height" => size_mode != MaskSize::None,
+                            "scale" => matches!(mask.kind.as_str(), Mask::TEXT | Mask::FREEFORM),
                             _ => true,
                         };
+                        if is_text {
+                            let content_row = self.row(
+                                "Text",
+                                &format!("mask.{}.content", mask.id),
+                                "Mask",
+                                mask.params.text("content", "").into_owned(),
+                                None,
+                                window,
+                                cx,
+                                Box::new({
+                                    let mask_id = mask_id.clone();
+                                    move |text, state, cx| {
+                                        let mut params = Params::new();
+                                        params.set("content", text.to_owned());
+                                        state.update_mask(&mask_id, params, cx);
+                                    }
+                                }),
+                            );
+                            let size_row = self.row(
+                                "Font size",
+                                &format!("mask.{}.fontSize", mask.id),
+                                "15",
+                                number_text(mask.params.number("fontSize", 15.0)),
+                                None,
+                                window,
+                                cx,
+                                Box::new({
+                                    let mask_id = mask_id.clone();
+                                    move |text, state, cx| {
+                                        if let Ok(value) = text.trim().parse::<f64>() {
+                                            let mut params = Params::new();
+                                            params.set("fontSize", value.max(0.1));
+                                            state.update_mask(&mask_id, params, cx);
+                                        }
+                                    }
+                                }),
+                            );
+                            content = content.child(content_row).child(size_row);
+                        }
                         for (key, label) in MASK_PERCENT_PARAMS.iter().filter(|(key, _)| shown(key)) {
                             let mask_id = mask_id.clone();
                             let param = *key;

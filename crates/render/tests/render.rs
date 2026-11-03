@@ -72,8 +72,9 @@ fn composites_image_and_text_over_background() {
     )
     .unwrap();
     let mut text = Element::text("OpenCut", seconds(1.0));
+    // 10 × 1080 / 90 = 120 canvas pixels tall.
     text.params
-        .set("fontSize", 120.0)
+        .set("fontSize", 10.0)
         .set("color", "#ffffff")
         .set("transform.positionY", -400.0);
     apply(
@@ -158,6 +159,41 @@ fn blurred_background_covers_the_frame_with_the_main_track() {
     // Nothing on the main track at this time: the backdrop is gone.
     let frame = renderer.render(&project, seconds(20.0), 320, 180).unwrap();
     assert_eq!(pixel(&frame, 4, 4), [0, 0, 0, 255], "no backdrop without a clip");
+}
+
+#[test]
+fn text_masks_cut_the_element_to_the_glyphs() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Text mask");
+    project.settings.background = editor::Background::Color {
+        color: "#0000ff".to_owned(),
+    };
+    let image_id = add_image(&mut project, dir.path());
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.params.set("transform.scaleX", 1.0).set("transform.scaleY", 1.0);
+    let mut mask = editor::Mask::shape(editor::Mask::TEXT);
+    // 40 × 180 / 90 = 80 px glyphs on the 180 px element.
+    mask.params.set("content", "MASK").set("fontSize", 40.0);
+    image.masks.push(mask);
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: image,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let green = |x: u32, y: u32| {
+        let p = pixel(&frame, x, y);
+        p[1] > 200 && p[0] < 40 && p[2] < 40
+    };
+    assert!(!green(80, 10), "the element's corner is masked away");
+    assert!(!green(160, 20), "above the text line");
+    let glyph_pixels = (70..250).flat_map(|x| (50..130).map(move |y| (x, y))).filter(|&(x, y)| green(x, y)).count();
+    assert!(glyph_pixels > 500 && glyph_pixels < 180 * 80 / 2, "glyphs show the image: {glyph_pixels}");
+    assert_eq!(pixel(&frame, 2, 2), [255, 0, 0, 255], "background elsewhere");
 }
 
 #[test]

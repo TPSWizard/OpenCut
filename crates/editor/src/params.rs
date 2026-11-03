@@ -194,7 +194,7 @@ pub fn text_defaults() -> Params {
     params
         .set("content", "Default text")
         .set("fontFamily", "Arial")
-        .set("fontSize", 72.0)
+        .set("fontSize", 15.0)
         .set("color", "#ffffff")
         .set("textAlign", "center")
         .set("fontWeight", "normal")

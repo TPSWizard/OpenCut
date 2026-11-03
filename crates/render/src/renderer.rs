@@ -5,14 +5,14 @@ use compositor::{
     BlendMode, CanvasClearDescriptor, Compositor, FrameDescriptor, FrameItemDescriptor,
     LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor,
 };
-use editor::{LayerSource, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
+use editor::{LayerSource, Mask, TextStyle, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
 use gpu::{GpuContext, wgpu};
 use media::{Ffmpeg, VideoSource, decode_image};
 use time::MediaTime;
 
 use crate::effects::{backdrop_blur_passes, effect_pass_groups};
 use crate::error::RenderError;
-use crate::mask::{rasterize_mask, rasterize_mask_stroke};
+use crate::mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask};
 use crate::text::TextRasterizer;
 
 #[derive(Clone, Debug, Default)]
@@ -272,14 +272,13 @@ impl Renderer {
             }
             LayerSource::Text(style) => {
                 let texture_id = format!("text:{element_id}");
-                let max_width = project.settings.canvas.width as f32;
-                let key = format!("{style:?}@{max_width}");
+                let key = format!("{style:?}");
                 if let Some((current_key, width, height)) = self.texts.get(element_id)
                     && *current_key == key
                 {
                     return Ok(Some((texture_id, *width, *height)));
                 }
-                let raster = self.text.rasterize(style, max_width);
+                let raster = self.text.rasterize(style);
                 self.upload(&texture_id, raster.width, raster.height, &raster.bgra);
                 self.texts.insert(
                     element_id.to_owned(),
@@ -307,7 +306,15 @@ impl Renderer {
         let texture_id = format!("mask:{element_id}");
         let key = format!("{}:{:?}:{quad:?}:{width}x{height}", mask.kind, mask.params);
         if self.masks.get(element_id) != Some(&key) {
-            let pixels = rasterize_mask(&mask.kind, &mask.params, quad, width, height);
+            let pixels = if mask.kind == Mask::TEXT {
+                // Sized against the element's own height, like the web app's
+                // mask canvas; the mask's params carry the text settings.
+                let style = TextStyle::from_params(&mask.params, quad.height.max(1.0));
+                let glyphs = self.text.rasterize(&style);
+                rasterize_text_mask(&mask.params, quad, width, height, &glyphs)
+            } else {
+                rasterize_mask(&mask.kind, &mask.params, quad, width, height)
+            };
             self.upload(&texture_id, width, height, &pixels);
             self.masks.insert(element_id.to_owned(), key);
         }

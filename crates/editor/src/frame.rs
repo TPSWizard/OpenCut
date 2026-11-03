@@ -99,11 +99,17 @@ pub enum TextAlign {
     Right,
 }
 
+/// The web app sizes text as `fontSize` times the canvas height over this.
+pub const FONT_SIZE_REFERENCE: f32 = 90.0;
+/// Background padding scales with `fontSize` over this.
+pub const FONT_SIZE_RATIO_REFERENCE: f32 = 15.0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
     pub content: String,
     pub font_family: String,
-    /// Canvas pixels.
+    /// Resolved pixels: the `fontSize` parameter times the canvas height
+    /// over [`FONT_SIZE_REFERENCE`], as the web app sizes text.
     pub font_size: f32,
     pub color: [f32; 4],
     pub align: TextAlign,
@@ -117,13 +123,20 @@ pub struct TextStyle {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextBackground {
     pub color: [f32; 4],
+    /// Percent (0–100) of half the box's smaller side.
     pub corner_radius: f32,
+    /// Pixels, already scaled by the font size ratio.
     pub padding_x: f32,
     pub padding_y: f32,
+    /// Pixels the box is shifted from the text.
+    pub offset_x: f32,
+    pub offset_y: f32,
 }
 
 impl TextStyle {
-    pub fn from_params(params: &Params) -> Self {
+    /// `canvas_height` is what the text is sized against: the project
+    /// canvas for a text element, the element itself for a text mask.
+    pub fn from_params(params: &Params, canvas_height: f32) -> Self {
         let align = match params.text("textAlign", "center").as_ref() {
             "left" => TextAlign::Left,
             "right" => TextAlign::Right,
@@ -131,17 +144,21 @@ impl TextStyle {
         };
         let weight = params.text("fontWeight", "normal");
         let bold = matches!(weight.as_ref(), "bold" | "600" | "700" | "800" | "900");
+        let font_size_param = params.number("fontSize", 15.0).max(0.1) as f32;
+        let ratio = font_size_param / FONT_SIZE_RATIO_REFERENCE;
         let background = params.bool("background.enabled", false).then(|| TextBackground {
             color: parse_hex_color(&params.text("background.color", "#000000"))
                 .unwrap_or([0.0, 0.0, 0.0, 1.0]),
-            corner_radius: params.number("background.cornerRadius", 0.0) as f32,
-            padding_x: params.number("background.paddingX", 30.0) as f32,
-            padding_y: params.number("background.paddingY", 42.0) as f32,
+            corner_radius: params.number("background.cornerRadius", 0.0).clamp(0.0, 100.0) as f32,
+            padding_x: params.number("background.paddingX", 30.0) as f32 * ratio,
+            padding_y: params.number("background.paddingY", 42.0) as f32 * ratio,
+            offset_x: params.number("background.offsetX", 0.0) as f32,
+            offset_y: params.number("background.offsetY", 0.0) as f32,
         });
         Self {
             content: params.text("content", "").into_owned(),
             font_family: params.text("fontFamily", "Arial").into_owned(),
-            font_size: params.number("fontSize", 72.0).max(1.0) as f32,
+            font_size: (font_size_param * canvas_height.max(1.0) / FONT_SIZE_REFERENCE).max(1.0),
             color: parse_hex_color(&params.text("color", "#ffffff")).unwrap_or([1.0; 4]),
             align,
             bold,
@@ -234,7 +251,9 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                 ElementKind::Image { media_id } => LayerSource::Image {
                     media_id: media_id.clone(),
                 },
-                ElementKind::Text => LayerSource::Text(TextStyle::from_params(&params)),
+                ElementKind::Text => {
+                    LayerSource::Text(TextStyle::from_params(&params, canvas.height as f32))
+                }
                 ElementKind::Audio { .. } => continue,
             };
             let effects = element

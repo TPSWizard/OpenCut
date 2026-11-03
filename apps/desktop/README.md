@@ -41,12 +41,13 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 - **Effects**: a Gaussian blur per element (intensity 0–100, keyframeable),
   with the same strength scaling as the web app; several can be stacked and
   switched off without removing them.
-- **Mask**: a rectangle, ellipse, diamond, heart, star, split line or
-  cinematic bars on video and image clips, sized and offset as percentages of
-  the clip, rotated, feathered (GPU distance field) or inverted, with an
-  optional stroke along the edge (width, colour, inside/centre/outside); the
-  same shapes and parameters as the web editor. Freeform pen-tool paths from
-  web projects are rendered too (there is no pen tool here yet).
+- **Mask**: a rectangle, ellipse, diamond, heart, star, split line,
+  cinematic bars or text (its own words, font and size) on video and image
+  clips, sized and offset as percentages of the clip, rotated, feathered
+  (GPU distance field) or inverted, with an optional stroke along the edge
+  (width, colour, inside/centre/outside; not on text); the same shapes and
+  parameters as the web editor. Freeform pen-tool paths from web projects
+  are rendered too (there is no pen tool here yet).
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -121,9 +122,10 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Only the blur effect exists natively. The web editor's text masks,
-  stickers and captions are read from project files but not rendered, and
-  freeform masks can be rendered but not drawn.
+- Only the blur effect exists natively. The web editor's stickers and
+  captions are read from project files but not rendered; freeform masks can
+  be rendered but not drawn; text masks have no stroke and text decoration
+  (underline, strikethrough) is not drawn.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it
