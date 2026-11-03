@@ -442,7 +442,7 @@ impl EditorState {
         let mut times: Vec<MediaTime> = element
             .animations
             .values()
-            .flat_map(|channel| channel.keys.iter().map(|key| element.start_time + key.time))
+            .flat_map(|channel| channel.all_keys().map(|key| element.start_time + key.time))
             .collect();
         times.sort();
         times.dedup();

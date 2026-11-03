@@ -20,8 +20,8 @@ mod params;
 mod store;
 
 pub use animation::{
-    Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, is_param_path,
-    resolve_object_params, resolve_params, split_animations,
+    Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, format_linear_rgba, is_param_path,
+    parse_color_to_linear_rgba, resolve_object_params, resolve_params, split_animations,
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, import_bundle};

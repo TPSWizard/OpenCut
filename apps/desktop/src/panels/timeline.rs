@@ -402,7 +402,7 @@ impl Render for TimelinePanel {
                     element
                         .animations
                         .values()
-                        .flat_map(|channel| channel.keys.iter().map(|key| key.time))
+                        .flat_map(|channel| channel.all_keys().map(|key| key.time))
                         .filter(|&time| time >= MediaTime::ZERO && time <= element.duration)
                         .collect()
                 } else {

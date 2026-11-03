@@ -34,7 +34,9 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   handles are read from project files and evaluated the same way (a Bézier
   without handles is a straight line, as in the web graph editor). Keys stay
   with their source frames when a clip is trimmed and are split with the
-  clip, a cut Bézier keeping its shape on both sides. The selected clip shows its keys as dots; click one
+  clip, a cut Bézier keeping its shape on both sides. Colour keys from the
+  web app (`color`, `background.color`: four channels in linear light) are
+  blended the same way and show as key dots too. The selected clip shows its keys as dots; click one
   to jump to it, or use `Shift-←`/`Shift-→`. Audio volume keys are followed
   by the preview mixer and written into the export as a per-frame `volume`
   expression.
@@ -124,8 +126,8 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 - Only the blur effect exists natively. The web editor's stickers and
   captions are read from project files but not rendered; freeform masks can
-  be rendered but not drawn; text masks have no stroke; colour keyframes
-  (`color`, `background.color`) are not animated.
+  be rendered but not drawn; text masks have no stroke; colour keys can be
+  played and cut but not set here.
 - Project bundles move projects between the two editors: **Save bundle…**
   in the header writes `<name>.opencut.zip` (the project in the web app's
   JSON shape plus copies of its media), and **Import bundle…** on the

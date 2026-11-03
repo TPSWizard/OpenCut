@@ -6,6 +6,10 @@
 //! JSON shape as the web app's `animations` object. Between keys the value
 //! is held, interpolated linearly or follows a cubic Bézier through the
 //! keys' curve handles; before the first and after the last key it is held.
+//!
+//! A colour (`color`, `background.color`) is animated as the web app does
+//! it: four scalar channels `r`, `g`, `b`, `a` in linear light, blended
+//! separately and formatted back to a hex colour.
 
 use std::collections::BTreeMap;
 
@@ -138,11 +142,107 @@ fn bezier_value_at(left: &Keyframe, right: &Keyframe, time: f64) -> f64 {
 }
 
 /// Keys of one parameter, sorted by time with at most one key per time.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// A colour channel has no keys of its own but `components` (`r`, `g`,
+/// `b`, `a`), each a scalar channel.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Channel {
-    #[serde(default)]
     pub keys: Vec<Keyframe>,
+    pub components: BTreeMap<String, Channel>,
+    /// The web app's extrapolation setting, kept as written.
+    pub extrapolation: Option<serde_json::Value>,
+}
+
+/// The JSON shapes: `{"keys": [...]}` for a scalar, a map of component
+/// channels for a colour. A map with a single `value` entry is the web
+/// app's wrapped scalar and reads as one.
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum ChannelRepr {
+    Scalar {
+        keys: Vec<Keyframe>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        extrapolation: Option<serde_json::Value>,
+    },
+    Composite(BTreeMap<String, Channel>),
+}
+
+impl Serialize for Channel {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if self.components.is_empty() {
+            ChannelRepr::Scalar {
+                keys: self.keys.clone(),
+                extrapolation: self.extrapolation.clone(),
+            }
+            .serialize(serializer)
+        } else {
+            ChannelRepr::Composite(self.components.clone()).serialize(serializer)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Channel {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match ChannelRepr::deserialize(deserializer)? {
+            ChannelRepr::Scalar { keys, extrapolation } => Self {
+                keys,
+                components: BTreeMap::new(),
+                extrapolation,
+            },
+            ChannelRepr::Composite(mut components) => {
+                if components.len() == 1 && components.contains_key("value") {
+                    components.remove("value").expect("checked")
+                } else {
+                    Self {
+                        keys: Vec::new(),
+                        components,
+                        extrapolation: None,
+                    }
+                }
+            }
+        })
+    }
+}
+
+const COLOR_COMPONENTS: [&str; 4] = ["r", "g", "b", "a"];
+
+fn srgb_to_linear(value: f64) -> f64 {
+    if value <= 0.04045 {
+        value / 12.92
+    } else {
+        ((value + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb(value: f64) -> f64 {
+    let value = value.clamp(0.0, 1.0);
+    if value <= 0.0031308 {
+        value * 12.92
+    } else {
+        1.055 * value.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// `#rrggbb`, or `#rrggbbaa` when the alpha is below one, from linear-light
+/// components, as the web app formats an animated colour.
+pub fn format_linear_rgba([r, g, b, a]: [f64; 4]) -> String {
+    let byte = |value: f64| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let (r, g, b) = (byte(linear_to_srgb(r)), byte(linear_to_srgb(g)), byte(linear_to_srgb(b)));
+    if a < 1.0 {
+        format!("#{r:02x}{g:02x}{b:02x}{:02x}", byte(a))
+    } else {
+        format!("#{r:02x}{g:02x}{b:02x}")
+    }
+}
+
+/// A hex colour as linear-light components, the space colour keys live in.
+pub fn parse_color_to_linear_rgba(color: &str) -> Option<[f64; 4]> {
+    let [r, g, b, a] = crate::frame::parse_hex_color(color)?;
+    Some([
+        srgb_to_linear(r as f64),
+        srgb_to_linear(g as f64),
+        srgb_to_linear(b as f64),
+        (a as f64).clamp(0.0, 1.0),
+    ])
 }
 
 /// Parameter path → channel.
@@ -153,7 +253,32 @@ pub const KEY_SNAP: MediaTime = MediaTime::from_ticks(600); // 5 ms
 
 impl Channel {
     pub fn is_empty(&self) -> bool {
-        self.keys.is_empty()
+        self.keys.is_empty() && self.components.values().all(Channel::is_empty)
+    }
+
+    /// Whether this is a colour: `r`, `g`, `b` and `a` component channels.
+    pub fn is_color(&self) -> bool {
+        COLOR_COMPONENTS.iter().all(|name| self.components.contains_key(*name))
+    }
+
+    /// Every key, including those of a colour's components.
+    pub fn all_keys(&self) -> impl Iterator<Item = &Keyframe> {
+        self.keys
+            .iter()
+            .chain(self.components.values().flat_map(|component| component.keys.iter()))
+    }
+
+    /// The animated colour at an element-relative time, or `None` when this
+    /// is not a colour channel (or a component has no keys).
+    pub fn color_at(&self, time: MediaTime) -> Option<String> {
+        if !self.is_color() {
+            return None;
+        }
+        let mut rgba = [0.0; 4];
+        for (index, name) in COLOR_COMPONENTS.iter().enumerate() {
+            rgba[index] = self.components.get(*name)?.value_at(time)?;
+        }
+        Some(format_linear_rgba(rgba))
     }
 
     /// The animated value at an element-relative time, or `None` for a
@@ -215,7 +340,11 @@ impl Channel {
     pub fn remove(&mut self, keyframe_id: &str) -> bool {
         let before = self.keys.len();
         self.keys.retain(|key| key.id != keyframe_id);
-        self.keys.len() != before
+        let mut removed = self.keys.len() != before;
+        for component in self.components.values_mut() {
+            removed |= component.remove(keyframe_id);
+        }
+        removed
     }
 
     /// Moves every key by `delta` (keys keep following the same source
@@ -223,6 +352,9 @@ impl Channel {
     pub fn shift(&mut self, delta: MediaTime) {
         for key in &mut self.keys {
             key.time = key.time + delta;
+        }
+        for component in self.components.values_mut() {
+            component.shift(delta);
         }
     }
 
@@ -233,6 +365,14 @@ impl Channel {
     pub fn split(&self, at: MediaTime) -> (Channel, Channel) {
         let mut left = Channel::default();
         let mut right = Channel::default();
+        if !self.components.is_empty() {
+            for (name, component) in &self.components {
+                let (left_part, right_part) = component.split(at);
+                left.components.insert(name.clone(), left_part);
+                right.components.insert(name.clone(), right_part);
+            }
+            return (left, right);
+        }
         if self.keys.is_empty() {
             return (left, right);
         }
@@ -303,6 +443,9 @@ impl Channel {
     pub fn normalize(&mut self) {
         self.keys.sort_by_key(|key| key.time);
         self.keys.dedup_by(|later, earlier| later.time == earlier.time);
+        for component in self.components.values_mut() {
+            component.normalize();
+        }
     }
 }
 
@@ -320,7 +463,9 @@ pub fn resolve_params(params: &Params, animations: &Animations, time: MediaTime)
         if !is_param_path(path) {
             continue;
         }
-        if let Some(value) = channel.value_at(time) {
+        if let Some(color) = channel.color_at(time) {
+            resolved.set(path.clone(), color);
+        } else if let Some(value) = channel.value_at(time) {
             resolved.set(path.clone(), value);
         }
     }
@@ -340,10 +485,12 @@ pub fn resolve_object_params(
     let mut resolved = params.clone();
     let path_prefix = format!("{prefix}.{object_id}.params.");
     for (path, channel) in animations {
-        if let Some(key) = path.strip_prefix(&path_prefix)
-            && let Some(value) = channel.value_at(time)
-        {
-            resolved.set(key.to_owned(), value);
+        if let Some(key) = path.strip_prefix(&path_prefix) {
+            if let Some(color) = channel.color_at(time) {
+                resolved.set(key.to_owned(), color);
+            } else if let Some(value) = channel.value_at(time) {
+                resolved.set(key.to_owned(), value);
+            }
         }
     }
     resolved
@@ -424,6 +571,61 @@ mod tests {
         channel.keys[0].right_handle = Some(CurveHandle { dt: ticks(40_000), dv: 0.0 });
         let value = channel.value_at(ticks(3000)).unwrap();
         assert!(value.is_finite() && (0.0..=8.0).contains(&value), "{value}");
+    }
+
+    #[test]
+    fn color_channels_blend_in_linear_light() {
+        let ramp = |name: &str, from: f64, to: f64| {
+            format!(
+                r#""{name}":{{"keys":[{{"id":"{name}0","time":0,"value":{from},"segmentToNext":"linear","tangentMode":"flat"}},{{"id":"{name}1","time":2000,"value":{to},"segmentToNext":"linear","tangentMode":"flat"}}]}}"#
+            )
+        };
+        let json = format!(
+            "{{{},{},{},{}}}",
+            ramp("r", 0.0, 1.0),
+            ramp("g", 0.0, 1.0),
+            ramp("b", 0.0, 1.0),
+            r#""a":{"keys":[{"id":"a0","time":0,"value":1}]}"#
+        );
+        let channel: Channel = serde_json::from_str(&json).unwrap();
+        assert!(channel.is_color());
+        assert!(!channel.is_empty());
+        assert_eq!(channel.all_keys().count(), 7);
+        assert_eq!(channel.value_at(ticks(0)), None, "not a scalar");
+        assert_eq!(channel.color_at(ticks(0)).as_deref(), Some("#000000"));
+        assert_eq!(channel.color_at(ticks(2000)).as_deref(), Some("#ffffff"));
+        // Linear 0.5 is sRGB 0.735: the midpoint is lighter than #808080.
+        assert_eq!(channel.color_at(ticks(1000)).as_deref(), Some("#bcbcbc"));
+
+        let back: Channel = serde_json::from_str(&serde_json::to_string(&channel).unwrap()).unwrap();
+        assert_eq!(back, channel);
+        assert!(serde_json::to_string(&channel).unwrap().starts_with(r#"{"a":{"keys""#));
+
+        let mut animations = Animations::new();
+        animations.insert("color".to_owned(), channel.clone());
+        let resolved = resolve_params(&Params::new(), &animations, ticks(1000));
+        assert_eq!(resolved.text("color", ""), "#bcbcbc");
+
+        // A cut keeps every component; alpha below one adds two digits.
+        let (left, right) = channel.split(ticks(1000));
+        assert_eq!(left.color_at(ticks(1000)).as_deref(), Some("#bcbcbc"));
+        assert_eq!(right.color_at(ticks(0)).as_deref(), Some("#bcbcbc"));
+        assert_eq!(right.color_at(ticks(1000)).as_deref(), Some("#ffffff"));
+        let mut faded = channel.clone();
+        faded.components.get_mut("a").unwrap().keys[0].value = 0.5;
+        assert_eq!(faded.color_at(ticks(2000)).as_deref(), Some("#ffffff80"));
+        assert!(faded.remove("a0"));
+        assert!(faded.color_at(ticks(0)).is_none(), "a component without keys has no colour");
+
+        // The web app's wrapped scalar reads as a plain channel.
+        let wrapped: Channel =
+            serde_json::from_str(r#"{"value":{"keys":[{"id":"k","time":0,"value":3}]}}"#).unwrap();
+        assert!(wrapped.components.is_empty());
+        assert_eq!(wrapped.value_at(ticks(0)), Some(3.0));
+        assert_eq!(serde_json::to_string(&wrapped).unwrap(), r#"{"keys":[{"id":"k","time":0,"value":3.0,"segmentToNext":"linear"}]}"#);
+
+        assert_eq!(parse_color_to_linear_rgba("#bcbcbc").map(|c| (c[0] * 100.0).round()), Some(50.0));
+        assert_eq!(format_linear_rgba(parse_color_to_linear_rgba("#12345678").unwrap()), "#12345678");
     }
 
     #[test]

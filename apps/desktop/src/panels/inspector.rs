@@ -301,7 +301,7 @@ impl Render for InspectorPanel {
                 let key_count: usize = element
                     .animations
                     .values()
-                    .map(|channel| channel.keys.len())
+                    .map(|channel| channel.all_keys().count())
                     .sum();
 
                 let name_row = self.row(
