@@ -24,6 +24,24 @@ pub struct LayerPlan {
     pub transform: LayerTransform,
     pub opacity: f32,
     pub blend_mode: String,
+    /// Enabled effects in order, with their parameters evaluated at this time.
+    pub effects: Vec<EffectPlan>,
+    /// The element's first mask, if any.
+    pub mask: Option<MaskPlan>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EffectPlan {
+    pub id: String,
+    pub kind: String,
+    pub params: Params,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MaskPlan {
+    pub id: String,
+    pub kind: String,
+    pub params: Params,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -169,6 +187,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
             if element.hidden || !element.contains(time) || !element.kind.is_visual() {
                 continue;
             }
+            let params = element.params_at(time);
             let source = match &element.kind {
                 ElementKind::Video { media_id } => LayerSource::Video {
                     media_id: media_id.clone(),
@@ -177,16 +196,37 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                 ElementKind::Image { media_id } => LayerSource::Image {
                     media_id: media_id.clone(),
                 },
-                ElementKind::Text => LayerSource::Text(TextStyle::from_params(&element.params)),
+                ElementKind::Text => LayerSource::Text(TextStyle::from_params(&params)),
                 ElementKind::Audio { .. } => continue,
             };
+            let effects = element
+                .effects
+                .iter()
+                .filter(|effect| effect.enabled)
+                .map(|effect| EffectPlan {
+                    id: effect.id.clone(),
+                    kind: effect.kind.clone(),
+                    params: element.effect_params_at(effect, time),
+                })
+                .collect();
+            let mask = element
+                .can_be_masked()
+                .then(|| element.masks.first())
+                .flatten()
+                .map(|mask| MaskPlan {
+                    id: mask.id.clone(),
+                    kind: mask.kind.clone(),
+                    params: element.mask_params_at(mask, time),
+                });
             layers.push(LayerPlan {
                 element_id: element.id.clone(),
                 track_id: track.id.clone(),
                 source,
-                transform: LayerTransform::from_params(&element.params),
-                opacity: element.params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
-                blend_mode: element.params.text("blendMode", "normal").into_owned(),
+                transform: LayerTransform::from_params(&params),
+                opacity: params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
+                blend_mode: params.text("blendMode", "normal").into_owned(),
+                effects,
+                mask,
             });
         }
     }
@@ -280,5 +320,55 @@ mod tests {
         let plan = plan_frame(&project, seconds(6.0));
         assert!(plan.layers.is_empty());
         assert_eq!((plan.width, plan.height), (1920, 1080));
+    }
+
+    #[test]
+    fn plans_animated_values_effects_and_masks() {
+        use crate::document::{Effect, Mask};
+
+        let mut project = Project::new("Animated");
+        let mut text = Element::text("Hi", seconds(1.0));
+        text.params.set("opacity", 1.0);
+        text.animations
+            .entry("opacity".to_owned())
+            .or_default()
+            .upsert(seconds(0.0), 0.0, None);
+        text.animations
+            .entry("opacity".to_owned())
+            .or_default()
+            .upsert(seconds(2.0), 1.0, None);
+        let mut blur = Effect::blur();
+        blur.id = "fx".to_owned();
+        text.effects.push(blur);
+        let mut off = Effect::blur();
+        off.enabled = false;
+        text.effects.push(off);
+        text.animations
+            .entry("effects.fx.params.intensity".to_owned())
+            .or_default()
+            .upsert(seconds(0.0), 0.0, None);
+        text.animations
+            .entry("effects.fx.params.intensity".to_owned())
+            .or_default()
+            .upsert(seconds(2.0), 40.0, None);
+        text.masks.push(Mask::ellipse());
+        apply(
+            &mut project,
+            &Command::InsertElement {
+                element: text,
+                placement: TrackPlacement::Auto,
+            },
+        )
+        .unwrap();
+
+        let plan = plan_frame(&project, seconds(2.0));
+        let layer = &plan.layers[0];
+        assert_eq!(layer.opacity, 0.5, "half way between the keys");
+        assert_eq!(layer.effects.len(), 1, "disabled effects are left out");
+        assert_eq!(layer.effects[0].params.number("intensity", 0.0), 20.0);
+        assert!(layer.mask.is_none(), "text cannot be masked");
+
+        let plan = plan_frame(&project, seconds(5.0));
+        assert_eq!(plan.layers[0].opacity, 1.0, "held after the last key");
     }
 }

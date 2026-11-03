@@ -442,8 +442,11 @@ mod tests {
         let id = path.file_name().unwrap().to_string_lossy().into_owned();
         let store = editor::ProjectStore::new(path.parent().unwrap());
         let project = store.load(&id).expect("project loads");
+        // The file is kept where OPENCUT_EXPORT_OUTPUT points, otherwise discarded.
         let dir = tempfile::tempdir().unwrap();
-        let output = dir.path().join("out.mp4");
+        let output = std::env::var_os("OPENCUT_EXPORT_OUTPUT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| dir.path().join("out.mp4"));
         let (events, _receiver) = unbounded();
         let cancel = AtomicBool::new(false);
         let result = export(

@@ -9,8 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use editor::{
-    Command, Edge, Editor, Element, ElementPatch, MediaItem, MediaKind, Outcome, Params, Project,
-    ProjectStore, TrackPlacement, nearest_free_start, plan_audio,
+    Command, Edge, Editor, Effect, Element, ElementPatch, Mask, MediaItem, MediaKind, Outcome,
+    Params, Project, ProjectStore, TrackPlacement, nearest_free_start, plan_audio,
 };
 use futures::StreamExt;
 use gpui::{Context, FocusHandle, RenderImage, Task};
@@ -329,16 +329,220 @@ impl EditorState {
         self.select_only(new_selection, cx);
     }
 
+    /// Changes parameters of the selected element. A parameter that is
+    /// keyframed gets a key at the playhead instead, as in the web app.
     pub(crate) fn update_selected_params(&mut self, params: Params, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
-        self.execute(
-            Command::UpdateElement {
-                element_id,
-                patch: ElementPatch {
-                    params: Some(params),
-                    ..Default::default()
+        let time = self.playhead();
+        let mut plain = Params::new();
+        let mut keyed = Vec::new();
+        for (key, value) in params.iter() {
+            match value.as_number() {
+                Some(number) if element.is_animated(key) => keyed.push((key.clone(), number)),
+                _ => {
+                    plain.set(key.clone(), value.clone());
+                }
+            }
+        }
+        for (path, value) in keyed {
+            self.execute(
+                Command::SetKeyframe {
+                    element_id: element_id.clone(),
+                    path,
+                    time,
+                    value,
+                    segment: None,
                 },
+                cx,
+            );
+        }
+        if !plain.is_empty() {
+            self.execute(
+                Command::UpdateElement {
+                    element_id,
+                    patch: ElementPatch {
+                        params: Some(plain),
+                        ..Default::default()
+                    },
+                },
+                cx,
+            );
+        }
+    }
+
+    // ---- keyframes, effects and masks ------------------------------------
+
+    /// Adds a key of `path` at the playhead holding the current value, or
+    /// removes the key already there.
+    pub(crate) fn toggle_keyframe(&mut self, path: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let time = self.playhead();
+        let local = element.local_time(time);
+        if let Some(key) = element
+            .animations
+            .get(path)
+            .and_then(|channel| channel.key_at(local))
+        {
+            let keyframe_id = key.id.clone();
+            self.execute(
+                Command::RemoveKeyframe {
+                    element_id,
+                    path: path.to_owned(),
+                    keyframe_id,
+                },
+                cx,
+            );
+            return;
+        }
+        let Some(value) = animated_value(element, path, time) else {
+            self.set_status(format!("{path} has no value to key"), cx);
+            return;
+        };
+        self.execute(
+            Command::SetKeyframe {
+                element_id,
+                path: path.to_owned(),
+                time,
+                value,
+                segment: None,
+            },
+            cx,
+        );
+    }
+
+    pub(crate) fn clear_animation(&mut self, path: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::ClearAnimation {
+                element_id,
+                path: path.to_owned(),
+            },
+            cx,
+        );
+    }
+
+    /// Moves the playhead to the selected element's next (or previous)
+    /// keyframe, on any of its parameters.
+    pub(crate) fn jump_to_keyframe(&mut self, forward: bool, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else {
+            self.set_status("Select a clip to step through its keyframes", cx);
+            return;
+        };
+        let playhead = self.playhead();
+        let mut times: Vec<MediaTime> = element
+            .animations
+            .values()
+            .flat_map(|channel| channel.keys.iter().map(|key| element.start_time + key.time))
+            .collect();
+        times.sort();
+        times.dedup();
+        let target = if forward {
+            times.into_iter().find(|&time| time > playhead)
+        } else {
+            times.into_iter().rev().find(|&time| time < playhead)
+        };
+        match target {
+            Some(time) => self.seek(time, cx),
+            None => self.set_status("No keyframe in that direction", cx),
+        }
+    }
+
+    pub(crate) fn add_effect(&mut self, effect: Effect, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(Command::AddEffect { element_id, effect }, cx);
+    }
+
+    pub(crate) fn update_effect(
+        &mut self,
+        effect_id: &str,
+        params: Option<Params>,
+        enabled: Option<bool>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        // Keyframed effect parameters get a key at the playhead.
+        let time = self.playhead();
+        let mut plain = Params::new();
+        let mut keyed = Vec::new();
+        if let Some(params) = params {
+            for (key, value) in params.iter() {
+                let path = format!("effects.{effect_id}.params.{key}");
+                match value.as_number() {
+                    Some(number) if element.is_animated(&path) => keyed.push((path, number)),
+                    _ => {
+                        plain.set(key.clone(), value.clone());
+                    }
+                }
+            }
+        }
+        for (path, value) in keyed {
+            self.execute(
+                Command::SetKeyframe {
+                    element_id: element_id.clone(),
+                    path,
+                    time,
+                    value,
+                    segment: None,
+                },
+                cx,
+            );
+        }
+        if !plain.is_empty() || enabled.is_some() {
+            self.execute(
+                Command::UpdateEffect {
+                    element_id,
+                    effect_id: effect_id.to_owned(),
+                    params: (!plain.is_empty()).then_some(plain),
+                    enabled,
+                },
+                cx,
+            );
+        }
+    }
+
+    pub(crate) fn remove_effect(&mut self, effect_id: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::RemoveEffect {
+                element_id,
+                effect_id: effect_id.to_owned(),
+            },
+            cx,
+        );
+    }
+
+    pub(crate) fn add_mask(&mut self, mask: Mask, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(Command::AddMask { element_id, mask }, cx);
+    }
+
+    pub(crate) fn update_mask(&mut self, mask_id: &str, params: Params, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::UpdateMask {
+                element_id,
+                mask_id: mask_id.to_owned(),
+                params,
+            },
+            cx,
+        );
+    }
+
+    pub(crate) fn remove_mask(&mut self, mask_id: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::RemoveMask {
+                element_id,
+                mask_id: mask_id.to_owned(),
             },
             cx,
         );
@@ -799,6 +1003,23 @@ impl EditorState {
 }
 
 /// Fits a `canvas`-sized frame into `width` x `height`, rounded to even.
+/// The value of a parameter path at a timeline time: the element's own
+/// parameters, or those of one of its effects (`effects.<id>.params.<key>`)
+/// or masks (`masks.<id>.params.<key>`), keyframes included.
+pub(crate) fn animated_value(element: &Element, path: &str, time: MediaTime) -> Option<f64> {
+    if let Some(rest) = path.strip_prefix("effects.") {
+        let (effect_id, key) = rest.split_once(".params.")?;
+        let effect = element.effect(effect_id)?;
+        return element.effect_params_at(effect, time).get(key)?.as_number();
+    }
+    if let Some(rest) = path.strip_prefix("masks.") {
+        let (mask_id, key) = rest.split_once(".params.")?;
+        let mask = element.mask(mask_id)?;
+        return element.mask_params_at(mask, time).get(key)?.as_number();
+    }
+    element.params_at(time).get(path)?.as_number()
+}
+
 fn fit_size(width: u32, height: u32, canvas_width: u32, canvas_height: u32) -> (u32, u32) {
     let (fit_w, fit_h) = editor::fit_contain(
         canvas_width as f32,

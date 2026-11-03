@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use time::{FrameRate, MediaTime};
 
+use crate::animation::{Animations, resolve_object_params, resolve_params};
 use crate::params::{Params, audio_defaults, text_defaults, visual_defaults};
 
 pub const PROJECT_FORMAT_VERSION: u32 = 1;
@@ -232,6 +233,103 @@ impl ElementKind {
     }
 }
 
+fn yes() -> bool {
+    true
+}
+
+/// A GPU effect on a visual element. `kind` names it (`blur`); `params`
+/// are its settings with the web app's keys (`intensity`, 0–100, for
+/// blur). Effects apply in order, before the element's mask.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Effect {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub params: Params,
+    #[serde(default = "yes")]
+    pub enabled: bool,
+}
+
+impl Effect {
+    pub const BLUR: &'static str = "blur";
+
+    /// A blur at the web app's default strength.
+    pub fn blur() -> Self {
+        let mut params = Params::new();
+        params.set("intensity", 15.0);
+        Self {
+            id: crate::new_id(),
+            kind: Self::BLUR.to_owned(),
+            params,
+            enabled: true,
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        match self.kind.as_str() {
+            Self::BLUR => "Blur",
+            other => other,
+        }
+    }
+}
+
+/// A shape that limits where a video or image element shows. `centerX`
+/// and `centerY` are offsets from the element's centre and `width` and
+/// `height` its size, all as fractions of the element's own size;
+/// `rotation` is in degrees, `scale` a multiplier, `feather` the softness
+/// of the edge in canvas pixels, and `inverted` shows the outside instead.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Mask {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub params: Params,
+}
+
+impl Mask {
+    pub const RECTANGLE: &'static str = "rectangle";
+    pub const ELLIPSE: &'static str = "ellipse";
+
+    pub fn rectangle() -> Self {
+        Self::shape(Self::RECTANGLE)
+    }
+
+    pub fn ellipse() -> Self {
+        Self::shape(Self::ELLIPSE)
+    }
+
+    /// A centred shape covering 60% of the element, like the web app's default.
+    pub fn shape(kind: &str) -> Self {
+        let mut params = Params::new();
+        params
+            .set("centerX", 0.0)
+            .set("centerY", 0.0)
+            .set("width", 0.6)
+            .set("height", 0.6)
+            .set("rotation", 0.0)
+            .set("scale", 1.0)
+            .set("feather", 0.0)
+            .set("inverted", false);
+        Self {
+            id: crate::new_id(),
+            kind: kind.to_owned(),
+            params,
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        match self.kind.as_str() {
+            Self::RECTANGLE => "Rectangle",
+            Self::ELLIPSE => "Ellipse",
+            other => other,
+        }
+    }
+}
+
 /// A clip on the timeline. `duration` is what is visible; `trim_start` and
 /// `trim_end` are how much of the source is cut off at each end.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -253,6 +351,14 @@ pub struct Element {
     pub hidden: bool,
     #[serde(default)]
     pub params: Params,
+    /// Keyframes by parameter path; see [`crate::animation`].
+    #[serde(default, skip_serializing_if = "Animations::is_empty")]
+    pub animations: Animations,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<Effect>,
+    /// Only the first mask is applied, as in the web app.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub masks: Vec<Mask>,
 }
 
 fn zero() -> MediaTime {
@@ -313,6 +419,9 @@ impl Element {
             source_duration,
             hidden: false,
             params,
+            animations: Animations::new(),
+            effects: Vec::new(),
+            masks: Vec::new(),
         }
     }
 
@@ -330,7 +439,65 @@ impl Element {
             source_duration: None,
             hidden: false,
             params,
+            animations: Animations::new(),
+            effects: Vec::new(),
+            masks: Vec::new(),
         }
+    }
+
+    /// A timeline time relative to this element's start.
+    pub fn local_time(&self, timeline_time: MediaTime) -> MediaTime {
+        timeline_time - self.start_time
+    }
+
+    /// The parameters with every keyframed one evaluated at a timeline time.
+    pub fn params_at(&self, timeline_time: MediaTime) -> Params {
+        if self.animations.is_empty() {
+            return self.params.clone();
+        }
+        resolve_params(&self.params, &self.animations, self.local_time(timeline_time))
+    }
+
+    pub fn is_animated(&self, path: &str) -> bool {
+        self.animations
+            .get(path)
+            .is_some_and(|channel| !channel.is_empty())
+    }
+
+    pub fn effect(&self, effect_id: &str) -> Option<&Effect> {
+        self.effects.iter().find(|effect| effect.id == effect_id)
+    }
+
+    pub fn mask(&self, mask_id: &str) -> Option<&Mask> {
+        self.masks.iter().find(|mask| mask.id == mask_id)
+    }
+
+    /// An effect's parameters with keyframes (`effects.<id>.params.<key>`)
+    /// evaluated at a timeline time.
+    pub fn effect_params_at(&self, effect: &Effect, timeline_time: MediaTime) -> Params {
+        resolve_object_params(
+            &effect.params,
+            &self.animations,
+            "effects",
+            &effect.id,
+            self.local_time(timeline_time),
+        )
+    }
+
+    /// A mask's parameters with keyframes (`masks.<id>.params.<key>`)
+    /// evaluated at a timeline time.
+    pub fn mask_params_at(&self, mask: &Mask, timeline_time: MediaTime) -> Params {
+        resolve_object_params(
+            &mask.params,
+            &self.animations,
+            "masks",
+            &mask.id,
+            self.local_time(timeline_time),
+        )
+    }
+
+    pub fn can_be_masked(&self) -> bool {
+        matches!(self.kind, ElementKind::Video { .. } | ElementKind::Image { .. })
     }
 
     pub fn end_time(&self) -> MediaTime {

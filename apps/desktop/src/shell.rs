@@ -223,6 +223,12 @@ impl Render for Shell {
             .on_action(cx.listener(|this, _: &StepForward, _, cx| {
                 this.with_state(cx, |s, cx| s.step_frames(1, cx))
             }))
+            .on_action(cx.listener(|this, _: &PreviousKeyframe, _, cx| {
+                this.with_state(cx, |s, cx| s.jump_to_keyframe(false, cx))
+            }))
+            .on_action(cx.listener(|this, _: &NextKeyframe, _, cx| {
+                this.with_state(cx, |s, cx| s.jump_to_keyframe(true, cx))
+            }))
             .on_action(cx.listener(|this, _: &GoToStart, _, cx| {
                 this.with_state(cx, |s, cx| s.seek(time::MediaTime::ZERO, cx))
             }))

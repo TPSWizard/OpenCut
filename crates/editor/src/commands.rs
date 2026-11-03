@@ -3,8 +3,10 @@
 
 use time::{FrameRate, MediaTime};
 
+use crate::animation::{Segment, split_animations};
 use crate::document::{
-    Background, CanvasSize, Element, ElementKind, Lane, MediaItem, Project, Track, TrackKind,
+    Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, Project, Track,
+    TrackKind,
 };
 use crate::error::EditorError;
 use crate::params::Params;
@@ -91,6 +93,52 @@ pub enum Command {
     },
     RenameProject(String),
     UpdateSettings(SettingsPatch),
+    /// Sets a keyframe of `path` at a timeline time (relative times are
+    /// stored). A key already at that time is replaced.
+    SetKeyframe {
+        element_id: String,
+        path: String,
+        time: MediaTime,
+        value: f64,
+        segment: Option<Segment>,
+    },
+    RemoveKeyframe {
+        element_id: String,
+        path: String,
+        keyframe_id: String,
+    },
+    /// Drops every keyframe of `path`; the element's own parameter value applies again.
+    ClearAnimation {
+        element_id: String,
+        path: String,
+    },
+    AddEffect {
+        element_id: String,
+        effect: Effect,
+    },
+    UpdateEffect {
+        element_id: String,
+        effect_id: String,
+        params: Option<Params>,
+        enabled: Option<bool>,
+    },
+    RemoveEffect {
+        element_id: String,
+        effect_id: String,
+    },
+    AddMask {
+        element_id: String,
+        mask: Mask,
+    },
+    UpdateMask {
+        element_id: String,
+        mask_id: String,
+        params: Params,
+    },
+    RemoveMask {
+        element_id: String,
+        mask_id: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -252,6 +300,10 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                     element.trim_start = element.trim_start + delta;
                     element.start_time = start;
                     element.duration = end - start;
+                    // Keys stay with the same source frames.
+                    for channel in element.animations.values_mut() {
+                        channel.shift(-delta);
+                    }
                 }
                 Edge::End => {
                     element.duration = end - start;
@@ -281,9 +333,13 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             right.start_time = split_at;
             right.duration = element.duration - left_duration;
             right.trim_start = element.trim_start + left_duration;
+            let (left_animations, right_animations) =
+                split_animations(&element.animations, left_duration);
+            right.animations = right_animations;
             let track = &mut project.tracks[track_index];
             let left = &mut track.elements[element_index];
             left.duration = left_duration;
+            left.animations = left_animations;
             if let Some(source) = left.source_duration {
                 left.trim_end = (source - left.trim_start - left.duration).max(MediaTime::ZERO);
             }
@@ -412,6 +468,160 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             track.hidden = *hidden;
             Outcome::None
         }
+        Command::SetKeyframe {
+            element_id,
+            path,
+            time,
+            value,
+            segment,
+        } => {
+            if path.trim().is_empty() {
+                return Err(EditorError::InvalidParams(
+                    "keyframe path cannot be empty".to_owned(),
+                ));
+            }
+            if !value.is_finite() {
+                return Err(EditorError::InvalidParams(
+                    "keyframe value must be a number".to_owned(),
+                ));
+            }
+            let (reference, element) = element_mut(project, element_id)?;
+            let local = *time - element.start_time;
+            element
+                .animations
+                .entry(path.clone())
+                .or_default()
+                .upsert(local, *value, *segment);
+            Outcome::Elements(vec![reference])
+        }
+        Command::RemoveKeyframe {
+            element_id,
+            path,
+            keyframe_id,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            let Some(channel) = element.animations.get_mut(path) else {
+                return Err(EditorError::InvalidParams(format!(
+                    "{path} is not animated"
+                )));
+            };
+            if !channel.remove(keyframe_id) {
+                return Err(EditorError::InvalidParams(format!(
+                    "keyframe {keyframe_id} does not exist"
+                )));
+            }
+            if channel.is_empty() {
+                element.animations.remove(path);
+            }
+            Outcome::Elements(vec![reference])
+        }
+        Command::ClearAnimation { element_id, path } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            element.animations.remove(path);
+            Outcome::Elements(vec![reference])
+        }
+        Command::AddEffect { element_id, effect } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            if !element.kind.is_visual() {
+                return Err(EditorError::InvalidParams(
+                    "effects apply to visual elements only".to_owned(),
+                ));
+            }
+            if element.effect(&effect.id).is_some() {
+                return Err(EditorError::InvalidParams(format!(
+                    "effect {} already exists",
+                    effect.id
+                )));
+            }
+            element.effects.push(effect.clone());
+            Outcome::Elements(vec![reference])
+        }
+        Command::UpdateEffect {
+            element_id,
+            effect_id,
+            params,
+            enabled,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            let effect = element
+                .effects
+                .iter_mut()
+                .find(|effect| &effect.id == effect_id)
+                .ok_or_else(|| {
+                    EditorError::InvalidParams(format!("effect {effect_id} does not exist"))
+                })?;
+            if let Some(params) = params {
+                effect.params.merge(params);
+            }
+            if let Some(enabled) = enabled {
+                effect.enabled = *enabled;
+            }
+            Outcome::Elements(vec![reference])
+        }
+        Command::RemoveEffect {
+            element_id,
+            effect_id,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            let before = element.effects.len();
+            element.effects.retain(|effect| &effect.id != effect_id);
+            if element.effects.len() == before {
+                return Err(EditorError::InvalidParams(format!(
+                    "effect {effect_id} does not exist"
+                )));
+            }
+            let prefix = format!("effects.{effect_id}.");
+            element.animations.retain(|path, _| !path.starts_with(&prefix));
+            Outcome::Elements(vec![reference])
+        }
+        Command::AddMask { element_id, mask } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            if !element.can_be_masked() {
+                return Err(EditorError::InvalidParams(
+                    "only video and image elements can be masked".to_owned(),
+                ));
+            }
+            if element.mask(&mask.id).is_some() {
+                return Err(EditorError::InvalidParams(format!(
+                    "mask {} already exists",
+                    mask.id
+                )));
+            }
+            element.masks.push(mask.clone());
+            Outcome::Elements(vec![reference])
+        }
+        Command::UpdateMask {
+            element_id,
+            mask_id,
+            params,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            let mask = element
+                .masks
+                .iter_mut()
+                .find(|mask| &mask.id == mask_id)
+                .ok_or_else(|| {
+                    EditorError::InvalidParams(format!("mask {mask_id} does not exist"))
+                })?;
+            mask.params.merge(params);
+            Outcome::Elements(vec![reference])
+        }
+        Command::RemoveMask {
+            element_id,
+            mask_id,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            let before = element.masks.len();
+            element.masks.retain(|mask| &mask.id != mask_id);
+            if element.masks.len() == before {
+                return Err(EditorError::InvalidParams(format!(
+                    "mask {mask_id} does not exist"
+                )));
+            }
+            let prefix = format!("masks.{mask_id}.");
+            element.animations.retain(|path, _| !path.starts_with(&prefix));
+            Outcome::Elements(vec![reference])
+        }
         Command::RenameProject(name) => {
             let name = name.trim();
             if name.is_empty() {
@@ -476,6 +686,20 @@ fn locate(project: &Project, element_id: &str) -> Result<(usize, usize), EditorE
     project
         .locate(element_id)
         .ok_or_else(|| EditorError::ElementNotFound(element_id.to_owned()))
+}
+
+/// An element to change in place, with its reference for the outcome.
+fn element_mut<'a>(
+    project: &'a mut Project,
+    element_id: &str,
+) -> Result<(ElementRef, &'a mut Element), EditorError> {
+    let (track_index, element_index) = locate(project, element_id)?;
+    let track = &mut project.tracks[track_index];
+    let reference = ElementRef {
+        track_id: track.id.clone(),
+        element_id: element_id.to_owned(),
+    };
+    Ok((reference, &mut track.elements[element_index]))
 }
 
 /// The first track that can take the element at `[start, end)`, creating one
@@ -805,6 +1029,216 @@ mod tests {
         let audio = project.tracks[3].id.clone();
         apply(&mut project, &Command::RemoveTrack { track_id: audio }).unwrap();
         assert_eq!(project.tracks.len(), 3);
+    }
+
+    #[test]
+    fn keyframes_follow_trims_and_splits() {
+        let (mut project, id) = project_with_clip();
+        let key = |time: f64, value: f64| Command::SetKeyframe {
+            element_id: id.clone(),
+            path: "opacity".to_owned(),
+            time: seconds(time),
+            value,
+            segment: None,
+        };
+        apply(&mut project, &key(2.0, 0.0)).unwrap();
+        apply(&mut project, &key(6.0, 1.0)).unwrap();
+        apply(&mut project, &key(6.0, 0.5)).unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        let channel = &element.animations["opacity"];
+        assert_eq!(channel.keys.len(), 2, "a key at the same time is replaced");
+        assert_eq!(channel.keys[1].value, 0.5);
+        assert!(element.is_animated("opacity"));
+        assert_eq!(element.params_at(seconds(4.0)).number("opacity", 9.0), 0.25);
+
+        // Trimming the start by 1 s keeps the keys on the same frames.
+        apply(
+            &mut project,
+            &Command::ResizeElement {
+                element_id: id.clone(),
+                edge: Edge::Start,
+                time: seconds(1.0),
+            },
+        )
+        .unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        assert_eq!(element.animations["opacity"].keys[0].time, seconds(1.0));
+        assert_eq!(element.params_at(seconds(4.0)).number("opacity", 9.0), 0.25);
+
+        // Splitting keeps the motion continuous on both sides.
+        let outcome = apply(
+            &mut project,
+            &Command::SplitElement {
+                element_id: id.clone(),
+                time: seconds(4.0),
+            },
+        )
+        .unwrap();
+        let right_id = outcome.element_refs()[1].element_id.clone();
+        let left = project.element(&id).unwrap().1.clone();
+        let right = project.element(&right_id).unwrap().1.clone();
+        assert_eq!(left.params_at(seconds(3.0)).number("opacity", 9.0), 0.125);
+        assert_eq!(right.params_at(seconds(4.0)).number("opacity", 9.0), 0.25);
+        assert_eq!(right.params_at(seconds(5.0)).number("opacity", 9.0), 0.375);
+        assert_eq!(right.params_at(seconds(9.0)).number("opacity", 9.0), 0.5);
+
+        let keyframe_id = right.animations["opacity"].keys[0].id.clone();
+        apply(
+            &mut project,
+            &Command::RemoveKeyframe {
+                element_id: right_id.clone(),
+                path: "opacity".to_owned(),
+                keyframe_id,
+            },
+        )
+        .unwrap();
+        apply(
+            &mut project,
+            &Command::ClearAnimation {
+                element_id: right_id.clone(),
+                path: "opacity".to_owned(),
+            },
+        )
+        .unwrap();
+        let right = project.element(&right_id).unwrap().1.clone();
+        assert!(!right.is_animated("opacity"));
+        assert_eq!(right.params_at(seconds(5.0)).number("opacity", 9.0), 1.0);
+        assert!(matches!(
+            apply(
+                &mut project,
+                &Command::RemoveKeyframe {
+                    element_id: right_id,
+                    path: "opacity".to_owned(),
+                    keyframe_id: "nope".to_owned(),
+                },
+            ),
+            Err(EditorError::InvalidParams(_))
+        ));
+    }
+
+    #[test]
+    fn effects_and_masks_are_added_updated_and_removed() {
+        let (mut project, id) = project_with_clip();
+        let mut blur = Effect::blur();
+        blur.id = "fx".to_owned();
+        apply(
+            &mut project,
+            &Command::AddEffect {
+                element_id: id.clone(),
+                effect: blur.clone(),
+            },
+        )
+        .unwrap();
+        assert!(matches!(
+            apply(
+                &mut project,
+                &Command::AddEffect {
+                    element_id: id.clone(),
+                    effect: blur,
+                },
+            ),
+            Err(EditorError::InvalidParams(_))
+        ));
+        let mut params = Params::new();
+        params.set("intensity", 40.0);
+        apply(
+            &mut project,
+            &Command::UpdateEffect {
+                element_id: id.clone(),
+                effect_id: "fx".to_owned(),
+                params: Some(params),
+                enabled: Some(false),
+            },
+        )
+        .unwrap();
+        apply(
+            &mut project,
+            &Command::SetKeyframe {
+                element_id: id.clone(),
+                path: "effects.fx.params.intensity".to_owned(),
+                time: seconds(0.0),
+                value: 10.0,
+                segment: None,
+            },
+        )
+        .unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        let effect = element.effect("fx").unwrap();
+        assert!(!effect.enabled);
+        assert_eq!(effect.params.number("intensity", 0.0), 40.0);
+        assert_eq!(
+            element.effect_params_at(effect, seconds(3.0)).number("intensity", 0.0),
+            10.0
+        );
+        apply(
+            &mut project,
+            &Command::RemoveEffect {
+                element_id: id.clone(),
+                effect_id: "fx".to_owned(),
+            },
+        )
+        .unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        assert!(element.effects.is_empty());
+        assert!(element.animations.is_empty(), "the effect's keyframes go with it");
+
+        let mut mask = Mask::ellipse();
+        mask.id = "m".to_owned();
+        apply(
+            &mut project,
+            &Command::AddMask {
+                element_id: id.clone(),
+                mask,
+            },
+        )
+        .unwrap();
+        let mut params = Params::new();
+        params.set("feather", 12.0).set("inverted", true);
+        apply(
+            &mut project,
+            &Command::UpdateMask {
+                element_id: id.clone(),
+                mask_id: "m".to_owned(),
+                params,
+            },
+        )
+        .unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        let mask = element.mask("m").unwrap();
+        assert_eq!(mask.params.number("feather", 0.0), 12.0);
+        assert!(mask.params.bool("inverted", false));
+        assert_eq!(mask.params.number("width", 0.0), 0.6, "other settings stay");
+        apply(
+            &mut project,
+            &Command::RemoveMask {
+                element_id: id.clone(),
+                mask_id: "m".to_owned(),
+            },
+        )
+        .unwrap();
+        assert!(project.element(&id).unwrap().1.masks.is_empty());
+
+        // Text cannot be masked; audio cannot take effects.
+        let text = Element::text("Hi", seconds(20.0));
+        let text_id = text.id.clone();
+        apply(
+            &mut project,
+            &Command::InsertElement {
+                element: text,
+                placement: TrackPlacement::Auto,
+            },
+        )
+        .unwrap();
+        assert!(matches!(
+            apply(
+                &mut project,
+                &Command::AddMask {
+                    element_id: text_id,
+                    mask: Mask::rectangle(),
+                },
+            ),
+            Err(EditorError::InvalidParams(_))
+        ));
     }
 
     #[test]

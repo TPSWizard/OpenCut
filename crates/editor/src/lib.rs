@@ -8,6 +8,7 @@
 //! the web Editor API (`transform.positionX`, `opacity`, `content`, ...)
 //! so a project means the same thing on every front end.
 
+mod animation;
 mod audio;
 mod commands;
 mod document;
@@ -17,20 +18,25 @@ mod frame;
 mod params;
 mod store;
 
+pub use animation::{
+    Animations, Channel, KEY_SNAP, Keyframe, Segment, is_param_path, resolve_object_params,
+    resolve_params, split_animations,
+};
 pub use audio::{AudioClipPlan, plan_audio};
 pub use commands::{
     Command, Edge, ElementPatch, ElementRef, Outcome, SettingsPatch, TrackPlacement, apply,
     nearest_free_start,
 };
 pub use document::{
-    Background, CanvasSize, Element, ElementKind, Lane, MediaItem, MediaKind, PROJECT_FORMAT_VERSION,
+    Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, MediaKind,
+    PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, now_millis,
 };
 pub use editor::Editor;
 pub use error::EditorError;
 pub use frame::{
-    FramePlan, LayerPlan, LayerSource, LayerTransform, TextAlign, TextBackground, TextStyle, fit_contain,
-    parse_hex_color, plan_frame,
+    EffectPlan, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
+    TextBackground, TextStyle, fit_contain, parse_hex_color, plan_frame,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
 pub use store::{ProjectStore, ProjectSummary};

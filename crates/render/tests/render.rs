@@ -123,6 +123,118 @@ fn composites_image_and_text_over_background() {
 }
 
 #[test]
+fn applies_masks_blur_and_keyframes() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Masked");
+    project.settings.background = editor::Background::Color {
+        color: "#0000ff".to_owned(),
+    };
+    let image_id = add_image(&mut project, dir.path());
+    // The square image fills the canvas height (contain), so at 320x180 it
+    // covers x in 70..250.
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    let mut mask = editor::Mask::ellipse();
+    mask.params.set("width", 0.5).set("height", 0.5);
+    image.masks.push(mask);
+    let element_id = image.id.clone();
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: image,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "inside the ellipse");
+    assert_eq!(pixel(&frame, 78, 8), [255, 0, 0, 255], "image corner is masked away");
+    assert_eq!(pixel(&frame, 2, 2), [255, 0, 0, 255], "background");
+
+    // Inverting shows the corner and hides the middle.
+    let mask_id = project.element(&element_id).unwrap().1.masks[0].id.clone();
+    let mut inverted = editor::Params::new();
+    inverted.set("inverted", true);
+    apply(
+        &mut project,
+        &EditorCommand::UpdateMask {
+            element_id: element_id.clone(),
+            mask_id: mask_id.clone(),
+            params: inverted,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 160, 90), [255, 0, 0, 255], "middle now shows the background");
+    assert_eq!(pixel(&frame, 78, 8), [0, 255, 0, 255], "corner now shows the image");
+
+    // A feathered edge blends.
+    let mut feathered = editor::Params::new();
+    feathered.set("inverted", false).set("feather", 120.0);
+    apply(
+        &mut project,
+        &EditorCommand::UpdateMask {
+            element_id: element_id.clone(),
+            mask_id,
+            params: feathered,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let p = pixel(&frame, 160, 90 - 44);
+    assert!(p[0] > 20 && p[1] > 20, "feathered edge mixes image and background: {p:?}");
+
+    // Blur softens the image edge: without it the pixel just outside the
+    // square is pure background, with it some green bleeds over.
+    let mask_id = project.element(&element_id).unwrap().1.masks[0].id.clone();
+    apply(
+        &mut project,
+        &EditorCommand::RemoveMask {
+            element_id: element_id.clone(),
+            mask_id,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 69, 90), [255, 0, 0, 255], "sharp edge without blur");
+    let mut blur = editor::Effect::blur();
+    blur.params.set("intensity", 100.0);
+    apply(
+        &mut project,
+        &EditorCommand::AddEffect {
+            element_id: element_id.clone(),
+            effect: blur,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let p = pixel(&frame, 69, 90);
+    assert!(p[1] > 15 && p[0] < 250, "blurred edge bleeds green: {p:?}");
+
+    // Keyframed opacity fades the image in over the first two seconds.
+    for (time, value) in [(0.0, 0.0), (2.0, 1.0)] {
+        apply(
+            &mut project,
+            &EditorCommand::SetKeyframe {
+                element_id: element_id.clone(),
+                path: "opacity".to_owned(),
+                time: seconds(time),
+                value,
+                segment: None,
+            },
+        )
+        .unwrap();
+    }
+    let start = pixel(&renderer.render(&project, seconds(0.0), 320, 180).unwrap(), 160, 90);
+    let middle = pixel(&renderer.render(&project, seconds(1.0), 320, 180).unwrap(), 160, 90);
+    let end = pixel(&renderer.render(&project, seconds(2.0), 320, 180).unwrap(), 160, 90);
+    assert_eq!(start, [255, 0, 0, 255], "invisible at the first key");
+    assert!(middle[1] > 90 && middle[1] < 170 && middle[0] > 90, "half way: {middle:?}");
+    assert!(end[1] > 240 && end[0] < 15, "fully visible at the last key: {end:?}");
+}
+
+#[test]
 fn renders_video_frames_through_ffmpeg() {
     let Ok(ffmpeg) = Ffmpeg::locate() else {
         eprintln!("ffmpeg not installed; skipping");

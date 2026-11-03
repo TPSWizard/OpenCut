@@ -393,6 +393,48 @@ impl Render for TimelinePanel {
                 let focus_for_clip = focus_handle.clone();
                 let start_seconds = element.start_time.to_seconds_f64();
 
+                // Keyframe markers: one dot per distinct key time, on the
+                // selected clip only.
+                let mut key_times: Vec<MediaTime> = if selected {
+                    element
+                        .animations
+                        .values()
+                        .flat_map(|channel| channel.keys.iter().map(|key| key.time))
+                        .filter(|&time| time >= MediaTime::ZERO && time <= element.duration)
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                key_times.sort();
+                key_times.dedup();
+                let markers: Vec<_> = key_times
+                    .into_iter()
+                    .map(|time| {
+                        let x = (time.to_seconds_f64() * zoom as f64) as f32;
+                        let target = element.start_time + time;
+                        let state = state_entity.clone();
+                        let at_playhead = (target - playhead).as_ticks().abs() <= editor::KEY_SNAP.as_ticks();
+                        div()
+                            .id(eid("key", &format!("{id}:{}", time.as_ticks())))
+                            .absolute()
+                            .top(px(TRACK_HEIGHT / 2.0 - 8.0))
+                            .left(px(x - 4.0))
+                            .size(px(8.))
+                            .rounded_full()
+                            .bg(if at_playhead { colors.foreground } else { gpui::white().opacity(0.75) })
+                            .border_1()
+                            .border_color(gpui::black().opacity(0.6))
+                            .cursor_pointer()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                move |_, _, cx| {
+                                    cx.stop_propagation();
+                                    state.update(cx, |state, cx| state.seek(target, cx));
+                                },
+                            )
+                    })
+                    .collect();
+
                 div()
                     .id(eid("clip", &id))
                     .absolute()
@@ -467,6 +509,7 @@ impl Render for TimelinePanel {
                                     .child(detail),
                             ),
                     )
+                    .children(markers)
                     .child(
                         div()
                             .id(eid("trim-start", &id))

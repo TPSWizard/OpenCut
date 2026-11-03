@@ -16,7 +16,7 @@ in the root `Cargo.toml`.
 | `crates/effects`       | `effects`      | GPU effect pipeline (gaussian blur).                                         |
 | `crates/masks`         | `masks`        | Signed-distance-field masks with feathering (jump flooding on the GPU).      |
 | `crates/compositor`    | `compositor`   | Layer compositor: texture pool/store, blend modes, mask and layer shaders.   |
-| `crates/render`        | `render`       | `Renderer` (frame plan → pixels through `media`, cosmic-text and `compositor`) and `Mixer` (audio clips → samples) for native front ends. |
+| `crates/render`        | `render`       | `Renderer` (frame plan → pixels through `media`, cosmic-text and `compositor`; builds blur passes and rasterises mask shapes) and `Mixer` (audio clips → samples) for native front ends. |
 | `crates/wasm`          | `opencut-wasm` | `cdylib` that re-exports the crates above for the web app via wasm-bindgen.  |
 
 Dependency graph (arrows point at dependencies):
@@ -59,12 +59,19 @@ additionally emits a JS getter of the same name.
 media items (referenced by path), tracks stored top to bottom (overlays, the
 main video track, audio) and their elements. Element parameters are a flat
 map with the same keys as the web Editor API (`transform.positionX`,
-`opacity`, `content`, `fontSize`, …), and times are `MediaTime` ticks.
+`opacity`, `content`, `fontSize`, …), and times are `MediaTime` ticks. An
+element also carries `animations` (keyframe channels by parameter path, with
+times relative to the element's start; `editor::animation`), `effects` (GPU
+effects such as `blur` with their own parameters) and `masks` (shapes that
+limit where a video or image shows), all in the web app's JSON shape.
+`Element::params_at` resolves keyframes at a time; effect parameters can be
+keyed under `effects.<id>.params.<key>`.
 
 Every edit is an `editor::Command` applied with `editor::apply`; `editor::Editor`
 wraps a project with undo and redo. `plan_frame` says which layers are on
-screen at a time and how they are transformed; `plan_audio` says which parts
-of which files are audible. `ProjectStore` reads and writes
+screen at a time, how they are transformed, which effects apply and which
+mask shape clips them, all with keyframes resolved; `plan_audio` says which
+parts of which files are audible. `ProjectStore` reads and writes
 `<root>/<id>/project.json` (format version 1).
 
 ## Media I/O (`crates/media`)
@@ -144,6 +151,7 @@ cargo test -p opencut-desktop                         # or: moon run desktop:tes
 # Reproduce an export outside the app: exports <root>/<id>/project.json at
 # its canvas size into a temporary directory and fails with ffmpeg's message
 OPENCUT_EXPORT_PROJECT=~/.opencut/projects/<id> cargo test -p opencut-desktop exports_the_project_named
+# add OPENCUT_EXPORT_OUTPUT=/path/out.mp4 to keep the file
 ```
 
 ## Adding a new crate

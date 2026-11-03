@@ -7,6 +7,7 @@ mod texture_store;
 pub use blend_mode::BlendMode;
 pub use compositor::{Compositor, CompositorError, RenderFrameOptions};
 pub use frame::{
-    CanvasClearDescriptor, CanvasTextureDescriptor, EffectPassDescriptor, FrameDescriptor,
-    FrameItemDescriptor, LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor,
+    CanvasClearDescriptor, CanvasTextureDescriptor, EffectPassDescriptor,
+    EffectUniformValueDescriptor, FrameDescriptor, FrameItemDescriptor, LayerDescriptor,
+    LayerMaskDescriptor, QuadTransformDescriptor,
 };

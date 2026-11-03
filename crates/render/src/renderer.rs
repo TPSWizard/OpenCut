@@ -3,14 +3,16 @@ use std::sync::Arc;
 
 use compositor::{
     BlendMode, CanvasClearDescriptor, Compositor, FrameDescriptor, FrameItemDescriptor,
-    LayerDescriptor, QuadTransformDescriptor,
+    LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor,
 };
-use editor::{LayerPlan, LayerSource, MediaItem, Project, fit_contain, plan_frame};
+use editor::{LayerPlan, LayerSource, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
 use gpu::{GpuContext, wgpu};
 use media::{Ffmpeg, VideoSource, decode_image};
 use time::MediaTime;
 
+use crate::effects::effect_pass_groups;
 use crate::error::RenderError;
+use crate::mask::rasterize_mask;
 use crate::text::TextRasterizer;
 
 #[derive(Clone, Debug, Default)]
@@ -46,6 +48,8 @@ pub struct Renderer {
     images: HashMap<String, (u32, u32)>,
     /// Rasterised text by element id: the style it was made from and its size.
     texts: HashMap<String, (String, u32, u32)>,
+    /// Rasterised masks by element id: what they were made from.
+    masks: HashMap<String, String>,
 }
 
 impl Renderer {
@@ -62,6 +66,7 @@ impl Renderer {
             videos: HashMap::new(),
             images: HashMap::new(),
             texts: HashMap::new(),
+            masks: HashMap::new(),
         })
     }
 
@@ -103,21 +108,26 @@ impl Renderer {
                 ),
             };
             let transform = &layer.transform;
+            let quad = QuadTransformDescriptor {
+                center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
+                center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,
+                width: (base_width * transform.scale_x.abs() * scale_x).max(1.0),
+                height: (base_height * transform.scale_y.abs() * scale_y).max(1.0),
+                rotation_degrees: transform.rotate_degrees,
+                flip_x: transform.scale_x < 0.0,
+                flip_y: transform.scale_y < 0.0,
+            };
+            let mask = layer
+                .mask
+                .as_ref()
+                .map(|mask| self.prepare_mask(&layer.element_id, mask, &quad, width, height, scale_x));
             items.push(FrameItemDescriptor::Layer(LayerDescriptor {
                 texture_id,
-                transform: QuadTransformDescriptor {
-                    center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
-                    center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,
-                    width: (base_width * transform.scale_x.abs() * scale_x).max(1.0),
-                    height: (base_height * transform.scale_y.abs() * scale_y).max(1.0),
-                    rotation_degrees: transform.rotate_degrees,
-                    flip_x: transform.scale_x < 0.0,
-                    flip_y: transform.scale_y < 0.0,
-                },
+                transform: quad,
                 opacity: layer.opacity,
                 blend_mode: parse_blend_mode(&layer.blend_mode),
-                effect_pass_groups: Vec::new(),
-                mask: None,
+                effect_pass_groups: effect_pass_groups(&layer.effects, width, height),
+                mask,
             }));
         }
 
@@ -238,6 +248,32 @@ impl Renderer {
         }
     }
 
+    /// Makes sure the element's mask texture matches the mask and the
+    /// element's placement in this frame, and describes it for the
+    /// compositor. Feather is given in canvas pixels and scaled to the frame.
+    fn prepare_mask(
+        &mut self,
+        element_id: &str,
+        mask: &MaskPlan,
+        quad: &QuadTransformDescriptor,
+        width: u32,
+        height: u32,
+        scale: f32,
+    ) -> LayerMaskDescriptor {
+        let texture_id = format!("mask:{element_id}");
+        let key = format!("{}:{:?}:{quad:?}:{width}x{height}", mask.kind, mask.params);
+        if self.masks.get(element_id) != Some(&key) {
+            let pixels = rasterize_mask(&mask.kind, &mask.params, quad, width, height);
+            self.upload(&texture_id, width, height, &pixels);
+            self.masks.insert(element_id.to_owned(), key);
+        }
+        LayerMaskDescriptor {
+            texture_id,
+            feather: (mask.params.number("feather", 0.0).max(0.0) as f32 * scale).max(0.0),
+            inverted: mask.params.bool("inverted", false),
+        }
+    }
+
     fn upload(&mut self, texture_id: &str, width: u32, height: u32, bgra: &[u8]) {
         let pixels: std::borrow::Cow<[u8]> = if self.context.pixels_are_bgra() {
             std::borrow::Cow::Borrowed(bgra)
@@ -300,6 +336,22 @@ impl Renderer {
         for id in stale {
             self.texts.remove(&id);
             let texture_id = format!("text:{id}");
+            self.slots.remove(&texture_id);
+            self.compositor.release_texture(&texture_id);
+        }
+        let stale: Vec<String> = self
+            .masks
+            .keys()
+            .filter(|id| {
+                project
+                    .element(id)
+                    .is_none_or(|(_, element)| element.masks.is_empty())
+            })
+            .cloned()
+            .collect();
+        for id in stale {
+            self.masks.remove(&id);
+            let texture_id = format!("mask:{id}");
             self.slots.remove(&texture_id);
             self.compositor.release_texture(&texture_id);
         }

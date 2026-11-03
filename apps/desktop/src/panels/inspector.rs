@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use editor::{Background, CanvasSize, Command, ElementKind, ElementPatch, Params, SettingsPatch};
-use gpui::{Context, Entity, FontWeight, Window, div, prelude::*, px};
+use editor::{
+    Background, CanvasSize, Command, Effect, ElementKind, ElementPatch, Mask, Params, SettingsPatch,
+};
+use gpui::{Context, Entity, FocusHandle, FontWeight, Window, div, prelude::*, px};
 use time::FrameRate;
 
 use crate::components::{Button, ButtonSize, ButtonVariant, Separator, TextInput, eid};
@@ -11,12 +13,16 @@ use crate::theme::ActiveTheme;
 
 /// Properties of the selected element, or of the project when nothing is
 /// selected. Every field is a text input that commits on Enter or blur.
+/// Numeric parameters can be keyframed: the diamond next to a field adds
+/// or removes a key at the playhead, and a keyed field edits that key.
 pub(crate) struct InspectorPanel {
     state: Entity<EditorState>,
-    fields: HashMap<&'static str, Entity<TextInput>>,
+    editor_focus: FocusHandle,
+    /// Text inputs by field key, created on first use.
+    fields: HashMap<String, Entity<TextInput>>,
 }
 
-/// Numeric element parameters shown under "Transform" and "Audio".
+/// Numeric element parameters shown under "Transform".
 const NUMBER_PARAMS: &[(&str, &str, f64)] = &[
     ("transform.positionX", "Position X", 0.0),
     ("transform.positionY", "Position Y", 0.0),
@@ -38,137 +44,84 @@ const TEXT_STRING_PARAMS: &[(&str, &str, &str)] = &[
     ("color", "Color", "#ffffff"),
 ];
 
+/// Mask settings shown as percentages of the element's size.
+const MASK_PERCENT_PARAMS: &[(&str, &str)] = &[
+    ("centerX", "X (%)"),
+    ("centerY", "Y (%)"),
+    ("width", "Width (%)"),
+    ("height", "Height (%)"),
+];
+
+/// Where a parameter stands with respect to keyframes.
+#[derive(Clone)]
+struct KeyState {
+    path: String,
+    animated: bool,
+    at_playhead: bool,
+}
+
+type Commit = Box<dyn Fn(&str, &mut EditorState, &mut Context<EditorState>) + 'static>;
+
 impl InspectorPanel {
-    pub(crate) fn new(state: Entity<EditorState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(state: Entity<EditorState>, _window: &mut Window, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let editor_focus = state.read(cx).focus_handle.clone();
-        let mut fields = HashMap::new();
-
-        for (key, _, _) in NUMBER_PARAMS.iter().chain(TEXT_NUMBER_PARAMS) {
-            let param = *key;
-            let state_for_field = state.clone();
-            fields.insert(
-                param,
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        if let Ok(value) = text.trim().parse::<f64>() {
-                            let mut params = Params::new();
-                            params.set(param, value);
-                            state_for_field.update(cx, |state, cx| state.update_selected_params(params, cx));
-                        }
-                    })
-                }),
-            );
-        }
-        for (key, _, _) in TEXT_STRING_PARAMS {
-            let param = *key;
-            let state_for_field = state.clone();
-            fields.insert(
-                param,
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        let mut params = Params::new();
-                        params.set(param, text.to_owned());
-                        state_for_field.update(cx, |state, cx| state.update_selected_params(params, cx));
-                    })
-                }),
-            );
-        }
-        {
-            let state_for_field = state.clone();
-            fields.insert(
-                "volume",
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "0").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        if let Ok(value) = text.trim().parse::<f64>() {
-                            let mut params = Params::new();
-                            params.set("volume", value.clamp(-60.0, 20.0));
-                            state_for_field.update(cx, |state, cx| state.update_selected_params(params, cx));
-                        }
-                    })
-                }),
-            );
-        }
-        {
-            let state_for_field = state.clone();
-            fields.insert(
-                "element.name",
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "Name").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        let name = text.trim().to_owned();
-                        if !name.is_empty() {
-                            state_for_field.update(cx, |state, cx| {
-                                state.patch_selected(
-                                    ElementPatch {
-                                        name: Some(name),
-                                        ..Default::default()
-                                    },
-                                    cx,
-                                )
-                            });
-                        }
-                    })
-                }),
-            );
-        }
-        {
-            let state_for_field = state.clone();
-            fields.insert(
-                "project.name",
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "Project name").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        state_for_field.update(cx, |state, cx| state.rename_project(text.to_owned(), cx));
-                    })
-                }),
-            );
-        }
-        {
-            let state_for_field = state.clone();
-            fields.insert(
-                "project.background",
-                cx.new(|cx| {
-                    TextInput::new(window, cx, "#000000").focus_after(editor_focus.clone()).on_commit(move |text, _, cx| {
-                        if editor::parse_hex_color(text).is_some() {
-                            let color = text.trim().to_owned();
-                            state_for_field.update(cx, |state, cx| {
-                                state.execute(
-                                    Command::UpdateSettings(SettingsPatch {
-                                        background: Some(Background::Color { color }),
-                                        ..Default::default()
-                                    }),
-                                    cx,
-                                );
-                            });
-                        }
-                    })
-                }),
-            );
-        }
-
-        Self { state, fields }
-    }
-
-    fn sync_field(&self, key: &str, value: String, window: &Window, cx: &mut Context<Self>) {
-        if let Some(field) = self.fields.get(key) {
-            field.update(cx, |field, cx| field.set_text(value, window, cx));
+        Self {
+            state,
+            editor_focus,
+            fields: HashMap::new(),
         }
     }
 
-    fn field(&self, key: &str) -> Entity<TextInput> {
-        self.fields[key].clone()
+    /// The input for `key`, created with `commit` on first use, showing
+    /// `text` (unless it is being typed in).
+    fn field(
+        &mut self,
+        key: &str,
+        placeholder: &'static str,
+        text: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        commit: Commit,
+    ) -> Entity<TextInput> {
+        let field = match self.fields.get(key) {
+            Some(field) => field.clone(),
+            None => {
+                let state = self.state.clone();
+                let editor_focus = self.editor_focus.clone();
+                let field = cx.new(|cx| {
+                    TextInput::new(window, cx, placeholder)
+                        .focus_after(editor_focus)
+                        .on_commit(move |text, _, cx| {
+                            state.update(cx, |state, cx| commit(text, state, cx));
+                        })
+                });
+                self.fields.insert(key.to_owned(), field.clone());
+                field
+            }
+        };
+        field.update(cx, |field, cx| field.set_text(text, window, cx));
+        field
     }
 
+    /// A labelled field, with keyframe buttons when `key_state` is given.
     fn row(
-        &self,
+        &mut self,
         label: &'static str,
         key: &str,
-        window: &Window,
-    ) -> impl IntoElement {
+        placeholder: &'static str,
+        text: String,
+        key_state: Option<KeyState>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        commit: Commit,
+    ) -> gpui::Div {
         let colors = window.theme().colors;
-        div()
+        let field = self.field(key, placeholder, text, window, cx, commit);
+        let mut row = div()
             .flex()
             .items_center()
-            .gap(px(8.))
+            .gap(px(6.))
             .child(
                 div()
                     .w(px(88.))
@@ -177,16 +130,57 @@ impl InspectorPanel {
                     .text_color(colors.muted_foreground)
                     .child(label),
             )
-            .child(div().flex_1().child(self.field(key)))
+            .child(div().flex_1().child(field));
+        if let Some(key_state) = key_state {
+            let path = key_state.path.clone();
+            let state = self.state.clone();
+            row = row.child(
+                Button::new(eid("key", &path), "◆")
+                    .variant(if key_state.at_playhead {
+                        ButtonVariant::Default
+                    } else if key_state.animated {
+                        ButtonVariant::Outline
+                    } else {
+                        ButtonVariant::Ghost
+                    })
+                    .size(ButtonSize::IconXSmall)
+                    .on_click(move |_, _, cx| {
+                        state.update(cx, |state, cx| state.toggle_keyframe(&path, cx))
+                    }),
+            );
+            if key_state.animated {
+                let path = key_state.path.clone();
+                let state = self.state.clone();
+                row = row.child(
+                    Button::new(eid("unkey", &path), "×")
+                        .variant(ButtonVariant::Ghost)
+                        .size(ButtonSize::IconXSmall)
+                        .on_click(move |_, _, cx| {
+                            state.update(cx, |state, cx| state.clear_animation(&path, cx))
+                        }),
+                );
+            }
+        }
+        row
     }
 
-    fn heading(&self, text: &'static str, window: &Window) -> impl IntoElement {
+    fn heading(&self, text: &'static str, window: &Window) -> gpui::Div {
         let colors = window.theme().colors;
         div()
             .text_xs()
             .font_weight(FontWeight::SEMIBOLD)
             .text_color(colors.foreground)
             .child(text)
+    }
+
+    fn label_cell(text: impl Into<gpui::SharedString>, window: &Window) -> gpui::Div {
+        let colors = window.theme().colors;
+        div()
+            .w(px(88.))
+            .flex_none()
+            .text_xs()
+            .text_color(colors.muted_foreground)
+            .child(text.into())
     }
 }
 
@@ -198,6 +192,25 @@ fn number_text(value: f64) -> String {
     }
 }
 
+/// A commit handler that parses a number and sets one element parameter.
+fn set_number_param(param: &'static str) -> Commit {
+    Box::new(move |text, state, cx| {
+        if let Ok(value) = text.trim().parse::<f64>() {
+            let mut params = Params::new();
+            params.set(param, value);
+            state.update_selected_params(params, cx);
+        }
+    })
+}
+
+fn set_text_param(param: &'static str) -> Commit {
+    Box::new(move |text, state, cx| {
+        let mut params = Params::new();
+        params.set(param, text.to_owned());
+        state.update_selected_params(params, cx);
+    })
+}
+
 impl Render for InspectorPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = window.theme();
@@ -205,6 +218,7 @@ impl Render for InspectorPanel {
         let state = self.state.read(cx);
         let project = state.project();
         let rate = project.settings.fps;
+        let playhead = state.playhead();
         let selected = state.selected_element().cloned();
         let selection_count = state.selection.len();
         let track_kind = selected
@@ -223,22 +237,19 @@ impl Render for InspectorPanel {
         };
         let canvas = project.settings.canvas;
 
-        // Push the current values into the fields (skipped while typing).
-        match &selected {
-            Some(element) => {
-                self.sync_field("element.name", element.name.clone(), window, cx);
-                for (key, _, default) in NUMBER_PARAMS.iter().chain(TEXT_NUMBER_PARAMS) {
-                    self.sync_field(key, number_text(element.params.number(key, *default)), window, cx);
+        // Drop inputs that belonged to another element's effects and masks.
+        if let Some(element) = &selected {
+            let effect_ids: Vec<String> = element.effects.iter().map(|effect| effect.id.clone()).collect();
+            let mask_ids: Vec<String> = element.masks.iter().map(|mask| mask.id.clone()).collect();
+            self.fields.retain(|key, _| {
+                if let Some(rest) = key.strip_prefix("effect.") {
+                    effect_ids.iter().any(|id| rest.starts_with(id.as_str()))
+                } else if let Some(rest) = key.strip_prefix("mask.") {
+                    mask_ids.iter().any(|id| rest.starts_with(id.as_str()))
+                } else {
+                    true
                 }
-                for (key, _, default) in TEXT_STRING_PARAMS {
-                    self.sync_field(key, element.params.text(key, default).into_owned(), window, cx);
-                }
-                self.sync_field("volume", number_text(element.params.number("volume", 0.0)), window, cx);
-            }
-            None => {
-                self.sync_field("project.name", project_name.clone(), window, cx);
-                self.sync_field("project.background", background.clone(), window, cx);
-            }
+            });
         }
 
         let mut content = div()
@@ -257,15 +268,53 @@ impl Render for InspectorPanel {
                 let has_audio = matches!(element.kind, ElementKind::Audio { .. })
                     || (matches!(element.kind, ElementKind::Video { .. }) && media_has_audio);
                 let is_visual = element.kind.is_visual();
+                let can_mask = element.can_be_masked();
                 let muted = element.params.bool("muted", false);
                 let hidden = element.hidden;
                 let align = element.params.text("textAlign", "center").into_owned();
                 let bold = element.params.text("fontWeight", "normal").as_ref() == "bold";
                 let italic = element.params.text("fontStyle", "normal").as_ref() == "italic";
+                // Values at the playhead, so keyframed fields follow the motion.
+                let params = element.params_at(playhead);
+                let local = element.local_time(playhead);
+                let key_state = |path: &str| -> KeyState {
+                    let channel = element.animations.get(path);
+                    KeyState {
+                        path: path.to_owned(),
+                        animated: channel.is_some_and(|channel| !channel.is_empty()),
+                        at_playhead: channel.is_some_and(|channel| channel.key_at(local).is_some()),
+                    }
+                };
+                let key_count: usize = element
+                    .animations
+                    .values()
+                    .map(|channel| channel.keys.len())
+                    .sum();
 
+                let name_row = self.row(
+                    "Name",
+                    "element.name",
+                    "Name",
+                    element.name.clone(),
+                    None,
+                    window,
+                    cx,
+                    Box::new(|text, state, cx| {
+                        let name = text.trim().to_owned();
+                        if !name.is_empty() {
+                            state.patch_selected(
+                                ElementPatch {
+                                    name: Some(name),
+                                    ..Default::default()
+                                },
+                                cx,
+                            );
+                        }
+                    }),
+                );
                 content = content
                     .child(self.heading("Element", window))
-                    .child(self.row("Name", "element.name", window))
+                    .child(name_row)
                     .child(
                         div()
                             .flex()
@@ -281,7 +330,13 @@ impl Render for InspectorPanel {
                                 "{} → {}",
                                 timecode(element.start_time, rate),
                                 timecode(element.end_time(), rate)
-                            )),
+                            ))
+                            .when(key_count > 0, |this| {
+                                this.child(format!(
+                                    "{key_count} keyframe{} · Shift+←/→ steps through them",
+                                    if key_count == 1 { "" } else { "s" }
+                                ))
+                            }),
                     )
                     .child(
                         div()
@@ -340,8 +395,18 @@ impl Render for InspectorPanel {
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading("Transform", window));
-                    for (key, label, _) in NUMBER_PARAMS {
-                        content = content.child(self.row(label, key, window));
+                    for (key, label, default) in NUMBER_PARAMS {
+                        let row = self.row(
+                            label,
+                            key,
+                            "",
+                            number_text(params.number(key, *default)),
+                            Some(key_state(key)),
+                            window,
+                            cx,
+                            set_number_param(key),
+                        );
+                        content = content.child(row);
                     }
                 }
 
@@ -349,20 +414,37 @@ impl Render for InspectorPanel {
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading("Text", window));
-                    for (key, label, _) in TEXT_STRING_PARAMS {
-                        content = content.child(self.row(label, key, window));
+                    for (key, label, default) in TEXT_STRING_PARAMS {
+                        let row = self.row(
+                            label,
+                            key,
+                            default,
+                            params.text(key, default).into_owned(),
+                            None,
+                            window,
+                            cx,
+                            set_text_param(key),
+                        );
+                        content = content.child(row);
                     }
-                    for (key, label, _) in TEXT_NUMBER_PARAMS {
-                        content = content.child(self.row(label, key, window));
+                    for (key, label, default) in TEXT_NUMBER_PARAMS {
+                        let row = self.row(
+                            label,
+                            key,
+                            "",
+                            number_text(params.number(key, *default)),
+                            Some(key_state(key)),
+                            window,
+                            cx,
+                            set_number_param(key),
+                        );
+                        content = content.child(row);
                     }
-                    let mut align_row = div().flex().items_center().gap(px(6.)).child(
-                        div()
-                            .w(px(88.))
-                            .flex_none()
-                            .text_xs()
-                            .text_color(colors.muted_foreground)
-                            .child("Align"),
-                    );
+                    let mut align_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(Self::label_cell("Align", window));
                     for option in ["left", "center", "right"] {
                         let state = self.state.clone();
                         let active = align == option;
@@ -385,14 +467,7 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(6.))
-                        .child(
-                            div()
-                                .w(px(88.))
-                                .flex_none()
-                                .text_xs()
-                                .text_color(colors.muted_foreground)
-                                .child("Style"),
-                        )
+                        .child(Self::label_cell("Style", window))
                         .child({
                             let state = self.state.clone();
                             Button::new("bold", "Bold")
@@ -427,23 +502,181 @@ impl Render for InspectorPanel {
                 }
 
                 if has_audio {
+                    let volume_row = self.row(
+                        "Volume (dB)",
+                        "volume",
+                        "0",
+                        number_text(params.number("volume", 0.0)),
+                        None,
+                        window,
+                        cx,
+                        Box::new(|text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                let mut params = Params::new();
+                                params.set("volume", value.clamp(-60.0, 20.0));
+                                state.update_selected_params(params, cx);
+                            }
+                        }),
+                    );
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading("Audio", window))
-                        .child(self.row("Volume (dB)", "volume", window))
+                        .child(volume_row)
                         .child({
                             let state = self.state.clone();
-                            div().flex().items_center().gap(px(8.)).child(
-                                div()
-                                    .w(px(88.))
-                                    .flex_none()
-                                    .text_xs()
-                                    .text_color(colors.muted_foreground)
-                                    .child("Mute"),
-                            )
-                            .child(
-                                Button::new("mute", if muted { "Muted" } else { "On" })
-                                    .variant(if muted {
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.))
+                                .child(Self::label_cell("Mute", window))
+                                .child(
+                                    Button::new("mute", if muted { "Muted" } else { "On" })
+                                        .variant(if muted {
+                                            ButtonVariant::Default
+                                        } else {
+                                            ButtonVariant::Outline
+                                        })
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            let mut params = Params::new();
+                                            params.set("muted", !muted);
+                                            state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                        }),
+                                )
+                        });
+                }
+
+                if is_visual {
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(self.heading("Effects", window))
+                                .child({
+                                    let state = self.state.clone();
+                                    Button::new("add-blur", "Add blur")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            state.update(cx, |state, cx| state.add_effect(Effect::blur(), cx))
+                                        })
+                                }),
+                        );
+                    if element.effects.is_empty() {
+                        content = content.child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("No effects. Blur softens the whole element; its strength can be keyframed."),
+                        );
+                    }
+                    for effect in &element.effects {
+                        let effect_id = effect.id.clone();
+                        let enabled = effect.enabled;
+                        let effect_params = element.effect_params_at(effect, playhead);
+                        let header = div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(Self::label_cell(effect.label().to_owned(), window))
+                            .child({
+                                let state = self.state.clone();
+                                let effect_id = effect_id.clone();
+                                Button::new(eid("effect-on", &effect_id), if enabled { "On" } else { "Off" })
+                                    .variant(if enabled {
+                                        ButtonVariant::Default
+                                    } else {
+                                        ButtonVariant::Outline
+                                    })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        state.update(cx, |state, cx| {
+                                            state.update_effect(&effect_id, None, Some(!enabled), cx)
+                                        })
+                                    })
+                            })
+                            .child({
+                                let state = self.state.clone();
+                                let effect_id = effect_id.clone();
+                                Button::new(eid("effect-remove", &effect_id), "Remove")
+                                    .variant(ButtonVariant::Ghost)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        state.update(cx, |state, cx| state.remove_effect(&effect_id, cx))
+                                    })
+                            });
+                        content = content.child(header);
+                        if effect.kind == Effect::BLUR {
+                            let path = format!("effects.{effect_id}.params.intensity");
+                            let row = self.row(
+                                "Intensity",
+                                &format!("effect.{effect_id}.intensity"),
+                                "15",
+                                number_text(effect_params.number("intensity", 15.0)),
+                                Some(key_state(&path)),
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        let mut params = Params::new();
+                                        params.set("intensity", value.clamp(0.0, 100.0));
+                                        state.update_effect(&effect_id, Some(params), None, cx);
+                                    }
+                                }),
+                            );
+                            content = content.child(row);
+                        }
+                    }
+                }
+
+                if can_mask {
+                    let mut mask_header = div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .child(self.heading("Mask", window));
+                    if element.masks.is_empty() {
+                        mask_header = mask_header.child(
+                            div()
+                                .flex()
+                                .gap(px(6.))
+                                .child({
+                                    let state = self.state.clone();
+                                    Button::new("add-rectangle", "Rectangle")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            state.update(cx, |state, cx| state.add_mask(Mask::rectangle(), cx))
+                                        })
+                                })
+                                .child({
+                                    let state = self.state.clone();
+                                    Button::new("add-ellipse", "Ellipse")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            state.update(cx, |state, cx| state.add_mask(Mask::ellipse(), cx))
+                                        })
+                                }),
+                        );
+                    }
+                    content = content.child(Separator::horizontal()).child(mask_header);
+                    if let Some(mask) = element.masks.first() {
+                        let mask_id = mask.id.clone();
+                        let inverted = mask.params.bool("inverted", false);
+                        let header = div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(Self::label_cell(mask.label().to_owned(), window))
+                            .child({
+                                let state = self.state.clone();
+                                let mask_id = mask_id.clone();
+                                Button::new(eid("mask-invert", &mask_id), if inverted { "Inverted" } else { "Invert" })
+                                    .variant(if inverted {
                                         ButtonVariant::Default
                                     } else {
                                         ButtonVariant::Outline
@@ -451,11 +684,70 @@ impl Render for InspectorPanel {
                                     .size(ButtonSize::XSmall)
                                     .on_click(move |_, _, cx| {
                                         let mut params = Params::new();
-                                        params.set("muted", !muted);
-                                        state.update(cx, |state, cx| state.update_selected_params(params, cx));
-                                    }),
-                            )
-                        });
+                                        params.set("inverted", !inverted);
+                                        state.update(cx, |state, cx| state.update_mask(&mask_id, params, cx))
+                                    })
+                            })
+                            .child({
+                                let state = self.state.clone();
+                                let mask_id = mask_id.clone();
+                                Button::new(eid("mask-remove", &mask_id), "Remove")
+                                    .variant(ButtonVariant::Ghost)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        state.update(cx, |state, cx| state.remove_mask(&mask_id, cx))
+                                    })
+                            });
+                        content = content.child(header);
+                        for (key, label) in MASK_PERCENT_PARAMS {
+                            let mask_id = mask_id.clone();
+                            let param = *key;
+                            let row = self.row(
+                                label,
+                                &format!("mask.{}.{key}", mask.id),
+                                "",
+                                number_text(mask.params.number(key, 0.0) * 100.0),
+                                None,
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        let mut params = Params::new();
+                                        params.set(param, value / 100.0);
+                                        state.update_mask(&mask_id, params, cx);
+                                    }
+                                }),
+                            );
+                            content = content.child(row);
+                        }
+                        for (key, label) in [("rotation", "Rotation"), ("feather", "Feather (px)")] {
+                            let mask_id = mask_id.clone();
+                            let row = self.row(
+                                label,
+                                &format!("mask.{}.{key}", mask.id),
+                                "0",
+                                number_text(mask.params.number(key, 0.0)),
+                                None,
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        let mut params = Params::new();
+                                        params.set(key, if key == "feather" { value.max(0.0) } else { value });
+                                        state.update_mask(&mask_id, params, cx);
+                                    }
+                                }),
+                            );
+                            content = content.child(row);
+                        }
+                    } else {
+                        content = content.child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("No mask. A mask shows only part of the clip; sizes are percentages of the clip."),
+                        );
+                    }
                 }
             }
             None if selection_count > 1 => {
@@ -492,19 +784,48 @@ impl Render for InspectorPanel {
                     );
             }
             None => {
+                let name_row = self.row(
+                    "Name",
+                    "project.name",
+                    "Project name",
+                    project_name,
+                    None,
+                    window,
+                    cx,
+                    Box::new(|text, state, cx| state.rename_project(text.to_owned(), cx)),
+                );
+                let background_row = self.row(
+                    "Background",
+                    "project.background",
+                    "#000000",
+                    background,
+                    None,
+                    window,
+                    cx,
+                    Box::new(|text, state, cx| {
+                        if editor::parse_hex_color(text).is_some() {
+                            let color = text.trim().to_owned();
+                            state.execute(
+                                Command::UpdateSettings(SettingsPatch {
+                                    background: Some(Background::Color { color }),
+                                    ..Default::default()
+                                }),
+                                cx,
+                            );
+                        }
+                    }),
+                );
                 content = content
                     .child(self.heading("Project", window))
-                    .child(self.row("Name", "project.name", window))
-                    .child(self.row("Background", "project.background", window));
+                    .child(name_row)
+                    .child(background_row);
 
-                let mut fps_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
-                    div()
-                        .w(px(88.))
-                        .flex_none()
-                        .text_xs()
-                        .text_color(colors.muted_foreground)
-                        .child("Frame rate"),
-                );
+                let mut fps_row = div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(Self::label_cell("Frame rate", window));
                 for (label, option) in [
                     ("24", FrameRate::FPS_24),
                     ("25", FrameRate::FPS_25),
@@ -535,14 +856,12 @@ impl Render for InspectorPanel {
                             }),
                     );
                 }
-                let mut size_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
-                    div()
-                        .w(px(88.))
-                        .flex_none()
-                        .text_xs()
-                        .text_color(colors.muted_foreground)
-                        .child("Canvas"),
-                );
+                let mut size_row = div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(Self::label_cell("Canvas", window));
                 for (label, width, height) in [
                     ("1080p", 1920, 1080),
                     ("720p", 1280, 720),

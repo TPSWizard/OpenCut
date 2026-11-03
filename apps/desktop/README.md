@@ -26,6 +26,19 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   (content, font, size, color, alignment, bold/italic, line height, letter
   spacing), audio volume and mute; project name, background color, frame rate
   and canvas presets.
+- **Keyframes**: the diamond next to a numeric field adds a key at the
+  playhead (or removes the one there); once a parameter has keys, typing a
+  value keys it at the playhead and the field follows the animation. Keys are
+  linear by default (`step` and eased `bezier` segments are read from
+  project files), stay with their source frames when a clip is trimmed, and
+  are split with the clip. The selected clip shows its keys as dots; click one
+  to jump to it, or use `Shift-←`/`Shift-→`.
+- **Effects**: a Gaussian blur per element (intensity 0–100, keyframeable),
+  with the same strength scaling as the web app; several can be stacked and
+  switched off without removing them.
+- **Mask**: a rectangle or ellipse on video and image clips, sized and
+  offset as percentages of the clip, rotated, feathered (GPU distance field)
+  or inverted.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -36,6 +49,7 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 | --- | --- |
 | `Space`, `K` | Play / pause |
 | `←` / `→`, `Home` / `End` | Step a frame, go to start / end |
+| `Shift-←` / `Shift-→` | Previous / next keyframe of the selected clip |
 | `S` | Split at the playhead (selection, or everything under it) |
 | `Delete` / `Backspace` | Delete the selection |
 | `Ctrl/Cmd-D`, `Ctrl/Cmd-A`, `Esc` | Duplicate, select all, clear selection |
@@ -99,8 +113,11 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Effects, masks, keyframe animation, stickers and captions exist in the web
-  editor only; the desktop renders transforms, opacity, blend modes and text.
+- Only the blur effect and the rectangle and ellipse masks exist natively;
+  the web editor's other mask shapes (split, bars, heart, star, text,
+  freeform), mask strokes, custom keyframe curve handles, stickers, captions
+  and the blurred-background setting are read from project files but not
+  rendered. Audio volume cannot be keyframed yet.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it
