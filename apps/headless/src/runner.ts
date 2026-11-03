@@ -78,15 +78,21 @@ export function defaultProfileDir(): string {
 /** The preview server's default port; stable so stored projects persist. */
 export const DEFAULT_PREVIEW_PORT = 4173;
 
-function portIsFree(port: number): Promise<boolean> {
+function hostIsFree(port: number, host: string): Promise<boolean> {
 	return new Promise((resolveFree) => {
 		const server = createServer();
 		server.unref();
-		server.once("error", () => resolveFree(false));
-		// No host: bind every interface, as vite preview does, so an IPv6-only
-		// listener on the port is seen too.
-		server.listen(port, () => server.close(() => resolveFree(true)));
+		server.once("error", (error: NodeJS.ErrnoException) => {
+			// A host this machine does not have (no IPv6) is not "taken".
+			resolveFree(error.code === "EADDRNOTAVAIL");
+		});
+		server.listen(port, host, () => server.close(() => resolveFree(true)));
 	});
+}
+
+/** Whether vite preview could bind `localhost:<port>` on both loopbacks. */
+async function portIsFree(port: number): Promise<boolean> {
+	return (await hostIsFree(port, "127.0.0.1")) && (await hostIsFree(port, "::1"));
 }
 
 async function freePort(): Promise<number> {
@@ -136,26 +142,49 @@ export class LocalWebServer {
 			this.log("apps/web has no production build yet; running `bun run build` (this takes a minute)");
 			await runCommand("bun", ["run", "build"], webAppDir);
 		}
+		// The preferred port is kept whenever it can be bound (browser storage
+		// is per origin); a busy one, or one vite still cannot bind because a
+		// socket is closing on it, falls back to a free port with a warning.
 		let port = this.preferredPort;
-		if (!(await portIsFree(port))) {
-			port = await freePort();
-			this.log(
-				`port ${this.preferredPort} is busy; using ${port}. Browser storage is per origin, so projects saved under another port will not show up here.`,
-			);
+		for (let attempt = 0; ; attempt++) {
+			if (attempt > 0 || !(await portIsFree(port))) {
+				port = await freePort();
+				this.log(
+					`port ${this.preferredPort} is busy; using ${port}. Browser storage is per origin, so projects saved under another port will not show up here.`,
+				);
+			}
+			const url = `http://localhost:${port}`;
+			this.log(`starting vite preview on ${url}`);
+			const child = spawn("bun", ["run", "preview", "--", "--port", String(port), "--strictPort"], {
+				cwd: webAppDir,
+				stdio: ["ignore", "pipe", "pipe"],
+				shell: process.platform === "win32",
+			});
+			this.child = child;
+			let stderr = "";
+			child.stderr?.on("data", (chunk: Buffer) => {
+				const text = chunk.toString().trim();
+				stderr = `${stderr}${text}
+`.slice(-2000);
+				if (text) this.log(`[preview] ${text}`);
+			});
+			const exited = new Promise<string>((resolveExit) => {
+				child.once("exit", (code) => resolveExit(`exited with ${code}`));
+			});
+			const outcome = await Promise.race([
+				waitForHttp(url, 60_000).then(() => "ready" as const),
+				exited,
+			]);
+			if (outcome === "ready") {
+				this.url = url;
+				return url;
+			}
+			this.child = null;
+			if (attempt === 0 && /in use/i.test(stderr)) {
+				continue;
+			}
+			throw new Error(`vite preview ${outcome}: ${stderr.trim()}`);
 		}
-		this.url = `http://localhost:${port}`;
-		this.log(`starting vite preview on ${this.url}`);
-		this.child = spawn("bun", ["run", "preview", "--", "--port", String(port), "--strictPort"], {
-			cwd: webAppDir,
-			stdio: ["ignore", "pipe", "pipe"],
-			shell: process.platform === "win32",
-		});
-		this.child.stderr?.on("data", (chunk: Buffer) => {
-			const text = chunk.toString().trim();
-			if (text) this.log(`[preview] ${text}`);
-		});
-		await waitForHttp(this.url, 60_000);
-		return this.url;
 	}
 
 	/** Stops the server and waits until it is gone, so the port is free for the next run. */
