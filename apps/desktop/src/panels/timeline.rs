@@ -219,14 +219,12 @@ impl Render for TimelinePanel {
         let scroll = state.scroll_seconds;
         let playhead = state.playhead();
         let duration = state.duration();
-        let playing = state.playing;
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
         let status = state.status.clone();
         let focus_handle = state.focus_handle.clone();
         let preview = self.preview.clone();
-        let _ = playing;
 
         let to_x = |seconds: f64| -> f32 { ((seconds - scroll) * zoom as f64) as f32 };
 

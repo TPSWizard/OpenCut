@@ -67,7 +67,6 @@ pub(crate) struct EditorState {
     render: RenderHandle,
     audio: Option<AudioOutput>,
     render_generation: u64,
-    last_render_request: Instant,
     dirty: bool,
     save_task: Option<Task<()>>,
     release_task: Option<Task<()>>,
@@ -129,7 +128,6 @@ impl EditorState {
             render,
             audio,
             render_generation: 0,
-            last_render_request: Instant::now(),
             dirty: false,
             save_task: None,
             release_task: None,
@@ -628,7 +626,6 @@ impl EditorState {
 
     pub(crate) fn request_render(&mut self, _cx: &mut Context<Self>) {
         self.render_generation += 1;
-        self.last_render_request = Instant::now();
         let (width, height) = self.preview_size;
         self.render.send(RenderRequest::Frame {
             project: Arc::new(self.project().clone()),
