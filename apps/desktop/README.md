@@ -38,9 +38,10 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 - **Effects**: a Gaussian blur per element (intensity 0–100, keyframeable),
   with the same strength scaling as the web app; several can be stacked and
   switched off without removing them.
-- **Mask**: a rectangle or ellipse on video and image clips, sized and
-  offset as percentages of the clip, rotated, feathered (GPU distance field)
-  or inverted.
+- **Mask**: a rectangle, ellipse, diamond, heart, star, split line or
+  cinematic bars on video and image clips, sized and offset as percentages of
+  the clip, rotated, feathered (GPU distance field) or inverted; the same
+  shapes and parameters as the web editor.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -115,10 +116,9 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Only the blur effect and the rectangle and ellipse masks exist natively;
-  the web editor's other mask shapes (split, bars, heart, star, text,
-  freeform), mask strokes, custom keyframe curve handles, stickers, captions
-  and the blurred-background setting are read from project files but not
+- Only the blur effect exists natively. The web editor's text and freeform
+  masks, mask strokes, custom keyframe curve handles, stickers, captions and
+  the blurred-background setting are read from project files but not
   rendered.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).

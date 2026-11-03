@@ -290,9 +290,37 @@ pub struct Mask {
     pub params: Params,
 }
 
+/// Which size parameters a mask shape uses (the web app's `sizeMode`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MaskSize {
+    /// The shape has no size of its own (a split line).
+    None,
+    /// Only `height` applies; the shape spans the element's width.
+    HeightOnly,
+    WidthHeight,
+}
+
 impl Mask {
     pub const RECTANGLE: &'static str = "rectangle";
     pub const ELLIPSE: &'static str = "ellipse";
+    pub const DIAMOND: &'static str = "diamond";
+    pub const HEART: &'static str = "heart";
+    pub const STAR: &'static str = "star";
+    /// Shows one side of a line through the element.
+    pub const SPLIT: &'static str = "split";
+    /// A band across the whole element (letterbox when inverted).
+    pub const CINEMATIC_BARS: &'static str = "cinematic-bars";
+
+    /// The shapes that can be added and rendered natively, in menu order.
+    pub const SHAPES: &'static [&'static str] = &[
+        Self::RECTANGLE,
+        Self::ELLIPSE,
+        Self::DIAMOND,
+        Self::HEART,
+        Self::STAR,
+        Self::SPLIT,
+        Self::CINEMATIC_BARS,
+    ];
 
     pub fn rectangle() -> Self {
         Self::shape(Self::RECTANGLE)
@@ -302,18 +330,21 @@ impl Mask {
         Self::shape(Self::ELLIPSE)
     }
 
-    /// A centred shape covering 60% of the element, like the web app's default.
+    /// A mask of the given shape with the web app's defaults: centred, and
+    /// covering 60% of the element where the shape has a size. Cinematic
+    /// bars start wide enough to span the element at any rotation.
     pub fn shape(kind: &str) -> Self {
         let mut params = Params::new();
         params
             .set("centerX", 0.0)
             .set("centerY", 0.0)
-            .set("width", 0.6)
-            .set("height", 0.6)
             .set("rotation", 0.0)
-            .set("scale", 1.0)
             .set("feather", 0.0)
             .set("inverted", false);
+        if kind != Self::SPLIT {
+            let width = if kind == Self::CINEMATIC_BARS { std::f64::consts::SQRT_2 } else { 0.6 };
+            params.set("width", width).set("height", 0.6).set("scale", 1.0);
+        }
         Self {
             id: crate::new_id(),
             kind: kind.to_owned(),
@@ -325,7 +356,20 @@ impl Mask {
         match self.kind.as_str() {
             Self::RECTANGLE => "Rectangle",
             Self::ELLIPSE => "Ellipse",
+            Self::DIAMOND => "Diamond",
+            Self::HEART => "Heart",
+            Self::STAR => "Star",
+            Self::SPLIT => "Split",
+            Self::CINEMATIC_BARS => "Cinematic bars",
             other => other,
+        }
+    }
+
+    pub fn size_mode(&self) -> MaskSize {
+        match self.kind.as_str() {
+            Self::SPLIT => MaskSize::None,
+            Self::CINEMATIC_BARS => MaskSize::HeightOnly,
+            _ => MaskSize::WidthHeight,
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use editor::{
-    Background, CanvasSize, Command, Effect, ElementKind, ElementPatch, Mask, Params, SettingsPatch,
+    Background, CanvasSize, Command, Effect, ElementKind, ElementPatch, Mask, MaskSize, Params, SettingsPatch,
 };
 use gpui::{Context, Entity, FocusHandle, FontWeight, Window, div, prelude::*, px};
 use time::FrameRate;
@@ -639,32 +639,25 @@ impl Render for InspectorPanel {
                         .items_center()
                         .justify_between()
                         .child(self.heading("Mask", window));
+                    content = content.child(Separator::horizontal()).child(mask_header);
                     if element.masks.is_empty() {
-                        mask_header = mask_header.child(
+                        content = content.child(
                             div()
                                 .flex()
+                                .flex_wrap()
                                 .gap(px(6.))
-                                .child({
+                                .children(Mask::SHAPES.iter().map(|kind| {
                                     let state = self.state.clone();
-                                    Button::new("add-rectangle", "Rectangle")
+                                    let sample = Mask::shape(kind);
+                                    Button::new(eid("add-mask", kind), sample.label().to_owned())
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| {
-                                            state.update(cx, |state, cx| state.add_mask(Mask::rectangle(), cx))
+                                            state.update(cx, |state, cx| state.add_mask(Mask::shape(kind), cx))
                                         })
-                                })
-                                .child({
-                                    let state = self.state.clone();
-                                    Button::new("add-ellipse", "Ellipse")
-                                        .variant(ButtonVariant::Outline)
-                                        .size(ButtonSize::XSmall)
-                                        .on_click(move |_, _, cx| {
-                                            state.update(cx, |state, cx| state.add_mask(Mask::ellipse(), cx))
-                                        })
-                                }),
+                                })),
                         );
                     }
-                    content = content.child(Separator::horizontal()).child(mask_header);
                     if let Some(mask) = element.masks.first() {
                         let mask_id = mask.id.clone();
                         let inverted = mask.params.bool("inverted", false);
@@ -700,7 +693,13 @@ impl Render for InspectorPanel {
                                     })
                             });
                         content = content.child(header);
-                        for (key, label) in MASK_PERCENT_PARAMS {
+                        let size_mode = mask.size_mode();
+                        let shown = |key: &str| match key {
+                            "width" => size_mode == MaskSize::WidthHeight,
+                            "height" => size_mode != MaskSize::None,
+                            _ => true,
+                        };
+                        for (key, label) in MASK_PERCENT_PARAMS.iter().filter(|(key, _)| shown(key)) {
                             let mask_id = mask_id.clone();
                             let param = *key;
                             let row = self.row(

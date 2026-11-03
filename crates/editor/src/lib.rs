@@ -28,7 +28,7 @@ pub use commands::{
     nearest_free_start,
 };
 pub use document::{
-    Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, MediaKind,
+    Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, now_millis,
 };
