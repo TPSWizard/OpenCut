@@ -4899,6 +4899,7 @@ dependencies = [
  "image",
  "media",
  "pollster 0.4.0",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.19",
  "time",
