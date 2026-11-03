@@ -19,8 +19,8 @@ mod params;
 mod store;
 
 pub use animation::{
-    Animations, Channel, KEY_SNAP, Keyframe, Segment, is_param_path, resolve_object_params,
-    resolve_params, split_animations,
+    Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, is_param_path,
+    resolve_object_params, resolve_params, split_animations,
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use commands::{

@@ -281,20 +281,7 @@ fn export(
                 source_end_seconds: clip.source_end.to_seconds_f64(),
                 timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
                 gain: clip.gain(),
-                gain_keys: clip
-                    .volume
-                    .keys
-                    .iter()
-                    .map(|key| GainKey {
-                        seconds: key.time.to_seconds_f64(),
-                        db: key.value,
-                        ease: match key.segment_to_next {
-                            Segment::Step => GainEase::Hold,
-                            Segment::Linear => GainEase::Linear,
-                            Segment::Bezier => GainEase::Smooth,
-                        },
-                    })
-                    .collect(),
+                gain_keys: gain_keys(&clip.volume),
             })
             .collect()
     } else {
@@ -334,6 +321,39 @@ fn export(
         }
     }
     encoder.finish().map_err(|error| error.to_string())
+}
+
+/// Volume keys for the encoder. A Bézier segment is sampled into short
+/// linear pieces (ffmpeg's expression cannot solve the curve); the other
+/// segments map one to one.
+fn gain_keys(volume: &editor::Channel) -> Vec<GainKey> {
+    const BEZIER_PIECES: i64 = 8;
+    let mut keys = Vec::new();
+    for (index, key) in volume.keys.iter().enumerate() {
+        let next = volume.keys.get(index + 1);
+        match (key.segment_to_next, next) {
+            (Segment::Bezier, Some(next)) => {
+                let span = (next.time - key.time).as_ticks();
+                for piece in 0..BEZIER_PIECES {
+                    let time = key.time + time::MediaTime::from_ticks(span * piece / BEZIER_PIECES);
+                    keys.push(GainKey {
+                        seconds: time.to_seconds_f64(),
+                        db: volume.value_at(time).unwrap_or(key.value),
+                        ease: GainEase::Linear,
+                    });
+                }
+            }
+            (segment, _) => keys.push(GainKey {
+                seconds: key.time.to_seconds_f64(),
+                db: key.value,
+                ease: match segment {
+                    Segment::Step => GainEase::Hold,
+                    _ => GainEase::Linear,
+                },
+            }),
+        }
+    }
+    keys
 }
 
 #[cfg(test)]
