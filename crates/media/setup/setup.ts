@@ -1,6 +1,6 @@
 // Puts the pinned FFmpeg build this crate decodes with into
-// `.cache/media/`, where `build.rs` finds it. Safe to run again: a build
-// already in place is left alone.
+// `.cache/media/`, where `media::Ffmpeg::locate()` finds its `bin/`
+// folder. Safe to run again: a build already in place is left alone.
 //
 //   moon run media:setup                    # the pinned prebuilt for this machine
 //   moon run media:setup -- --from-source   # build the pinned source here instead
@@ -83,16 +83,16 @@ function extract(archive: string, into: string) {
 
 /// Configure flags for building FFmpeg for `target` on `host`. The same
 /// everywhere but for what a platform needs, so every platform decodes the
-/// same formats: shared LGPL libraries only, nothing picked up from
-/// whatever else the building machine has installed.
+/// same formats: the `ffmpeg` and `ffprobe` programs (which the `media`
+/// crate drives over pipes) on shared LGPL libraries, nothing picked up
+/// from whatever else the building machine has installed. libavfilter stays
+/// because the programs need it (and export mixes audio with a filter graph).
 function configureFlags(target: Platform, host: Platform): string[] {
   const flags = [
     "--enable-shared",
     "--disable-static",
-    "--disable-programs",
     "--disable-doc",
     "--disable-avdevice",
-    "--disable-avfilter",
     "--disable-network",
     "--disable-autodetect",
   ];

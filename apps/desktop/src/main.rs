@@ -1,11 +1,21 @@
-use gpui::{
-    px, size, App, AppContext, Application, Bounds, SharedString, TitlebarOptions, WindowBounds,
-    WindowOptions,
-};
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+use editor::ProjectStore;
+use gpui::{
+    App, AppContext, Application, Bounds, SharedString, TitlebarOptions, WindowBounds,
+    WindowOptions, px, size,
+};
+use media::Ffmpeg;
+
+mod actions;
+mod audio;
 mod components;
+mod format;
+mod images;
 mod panels;
+mod render_thread;
 mod shell;
+mod state;
 mod theme;
 
 use shell::Shell;
@@ -31,8 +41,29 @@ fn main() {
         }
     }
 
-    Application::new().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(960.), px(600.)), cx);
+    // Projects live in ~/.opencut/projects unless OPENCUT_PROJECTS says otherwise.
+    let store = std::env::var_os("OPENCUT_PROJECTS")
+        .map(ProjectStore::new)
+        .unwrap_or_else(|| ProjectStore::new(ProjectStore::default_root()));
+    let ffmpeg = match Ffmpeg::locate() {
+        Ok(ffmpeg) => {
+            eprintln!("opencut: using {} ({})", ffmpeg.ffmpeg_path().display(), ffmpeg.version());
+            Some(ffmpeg)
+        }
+        Err(error) => {
+            eprintln!("opencut: {error}");
+            None
+        }
+    };
+
+    Application::new().run(move |cx: &mut App| {
+        actions::bind_keys(cx);
+        components::bind_text_input_keys(cx);
+        cx.on_action(|_: &actions::Quit, cx| cx.quit());
+
+        let bounds = Bounds::centered(None, size(px(1280.), px(800.)), cx);
+        let store = store.clone();
+        let ffmpeg = ffmpeg.clone();
         cx.open_window(
             WindowOptions {
                 titlebar: Some(TitlebarOptions {
@@ -40,19 +71,20 @@ fn main() {
                     ..Default::default()
                 }),
                 window_bounds: Some(WindowBounds::Maximized(bounds)),
+                focus: true,
                 ..Default::default()
             },
-            |window, cx| {
+            move |window, cx| {
                 cx.new(|cx| {
                     cx.observe_window_appearance(window, |_, window, _| {
                         window.refresh();
                     })
                     .detach();
-
-                    Shell::new(cx)
+                    Shell::new(store, ffmpeg, cx)
                 })
             },
         )
         .expect("failed to open the main window");
+        cx.activate(true);
     });
 }

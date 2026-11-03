@@ -1,0 +1,24 @@
+[package]
+name = "render"
+description = "Turns a frame plan into pixels: media decoding, text rasterising and GPU compositing for native front ends"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+compositor = { workspace = true }
+cosmic-text = { workspace = true }
+editor = { workspace = true }
+gpu = { workspace = true }
+media = { workspace = true }
+pollster = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+image = { workspace = true }

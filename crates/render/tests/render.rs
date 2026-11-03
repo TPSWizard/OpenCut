@@ -1,0 +1,185 @@
+//! Renders real frames through the GPU compositor. Skips when no adapter is
+//! available (headless CI); the video part also needs FFmpeg.
+
+use std::path::Path;
+use std::process::Command;
+
+use editor::{Command as EditorCommand, Element, MediaItem, MediaKind, Project, TrackPlacement, apply};
+use media::{Ffmpeg, probe};
+use render::{RenderError, Renderer, RendererOptions};
+use time::MediaTime;
+
+fn seconds(value: f64) -> MediaTime {
+    MediaTime::from_seconds_f64(value).unwrap()
+}
+
+fn renderer(ffmpeg: Option<std::sync::Arc<Ffmpeg>>) -> Option<Renderer> {
+    match Renderer::new(RendererOptions { ffmpeg }) {
+        Ok(renderer) => Some(renderer),
+        Err(RenderError::Gpu(error)) => {
+            eprintln!("no GPU adapter ({error}); skipping");
+            None
+        }
+        Err(error) => panic!("{error}"),
+    }
+}
+
+fn pixel(frame: &render::RenderedFrame, x: u32, y: u32) -> [u8; 4] {
+    let index = ((y * frame.width + x) * 4) as usize;
+    frame.bgra[index..index + 4].try_into().unwrap()
+}
+
+fn add_image(project: &mut Project, dir: &Path) -> String {
+    let path = dir.join("square.png");
+    // A solid green 100x100 image.
+    let image = image::RgbaImage::from_pixel(100, 100, image::Rgba([0, 255, 0, 255]));
+    image.save(&path).unwrap();
+    let media = MediaItem {
+        id: "img".to_owned(),
+        name: "square.png".to_owned(),
+        kind: MediaKind::Image,
+        path,
+        duration: None,
+        width: Some(100),
+        height: Some(100),
+        fps: None,
+        has_audio: false,
+    };
+    apply(project, &EditorCommand::AddMedia(media)).unwrap();
+    "img".to_owned()
+}
+
+#[test]
+fn composites_image_and_text_over_background() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Render");
+    project.settings.background = editor::Background::Color {
+        color: "#0000ff".to_owned(),
+    };
+    let image_id = add_image(&mut project, dir.path());
+
+    // The image fills the canvas height (contain) and is shrunk to half, so
+    // it covers the middle of the frame only.
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.params.set("transform.scaleX", 0.5).set("transform.scaleY", 0.5);
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: image,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+    let mut text = Element::text("OpenCut", seconds(1.0));
+    text.params
+        .set("fontSize", 120.0)
+        .set("color", "#ffffff")
+        .set("transform.positionY", -400.0);
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: text,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!((frame.width, frame.height), (320, 180));
+    assert_eq!(pixel(&frame, 2, 2), [255, 0, 0, 255], "background is blue (BGRA)");
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "image is green in the middle");
+    assert_eq!(pixel(&frame, 160, 10), [255, 0, 0, 255], "above the shrunk image is background");
+
+    let frame = renderer.render(&project, seconds(2.0), 320, 180).unwrap();
+    let white_near_top = (0..320)
+        .flat_map(|x| (0..40).map(move |y| (x, y)))
+        .filter(|&(x, y)| {
+            let p = pixel(&frame, x, y);
+            p[0] > 200 && p[1] > 200 && p[2] > 200
+        })
+        .count();
+    assert!(white_near_top > 50, "text pixels near the top: {white_near_top}");
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "image still in the middle");
+
+    // Half opacity blends the image with the background.
+    let image_id = project.tracks[project.main_track_index()].elements[0].id.clone();
+    let mut params = editor::Params::new();
+    params.set("opacity", 0.5);
+    apply(
+        &mut project,
+        &EditorCommand::UpdateElement {
+            element_id: image_id,
+            patch: editor::ElementPatch {
+                params: Some(params),
+                ..Default::default()
+            },
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let p = pixel(&frame, 160, 90);
+    assert!(p[0] > 100 && p[1] > 100 && p[2] < 20, "blend of blue and green: {p:?}");
+}
+
+#[test]
+fn renders_video_frames_through_ffmpeg() {
+    let Ok(ffmpeg) = Ffmpeg::locate() else {
+        eprintln!("ffmpeg not installed; skipping");
+        return;
+    };
+    let Some(mut renderer) = renderer(Some(ffmpeg.clone())) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let clip = dir.path().join("red.mp4");
+    let status = Command::new(ffmpeg.ffmpeg_path())
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=red:size=64x64:rate=30:duration=2",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+        ])
+        .arg(&clip)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let info = probe(&ffmpeg, &clip).unwrap();
+
+    let mut project = Project::new("Video");
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "red".to_owned(),
+            name: "red.mp4".to_owned(),
+            kind: MediaKind::Video,
+            path: clip,
+            duration: info.duration,
+            width: info.width,
+            height: info.height,
+            fps: info.fps,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let element = Element::from_media(project.media_item("red").unwrap(), seconds(0.0));
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(1.0), 192, 108).unwrap();
+    let p = pixel(&frame, 96, 54);
+    assert!(p[2] > 200 && p[1] < 40 && p[0] < 40, "video frame is red: {p:?}");
+    let edge = pixel(&frame, 2, 54);
+    assert_eq!(edge, [0, 0, 0, 255], "letterboxed sides show the black background");
+}

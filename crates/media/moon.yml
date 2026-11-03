@@ -1,0 +1,22 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'rust'
+layer: 'library'
+
+tasks:
+  # Puts the pinned FFmpeg build (programs and shared libraries) into
+  # `.cache/media/`, where `media::Ffmpeg::locate()` finds it.
+  setup:
+    command: 'bun run setup/setup.ts'
+    options:
+      runInCI: false
+      cache: false
+
+  test:
+    command: 'cargo test -p media'
+    inputs:
+      - 'src/**/*'
+      - 'tests/**/*'
+      - 'Cargo.toml'
+      - '/Cargo.toml'
+      - '/Cargo.lock'

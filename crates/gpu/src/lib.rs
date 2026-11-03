@@ -1,4 +1,5 @@
 mod context;
+mod transfer;
 
 use thiserror::Error;
 
@@ -18,4 +19,6 @@ pub enum GpuError {
     CreateSurface(#[from] wgpu::CreateSurfaceError),
     #[error("The output surface does not support the required texture format")]
     UnsupportedSurfaceFormat,
+    #[error("Failed to read pixels back from the GPU: {0}")]
+    Readback(String),
 }

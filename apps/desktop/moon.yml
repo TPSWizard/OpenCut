@@ -14,6 +14,15 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'Cargo.toml'
+      - '/crates/*/src/**/*'
+      - '/Cargo.toml'
+      - '/Cargo.lock'
+
+  test:
+    command: 'cargo test -p opencut-desktop'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
       - '/Cargo.toml'
       - '/Cargo.lock'
 

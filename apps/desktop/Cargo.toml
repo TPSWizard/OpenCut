@@ -10,5 +10,16 @@ name = "opencut-desktop"
 path = "src/main.rs"
 
 [dependencies]
+cpal = { workspace = true }
+editor = { workspace = true }
+futures = { workspace = true }
 gpui = { workspace = true }
+image = { workspace = true }
+media = { workspace = true }
+render = { workspace = true }
+smallvec = { workspace = true }
 time = { workspace = true }
+unicode-segmentation = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

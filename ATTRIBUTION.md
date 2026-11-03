@@ -32,6 +32,23 @@ OpenCut), with only their `Cargo.toml` files rewritten to use the workspace
 dependency table. `crates/wasm` builds the same `opencut-wasm` package that is
 published on npm.
 
+## Native editor (`crates/editor`, `crates/media`, `crates/render`, `apps/desktop`)
+
+Written for this repository on 2026-11-02 (MIT). Notes:
+
+- `apps/desktop/src/components/text_input.rs` is adapted from GPUI's
+  `examples/input.rs` (Zed Industries, Apache-2.0): selection, IME marking and
+  clipboard handling, with a commit callback and theme styling added.
+- `apps/desktop/src/components/{badge,button,context_menu,label,resizable,separator}.rs`
+  and `theme.rs` are upstream OpenCut's GPUI primitives (MIT).
+- `crates/media` runs the FFmpeg programs (`ffmpeg`, `ffprobe`; LGPL 2.1 or
+  later, or GPL depending on the build) as separate processes and ships no
+  FFmpeg code. `crates/media/setup` downloads or builds the pinned version
+  listed in `crates/media/setup/ffmpeg.json`, with its licence files beside it.
+- Text is shaped and rasterised with `cosmic-text` (MIT/Apache-2.0) using the
+  fonts installed on the system; no fonts are bundled.
+- Audio output uses `cpal` (Apache-2.0).
+
 ## Shared logic (`opencut-wasm`)
 
 [`opencut-wasm`](https://www.npmjs.com/package/opencut-wasm) 0.2.x is the

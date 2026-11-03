@@ -31,12 +31,13 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | Scripting tab | `apps/web/src/scripting` – CodeMirror editor in the assets panel; scripts run in a Worker against the Editor API |
 | Headless mode | `apps/headless` – CLI and library that drive the editor in headless Chromium: job files, scripts, batch rendering |
 | MCP server | `apps/mcp` – Model Context Protocol server so AI agents can open projects, import media, edit and render |
-| Rust core | `crates/` – time, compositor, effects, masks, gpu, bridge and the `opencut-wasm` package built from this repo; consumed by the web app (wasm) and the desktop app (native) |
-| Desktop | `apps/desktop` – GPUI shell; the timeline panel renders a ruler from the `time` crate. Editing UI is not built yet |
+| Rust core | `crates/` – time, editor (document, commands, undo, frame/audio planning), media (FFmpeg over pipes), render, compositor, effects, masks, gpu, bridge and the `opencut-wasm` package built from this repo; consumed by the web app (wasm) and the desktop app (native) |
+| Desktop | `apps/desktop` – native GPUI editor on the Rust core: projects, media import, multi-track timeline, GPU-composited preview with audio, inspector, undo/redo, MP4/WebM export; [README](apps/desktop/README.md) |
 | API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
 
-Not there yet: a native desktop/mobile editing UI on top of the Rust core (the
-crates compile for both targets; the GPUI app only has the shell).
+Not there yet: a mobile app (the core crates compile for mobile targets, but
+no mobile UI exists), and effects, masks, keyframes, stickers and captions on
+the desktop (they live in the web editor).
 
 [opencut.app](https://opencut.app) still runs the classic version. The rewrite
 lives at [new.opencut.app](https://new.opencut.app) until it takes over.
@@ -84,8 +85,12 @@ moon run api:typecheck api:build
 moon run headless:typecheck headless:test
 moon run mcp:typecheck
 moon run wasm:check wasm:test        # Rust core (needs the pinned Rust toolchain)
-moon run desktop:check
+moon run desktop:check desktop:test
 ```
+
+The desktop app and the `media` crate drive FFmpeg's `ffmpeg`/`ffprobe`
+programs: install FFmpeg (or `moon run media:setup` for the pinned build) and
+their tests run for real; without it they skip.
 
 Headless rendering and the MCP server are documented in
 [`apps/headless/README.md`](apps/headless/README.md) and
