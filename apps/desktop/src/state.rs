@@ -965,9 +965,18 @@ impl EditorState {
         let Some((anchor_instant, anchor_time)) = self.play_anchor else {
             return false;
         };
-        let elapsed = MediaTime::from_seconds_f64(anchor_instant.elapsed().as_secs_f64())
-            .unwrap_or(MediaTime::ZERO);
-        let time = anchor_time + elapsed;
+        // The picture follows the audio device's clock while sound plays,
+        // so the two cannot drift; without audio, the wall clock.
+        let time = self
+            .audio
+            .as_ref()
+            .and_then(|audio| audio.position_seconds())
+            .and_then(MediaTime::from_seconds_f64)
+            .unwrap_or_else(|| {
+                let elapsed = MediaTime::from_seconds_f64(anchor_instant.elapsed().as_secs_f64())
+                    .unwrap_or(MediaTime::ZERO);
+                anchor_time + elapsed
+            });
         let duration = self.duration();
         if time >= duration {
             self.editor

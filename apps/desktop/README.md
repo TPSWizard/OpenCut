@@ -136,5 +136,3 @@ resolution and pipes BGRA frames into `media::Encoder`.
   projects page reads one, from here or from the web app's *Export project…*
   menu item. Web-only content (stickers, graphics, effect tracks, library
   sounds, extra scenes) is left out of an import and listed on the page.
-- Audio playback follows the picture from the playhead on each play/seek; it
-  is not sample-locked to the frame clock.
