@@ -310,6 +310,10 @@ impl Mask {
     pub const SPLIT: &'static str = "split";
     /// A band across the whole element (letterbox when inverted).
     pub const CINEMATIC_BARS: &'static str = "cinematic-bars";
+    /// A closed Bézier path drawn with the web app's pen tool: `path` is a
+    /// list of `{x, y, inX, inY, outX, outY}` points in units of the
+    /// element's size, `closed` says whether it is filled.
+    pub const FREEFORM: &'static str = "freeform";
 
     /// The shapes that can be added and rendered natively, in menu order.
     pub const SHAPES: &'static [&'static str] = &[
@@ -340,7 +344,10 @@ impl Mask {
             .set("centerY", 0.0)
             .set("rotation", 0.0)
             .set("feather", 0.0)
-            .set("inverted", false);
+            .set("inverted", false)
+            .set("strokeColor", "#ffffff")
+            .set("strokeWidth", 0.0)
+            .set("strokeAlign", "center");
         if kind != Self::SPLIT {
             let width = if kind == Self::CINEMATIC_BARS { std::f64::consts::SQRT_2 } else { 0.6 };
             params.set("width", width).set("height", 0.6).set("scale", 1.0);
@@ -361,13 +368,14 @@ impl Mask {
             Self::STAR => "Star",
             Self::SPLIT => "Split",
             Self::CINEMATIC_BARS => "Cinematic bars",
+            Self::FREEFORM => "Freeform",
             other => other,
         }
     }
 
     pub fn size_mode(&self) -> MaskSize {
         match self.kind.as_str() {
-            Self::SPLIT => MaskSize::None,
+            Self::SPLIT | Self::FREEFORM => MaskSize::None,
             Self::CINEMATIC_BARS => MaskSize::HeightOnly,
             _ => MaskSize::WidthHeight,
         }

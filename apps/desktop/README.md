@@ -30,9 +30,11 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 - **Keyframes**: the diamond next to a numeric field adds a key at the
   playhead (or removes the one there); once a parameter has keys, typing a
   value keys it at the playhead and the field follows the animation. Keys are
-  linear by default (`step` and eased `bezier` segments are read from
-  project files), stay with their source frames when a clip is trimmed, and
-  are split with the clip. The selected clip shows its keys as dots; click one
+  linear by default; `step` and `bezier` segments with the web app's curve
+  handles are read from project files and evaluated the same way (a Bézier
+  without handles is a straight line, as in the web graph editor). Keys stay
+  with their source frames when a clip is trimmed and are split with the
+  clip, a cut Bézier keeping its shape on both sides. The selected clip shows its keys as dots; click one
   to jump to it, or use `Shift-←`/`Shift-→`. Audio volume keys are followed
   by the preview mixer and written into the export as a per-frame `volume`
   expression.
@@ -41,8 +43,10 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   switched off without removing them.
 - **Mask**: a rectangle, ellipse, diamond, heart, star, split line or
   cinematic bars on video and image clips, sized and offset as percentages of
-  the clip, rotated, feathered (GPU distance field) or inverted; the same
-  shapes and parameters as the web editor.
+  the clip, rotated, feathered (GPU distance field) or inverted, with an
+  optional stroke along the edge (width, colour, inside/centre/outside); the
+  same shapes and parameters as the web editor. Freeform pen-tool paths from
+  web projects are rendered too (there is no pen tool here yet).
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -117,9 +121,9 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Only the blur effect exists natively. The web editor's text and freeform
-  masks, mask strokes, custom keyframe curve handles, stickers and captions
-  are read from project files but not rendered.
+- Only the blur effect exists natively. The web editor's text masks,
+  stickers and captions are read from project files but not rendered, and
+  freeform masks can be rendered but not drawn.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it

@@ -12,7 +12,7 @@ use time::MediaTime;
 
 use crate::effects::{backdrop_blur_passes, effect_pass_groups};
 use crate::error::RenderError;
-use crate::mask::rasterize_mask;
+use crate::mask::{rasterize_mask, rasterize_mask_stroke};
 use crate::text::TextRasterizer;
 
 #[derive(Clone, Debug, Default)]
@@ -50,6 +50,8 @@ pub struct Renderer {
     texts: HashMap<String, (String, u32, u32)>,
     /// Rasterised masks by element id: what they were made from.
     masks: HashMap<String, String>,
+    /// Element id → key of the mask stroke texture currently uploaded.
+    strokes: HashMap<String, String>,
 }
 
 impl Renderer {
@@ -67,6 +69,7 @@ impl Renderer {
             images: HashMap::new(),
             texts: HashMap::new(),
             masks: HashMap::new(),
+            strokes: HashMap::new(),
         })
     }
 
@@ -148,10 +151,14 @@ impl Renderer {
                 flip_x: transform.scale_x < 0.0,
                 flip_y: transform.scale_y < 0.0,
             };
-            let mask = layer
-                .mask
-                .as_ref()
-                .map(|mask| self.prepare_mask(&layer.element_id, mask, &quad, width, height, scale_x));
+            let (mask, stroke) = match layer.mask.as_ref() {
+                Some(mask) => {
+                    let (mask, stroke) =
+                        self.prepare_mask(&layer.element_id, mask, &quad, width, height, scale_x);
+                    (Some(mask), stroke)
+                }
+                None => (None, None),
+            };
             items.push(FrameItemDescriptor::Layer(LayerDescriptor {
                 texture_id,
                 transform: quad,
@@ -160,6 +167,9 @@ impl Renderer {
                 effect_pass_groups: effect_pass_groups(&layer.effects, width, height),
                 mask,
             }));
+            if let Some(stroke) = stroke {
+                items.push(FrameItemDescriptor::Layer(stroke));
+            }
         }
 
         let frame = FrameDescriptor {
@@ -282,7 +292,9 @@ impl Renderer {
 
     /// Makes sure the element's mask texture matches the mask and the
     /// element's placement in this frame, and describes it for the
-    /// compositor. Feather is given in canvas pixels and scaled to the frame.
+    /// compositor, with the mask's stroke (if any) as a full-frame layer to
+    /// draw over the element. Feather and stroke width are given in canvas
+    /// pixels and scaled to the frame.
     fn prepare_mask(
         &mut self,
         element_id: &str,
@@ -291,7 +303,7 @@ impl Renderer {
         width: u32,
         height: u32,
         scale: f32,
-    ) -> LayerMaskDescriptor {
+    ) -> (LayerMaskDescriptor, Option<LayerDescriptor>) {
         let texture_id = format!("mask:{element_id}");
         let key = format!("{}:{:?}:{quad:?}:{width}x{height}", mask.kind, mask.params);
         if self.masks.get(element_id) != Some(&key) {
@@ -299,11 +311,45 @@ impl Renderer {
             self.upload(&texture_id, width, height, &pixels);
             self.masks.insert(element_id.to_owned(), key);
         }
-        LayerMaskDescriptor {
+        let descriptor = LayerMaskDescriptor {
             texture_id,
             feather: (mask.params.number("feather", 0.0).max(0.0) as f32 * scale).max(0.0),
             inverted: mask.params.bool("inverted", false),
-        }
+        };
+        let stroke = if mask.params.number("strokeWidth", 0.0) > 0.0 {
+            let stroke_id = format!("mask-stroke:{element_id}");
+            let key = format!("{}:{:?}:{quad:?}:{width}x{height}:{scale}", mask.kind, mask.params);
+            let uploaded = if self.strokes.get(element_id) == Some(&key) {
+                true
+            } else if let Some(pixels) =
+                rasterize_mask_stroke(&mask.kind, &mask.params, quad, width, height, scale)
+            {
+                self.upload(&stroke_id, width, height, &pixels);
+                self.strokes.insert(element_id.to_owned(), key);
+                true
+            } else {
+                false
+            };
+            uploaded.then(|| LayerDescriptor {
+                texture_id: stroke_id,
+                transform: QuadTransformDescriptor {
+                    center_x: width as f32 / 2.0,
+                    center_y: height as f32 / 2.0,
+                    width: width as f32,
+                    height: height as f32,
+                    rotation_degrees: 0.0,
+                    flip_x: false,
+                    flip_y: false,
+                },
+                opacity: 1.0,
+                blend_mode: BlendMode::Normal,
+                effect_pass_groups: Vec::new(),
+                mask: None,
+            })
+        } else {
+            None
+        };
+        (descriptor, stroke)
     }
 
     fn upload(&mut self, texture_id: &str, width: u32, height: u32, bgra: &[u8]) {

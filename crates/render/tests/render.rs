@@ -161,6 +161,44 @@ fn blurred_background_covers_the_frame_with_the_main_track() {
 }
 
 #[test]
+fn draws_mask_strokes_over_the_element() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Stroke");
+    project.settings.background = editor::Background::Color {
+        color: "#0000ff".to_owned(),
+    };
+    let image_id = add_image(&mut project, dir.path());
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    // A square 180 px image centred in a 320x180 frame, masked to its middle
+    // 50% (45..135 across) with a thick red outline. Stroke width is in
+    // canvas pixels; the 1080p canvas is six times this frame, so 48 is 8 px.
+    image.params.set("transform.scaleX", 1.0).set("transform.scaleY", 1.0);
+    let mut mask = editor::Mask::rectangle();
+    mask.params
+        .set("width", 0.5)
+        .set("height", 0.5)
+        .set("strokeWidth", 48.0)
+        .set("strokeColor", "#ff0000");
+    image.masks.push(mask);
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: image,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "green inside the mask");
+    assert_eq!(pixel(&frame, 160, 135 + 10), [255, 0, 0, 255], "blue outside it");
+    let edge = pixel(&frame, 160, 135);
+    assert!(edge[2] > 200 && edge[1] < 40 && edge[0] < 40, "red stroke on the mask edge: {edge:?}");
+    let inner = pixel(&frame, 160, 135 - 3);
+    assert!(inner[2] > 200 && inner[1] < 40, "the band is 8 px wide: {inner:?}");
+}
+
+#[test]
 fn applies_masks_blur_and_keyframes() {
     let Some(mut renderer) = renderer(None) else { return };
     let dir = tempfile::tempdir().unwrap();

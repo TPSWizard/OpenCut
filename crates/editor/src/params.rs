@@ -1,5 +1,7 @@
 //! Element parameters: a flat map of dotted keys to numbers, strings and
-//! booleans, exactly as the web Editor API exposes them.
+//! booleans, exactly as the web Editor API exposes them. A few parameters
+//! are structured (a freeform mask's `path` is a list of points); those are
+//! kept as JSON so nothing is lost on the way through.
 
 use std::collections::BTreeMap;
 
@@ -11,6 +13,22 @@ pub enum ParamValue {
     Bool(bool),
     Number(f64),
     Text(String),
+    /// Anything else (arrays, objects, null), kept as written.
+    Json(serde_json::Value),
+}
+
+impl From<serde_json::Value> for ParamValue {
+    fn from(value: serde_json::Value) -> Self {
+        match value {
+            serde_json::Value::Bool(value) => Self::Bool(value),
+            serde_json::Value::Number(number) => match number.as_f64() {
+                Some(value) => Self::Number(value),
+                None => Self::Json(serde_json::Value::Number(number)),
+            },
+            serde_json::Value::String(text) => Self::Text(text),
+            other => Self::Json(other),
+        }
+    }
 }
 
 impl From<f64> for ParamValue {
@@ -43,6 +61,7 @@ impl ParamValue {
             Self::Number(value) => Some(*value),
             Self::Bool(value) => Some(if *value { 1.0 } else { 0.0 }),
             Self::Text(text) => text.trim().parse().ok(),
+            Self::Json(_) => None,
         }
     }
 
@@ -55,6 +74,7 @@ impl ParamValue {
                 "false" | "no" | "0" => Some(false),
                 _ => None,
             },
+            Self::Json(_) => None,
         }
     }
 
@@ -63,6 +83,18 @@ impl ParamValue {
             Self::Text(text) => text.clone(),
             Self::Number(value) => format_number(*value),
             Self::Bool(value) => value.to_string(),
+            Self::Json(value) => value.to_string(),
+        }
+    }
+
+    /// The value as JSON (text is parsed when it holds JSON, so a path
+    /// stored either way reads the same).
+    pub fn as_json(&self) -> serde_json::Value {
+        match self {
+            Self::Bool(value) => serde_json::Value::Bool(*value),
+            Self::Number(value) => serde_json::json!(*value),
+            Self::Text(text) => serde_json::from_str(text).unwrap_or(serde_json::Value::String(text.clone())),
+            Self::Json(value) => value.clone(),
         }
     }
 }

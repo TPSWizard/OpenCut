@@ -7,10 +7,12 @@
 //! feathers and applies the result.
 
 use compositor::QuadTransformDescriptor;
-use editor::{Mask, Params};
+use editor::{Mask, Params, parse_hex_color};
 
 /// The web app's floor for a mask's width and height (fraction of the element).
 const MIN_MASK_DIMENSION: f64 = 0.01;
+/// Straight pieces per Bézier segment of a freeform path.
+const FREEFORM_SEGMENTS: usize = 16;
 
 /// Coverage of one mask shape over a `width` x `height` frame as straight
 /// RGBA with every channel equal to the coverage (the compositor reads the
@@ -24,14 +26,8 @@ pub fn rasterize_mask(
     height: u32,
 ) -> Vec<u8> {
     let geometry = Geometry::new(kind, params, quad);
-    let shape = match kind {
-        Mask::RECTANGLE | Mask::CINEMATIC_BARS => Shape::Rectangle,
-        Mask::ELLIPSE => Shape::Ellipse,
-        Mask::SPLIT => Shape::Split,
-        Mask::DIAMOND => Shape::Diamond,
-        Mask::STAR => Shape::Polygon(Polygon::new(star_vertices(geometry.half))),
-        Mask::HEART => Shape::Polygon(Polygon::new(heart_vertices(geometry.half))),
-        _ => return vec![255; (width * height * 4) as usize],
+    let Some(shape) = Shape::new(kind, params, &geometry) else {
+        return vec![255; (width * height * 4) as usize];
     };
     let mut pixels = vec![0u8; (width * height * 4) as usize];
     for y in 0..height {
@@ -45,6 +41,59 @@ pub fn rasterize_mask(
     pixels
 }
 
+/// The mask's outline as a straight-alpha BGRA layer the size of the frame:
+/// a band `strokeWidth` canvas pixels wide (times `scale` for this frame)
+/// in `strokeColor`, centred on the edge or kept inside or outside it
+/// (`strokeAlign`), as the web app draws it over the masked element. `None`
+/// when there is no stroke or the shape is unknown. Feather and inversion
+/// do not touch the stroke.
+pub fn rasterize_mask_stroke(
+    kind: &str,
+    params: &Params,
+    quad: &QuadTransformDescriptor,
+    width: u32,
+    height: u32,
+    scale: f32,
+) -> Option<Vec<u8>> {
+    let stroke_width = params.number("strokeWidth", 0.0) * scale.max(0.0) as f64;
+    if stroke_width <= 0.0 {
+        return None;
+    }
+    let color = parse_hex_color(&params.text("strokeColor", "#ffffff"))?;
+    let mut geometry = Geometry::new(kind, params, quad);
+    // The band needs exact distances out to its outer edge.
+    geometry.margin = stroke_width / 2.0 + 1.0;
+    let shape = Shape::new(kind, params, &geometry)?;
+    if matches!(shape, Shape::Empty) {
+        return None;
+    }
+    // Negative distances are inside, so an inside stroke sits at -w/2.
+    let offset = match params.text("strokeAlign", "center").as_ref() {
+        "inside" => -stroke_width / 2.0,
+        "outside" => stroke_width / 2.0,
+        _ => 0.0,
+    };
+    let rgb = [
+        (color[2] * 255.0).round() as u8,
+        (color[1] * 255.0).round() as u8,
+        (color[0] * 255.0).round() as u8,
+    ];
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    for y in 0..height {
+        for x in 0..width {
+            let distance = geometry.distance(&shape, x as f64 + 0.5, y as f64 + 0.5);
+            let coverage = (0.5 - ((distance - offset).abs() - stroke_width / 2.0)).clamp(0.0, 1.0);
+            if coverage <= 0.0 {
+                continue;
+            }
+            let alpha = (coverage * color[3] as f64 * 255.0).round() as u8;
+            let index = ((y * width + x) * 4) as usize;
+            pixels[index..index + 4].copy_from_slice(&[rgb[0], rgb[1], rgb[2], alpha]);
+        }
+    }
+    Some(pixels)
+}
+
 enum Shape {
     Rectangle,
     Ellipse,
@@ -52,6 +101,72 @@ enum Shape {
     Split,
     Diamond,
     Polygon(Polygon),
+    /// Shows nothing (an open freeform path).
+    Empty,
+}
+
+impl Shape {
+    /// `None` for a kind that is not rendered natively.
+    fn new(kind: &str, params: &Params, geometry: &Geometry) -> Option<Self> {
+        Some(match kind {
+            Mask::RECTANGLE | Mask::CINEMATIC_BARS => Self::Rectangle,
+            Mask::ELLIPSE => Self::Ellipse,
+            Mask::SPLIT => Self::Split,
+            Mask::DIAMOND => Self::Diamond,
+            Mask::STAR => Self::Polygon(Polygon::new(star_vertices(geometry.half))),
+            Mask::HEART => Self::Polygon(Polygon::new(heart_vertices(geometry.half))),
+            Mask::FREEFORM => match freeform_vertices(params, geometry.element_size) {
+                Some(vertices) => Self::Polygon(Polygon::new(vertices)),
+                None => Self::Empty,
+            },
+            _ => return None,
+        })
+    }
+}
+
+/// A freeform path flattened into a polygon in shape space, or `None`
+/// when it is open or has fewer than three points (the web app shows
+/// nothing then). Points are in units of the element's size, scaled by
+/// `scale`; each segment is a cubic Bézier through the points' handles.
+fn freeform_vertices(params: &Params, (element_width, element_height): (f64, f64)) -> Option<Vec<(f64, f64)>> {
+    if !params.bool("closed", false) {
+        return None;
+    }
+    let scale = params.number("scale", 1.0);
+    let path = params.get("path")?.as_json();
+    let number = |point: &serde_json::Value, key: &str| point.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let points: Vec<[(f64, f64); 3]> = path
+        .as_array()?
+        .iter()
+        .filter(|point| point.get("x").is_some() && point.get("y").is_some())
+        .map(|point| {
+            let to_pixels = |x: f64, y: f64| (x * element_width * scale, y * element_height * scale);
+            let (x, y) = (number(point, "x"), number(point, "y"));
+            [
+                to_pixels(x, y),
+                to_pixels(x + number(point, "inX"), y + number(point, "inY")),
+                to_pixels(x + number(point, "outX"), y + number(point, "outY")),
+            ]
+        })
+        .collect();
+    if points.len() < 3 {
+        return None;
+    }
+    let mut vertices = Vec::with_capacity(points.len() * FREEFORM_SEGMENTS);
+    for index in 0..points.len() {
+        let [p0, _, p1] = points[index];
+        let [p3, p2, _] = points[(index + 1) % points.len()];
+        for step in 0..FREEFORM_SEGMENTS {
+            let t = step as f64 / FREEFORM_SEGMENTS as f64;
+            let u = 1.0 - t;
+            let weight = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
+            vertices.push((
+                weight[0] * p0.0 + weight[1] * p1.0 + weight[2] * p2.0 + weight[3] * p3.0,
+                weight[0] * p0.1 + weight[1] * p1.1 + weight[2] * p2.1 + weight[3] * p3.1,
+            ));
+        }
+    }
+    Some(vertices)
 }
 
 /// A closed polygon in shape space with its bounding box.
@@ -72,12 +187,17 @@ impl Polygon {
         Self { vertices, min, max }
     }
 
-    /// Signed distance to the outline: negative inside.
-    fn distance(&self, x: f64, y: f64) -> f64 {
-        if x < self.min.0 - 1.0 || x > self.max.0 + 1.0 || y < self.min.1 - 1.0 || y > self.max.1 + 1.0 {
-            return 1.0;
+    /// Signed distance to the outline: negative inside. Farther than
+    /// `margin` from the bounding box the distance to the box is returned
+    /// instead (a lower bound), which keeps a frame-sized raster cheap.
+    fn distance(&self, x: f64, y: f64, margin: f64) -> f64 {
+        let dx = (self.min.0 - x).max(x - self.max.0).max(0.0);
+        let dy = (self.min.1 - y).max(y - self.max.1).max(0.0);
+        let outside = (dx * dx + dy * dy).sqrt();
+        if outside > margin {
+            return outside;
         }
-        let mut inside = false;
+        let mut winding = 0i32;
         let mut nearest = f64::INFINITY;
         let count = self.vertices.len();
         for index in 0..count {
@@ -93,12 +213,17 @@ impl Polygon {
             };
             let (px, py) = (ax + ex * t - x, ay + ey * t - y);
             nearest = nearest.min(px * px + py * py);
-            // Even-odd crossing test.
-            if (ay > y) != (by > y) && x < ax + (y - ay) * ex / ey {
-                inside = !inside;
+            // Nonzero winding, the Canvas 2D fill rule the web app uses.
+            let cross = ex * (y - ay) - (x - ax) * ey;
+            if ay <= y {
+                if by > y && cross > 0.0 {
+                    winding += 1;
+                }
+            } else if by <= y && cross < 0.0 {
+                winding -= 1;
             }
         }
-        if inside { -nearest.sqrt() } else { nearest.sqrt() }
+        if winding != 0 { -nearest.sqrt() } else { nearest.sqrt() }
     }
 }
 
@@ -153,6 +278,10 @@ struct Geometry {
     shape_rotation: (f64, f64),
     /// Half the shape's size in element pixels.
     half: (f64, f64),
+    /// The element's size in frame pixels.
+    element_size: (f64, f64),
+    /// How far from a polygon's bounding box distances must stay exact.
+    margin: f64,
 }
 
 impl Geometry {
@@ -180,11 +309,19 @@ impl Geometry {
             ),
             shape_rotation: (shape_angle.cos(), shape_angle.sin()),
             half: (mask_width / 2.0, mask_height / 2.0),
+            element_size: (element_width, element_height),
+            margin: 1.0,
         }
     }
 
     /// 0 outside, 1 inside, in between across a one-pixel edge.
     fn coverage(&self, shape: &Shape, x: f64, y: f64) -> f64 {
+        (0.5 - self.distance(shape, x, y)).clamp(0.0, 1.0)
+    }
+
+    /// Signed distance from a frame pixel to the shape's edge, negative
+    /// inside, in frame pixels (approximate for ellipses).
+    fn distance(&self, shape: &Shape, x: f64, y: f64) -> f64 {
         // Frame → element pixels (centred, unrotated, unflipped).
         let dx = x - self.quad_center.0;
         let dy = y - self.quad_center.1;
@@ -211,9 +348,10 @@ impl Geometry {
                 (lx.abs() / half_width + ly.abs() / half_height - 1.0)
                     / (1.0 / (half_width * half_width) + 1.0 / (half_height * half_height)).sqrt()
             }
-            Shape::Polygon(polygon) => polygon.distance(lx, ly),
+            Shape::Polygon(polygon) => polygon.distance(lx, ly, self.margin),
+            Shape::Empty => f64::INFINITY,
         };
-        (0.5 - distance).clamp(0.0, 1.0)
+        distance
     }
 }
 
@@ -288,8 +426,98 @@ mod tests {
 
     #[test]
     fn unknown_shapes_cover_everything() {
-        let pixels = rasterize_mask("freeform", &Params::new(), &quad(5.0, 5.0, 10.0, 10.0, 0.0), 10, 10);
+        let pixels = rasterize_mask("text", &Params::new(), &quad(5.0, 5.0, 10.0, 10.0, 0.0), 10, 10);
         assert!(pixels.iter().all(|&value| value == 255));
+        assert!(rasterize_mask_stroke("text", &Params::new(), &quad(5.0, 5.0, 10.0, 10.0, 0.0), 10, 10, 1.0).is_none());
+    }
+
+    #[test]
+    fn freeform_paths_fill_when_closed() {
+        let frame = quad(50.0, 50.0, 100.0, 100.0, 0.0);
+        // A square from -30% to +30% of the element, no handles.
+        let square = serde_json::json!([
+            {"id": "a", "x": -0.3, "y": -0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+            {"id": "b", "x": 0.3, "y": -0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+            {"id": "c", "x": 0.3, "y": 0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+            {"id": "d", "x": -0.3, "y": 0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+        ]);
+        let mut mask = Mask::shape(Mask::FREEFORM);
+        mask.params.set("path", square.clone()).set("closed", true);
+        let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
+        assert_eq!(alpha(&pixels, 100, 50, 50), 255, "centre");
+        assert_eq!(alpha(&pixels, 100, 25, 25), 255, "inside the square");
+        assert_eq!(alpha(&pixels, 100, 15, 50), 0, "outside the square");
+
+        // Open: the web app shows nothing.
+        mask.params.set("closed", false);
+        let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
+        assert!(pixels.iter().all(|&value| value == 0));
+
+        // The path may also arrive as JSON text; scale doubles it, so the
+        // edge moves from 20 to 10; centre and rotation apply as usual.
+        mask.params.set("path", square.to_string()).set("closed", true).set("scale", 2.0);
+        let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
+        assert_eq!(alpha(&pixels, 100, 12, 50), 255, "scaled edge");
+        mask.params.set("scale", 1.0).set("centerX", 0.3);
+        let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
+        assert_eq!(alpha(&pixels, 100, 95, 50), 255, "shifted right");
+        assert_eq!(alpha(&pixels, 100, 40, 50), 0);
+
+        // Bulging handles: the right edge bows out past the straight line.
+        let bowed = serde_json::json!([
+            {"id": "a", "x": -0.3, "y": -0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+            {"id": "b", "x": 0.3, "y": -0.3, "inX": 0, "inY": 0, "outX": 0.3, "outY": 0},
+            {"id": "c", "x": 0.3, "y": 0.3, "inX": 0.3, "inY": 0, "outX": 0, "outY": 0},
+            {"id": "d", "x": -0.3, "y": 0.3, "inX": 0, "inY": 0, "outX": 0, "outY": 0},
+        ]);
+        let mut mask = Mask::shape(Mask::FREEFORM);
+        mask.params.set("path", bowed).set("closed", true);
+        let pixels = rasterize_mask(&mask.kind, &mask.params, &frame, 100, 100);
+        assert_eq!(alpha(&pixels, 100, 90, 50), 255, "the bow reaches past x=80");
+        assert_eq!(alpha(&pixels, 100, 96, 22), 0, "but not near the corners");
+    }
+
+    #[test]
+    fn strokes_follow_the_outline() {
+        let frame = quad(50.0, 50.0, 100.0, 100.0, 0.0);
+        let mut mask = Mask::rectangle();
+        assert!(rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 1.0).is_none(), "no width, no stroke");
+        mask.params.set("strokeWidth", 4.0).set("strokeColor", "#ff0000");
+        // The 60% box's right edge is at x=80: a centred 4 px band covers 78..82.
+        let pixels = rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 1.0).unwrap();
+        let at = |x: u32| {
+            let index = ((50 * 100 + x) * 4) as usize;
+            [pixels[index], pixels[index + 1], pixels[index + 2], pixels[index + 3]]
+        };
+        assert_eq!(at(79), [0, 0, 255, 255], "red in BGRA, inside the band");
+        assert_eq!(at(81), [0, 0, 255, 255]);
+        assert_eq!(at(75)[3], 0, "inside the box, off the band");
+        assert_eq!(at(85)[3], 0, "outside");
+        assert_eq!(at(50)[3], 0, "the middle is not stroked");
+
+        mask.params.set("strokeAlign", "inside");
+        let pixels = rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 1.0).unwrap();
+        assert_eq!(pixels[((50 * 100 + 77) * 4 + 3) as usize], 255, "inside: 76..80");
+        assert_eq!(pixels[((50 * 100 + 81) * 4 + 3) as usize], 0);
+
+        mask.params.set("strokeAlign", "outside");
+        let pixels = rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 1.0).unwrap();
+        assert_eq!(pixels[((50 * 100 + 82) * 4 + 3) as usize], 255, "outside: 80..84");
+        assert_eq!(pixels[((50 * 100 + 78) * 4 + 3) as usize], 0);
+
+        // The width is in canvas pixels: at half scale the band halves.
+        mask.params.set("strokeAlign", "center");
+        let pixels = rasterize_mask_stroke(&mask.kind, &mask.params, &frame, 100, 100, 0.5).unwrap();
+        assert_eq!(pixels[((50 * 100 + 79) * 4 + 3) as usize], 255);
+        assert_eq!(pixels[((50 * 100 + 77) * 4 + 3) as usize], 0);
+
+        // A polygon's stroke stays on its outline: nothing far from a wide-stroked heart.
+        let mut heart = Mask::shape(Mask::HEART);
+        heart.params.set("strokeWidth", 14.0);
+        let pixels = rasterize_mask_stroke(&heart.kind, &heart.params, &frame, 100, 100, 1.0).unwrap();
+        assert_eq!(pixels[((5 * 100 + 5) * 4 + 3) as usize], 0, "far corner");
+        assert_eq!(pixels[((50 * 100 + 50) * 4 + 3) as usize], 0, "centre");
+        assert!(pixels[((30 * 100 + 50) * 4 + 3) as usize] > 0, "on the notch");
     }
 
     #[test]

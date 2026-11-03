@@ -731,7 +731,11 @@ impl Render for InspectorPanel {
                             );
                             content = content.child(row);
                         }
-                        for (key, label) in [("rotation", "Rotation"), ("feather", "Feather (px)")] {
+                        for (key, label) in [
+                            ("rotation", "Rotation"),
+                            ("feather", "Feather (px)"),
+                            ("strokeWidth", "Stroke (px)"),
+                        ] {
                             let mask_id = mask_id.clone();
                             let row = self.row(
                                 label,
@@ -744,12 +748,59 @@ impl Render for InspectorPanel {
                                 Box::new(move |text, state, cx| {
                                     if let Ok(value) = text.trim().parse::<f64>() {
                                         let mut params = Params::new();
-                                        params.set(key, if key == "feather" { value.max(0.0) } else { value });
+                                        params.set(key, if key == "rotation" { value } else { value.max(0.0) });
                                         state.update_mask(&mask_id, params, cx);
                                     }
                                 }),
                             );
                             content = content.child(row);
+                        }
+                        if mask.params.number("strokeWidth", 0.0) > 0.0 {
+                            let color_row = self.row(
+                                "Stroke color",
+                                &format!("mask.{}.strokeColor", mask.id),
+                                "#ffffff",
+                                mask.params.text("strokeColor", "#ffffff").into_owned(),
+                                None,
+                                window,
+                                cx,
+                                Box::new({
+                                    let mask_id = mask_id.clone();
+                                    move |text, state, cx| {
+                                        if editor::parse_hex_color(text).is_some() {
+                                            let mut params = Params::new();
+                                            params.set("strokeColor", text.trim().to_owned());
+                                            state.update_mask(&mask_id, params, cx);
+                                        }
+                                    }
+                                }),
+                            );
+                            let align = mask.params.text("strokeAlign", "center").into_owned();
+                            let mut align_row = div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(Self::label_cell("Stroke align", window));
+                            for (label, value) in [("Inside", "inside"), ("Center", "center"), ("Outside", "outside")] {
+                                let state = self.state.clone();
+                                let mask_id = mask_id.clone();
+                                align_row = align_row.child(
+                                    Button::new(eid("stroke-align", &format!("{mask_id}-{value}")), label)
+                                        .variant(if align == value {
+                                            ButtonVariant::Default
+                                        } else {
+                                            ButtonVariant::Outline
+                                        })
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            let mut params = Params::new();
+                                            params.set("strokeAlign", value);
+                                            state.update(cx, |state, cx| state.update_mask(&mask_id, params, cx))
+                                        }),
+                                );
+                            }
+                            content = content.child(color_row).child(align_row);
                         }
                     } else {
                         content = content.child(
