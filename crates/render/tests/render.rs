@@ -123,6 +123,44 @@ fn composites_image_and_text_over_background() {
 }
 
 #[test]
+fn blurred_background_covers_the_frame_with_the_main_track() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Backdrop");
+    let image_id = add_image(&mut project, dir.path());
+    // A small image in the middle, so the frame's edges show the background.
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.params.set("transform.scaleX", 0.25).set("transform.scaleY", 0.25);
+    apply(
+        &mut project,
+        &EditorCommand::InsertElement {
+            element: image,
+            placement: TrackPlacement::Auto,
+        },
+    )
+    .unwrap();
+
+    project.settings.background = editor::Background::Color {
+        color: "#000000".to_owned(),
+    };
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 4, 4), [0, 0, 0, 255], "plain black corner");
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "image in the middle");
+
+    // Blurred: the green image, scaled to cover the frame, fills the corners
+    // too. A solid image stays solid however hard it is blurred.
+    project.settings.background = editor::Background::Blur { blur_intensity: 200.0 };
+    let frame = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let corner = pixel(&frame, 4, 4);
+    assert!(corner[1] > 200 && corner[0] < 30 && corner[2] < 30, "green backdrop in the corner: {corner:?}");
+    assert_eq!(pixel(&frame, 160, 90), [0, 255, 0, 255], "image still on top");
+
+    // Nothing on the main track at this time: the backdrop is gone.
+    let frame = renderer.render(&project, seconds(20.0), 320, 180).unwrap();
+    assert_eq!(pixel(&frame, 4, 4), [0, 0, 0, 255], "no backdrop without a clip");
+}
+
+#[test]
 fn applies_masks_blur_and_keyframes() {
     let Some(mut renderer) = renderer(None) else { return };
     let dir = tempfile::tempdir().unwrap();

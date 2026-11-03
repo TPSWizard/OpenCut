@@ -233,9 +233,9 @@ impl Render for InspectorPanel {
             .map(|media| media.has_audio)
             .unwrap_or(false);
         let project_name = project.name.clone();
-        let background = match &project.settings.background {
-            Background::Color { color } => color.clone(),
-            Background::Blur { .. } => "#000000".to_owned(),
+        let (background, blur_intensity) = match &project.settings.background {
+            Background::Color { color } => (color.clone(), None),
+            Background::Blur { blur_intensity } => ("#000000".to_owned(), Some(*blur_intensity)),
         };
         let canvas = project.settings.canvas;
 
@@ -809,7 +809,7 @@ impl Render for InspectorPanel {
                     "Background",
                     "project.background",
                     "#000000",
-                    background,
+                    background.clone(),
                     None,
                     window,
                     cx,
@@ -826,10 +826,57 @@ impl Render for InspectorPanel {
                         }
                     }),
                 );
+                // Colour, or the main track blurred behind the canvas (the
+                // web app's presets).
+                let mut blur_row = div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(Self::label_cell("Backdrop", window));
+                for (label, preset) in [
+                    ("Color", None),
+                    ("Light blur", Some(100.0)),
+                    ("Medium blur", Some(200.0)),
+                    ("Heavy blur", Some(500.0)),
+                ] {
+                    let state = self.state.clone();
+                    let color = background.clone();
+                    let active = match (preset, blur_intensity) {
+                        (None, None) => true,
+                        (Some(preset), Some(current)) => (preset - current).abs() < 0.5,
+                        _ => false,
+                    };
+                    blur_row = blur_row.child(
+                        Button::new(eid("backdrop", label), label)
+                            .variant(if active {
+                                ButtonVariant::Default
+                            } else {
+                                ButtonVariant::Outline
+                            })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                let background = match preset {
+                                    None => Background::Color { color: color.clone() },
+                                    Some(blur_intensity) => Background::Blur { blur_intensity },
+                                };
+                                state.update(cx, |state, cx| {
+                                    state.execute(
+                                        Command::UpdateSettings(SettingsPatch {
+                                            background: Some(background),
+                                            ..Default::default()
+                                        }),
+                                        cx,
+                                    );
+                                })
+                            }),
+                    );
+                }
                 content = content
                     .child(self.heading("Project", window))
                     .child(name_row)
-                    .child(background_row);
+                    .child(background_row)
+                    .child(blur_row);
 
                 let mut fps_row = div()
                     .flex()

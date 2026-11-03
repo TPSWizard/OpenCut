@@ -12,8 +12,20 @@ pub struct FramePlan {
     pub height: u32,
     /// Linear-ish sRGB components, straight alpha.
     pub background: [f32; 4],
+    /// With a blurred background: the main track's visible video and image
+    /// elements, drawn scaled to cover the canvas and blurred, under the
+    /// layers. Their transforms, opacity, effects and masks are ignored.
+    pub backdrops: Vec<BackdropPlan>,
     /// Bottom layer first.
     pub layers: Vec<LayerPlan>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BackdropPlan {
+    pub element_id: String,
+    pub source: LayerSource,
+    /// Blur strength in the web app's units (presets 100, 200 and 500).
+    pub blur_intensity: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -177,6 +189,32 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
         Background::Color { color } => parse_hex_color(color).unwrap_or([0.0, 0.0, 0.0, 1.0]),
         Background::Blur { .. } => [0.0, 0.0, 0.0, 1.0],
     };
+    let mut backdrops = Vec::new();
+    if let Background::Blur { blur_intensity } = &project.settings.background {
+        let main = &project.tracks[project.main_track_index()];
+        if !main.hidden {
+            for element in &main.elements {
+                if element.hidden || !element.contains(time) {
+                    continue;
+                }
+                let source = match &element.kind {
+                    ElementKind::Video { media_id } => LayerSource::Video {
+                        media_id: media_id.clone(),
+                        time: element.source_time(time),
+                    },
+                    ElementKind::Image { media_id } => LayerSource::Image {
+                        media_id: media_id.clone(),
+                    },
+                    _ => continue,
+                };
+                backdrops.push(BackdropPlan {
+                    element_id: element.id.clone(),
+                    source,
+                    blur_intensity: blur_intensity.max(0.0) as f32,
+                });
+            }
+        }
+    }
     let mut layers = Vec::new();
     // Tracks are stored top to bottom; draw bottom first.
     for track in project.tracks.iter().rev() {
@@ -235,6 +273,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
         width: canvas.width,
         height: canvas.height,
         background,
+        backdrops,
         layers,
     }
 }
@@ -263,6 +302,72 @@ mod tests {
         assert_eq!(fit_contain(1920.0, 1080.0, 1920.0, 1080.0), (1920.0, 1080.0));
         let (width, height) = fit_contain(100.0, 1000.0, 1920.0, 1080.0);
         assert!((width - 108.0).abs() < 0.001 && height == 1080.0);
+    }
+
+    #[test]
+    fn blur_background_plans_main_track_backdrops() {
+        let mut project = Project::new("Backdrop");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "img".to_owned(),
+                name: "img.png".to_owned(),
+                kind: MediaKind::Image,
+                path: "img.png".into(),
+                duration: None,
+                width: Some(10),
+                height: Some(10),
+                fps: None,
+                has_audio: false,
+            }),
+        )
+        .unwrap();
+        let image = Element::from_media(project.media_item("img").unwrap(), seconds(0.0));
+        let image_id = image.id.clone();
+        apply(
+            &mut project,
+            &Command::InsertElement {
+                element: image,
+                placement: TrackPlacement::Auto,
+            },
+        )
+        .unwrap();
+        // A copy of the image at the same time lands on a new (overlay)
+        // track, and overlay tracks never become backdrops.
+        let mut overlay = Element::from_media(project.media_item("img").unwrap(), seconds(0.0));
+        overlay.id = "overlay".to_owned();
+        apply(
+            &mut project,
+            &Command::InsertElement {
+                element: overlay,
+                placement: TrackPlacement::Auto,
+            },
+        )
+        .unwrap();
+        assert_eq!(project.tracks.len(), 2);
+
+        let plan = plan_frame(&project, seconds(1.0));
+        assert!(plan.backdrops.is_empty(), "a color background has no backdrops");
+
+        project.settings.background = Background::Blur { blur_intensity: 200.0 };
+        let plan = plan_frame(&project, seconds(1.0));
+        assert_eq!(plan.background, [0.0, 0.0, 0.0, 1.0]);
+        assert_eq!(plan.backdrops.len(), 1);
+        assert_eq!(plan.backdrops[0].element_id, image_id);
+        assert_eq!(plan.backdrops[0].blur_intensity, 200.0);
+        assert_eq!(
+            plan.backdrops[0].source,
+            LayerSource::Image {
+                media_id: "img".to_owned()
+            }
+        );
+        assert_eq!(plan.layers.len(), 2, "the backdrop does not replace the layers");
+
+        // Outside the element, or with the main track hidden, there is none.
+        assert!(plan_frame(&project, seconds(30.0)).backdrops.is_empty());
+        let main = project.main_track_index();
+        project.tracks[main].hidden = true;
+        assert!(plan_frame(&project, seconds(1.0)).backdrops.is_empty());
     }
 
     #[test]

@@ -24,7 +24,8 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   plays through the default output device, mixed from every audible clip.
 - **Inspector**: name, transform (position, scale, rotation, opacity), text
   (content, font, size, color, alignment, bold/italic, line height, letter
-  spacing), audio volume (keyframeable) and mute; project name, background color, frame rate
+  spacing), audio volume (keyframeable) and mute; project name, background (a colour, or the
+  main track blurred behind the canvas at the web app's light/medium/heavy presets), frame rate
   and canvas presets.
 - **Keyframes**: the diamond next to a numeric field adds a key at the
   playhead (or removes the one there); once a parameter has keys, typing a
@@ -117,9 +118,8 @@ resolution and pipes BGRA frames into `media::Encoder`.
 ## Not there yet
 
 - Only the blur effect exists natively. The web editor's text and freeform
-  masks, mask strokes, custom keyframe curve handles, stickers, captions and
-  the blurred-background setting are read from project files but not
-  rendered.
+  masks, mask strokes, custom keyframe curve handles, stickers and captions
+  are read from project files but not rendered.
 - Project files are not yet interchangeable with the web app's IndexedDB
   projects (same concepts and parameter names, different storage).
 - Audio playback follows the picture from the playhead on each play/seek; it

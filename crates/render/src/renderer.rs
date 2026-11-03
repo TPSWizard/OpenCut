@@ -5,12 +5,12 @@ use compositor::{
     BlendMode, CanvasClearDescriptor, Compositor, FrameDescriptor, FrameItemDescriptor,
     LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor,
 };
-use editor::{LayerPlan, LayerSource, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
+use editor::{LayerSource, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
 use gpu::{GpuContext, wgpu};
 use media::{Ffmpeg, VideoSource, decode_image};
 use time::MediaTime;
 
-use crate::effects::effect_pass_groups;
+use crate::effects::{backdrop_blur_passes, effect_pass_groups};
 use crate::error::RenderError;
 use crate::mask::rasterize_mask;
 use crate::text::TextRasterizer;
@@ -91,10 +91,41 @@ impl Renderer {
         let scale_x = width as f32 / canvas_width;
         let scale_y = height as f32 / canvas_height;
 
-        let mut items = Vec::with_capacity(plan.layers.len());
-        for layer in &plan.layers {
+        let mut items = Vec::with_capacity(plan.layers.len() + plan.backdrops.len());
+        for backdrop in &plan.backdrops {
             let Some((texture_id, natural_width, natural_height)) =
-                self.prepare_layer(project, layer, scale_x * layer.transform.scale_x.abs())?
+                self.prepare_source(project, &backdrop.element_id, &backdrop.source, scale_x)?
+            else {
+                continue;
+            };
+            // Scaled to cover the frame, centred.
+            let cover = (width as f32 / natural_width.max(1) as f32)
+                .max(height as f32 / natural_height.max(1) as f32);
+            let passes = backdrop_blur_passes(backdrop.blur_intensity as f64, width, height);
+            items.push(FrameItemDescriptor::Layer(LayerDescriptor {
+                texture_id,
+                transform: QuadTransformDescriptor {
+                    center_x: width as f32 / 2.0,
+                    center_y: height as f32 / 2.0,
+                    width: (natural_width as f32 * cover).max(1.0),
+                    height: (natural_height as f32 * cover).max(1.0),
+                    rotation_degrees: 0.0,
+                    flip_x: false,
+                    flip_y: false,
+                },
+                opacity: 1.0,
+                blend_mode: BlendMode::Normal,
+                effect_pass_groups: if passes.is_empty() { Vec::new() } else { vec![passes] },
+                mask: None,
+            }));
+        }
+        for layer in &plan.layers {
+            let Some((texture_id, natural_width, natural_height)) = self.prepare_source(
+                project,
+                &layer.element_id,
+                &layer.source,
+                scale_x * layer.transform.scale_x.abs(),
+            )?
             else {
                 continue;
             };
@@ -154,16 +185,17 @@ impl Renderer {
         })
     }
 
-    /// Makes sure the layer's texture is uploaded and current. Returns the
-    /// texture id and the layer's natural size in canvas pixels, or `None`
-    /// when the layer cannot be shown (missing file, no FFmpeg).
-    fn prepare_layer(
+    /// Makes sure the source's texture is uploaded and current. Returns the
+    /// texture id and the source's natural size in canvas pixels, or `None`
+    /// when it cannot be shown (missing file, no FFmpeg).
+    fn prepare_source(
         &mut self,
         project: &Project,
-        layer: &LayerPlan,
+        element_id: &str,
+        source: &LayerSource,
         output_scale: f32,
     ) -> Result<Option<(String, u32, u32)>, RenderError> {
-        match &layer.source {
+        match source {
             LayerSource::Image { media_id } => {
                 let media = media_item(project, media_id)?;
                 let texture_id = format!("media:{media_id}");
@@ -229,10 +261,10 @@ impl Renderer {
                 Ok(Some((texture_id, natural.0, natural.1)))
             }
             LayerSource::Text(style) => {
-                let texture_id = format!("text:{}", layer.element_id);
+                let texture_id = format!("text:{element_id}");
                 let max_width = project.settings.canvas.width as f32;
                 let key = format!("{style:?}@{max_width}");
-                if let Some((current_key, width, height)) = self.texts.get(&layer.element_id)
+                if let Some((current_key, width, height)) = self.texts.get(element_id)
                     && *current_key == key
                 {
                     return Ok(Some((texture_id, *width, *height)));
@@ -240,7 +272,7 @@ impl Renderer {
                 let raster = self.text.rasterize(style, max_width);
                 self.upload(&texture_id, raster.width, raster.height, &raster.bgra);
                 self.texts.insert(
-                    layer.element_id.clone(),
+                    element_id.to_owned(),
                     (key, raster.width, raster.height),
                 );
                 Ok(Some((texture_id, raster.width, raster.height)))

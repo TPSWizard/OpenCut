@@ -38,6 +38,16 @@ pub fn effect_pass_groups(
         .collect()
 }
 
+/// Blur passes for a blurred-background backdrop. The web app's presets go
+/// up to 500, so unlike the effect the intensity is not capped at 100.
+pub fn backdrop_blur_passes(intensity: f64, width: u32, height: u32) -> Vec<EffectPassDescriptor> {
+    let intensity = intensity.max(0.0);
+    gaussian_blur_passes(
+        intensity_to_sigma(intensity, width as f64, REFERENCE_WIDTH),
+        intensity_to_sigma(intensity, height as f64, REFERENCE_HEIGHT),
+    )
+}
+
 fn intensity_to_sigma(intensity: f64, resolution: f64, reference: f64) -> f64 {
     (intensity / INTENSITY_TO_SIGMA_DIVISOR) * (resolution / reference)
 }

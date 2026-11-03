@@ -11,7 +11,7 @@ mod mixer;
 mod renderer;
 mod text;
 
-pub use effects::effect_pass_groups;
+pub use effects::{backdrop_blur_passes, effect_pass_groups};
 pub use error::RenderError;
 pub use mask::rasterize_mask;
 pub use mixer::Mixer;

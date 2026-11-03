@@ -70,7 +70,8 @@ keyed under `effects.<id>.params.<key>`.
 Every edit is an `editor::Command` applied with `editor::apply`; `editor::Editor`
 wraps a project with undo and redo. `plan_frame` says which layers are on
 screen at a time, how they are transformed, which effects apply and which
-mask shape clips them, all with keyframes resolved; `plan_audio` says which
+mask shape clips them, all with keyframes resolved, plus the main-track
+backdrops of a blurred background; `plan_audio` says which
 parts of which files are audible and at what gain (`AudioClipPlan::gain_at`
 follows `volume` keyframes). `ProjectStore` reads and writes
 `<root>/<id>/project.json` (format version 1).
