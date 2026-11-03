@@ -2,6 +2,13 @@
 //! playback, the preview image, saving, thumbnails and export. Panels read
 //! this entity and call its methods; it notifies them when anything changes.
 
+/// `OPENCUT_TRACE_INPUT=1` prints scroll-wheel events and scroll offsets
+/// to stderr, for driving the app from a script.
+pub(crate) fn trace_input() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("OPENCUT_TRACE_INPUT").is_some_and(|v| !v.is_empty() && v != "0"))
+}
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

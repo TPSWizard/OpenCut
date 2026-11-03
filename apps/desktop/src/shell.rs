@@ -224,6 +224,29 @@ impl Render for Shell {
             .size_full()
             .bg(colors.background)
             .text_color(colors.foreground)
+            .when(crate::state::trace_input(), |this| {
+                // Logs every wheel event the window receives, before any element handles it.
+                this.child(
+                    gpui::canvas(
+                        |_, _, _| (),
+                        |_, _, window, _| {
+                            window.on_mouse_event(|event: &gpui::ScrollWheelEvent, phase, window, _| {
+                                if phase == gpui::DispatchPhase::Capture {
+                                    eprintln!(
+                                        "trace: window wheel delta={:?} position={:?} modifiers={:?} mouse={:?}",
+                                        event.delta,
+                                        event.position,
+                                        event.modifiers,
+                                        window.mouse_position()
+                                    );
+                                }
+                            });
+                        },
+                    )
+                    .absolute()
+                    .size_0(),
+                )
+            })
             .on_action(cx.listener(|this, _: &TogglePlayback, _, cx| {
                 this.with_state(cx, |s, cx| s.toggle_playback(cx))
             }))

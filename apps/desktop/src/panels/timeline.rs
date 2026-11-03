@@ -169,6 +169,9 @@ impl TimelinePanel {
 
     fn on_scroll_wheel(&mut self, event: &ScrollWheelEvent, window: &mut Window, cx: &mut Context<Self>) {
         let delta = event.delta.pixel_delta(window.line_height());
+        if crate::state::trace_input() {
+            eprintln!("trace: timeline wheel delta={:?} modifiers={:?}", delta, event.modifiers);
+        }
         let dx = f32::from(delta.x);
         let dy = f32::from(delta.y);
         if event.modifiers.control || event.modifiers.platform {

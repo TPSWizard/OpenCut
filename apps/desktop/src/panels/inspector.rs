@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use editor::{
     Background, CanvasSize, Command, Effect, ElementKind, ElementPatch, Mask, MaskSize, Params, SettingsPatch,
 };
-use gpui::{Context, Entity, FocusHandle, FontWeight, Window, div, prelude::*, px};
+use gpui::{Context, Entity, FocusHandle, FontWeight, ScrollHandle, Window, div, prelude::*, px};
 use time::FrameRate;
 
 use crate::components::{Button, ButtonSize, ButtonVariant, Separator, TextInput, eid};
@@ -20,6 +20,7 @@ pub(crate) struct InspectorPanel {
     editor_focus: FocusHandle,
     /// Text inputs by field key, created on first use.
     fields: HashMap<String, Entity<TextInput>>,
+    scroll: ScrollHandle,
 }
 
 /// Numeric element parameters shown under "Transform".
@@ -70,6 +71,7 @@ impl InspectorPanel {
             state,
             editor_focus,
             fields: HashMap::new(),
+            scroll: ScrollHandle::new(),
         }
     }
 
@@ -259,8 +261,17 @@ impl Render for InspectorPanel {
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
+            .track_scroll(&self.scroll)
             .p(px(12.))
             .gap(px(10.));
+        if crate::state::trace_input() {
+            eprintln!(
+                "trace: inspector scroll offset={:?} max={:?} bounds={:?}",
+                self.scroll.offset(),
+                self.scroll.max_offset(),
+                self.scroll.bounds()
+            );
+        }
 
         match selected {
             Some(element) => {
@@ -634,7 +645,7 @@ impl Render for InspectorPanel {
                 }
 
                 if can_mask {
-                    let mut mask_header = div()
+                    let mask_header = div()
                         .flex()
                         .items_center()
                         .justify_between()
