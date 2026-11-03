@@ -122,6 +122,37 @@ export async function runStorageMigrations({
 	return { migratedCount };
 }
 
+/**
+ * Runs the migration chain on one project record that is not in storage
+ * yet (an imported bundle), returning the record at the current version.
+ * Media the migrations look at must already be stored under `projectId`.
+ */
+export async function migrateProjectRecord({
+	projectId,
+	project,
+	migrations,
+}: {
+	projectId: string;
+	project: ProjectRecord;
+	migrations: StorageMigration[];
+}): Promise<ProjectRecord> {
+	const orderedMigrations = [...migrations].sort((a, b) => a.from - b.from);
+	let projectRecord = project;
+	let currentVersion = getProjectVersion({ project: projectRecord });
+	for (const migration of orderedMigrations) {
+		if (migration.from !== currentVersion) {
+			continue;
+		}
+		const result = await migration.run({ projectId, project: projectRecord });
+		if (result.skipped) {
+			break;
+		}
+		currentVersion = migration.to;
+		projectRecord = result.project;
+	}
+	return projectRecord;
+}
+
 function getProjectVersion({ project }: { project: ProjectRecord }): number {
 	const versionValue = project.version;
 

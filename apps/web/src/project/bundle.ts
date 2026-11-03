@@ -245,11 +245,43 @@ export async function readProjectBundle({
 			`Bundle format version ${String(manifest.formatVersion)} is newer than this app understands (${PROJECT_BUNDLE_FORMAT_VERSION})`,
 		);
 	}
-	if (!manifest.project?.metadata || !Array.isArray(manifest.project.scenes)) {
-		throw new ProjectBundleError("The bundle's project is incomplete");
+	const project = manifest.project;
+	if (
+		!project ||
+		typeof project !== "object" ||
+		!project.metadata ||
+		typeof project.metadata.id !== "string" ||
+		typeof project.metadata.name !== "string" ||
+		!Array.isArray(project.scenes) ||
+		!project.settings ||
+		typeof project.settings !== "object" ||
+		typeof project.version !== "number"
+	) {
+		throw new ProjectBundleError(
+			"The bundle's project is incomplete (metadata, scenes, settings and version are required)",
+		);
+	}
+	if (manifest.media !== undefined && !Array.isArray(manifest.media)) {
+		throw new ProjectBundleError("The bundle's media list is not a list");
 	}
 	const media: ReadProjectBundle["media"] = [];
+	const seen = new Set<string>();
 	for (const item of manifest.media ?? []) {
+		if (
+			!item ||
+			typeof item.id !== "string" ||
+			typeof item.name !== "string" ||
+			typeof item.file !== "string" ||
+			(item.type !== "video" && item.type !== "image" && item.type !== "audio")
+		) {
+			throw new ProjectBundleError(
+				"A media entry in the bundle is incomplete (id, name, type and file are required)",
+			);
+		}
+		if (seen.has(item.id)) {
+			throw new ProjectBundleError(`Media id ${item.id} appears twice in the bundle`);
+		}
+		seen.add(item.id);
 		const bytes = entries[item.file];
 		if (!bytes) {
 			throw new ProjectBundleError(`The bundle is missing ${item.file}`);

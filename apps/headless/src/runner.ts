@@ -83,7 +83,9 @@ function portIsFree(port: number): Promise<boolean> {
 		const server = createServer();
 		server.unref();
 		server.once("error", () => resolveFree(false));
-		server.listen(port, "127.0.0.1", () => server.close(() => resolveFree(true)));
+		// No host: bind every interface, as vite preview does, so an IPv6-only
+		// listener on the port is seen too.
+		server.listen(port, () => server.close(() => resolveFree(true)));
 	});
 }
 
@@ -468,7 +470,17 @@ export class HeadlessRunner {
 		const input = page.locator('input[type="file"][accept*="zip"]');
 		await input.waitFor({ state: "attached", timeout: this.timeoutMs });
 		await input.setInputFiles(path);
-		await page.waitForURL(/\/editor\//, { timeout: this.timeoutMs });
+		// The page either opens the editor or shows the failure as a toast.
+		const failure = page.getByText("Failed to import project");
+		const outcome = await Promise.race([
+			page.waitForURL(/\/editor\//, { timeout: this.timeoutMs }).then(() => "opened" as const),
+			failure.waitFor({ state: "visible", timeout: this.timeoutMs }).then(() => "failed" as const),
+		]);
+		if (outcome === "failed") {
+			const toast = await failure.locator("..").innerText().catch(() => "");
+			const reason = toast.replace(/\s+/g, " ").replace("Failed to import project", "").trim();
+			throw new Error(`import failed${reason ? `: ${reason}` : ""}`);
+		}
 		await page.evaluate(() => {
 			(window as unknown as { __opencutReady?: boolean }).__opencutReady = undefined;
 		});

@@ -32,8 +32,13 @@ import type { MediaAsset } from "@/media/types";
 import {
 	PROJECT_BUNDLE_EXTENSION,
 	buildProjectBundle,
+	deserializeProject,
 	readProjectBundle,
+	serializeProject,
 } from "@/project/bundle";
+import { migrateProjectRecord } from "@/services/storage/migrations";
+import type { ProjectRecord } from "@/services/storage/migrations/transformers/types";
+import type { SerializedProject } from "@/services/storage/types";
 
 export interface MigrationState {
 	isMigrating: boolean;
@@ -227,8 +232,9 @@ export class ProjectManager {
 	 * editor reads and writes too), after saving it.
 	 */
 	async exportProjectBundle(): Promise<{ blob: Blob; fileName: string }> {
-		const project = this.getActive();
+		// Save first: it folds the live timeline into the active project.
 		await this.saveCurrentProject();
+		const project = this.getActive();
 		const mediaAssets = await storageService.loadAllMediaAssets({
 			projectId: project.metadata.id,
 		});
@@ -246,15 +252,20 @@ export class ProjectManager {
 	 */
 	async importProjectBundle({ file }: { file: Blob }): Promise<string> {
 		const { project, media } = await readProjectBundle({ file });
+		if (project.version > CURRENT_PROJECT_VERSION) {
+			throw new Error(
+				`This bundle was made by a newer OpenCut (project version ${project.version}; this app reads up to ${CURRENT_PROJECT_VERSION})`,
+			);
+		}
 		const existing = await storageService.loadProject({
 			id: project.metadata.id,
 		});
 		const id = existing ? generateUUID() : project.metadata.id;
-		const imported: TProject = {
+		let imported: TProject = {
 			...project,
 			metadata: { ...project.metadata, id, updatedAt: new Date() },
 		};
-		await storageService.saveProject({ project: imported });
+		// Media first: migrations may look at it.
 		for (const { data, file: mediaFile } of media) {
 			await storageService.saveMediaAsset({
 				projectId: id,
@@ -273,6 +284,18 @@ export class ProjectManager {
 				},
 			});
 		}
+		// An older bundle goes through the same migrations stored projects do.
+		if (imported.version < CURRENT_PROJECT_VERSION) {
+			const migrated = await migrateProjectRecord({
+				projectId: id,
+				project: serializeProject({ project: imported }) as unknown as ProjectRecord,
+				migrations,
+			});
+			imported = deserializeProject({
+				serialized: migrated as unknown as SerializedProject,
+			});
+		}
+		await storageService.saveProject({ project: imported });
 		await this.loadAllProjects();
 		return id;
 	}

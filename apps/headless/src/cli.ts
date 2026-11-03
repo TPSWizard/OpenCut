@@ -27,6 +27,12 @@ Options:
 
 Job files are documented in apps/headless/README.md.`;
 
+function parsePort(text: string): number {
+	const port = Number(text);
+	if (!Number.isInteger(port) || port < 1 || port > 65_535) fail(`--port must be a number from 1 to 65535, not "${text}"`);
+	return port;
+}
+
 function fail(message: string): never {
 	console.error(message);
 	process.exit(1);
@@ -58,7 +64,7 @@ async function main() {
 	const runner = new HeadlessRunner({
 		url: values.url,
 		profileDir: values.profile,
-		port: values.port ? Number(values.port) : undefined,
+		port: values.port ? parsePort(values.port) : undefined,
 		headed: values.headed,
 		timeoutMs: values.timeout ? Number(values.timeout) : undefined,
 	});

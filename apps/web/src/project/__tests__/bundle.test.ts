@@ -179,6 +179,35 @@ describe("project bundles", () => {
 			readProjectBundle({ file: new Blob([tooNew as BlobPart]) }),
 		).rejects.toThrow(/newer/i);
 
+		const noSettings = zipSync({
+			"project.json": strToU8(
+				JSON.stringify({
+					format: PROJECT_BUNDLE_FORMAT,
+					formatVersion: 1,
+					project: { metadata: { id: "p", name: "p" }, scenes: [], version: 31 },
+					media: [],
+				}),
+			),
+		});
+		await expect(
+			readProjectBundle({ file: new Blob([noSettings as BlobPart]) }),
+		).rejects.toThrow(/incomplete/);
+
+		const badMedia = zipSync({
+			"project.json": strToU8(
+				JSON.stringify({
+					format: PROJECT_BUNDLE_FORMAT,
+					formatVersion: 1,
+					project: serializeProject({ project: sampleProject() }),
+					media: [{ id: "m-1", type: "video", file: "media/m-1.mp4" }],
+				}),
+			),
+			"media/m-1.mp4": new Uint8Array([1]),
+		});
+		await expect(
+			readProjectBundle({ file: new Blob([badMedia as BlobPart]) }),
+		).rejects.toThrow(/media entry/);
+
 		const missingMedia = zipSync({
 			"project.json": strToU8(
 				JSON.stringify({
