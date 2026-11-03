@@ -194,6 +194,7 @@ impl Render for ProjectsView {
                             .flex()
                             .flex_col()
                             .flex_1()
+                            .min_h_0()
                             .overflow_y_scroll()
                             .rounded(theme.radius)
                             .border_1()

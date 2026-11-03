@@ -229,6 +229,7 @@ impl Render for MediaPanel {
                     .flex()
                     .flex_col()
                     .flex_1()
+                    .min_h_0()
                     .overflow_y_scroll()
                     .p(px(4.))
                     .when(rows.is_empty(), |this| {

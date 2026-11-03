@@ -257,6 +257,7 @@ impl Render for InspectorPanel {
             .flex()
             .flex_col()
             .flex_1()
+            .min_h_0()
             .overflow_y_scroll()
             .p(px(12.))
             .gap(px(10.));
