@@ -602,6 +602,28 @@ impl EditorState {
         );
     }
 
+    /// Pulls the last point's handles out along a drag from where it was
+    /// placed (`from`) to where the button came up (`to`), both in canvas
+    /// pixels: the out handle follows the drag, the in handle mirrors it,
+    /// so the path bends smoothly through the point.
+    pub(crate) fn pen_drag_handles(&mut self, from: (f64, f64), to: (f64, f64), cx: &mut Context<Self>) {
+        let playhead = self.playhead();
+        let Some((element, mask)) = self.pen_mask() else { return };
+        let Some(quad) = editor::element_quad(self.project(), element, playhead) else { return };
+        let (fx, fy) = editor::canvas_to_freeform_local(&quad, &mask.params, from.0, from.1);
+        let (tx, ty) = editor::canvas_to_freeform_local(&quad, &mask.params, to.0, to.1);
+        let mut points = editor::read_freeform_path(&mask.params);
+        let Some(last) = points.last_mut() else { return };
+        last.out_x = tx - fx;
+        last.out_y = ty - fy;
+        last.in_x = fx - tx;
+        last.in_y = fy - ty;
+        let (element_id, mask_id) = (element.id.clone(), mask.id.clone());
+        let mut params = Params::new();
+        params.set("path", editor::write_freeform_path(&points));
+        self.execute(Command::UpdateMask { element_id, mask_id, params }, cx);
+    }
+
     /// Closes the path (three points or more) or drops it.
     pub(crate) fn finish_pen(&mut self, cx: &mut Context<Self>) {
         let Some(pen) = self.pen.take() else { return };

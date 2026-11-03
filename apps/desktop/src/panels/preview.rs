@@ -2,8 +2,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use gpui::{
-    Bounds, Context, Entity, MouseButton, MouseDownEvent, ObjectFit, Path, Pixels, Point, Window, canvas, div, fill,
-    hsla, img, point, prelude::*, px, size,
+    Bounds, Context, Entity, MouseButton, MouseDownEvent, MouseUpEvent, ObjectFit, Path, Pixels, Point, Window,
+    canvas, div, fill, hsla, img, point, prelude::*, px, size,
 };
 
 use crate::components::{Button, ButtonSize, ButtonVariant};
@@ -17,6 +17,9 @@ pub(crate) struct PreviewPanel {
     /// Size of the frame area from the last layout, so the renderer can
     /// produce exactly the pixels that are shown.
     frame_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// Canvas pixel where the pen's last point was pressed, until the
+    /// button comes up: dragging from it pulls out the point's handles.
+    pen_press: Rc<Cell<Option<(f32, f32)>>>,
 }
 
 impl PreviewPanel {
@@ -25,6 +28,7 @@ impl PreviewPanel {
         Self {
             state,
             frame_bounds: Rc::new(Cell::new(Bounds::default())),
+            pen_press: Rc::new(Cell::new(None)),
         }
     }
 }
@@ -145,6 +149,7 @@ impl Render for PreviewPanel {
                 let focus_handle = focus_handle.clone();
                 let state = self.state.clone();
                 let bounds_cell = Rc::clone(&self.frame_bounds);
+                let pen_press = Rc::clone(&self.pen_press);
                 move |event: &MouseDownEvent, window, cx| {
                     window.focus(&focus_handle);
                     if !pen_active {
@@ -153,11 +158,34 @@ impl Render for PreviewPanel {
                     let Some((x, y)) = canvas_point(bounds_cell.get(), canvas_size, event.position) else {
                         return;
                     };
+                    pen_press.set(None);
                     state.update(cx, |state, cx| {
                         state.pen_add_point(x as f64, y as f64, cx);
                         if event.click_count >= 2 {
                             state.finish_pen(cx);
+                        } else {
+                            pen_press.set(Some((x, y)));
                         }
+                    });
+                }
+            })
+            .on_mouse_up(MouseButton::Left, {
+                let state = self.state.clone();
+                let bounds_cell = Rc::clone(&self.frame_bounds);
+                let pen_press = Rc::clone(&self.pen_press);
+                move |event: &MouseUpEvent, _, cx| {
+                    let Some((x0, y0)) = pen_press.take() else {
+                        return;
+                    };
+                    let Some((x, y)) = canvas_point(bounds_cell.get(), canvas_size, event.position) else {
+                        return;
+                    };
+                    // A short drag is a click; a longer one bends the path.
+                    if (x - x0).powi(2) + (y - y0).powi(2) < 16.0 {
+                        return;
+                    }
+                    state.update(cx, |state, cx| {
+                        state.pen_drag_handles((x0 as f64, y0 as f64), (x as f64, y as f64), cx)
                     });
                 }
             })
