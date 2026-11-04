@@ -791,6 +791,18 @@ impl EditorState {
     /// live picture while a path point is dragged. The edit is committed
     /// (or the start restored) when the drag ends.
     pub(crate) fn preview_mask_params(&mut self, mask_id: &str, params: Params, cx: &mut Context<Self>) {
+        self.set_mask_params_transient(mask_id, |current| current.merge(&params));
+        self.request_render(cx);
+        cx.notify();
+    }
+
+    /// Puts a mask's parameters back exactly as they were before a drag
+    /// (a merge would keep keys the preview added), without recording it.
+    fn restore_mask_params(&mut self, mask_id: &str, params: &Params) {
+        self.set_mask_params_transient(mask_id, |current| *current = params.clone());
+    }
+
+    fn set_mask_params_transient(&mut self, mask_id: &str, change: impl FnOnce(&mut Params)) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
         let mask_id = mask_id.to_owned();
@@ -803,11 +815,24 @@ impl EditorState {
             if let Some(element) = element
                 && let Some(mask) = element.masks.iter_mut().find(|mask| mask.id == mask_id)
             {
-                mask.params.merge(&params);
+                change(&mut mask.params);
             }
         });
-        self.request_render(cx);
-        cx.notify();
+    }
+
+    /// Changes a mask's stored parameters as one edit, keys or not: what
+    /// a gesture on the preview writes.
+    fn update_mask_plain(&mut self, mask_id: &str, params: Params, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::UpdateMask {
+                element_id,
+                mask_id: mask_id.to_owned(),
+                params,
+            },
+            cx,
+        );
     }
 
     // ---- freeform path editing (the web app's mask point handles) ------
@@ -916,8 +941,9 @@ impl EditorState {
         let Some((_, mask)) = self.freeform_mask() else { return };
         let mask_id = mask.id.clone();
         if commit {
-            self.preview_mask_params(&mask_id, start.clone(), cx);
-            self.update_mask(&mask_id, params, cx);
+            // Back to the start, so the edit's undo snapshot is the pre-drag path.
+            self.restore_mask_params(&mask_id, start);
+            self.update_mask_plain(&mask_id, params, cx);
         } else {
             self.preview_mask_params(&mask_id, params, cx);
         }
@@ -944,7 +970,7 @@ impl EditorState {
             .set("path", editor::write_freeform_path(&recentred))
             .set("centerX", center_x)
             .set("centerY", center_y);
-        self.update_mask(&mask_id, params, cx);
+        self.update_mask_plain(&mask_id, params, cx);
         if let Some(id) = new_id {
             self.selected_mask_points = vec![id];
         }
@@ -965,7 +991,7 @@ impl EditorState {
         let mask_id = mask.id.clone();
         let mut params = Params::new();
         params.set("path", editor::write_freeform_path(&kept)).set("closed", still_closed);
-        self.update_mask(&mask_id, params, cx);
+        self.update_mask_plain(&mask_id, params, cx);
         self.set_status(
             if still_closed || !closed {
                 format!("{} point(s) removed", points.len() - kept.len())
@@ -1471,23 +1497,26 @@ fn keyed_edits(
             plain.set(key.clone(), value.clone());
             continue;
         }
-        if let Some(number) = value.as_number() {
-            keyed.push(Command::SetKeyframe {
+        // By the value's type: "000000" typed into a colour field is a colour.
+        match value {
+            editor::ParamValue::Number(number) => keyed.push(Command::SetKeyframe {
                 element_id: element.id.clone(),
                 path,
                 time,
-                value: number,
+                value: *number,
                 segment: None,
-            });
-        } else if editor::parse_hex_color(&value.as_text()).is_some() {
-            keyed.push(Command::SetColorKeyframe {
-                element_id: element.id.clone(),
-                path,
-                time,
-                color: value.as_text().trim().to_owned(),
-            });
-        } else {
-            plain.set(key.clone(), value.clone());
+            }),
+            editor::ParamValue::Text(text) if editor::parse_hex_color(text).is_some() => {
+                keyed.push(Command::SetColorKeyframe {
+                    element_id: element.id.clone(),
+                    path,
+                    time,
+                    color: text.trim().to_owned(),
+                })
+            }
+            _ => {
+                plain.set(key.clone(), value.clone());
+            }
         }
     }
     (plain, keyed)
@@ -1509,18 +1538,24 @@ pub(crate) fn animated_color(element: &Element, path: &str, time: MediaTime) -> 
     editor::parse_hex_color(&text).is_some().then(|| text.trim().to_owned())
 }
 
+/// The number a keyframe path shows at a timeline time; text (a colour
+/// such as "112233") is never read as a number.
 pub(crate) fn animated_value(element: &Element, path: &str, time: MediaTime) -> Option<f64> {
+    let number = |value: Option<&editor::ParamValue>| match value? {
+        editor::ParamValue::Number(number) => Some(*number),
+        _ => None,
+    };
     if let Some(rest) = path.strip_prefix("effects.") {
         let (effect_id, key) = rest.split_once(".params.")?;
         let effect = element.effect(effect_id)?;
-        return element.effect_params_at(effect, time).get(key)?.as_number();
+        return number(element.effect_params_at(effect, time).get(key));
     }
     if let Some(rest) = path.strip_prefix("masks.") {
         let (mask_id, key) = rest.split_once(".params.")?;
         let mask = element.mask(mask_id)?;
-        return element.mask_params_at(mask, time).get(key)?.as_number();
+        return number(element.mask_params_at(mask, time).get(key));
     }
-    element.params_at(time).get(path)?.as_number()
+    number(element.params_at(time).get(path))
 }
 
 fn fit_size(width: u32, height: u32, canvas_width: u32, canvas_height: u32) -> (u32, u32) {

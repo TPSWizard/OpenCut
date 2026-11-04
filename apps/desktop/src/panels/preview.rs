@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use editor::Params;
 use gpui::{
-    Bounds, Context, Entity, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Path, Pixels,
-    Point, Window, canvas, div, fill, hsla, img, point, prelude::*, px, size,
+    Bounds, Context, DispatchPhase, Entity, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit,
+    Path, Pixels, Point, Window, canvas, div, fill, hsla, img, point, prelude::*, px, size,
 };
 
 use crate::components::{Button, ButtonSize, ButtonVariant};
@@ -53,6 +53,46 @@ impl PreviewPanel {
             path_drag: Rc::new(RefCell::new(None)),
         }
     }
+}
+
+/// Follows the pointer during a path drag: the anchor or the whole path
+/// is previewed at the pointer, once it has travelled far enough to be a
+/// drag rather than a click.
+fn track_path_drag(
+    position: Point<Pixels>,
+    bounds: Bounds<Pixels>,
+    canvas_size: (f32, f32),
+    path_drag: &Rc<RefCell<Option<PathDrag>>>,
+    state: &Entity<EditorState>,
+    cx: &mut gpui::App,
+) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    if scale <= 0.0 {
+        return;
+    }
+    let x = f32::from(position.x - origin.x) / scale;
+    let y = f32::from(position.y - origin.y) / scale;
+    let step = {
+        let mut borrowed = path_drag.borrow_mut();
+        let Some(drag) = borrowed.as_mut() else {
+            return;
+        };
+        drag.last = (x, y);
+        let travelled = ((x - drag.start.0).powi(2) + (y - drag.start.1).powi(2)).sqrt() * scale;
+        if !drag.moved && travelled < DRAG_PX {
+            return;
+        }
+        drag.moved = true;
+        (drag.hit.clone(), drag.start, drag.start_params.clone())
+    };
+    let (hit, start, start_params) = step;
+    state.update(cx, |state, cx| match hit {
+        FreeformHit::Anchor(id) => state.drag_mask_point(&start_params, &id, (x as f64, y as f64), false, cx),
+        FreeformHit::Segment(..) => {
+            let delta = ((x - start.0) as f64, (y - start.1) as f64);
+            state.drag_mask_path(&start_params, delta, false, cx)
+        }
+    });
 }
 
 /// Ends a path drag: a moved anchor or path is committed as one edit, a
@@ -271,45 +311,11 @@ impl Render for PreviewPanel {
                                 start_params,
                                 moved: false,
                             });
+                            // Redraw so the window-level tracking below is registered.
+                            window.refresh();
                         }
                         _ => state.update(cx, |state, cx| state.clear_mask_point_selection(cx)),
                     }
-                }
-            })
-            .on_mouse_move({
-                let state = self.state.clone();
-                let bounds_cell = Rc::clone(&self.frame_bounds);
-                let path_drag = Rc::clone(&self.path_drag);
-                move |event: &MouseMoveEvent, _, cx| {
-                    let mut borrowed = path_drag.borrow_mut();
-                    let Some(drag) = borrowed.as_mut() else {
-                        return;
-                    };
-                    let bounds = bounds_cell.get();
-                    let (origin, scale) = fitted_frame(bounds, canvas_size);
-                    if scale <= 0.0 {
-                        return;
-                    }
-                    // Keep following the pointer past the frame's edge.
-                    let x = f32::from(event.position.x - origin.x) / scale;
-                    let y = f32::from(event.position.y - origin.y) / scale;
-                    drag.last = (x, y);
-                    let travelled = ((x - drag.start.0).powi(2) + (y - drag.start.1).powi(2)).sqrt() * scale;
-                    if !drag.moved && travelled < DRAG_PX {
-                        return;
-                    }
-                    drag.moved = true;
-                    let (hit, start, start_params) = (drag.hit.clone(), drag.start, drag.start_params.clone());
-                    drop(borrowed);
-                    state.update(cx, |state, cx| match hit {
-                        FreeformHit::Anchor(id) => {
-                            state.drag_mask_point(&start_params, &id, (x as f64, y as f64), false, cx)
-                        }
-                        FreeformHit::Segment(..) => {
-                            let delta = ((x - start.0) as f64, (y - start.1) as f64);
-                            state.drag_mask_path(&start_params, delta, false, cx)
-                        }
-                    });
                 }
             })
             .on_mouse_up(MouseButton::Left, {
@@ -318,7 +324,8 @@ impl Render for PreviewPanel {
                 let pen_press = Rc::clone(&self.pen_press);
                 let path_drag = Rc::clone(&self.path_drag);
                 move |event: &MouseUpEvent, _, cx| {
-                    if let Some(drag) = path_drag.borrow_mut().take() {
+                    let drag = path_drag.borrow_mut().take();
+                    if let Some(drag) = drag {
                         finish_path_drag(drag, &state, cx);
                         return;
                     }
@@ -343,19 +350,34 @@ impl Render for PreviewPanel {
                 let path_drag = Rc::clone(&self.path_drag);
                 move |_: &MouseUpEvent, _, cx| {
                     pen_press.set(None);
-                    if let Some(drag) = path_drag.borrow_mut().take() {
+                    let drag = path_drag.borrow_mut().take();
+                    if let Some(drag) = drag {
                         finish_path_drag(drag, &state, cx);
                     }
                 }
             })
-            .child(
+            .child({
+                // While a path point or segment is dragged, the pointer is
+                // followed anywhere in the window (element listeners only
+                // fire while hovered), as the web app's pointer capture does.
+                let state = self.state.clone();
+                let path_drag = Rc::clone(&self.path_drag);
+                let tracked_bounds = Rc::clone(&self.frame_bounds);
                 canvas(
                     move |bounds, _, _| bounds_cell.set(bounds),
-                    |_, _, _, _| {},
+                    move |_, _, window, _| {
+                        if dragging {
+                            window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
+                                if phase == DispatchPhase::Bubble {
+                                    track_path_drag(event.position, tracked_bounds.get(), canvas_size, &path_drag, &state, cx);
+                                }
+                            });
+                        }
+                    },
                 )
                 .absolute()
-                .inset_0(),
-            )
+                .inset_0()
+            })
             .map(|this| match preview {
                 Some(image) => this.child(img(image).size_full().object_fit(ObjectFit::Contain)),
                 None => this.child(

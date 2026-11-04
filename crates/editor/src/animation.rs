@@ -396,11 +396,18 @@ impl Channel {
     /// zero). Both get a key at the boundary so the motion continues
     /// unchanged across the cut.
     pub fn split(&self, at: MediaTime) -> (Channel, Channel) {
+        // The two boundary keys get ids shared by every component of a
+        // colour, and keys keep their ids on both sides (they end up in
+        // different elements), as the web app's split does.
+        self.split_with(at, &crate::new_id(), &crate::new_id())
+    }
+
+    fn split_with(&self, at: MediaTime, left_boundary_id: &str, right_boundary_id: &str) -> (Channel, Channel) {
         let mut left = Channel::default();
         let mut right = Channel::default();
         if !self.components.is_empty() {
             for (name, component) in &self.components {
-                let (left_part, right_part) = component.split(at);
+                let (left_part, right_part) = component.split_with(at, left_boundary_id, right_boundary_id);
                 left.components.insert(name.clone(), left_part);
                 right.components.insert(name.clone(), right_part);
             }
@@ -425,12 +432,13 @@ impl Channel {
             } else if key.time > at {
                 let mut key = key.clone();
                 key.time = key.time - at;
-                key.id = crate::new_id();
                 right.keys.push(key);
             }
         }
         let mut boundary_left = Keyframe::new(at, boundary, segment_at_boundary);
+        boundary_left.id = left_boundary_id.to_owned();
         let mut boundary_right = Keyframe::new(MediaTime::ZERO, boundary, segment_at_boundary);
+        boundary_right.id = right_boundary_id.to_owned();
         // A key right on the cut is split in two that keep its handles.
         if let Some(key) = self.keys.iter().find(|key| key.time == at) {
             boundary_left.left_handle = key.left_handle;
@@ -656,6 +664,21 @@ mod tests {
         assert_eq!(faded.color_at(ticks(2000)).as_deref(), Some("#ffffff80"));
         assert!(faded.remove("a0"));
         assert!(faded.color_at(ticks(0)).is_none(), "a component without keys has no colour");
+
+        // Both sides of a cut keep one id per colour key, so a key can
+        // still be found and removed as a whole.
+        let (left, right) = channel.split(ticks(1000));
+        let boundary = left.key_at(ticks(1000)).unwrap().id.clone();
+        // (`a` is constant, so its left side needs no boundary key.)
+        assert!(left.components.values().filter_map(|component| component.key_at(ticks(1000))).all(|key| key.id == boundary));
+        assert_eq!(left.components.values().filter(|component| component.key_at(ticks(1000)).is_some()).count(), 3);
+        let right_boundary = right.key_at(ticks(0)).unwrap().id.clone();
+        assert!(right.components.values().all(|component| component.keys[0].id == right_boundary));
+        assert_ne!(boundary, right_boundary);
+        let mut left = left;
+        assert!(left.remove(&boundary));
+        assert!(left.components.values().all(|component| component.keys.len() == 1));
+        assert_eq!(right.components["r"].keys[1].id, "r1", "keys keep their ids across the cut");
 
         // The web app's wrapped scalar reads as a plain channel.
         let wrapped: Channel =

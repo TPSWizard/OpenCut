@@ -9,7 +9,7 @@ use crate::document::{
     TrackKind,
 };
 use crate::error::EditorError;
-use crate::params::Params;
+use crate::params::{ParamValue, Params};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ElementRef {
@@ -519,7 +519,7 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 EditorError::InvalidParams(format!("{color} is not a hex colour"))
             })?;
             let (reference, element) = element_mut(project, element_id)?;
-            if current_param(element, path).is_some_and(|value| value.as_number().is_some()) {
+            if current_param(element, path).is_some_and(|value| matches!(value, ParamValue::Number(_) | ParamValue::Bool(_))) {
                 return Err(EditorError::InvalidParams(format!(
                     "{path} is a number; a colour key cannot be set on it"
                 )));
@@ -1184,6 +1184,11 @@ mod tests {
         let element = project.element(&id).unwrap().1.clone();
         assert!(element.is_animated("color"));
         assert_eq!(element.params_at(seconds(1.0)).text("color", ""), "#bcbcbc");
+        // A colour written without its hash is still a colour, not a number.
+        let mut bare = Params::new();
+        bare.set("color", "112233");
+        apply(&mut project, &Command::UpdateElement { element_id: id.clone(), patch: ElementPatch { params: Some(bare), ..Default::default() } }).unwrap();
+        apply(&mut project, &key(3.0, "445566")).unwrap();
         assert!(matches!(apply(&mut project, &key(1.0, "red")), Err(EditorError::InvalidParams(_))));
         // A number key cannot go on a colour, nor a colour on a number.
         assert!(matches!(
@@ -1215,7 +1220,7 @@ mod tests {
         let keyframe_id = element.animations["color"].key_at(seconds(0.0)).unwrap().id.clone();
         apply(&mut project, &Command::RemoveKeyframe { element_id: id.clone(), path: "color".to_owned(), keyframe_id }).unwrap();
         let element = project.element(&id).unwrap().1.clone();
-        assert_eq!(element.animations["color"].all_keys().count(), 4);
+        assert_eq!(element.animations["color"].all_keys().count(), 8, "three colour keys minus one");
         apply(&mut project, &Command::ClearAnimation { element_id: id.clone(), path: "color".to_owned() }).unwrap();
         assert!(!project.element(&id).unwrap().1.is_animated("color"));
     }
