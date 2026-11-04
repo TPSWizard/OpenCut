@@ -19,6 +19,6 @@
   //
   // Restrict CORS to the deployed web app by setting CORS_ORIGIN to its origin.
   "vars": {
-    "CORS_ORIGIN": "*"
+    "CORS_ORIGIN": "https://opencut.conzahub.com"
   }
 }

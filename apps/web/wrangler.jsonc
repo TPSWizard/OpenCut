@@ -6,7 +6,7 @@
   "main": "@tanstack/react-start/server-entry",
   "routes": [
     {
-      "pattern": "new.opencut.app",
+      "pattern": "opencut.conzahub.com",
       "custom_domain": true
     }
   ]
