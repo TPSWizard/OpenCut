@@ -1,4 +1,4 @@
-export const SITE_URL = "https://opencut.conzahub.com";
+export const SITE_URL = "https://conzacut.conzahub.com";
 
 export const SITE_INFO = {
 	title: "ConzaCut",

@@ -78,7 +78,7 @@ hugeicons (icons, free set).
 
 ## ConzaCut marks (`apps/web/public/logos/conzacut`, `apps/web/public/icons`, `favicon.ico`, `open-graph/default.jpg`)
 
-Original work, drawn 2026-11-04 for the hosted site at opencut.conzahub.com:
+Original work, drawn 2026-11-04 for the hosted site at conzacut.conzahub.com:
 a "C" ring cut open by a diagonal slash. Generated from one geometry
 definition (SVG paths plus PIL rasters at every icon size); the Open Graph
 card uses the Segoe UI system font. The OpenCut marks that the web app used

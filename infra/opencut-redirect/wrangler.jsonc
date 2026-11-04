@@ -1,0 +1,8 @@
+{
+  "$schema": "../../apps/api/node_modules/wrangler/config-schema.json",
+  "name": "opencut-redirect",
+  "main": "index.js",
+  "compatibility_date": "2025-06-01",
+  // The site used to live at opencut.conzahub.com; keep old links working.
+  "routes": [{ "pattern": "opencut.conzahub.com", "custom_domain": true }]
+}
