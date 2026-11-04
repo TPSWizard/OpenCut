@@ -429,12 +429,14 @@ impl Render for InspectorPanel {
                         .child(Separator::horizontal())
                         .child(self.heading("Text", window));
                     for (key, label, default) in TEXT_STRING_PARAMS {
+                        // The colour can be keyframed (as four channels, like the web app).
+                        let keyable = *key == "color";
                         let row = self.row(
                             label,
                             key,
                             default,
                             params.text(key, default).into_owned(),
-                            None,
+                            keyable.then(|| key_state(key)),
                             window,
                             cx,
                             set_text_param(key),
@@ -847,8 +849,8 @@ impl Render for InspectorPanel {
                                 "Stroke color",
                                 &format!("mask.{}.strokeColor", mask.id),
                                 "#ffffff",
-                                mask.params.text("strokeColor", "#ffffff").into_owned(),
-                                None,
+                                element.mask_params_at(mask, playhead).text("strokeColor", "#ffffff").into_owned(),
+                                Some(key_state(&format!("masks.{}.params.strokeColor", mask.id))),
                                 window,
                                 cx,
                                 Box::new({

@@ -3,7 +3,7 @@
 
 use time::{FrameRate, MediaTime};
 
-use crate::animation::{Segment, split_animations};
+use crate::animation::{Segment, parse_color_to_linear_rgba, split_animations};
 use crate::document::{
     Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, Project, Track,
     TrackKind,
@@ -101,6 +101,14 @@ pub enum Command {
         time: MediaTime,
         value: f64,
         segment: Option<Segment>,
+    },
+    /// Sets a colour key (`#rrggbb` or `#rrggbbaa`) of `path` at a timeline
+    /// time: the web app's four linear-light component channels.
+    SetColorKeyframe {
+        element_id: String,
+        path: String,
+        time: MediaTime,
+        color: String,
     },
     RemoveKeyframe {
         element_id: String,
@@ -496,6 +504,33 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             channel.upsert(local, *value, *segment);
             Outcome::Elements(vec![reference])
         }
+        Command::SetColorKeyframe {
+            element_id,
+            path,
+            time,
+            color,
+        } => {
+            if path.trim().is_empty() {
+                return Err(EditorError::InvalidParams(
+                    "keyframe path cannot be empty".to_owned(),
+                ));
+            }
+            let rgba = parse_color_to_linear_rgba(color).ok_or_else(|| {
+                EditorError::InvalidParams(format!("{color} is not a hex colour"))
+            })?;
+            let (reference, element) = element_mut(project, element_id)?;
+            if current_param(element, path).is_some_and(|value| value.as_number().is_some()) {
+                return Err(EditorError::InvalidParams(format!(
+                    "{path} is a number; a colour key cannot be set on it"
+                )));
+            }
+            let local = *time - element.start_time;
+            let channel = element.animations.entry(path.clone()).or_default();
+            channel
+                .upsert_color(local, rgba)
+                .map_err(|reason| EditorError::InvalidParams(format!("{path}: {reason}")))?;
+            Outcome::Elements(vec![reference])
+        }
         Command::RemoveKeyframe {
             element_id,
             path,
@@ -691,6 +726,20 @@ fn locate(project: &Project, element_id: &str) -> Result<(usize, usize), EditorE
 }
 
 /// An element to change in place, with its reference for the outcome.
+/// The stored (unanimated) value a keyframe path refers to: an element
+/// parameter, or one of an effect's or mask's (`effects.<id>.params.<key>`).
+fn current_param<'a>(element: &'a Element, path: &str) -> Option<&'a crate::params::ParamValue> {
+    if let Some(rest) = path.strip_prefix("effects.") {
+        let (effect_id, key) = rest.split_once(".params.")?;
+        return element.effect(effect_id)?.params.get(key);
+    }
+    if let Some(rest) = path.strip_prefix("masks.") {
+        let (mask_id, key) = rest.split_once(".params.")?;
+        return element.mask(mask_id)?.params.get(key);
+    }
+    element.params.get(path)
+}
+
 fn element_mut<'a>(
     project: &'a mut Project,
     element_id: &str,
@@ -1116,6 +1165,59 @@ mod tests {
             ),
             Err(EditorError::InvalidParams(_))
         ));
+    }
+
+    #[test]
+    fn color_keyframes_animate_text_colour() {
+        let (mut project, _) = project_with_clip();
+        let text = Element::text("Hi", seconds(0.0));
+        let id = text.id.clone();
+        apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+        let key = |time: f64, color: &str| Command::SetColorKeyframe {
+            element_id: id.clone(),
+            path: "color".to_owned(),
+            time: seconds(time),
+            color: color.to_owned(),
+        };
+        apply(&mut project, &key(0.0, "#000000")).unwrap();
+        apply(&mut project, &key(2.0, "#ffffff")).unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        assert!(element.is_animated("color"));
+        assert_eq!(element.params_at(seconds(1.0)).text("color", ""), "#bcbcbc");
+        assert!(matches!(apply(&mut project, &key(1.0, "red")), Err(EditorError::InvalidParams(_))));
+        // A number key cannot go on a colour, nor a colour on a number.
+        assert!(matches!(
+            apply(
+                &mut project,
+                &Command::SetKeyframe {
+                    element_id: id.clone(),
+                    path: "color".to_owned(),
+                    time: seconds(1.0),
+                    value: 1.0,
+                    segment: None,
+                },
+            ),
+            Err(EditorError::InvalidParams(_))
+        ));
+        assert!(matches!(
+            apply(
+                &mut project,
+                &Command::SetColorKeyframe {
+                    element_id: id.clone(),
+                    path: "opacity".to_owned(),
+                    time: seconds(1.0),
+                    color: "#ffffff".to_owned(),
+                },
+            ),
+            Err(EditorError::InvalidParams(_))
+        ));
+        assert!(!project.element(&id).unwrap().1.is_animated("opacity"));
+        let keyframe_id = element.animations["color"].key_at(seconds(0.0)).unwrap().id.clone();
+        apply(&mut project, &Command::RemoveKeyframe { element_id: id.clone(), path: "color".to_owned(), keyframe_id }).unwrap();
+        let element = project.element(&id).unwrap().1.clone();
+        assert_eq!(element.animations["color"].all_keys().count(), 4);
+        apply(&mut project, &Command::ClearAnimation { element_id: id.clone(), path: "color".to_owned() }).unwrap();
+        assert!(!project.element(&id).unwrap().1.is_animated("color"));
     }
 
     #[test]

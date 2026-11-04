@@ -35,9 +35,10 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   handles are read from project files and evaluated the same way (a Bézier
   without handles is a straight line, as in the web graph editor). Keys stay
   with their source frames when a clip is trimmed and are split with the
-  clip, a cut Bézier keeping its shape on both sides. Colour keys from the
-  web app (`color`, `background.color`: four channels in linear light) are
-  blended the same way and show as key dots too. The selected clip shows its keys as dots; click one
+  clip, a cut Bézier keeping its shape on both sides. Colour fields (a
+  text's colour, a mask's stroke colour) key too: a colour key is the web
+  app's four channels in linear light under one key id, so keys set here
+  and in the web app blend the same way. The selected clip shows its keys as dots; click one
   to jump to it, or use `Shift-←`/`Shift-→`. Audio volume keys are followed
   by the preview mixer and written into the export as a per-frame `volume`
   expression.
@@ -52,7 +53,12 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   parameters as the web editor. **Draw path (pen)** (or `P`) draws a freeform
   mask: click points on the preview (drag while placing one to pull out its curve
   handles), double-click or `Enter` closes it (three points or more),
-  `Escape` cancels; paths drawn in the web app render too.
+  `Escape` cancels; paths drawn in the web app render too. A closed path is
+  edited on the preview as in the web app: drag a point to move it, click
+  on a segment to add a point there, drag a segment to move the whole
+  path, `Shift`-click to select several points and `Delete` to remove the
+  selected ones (`Escape` drops the point selection first); a path left
+  with fewer than three points opens and stops masking.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
   frame rate, with the audio clips mixed, with progress and cancel.
@@ -65,7 +71,7 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 | `←` / `→`, `Home` / `End` | Step a frame, go to start / end |
 | `Shift-←` / `Shift-→` | Previous / next keyframe of the selected clip |
 | `S` | Split at the playhead (selection, or everything under it) |
-| `Delete` / `Backspace` | Delete the selection |
+| `Delete` / `Backspace` | Delete the selection (selected path points first) |
 | `Ctrl/Cmd-D`, `Ctrl/Cmd-A`, `Esc` | Duplicate, select all, clear selection |
 | `Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z` (`Ctrl-Y`) | Undo, redo |
 | `T` | Add a text element at the playhead |
@@ -129,9 +135,10 @@ resolution and pipes BGRA frames into `media::Encoder`.
 ## Not there yet
 
 - Only the blur effect exists natively. The web editor's stickers and
-  captions are read from project files but not rendered; a pen path's
-  handles cannot be edited after the point is placed; colour keys can be
-  played and cut but not set here.
+  captions are read from project files but not rendered. A path point's
+  curve handles are set while placing it (drag) and follow the point
+  afterwards; they cannot be dragged on their own (the web app has no
+  handle dragging either).
 - Project bundles move projects between the two editors: **Save bundle…**
   in the header writes `<name>.opencut.zip` (the project in the web app's
   JSON shape plus copies of its media), and **Import bundle…** on the

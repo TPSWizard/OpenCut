@@ -308,11 +308,44 @@ impl Channel {
         }
     }
 
-    /// The key at `time` (within [`KEY_SNAP`]), if any.
+    /// The key at `time` (within [`KEY_SNAP`]), if any. For a colour this
+    /// is the key of its first component, which every component shares.
     pub fn key_at(&self, time: MediaTime) -> Option<&Keyframe> {
-        self.keys
-            .iter()
-            .find(|key| (key.time - time).as_ticks().abs() <= KEY_SNAP.as_ticks())
+        let near = |key: &&Keyframe| (key.time - time).as_ticks().abs() <= KEY_SNAP.as_ticks();
+        match self.keys.iter().find(near) {
+            Some(key) => Some(key),
+            None => self.components.get(COLOR_COMPONENTS[0])?.keys.iter().find(near),
+        }
+    }
+
+    /// Sets a colour key at `time` from linear-light components: one key id
+    /// shared by the `r`, `g`, `b` and `a` channels, as the web app writes
+    /// it, replacing a key already there. Returns the key's id. Fails on a
+    /// channel that holds scalar keys.
+    pub fn upsert_color(&mut self, time: MediaTime, rgba: [f64; 4]) -> Result<String, String> {
+        if !self.keys.is_empty() {
+            return Err("a number channel cannot hold a colour key".to_owned());
+        }
+        let existing = self
+            .components
+            .get(COLOR_COMPONENTS[0])
+            .and_then(|channel| channel.key_at(time))
+            .map(|key| (key.id.clone(), key.time));
+        let (id, time) = existing.unwrap_or_else(|| (crate::new_id(), time));
+        for (name, value) in COLOR_COMPONENTS.iter().zip(rgba) {
+            let component = self.components.entry((*name).to_owned()).or_default();
+            if let Some(key) = component.keys.iter_mut().find(|key| key.id == id) {
+                key.value = value;
+            } else if let Some(key) = component.keys.iter_mut().find(|key| (key.time - time).as_ticks().abs() <= KEY_SNAP.as_ticks()) {
+                key.value = value;
+            } else {
+                let mut key = Keyframe::new(time, value, Segment::Linear);
+                key.id = id.clone();
+                component.keys.push(key);
+                component.normalize();
+            }
+        }
+        Ok(id)
     }
 
     /// Sets the value at `time`, replacing a key already there. Returns the
@@ -633,6 +666,30 @@ mod tests {
 
         assert_eq!(parse_color_to_linear_rgba("#bcbcbc").map(|c| (c[0] * 100.0).round()), Some(50.0));
         assert_eq!(format_linear_rgba(parse_color_to_linear_rgba("#12345678").unwrap()), "#12345678");
+    }
+
+    #[test]
+    fn color_keys_are_set_as_one_id_across_the_components() {
+        let mut channel = Channel::default();
+        let first = channel.upsert_color(ticks(0), parse_color_to_linear_rgba("#000000").unwrap()).unwrap();
+        let second = channel.upsert_color(ticks(2000), parse_color_to_linear_rgba("#ffffff").unwrap()).unwrap();
+        assert!(channel.is_color());
+        assert_eq!(channel.all_keys().count(), 8);
+        assert!(channel.components.values().all(|component| component.keys.iter().any(|key| key.id == first)));
+        assert_eq!(channel.key_at(ticks(2000)).map(|key| key.id.as_str()), Some(second.as_str()));
+        assert_eq!(channel.color_at(ticks(1000)).as_deref(), Some("#bcbcbc"));
+        // Replacing the key at a time keeps its id; removing it empties nothing else.
+        let again = channel.upsert_color(ticks(2000) + ticks(100), parse_color_to_linear_rgba("#ff000080").unwrap()).unwrap();
+        assert_eq!(again, second);
+        assert_eq!(channel.color_at(ticks(2000)).as_deref(), Some("#ff000080"));
+        assert!(channel.remove(&first));
+        assert_eq!(channel.all_keys().count(), 4);
+        assert!(!channel.is_empty());
+        assert!(channel.remove(&second));
+        assert!(channel.is_empty(), "components without keys count as empty");
+        let mut scalar = Channel::default();
+        scalar.upsert(ticks(0), 1.0, None);
+        assert!(scalar.upsert_color(ticks(0), [0.0; 4]).is_err());
     }
 
     #[test]

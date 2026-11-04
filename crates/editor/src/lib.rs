@@ -36,8 +36,9 @@ pub use document::{
     Project, ProjectSettings, Track, TrackKind, now_millis,
 };
 pub use freeform::{
-    ElementQuad, FreeformPoint, canvas_to_freeform_local, element_quad, freeform_local_to_canvas,
-    read_freeform_path, write_freeform_path,
+    ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,
+    freeform_local_to_canvas, freeform_segment_count, insert_freeform_point, read_freeform_path,
+    recenter_freeform_path, remove_freeform_points, write_freeform_path,
 };
 pub use editor::Editor;
 pub use error::EditorError;

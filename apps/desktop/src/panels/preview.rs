@@ -1,15 +1,34 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use editor::Params;
 use gpui::{
-    Bounds, Context, Entity, MouseButton, MouseDownEvent, MouseUpEvent, ObjectFit, Path, Pixels, Point, Window,
-    canvas, div, fill, hsla, img, point, prelude::*, px, size,
+    Bounds, Context, Entity, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Path, Pixels,
+    Point, Window, canvas, div, fill, hsla, img, point, prelude::*, px, size,
 };
 
 use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::format::timecode;
-use crate::state::EditorState;
+use crate::state::{EditorState, FreeformHit, FreeformOverlay};
 use crate::theme::ActiveTheme;
+
+/// How far (in screen pixels) a click may be from a path point or segment
+/// to take hold of it, and how far a press must travel to count as a drag.
+const HIT_PX: f32 = 7.0;
+const DRAG_PX: f32 = 4.0;
+
+/// A press on the selected clip's path, until the button comes up: an
+/// anchor being moved, or a segment that inserts a point (click) or moves
+/// the whole path (drag).
+struct PathDrag {
+    hit: FreeformHit,
+    /// Canvas pixel of the press and of the latest move.
+    start: (f32, f32),
+    last: (f32, f32),
+    /// The mask's parameters at the press; every move is computed from them.
+    start_params: Params,
+    moved: bool,
+}
 
 /// The composited frame at the playhead, with transport controls.
 pub(crate) struct PreviewPanel {
@@ -20,6 +39,8 @@ pub(crate) struct PreviewPanel {
     /// Canvas pixel where the pen's last point was pressed, until the
     /// button comes up: dragging from it pulls out the point's handles.
     pen_press: Rc<Cell<Option<(f32, f32)>>>,
+    /// A path point or segment being dragged on the preview.
+    path_drag: Rc<RefCell<Option<PathDrag>>>,
 }
 
 impl PreviewPanel {
@@ -29,8 +50,30 @@ impl PreviewPanel {
             state,
             frame_bounds: Rc::new(Cell::new(Bounds::default())),
             pen_press: Rc::new(Cell::new(None)),
+            path_drag: Rc::new(RefCell::new(None)),
         }
     }
+}
+
+/// Ends a path drag: a moved anchor or path is committed as one edit, a
+/// click on a segment inserts a point there.
+fn finish_path_drag(drag: PathDrag, state: &Entity<EditorState>, cx: &mut gpui::App) {
+    let PathDrag { hit, start, last, start_params, moved } = drag;
+    state.update(cx, |state, cx| match hit {
+        FreeformHit::Anchor(id) => {
+            if moved {
+                state.drag_mask_point(&start_params, &id, (last.0 as f64, last.1 as f64), true, cx);
+            }
+        }
+        FreeformHit::Segment(segment, t) => {
+            if moved {
+                let delta = ((last.0 - start.0) as f64, (last.1 - start.1) as f64);
+                state.drag_mask_path(&start_params, delta, true, cx);
+            } else {
+                state.insert_mask_point(segment, t, cx);
+            }
+        }
+    });
 }
 
 /// Where the frame (object-fit contain) sits inside the frame area:
@@ -57,47 +100,75 @@ fn canvas_point(bounds: Bounds<Pixels>, canvas_size: (f32, f32), position: Point
     (x >= 0.0 && y >= 0.0 && x <= canvas_size.0 && y <= canvas_size.1).then_some((x, y))
 }
 
-/// Draws a freeform path's points and segments over the frame.
-fn paint_path_overlay(
-    bounds: Bounds<Pixels>,
-    canvas_size: (f32, f32),
-    points: &[(f64, f64)],
-    closed: bool,
-    window: &mut Window,
-) {
-    let (origin, scale) = fitted_frame(bounds, canvas_size);
-    if scale <= 0.0 || points.is_empty() {
+/// A thin quad from `a` to `b`.
+fn paint_line(a: Point<Pixels>, b: Point<Pixels>, half_width: f32, color: gpui::Hsla, window: &mut Window) {
+    let (dx, dy) = (f32::from(b.x - a.x), f32::from(b.y - a.y));
+    let length = (dx * dx + dy * dy).sqrt();
+    if length <= 0.0 {
         return;
     }
-    let on_screen: Vec<Point<Pixels>> = points
-        .iter()
-        .map(|&(x, y)| point(origin.x + px(x as f32 * scale), origin.y + px(y as f32 * scale)))
-        .collect();
+    let (nx, ny) = (-dy / length * half_width, dx / length * half_width);
+    let mut path = Path::new(point(a.x + px(nx), a.y + px(ny)));
+    path.line_to(point(b.x + px(nx), b.y + px(ny)));
+    path.line_to(point(b.x - px(nx), b.y - px(ny)));
+    path.line_to(point(a.x - px(nx), a.y - px(ny)));
+    window.paint_path(path, color);
+}
+
+fn paint_square(center: Point<Pixels>, half: f32, color: gpui::Hsla, window: &mut Window) {
+    let half = px(half);
+    window.paint_quad(fill(
+        Bounds::new(point(center.x - half, center.y - half), size(half * 2.0, half * 2.0)),
+        color,
+    ));
+}
+
+/// Draws a freeform path over the frame: its curved segments, its anchors
+/// (the first one orange, selected ones blue) and the handles of selected
+/// anchors.
+fn paint_path_overlay(bounds: Bounds<Pixels>, canvas_size: (f32, f32), overlay: &FreeformOverlay, window: &mut Window) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    if scale <= 0.0 || overlay.points.is_empty() {
+        return;
+    }
+    let to_screen = |(x, y): (f64, f64)| point(origin.x + px(x as f32 * scale), origin.y + px(y as f32 * scale));
     let line = hsla(0.55, 0.9, 0.6, 0.95);
-    let segments = if closed { on_screen.len() } else { on_screen.len().saturating_sub(1) };
+    let count = overlay.points.len();
+    let segments = if overlay.closed { count } else { count.saturating_sub(1) };
     for index in 0..segments {
-        let a = on_screen[index];
-        let b = on_screen[(index + 1) % on_screen.len()];
-        let (dx, dy) = (f32::from(b.x - a.x), f32::from(b.y - a.y));
-        let length = (dx * dx + dy * dy).sqrt();
-        if length <= 0.0 {
+        let a = &overlay.points[index];
+        let b = &overlay.points[(index + 1) % count];
+        let straight = a.out_handle == a.anchor && b.in_handle == b.anchor;
+        if straight {
+            paint_line(to_screen(a.anchor), to_screen(b.anchor), 0.75, line, window);
             continue;
         }
-        // A one-pixel-wide quad along the segment.
-        let (nx, ny) = (-dy / length * 0.75, dx / length * 0.75);
-        let mut path = Path::new(point(a.x + px(nx), a.y + px(ny)));
-        path.line_to(point(b.x + px(nx), b.y + px(ny)));
-        path.line_to(point(b.x - px(nx), b.y - px(ny)));
-        path.line_to(point(a.x - px(nx), a.y - px(ny)));
-        window.paint_path(path, line);
+        let mut previous = to_screen(a.anchor);
+        for step in 1..=16 {
+            let t = step as f64 / 16.0;
+            let next = to_screen(editor::cubic_point(a.anchor, a.out_handle, b.in_handle, b.anchor, t));
+            paint_line(previous, next, 0.75, line, window);
+            previous = next;
+        }
     }
-    for (index, &center) in on_screen.iter().enumerate() {
-        let half = px(if index == 0 { 4.0 } else { 3.0 });
-        let color = if index == 0 { hsla(0.1, 0.95, 0.6, 1.0) } else { hsla(0.0, 0.0, 1.0, 1.0) };
-        window.paint_quad(fill(
-            Bounds::new(point(center.x - half, center.y - half), size(half * 2.0, half * 2.0)),
-            color,
-        ));
+    let handle_color = hsla(0.55, 0.9, 0.75, 0.9);
+    for (index, point) in overlay.points.iter().enumerate() {
+        let anchor = to_screen(point.anchor);
+        if point.selected {
+            for handle in [point.in_handle, point.out_handle] {
+                if handle != point.anchor {
+                    let end = to_screen(handle);
+                    paint_line(anchor, end, 0.5, handle_color, window);
+                    paint_square(end, 2.5, handle_color, window);
+                }
+            }
+        }
+        let (half, color) = match (point.selected, index == 0) {
+            (true, _) => (4.5, hsla(0.55, 0.95, 0.55, 1.0)),
+            (false, true) => (4.0, hsla(0.1, 0.95, 0.6, 1.0)),
+            (false, false) => (3.0, hsla(0.0, 0.0, 1.0, 1.0)),
+        };
+        paint_square(anchor, half, color, window);
     }
 }
 
@@ -134,6 +205,8 @@ impl Render for PreviewPanel {
         let canvas_size = (project.settings.canvas.width as f32, project.settings.canvas.height as f32);
         let pen_active = state.pen.is_some();
         let overlay = state.freeform_overlay();
+        let path_editable = overlay.as_ref().is_some_and(|overlay| overlay.editable);
+        let dragging = self.path_drag.borrow().is_some();
 
         let bounds_cell = Rc::clone(&self.frame_bounds);
         let frame_area = div()
@@ -145,28 +218,96 @@ impl Render for PreviewPanel {
             .justify_center()
             .bg(gpui::black())
             .when(pen_active, |this| this.cursor(gpui::CursorStyle::Crosshair))
+            .when(dragging, |this| this.cursor(gpui::CursorStyle::ClosedHand))
             .on_mouse_down(MouseButton::Left, {
                 let focus_handle = focus_handle.clone();
                 let state = self.state.clone();
                 let bounds_cell = Rc::clone(&self.frame_bounds);
                 let pen_press = Rc::clone(&self.pen_press);
+                let path_drag = Rc::clone(&self.path_drag);
                 move |event: &MouseDownEvent, window, cx| {
                     window.focus(&focus_handle);
-                    if !pen_active {
-                        return;
-                    }
-                    let Some((x, y)) = canvas_point(bounds_cell.get(), canvas_size, event.position) else {
+                    let bounds = bounds_cell.get();
+                    let Some((x, y)) = canvas_point(bounds, canvas_size, event.position) else {
                         return;
                     };
-                    pen_press.set(None);
-                    state.update(cx, |state, cx| {
-                        // The first click of a double-click already placed
-                        // the last point; the second only closes the path.
-                        if event.click_count >= 2 {
-                            state.finish_pen(cx);
-                        } else {
-                            state.pen_add_point(x as f64, y as f64, cx);
-                            pen_press.set(Some((x, y)));
+                    if pen_active {
+                        pen_press.set(None);
+                        state.update(cx, |state, cx| {
+                            // The first click of a double-click already placed
+                            // the last point; the second only closes the path.
+                            if event.click_count >= 2 {
+                                state.finish_pen(cx);
+                            } else {
+                                state.pen_add_point(x as f64, y as f64, cx);
+                                pen_press.set(Some((x, y)));
+                            }
+                        });
+                        return;
+                    }
+                    if !path_editable {
+                        return;
+                    }
+                    // A closed path's anchors move, its segments take a new
+                    // point (click) or move the path (drag), as in the web app.
+                    let (_, scale) = fitted_frame(bounds, canvas_size);
+                    let tolerance = (HIT_PX / scale.max(0.01)) as f64;
+                    let hit = state.read(cx).freeform_hit((x as f64, y as f64), tolerance);
+                    let start_params = state.read(cx).freeform_mask().map(|(_, mask)| mask.params.clone());
+                    match (hit, start_params) {
+                        (Some(hit), Some(start_params)) => {
+                            if let FreeformHit::Anchor(id) = &hit {
+                                let id = id.clone();
+                                let extend = event.modifiers.shift;
+                                state.update(cx, |state, cx| state.select_mask_point(&id, extend, cx));
+                                if extend {
+                                    return;
+                                }
+                            }
+                            *path_drag.borrow_mut() = Some(PathDrag {
+                                hit,
+                                start: (x, y),
+                                last: (x, y),
+                                start_params,
+                                moved: false,
+                            });
+                        }
+                        _ => state.update(cx, |state, cx| state.clear_mask_point_selection(cx)),
+                    }
+                }
+            })
+            .on_mouse_move({
+                let state = self.state.clone();
+                let bounds_cell = Rc::clone(&self.frame_bounds);
+                let path_drag = Rc::clone(&self.path_drag);
+                move |event: &MouseMoveEvent, _, cx| {
+                    let mut borrowed = path_drag.borrow_mut();
+                    let Some(drag) = borrowed.as_mut() else {
+                        return;
+                    };
+                    let bounds = bounds_cell.get();
+                    let (origin, scale) = fitted_frame(bounds, canvas_size);
+                    if scale <= 0.0 {
+                        return;
+                    }
+                    // Keep following the pointer past the frame's edge.
+                    let x = f32::from(event.position.x - origin.x) / scale;
+                    let y = f32::from(event.position.y - origin.y) / scale;
+                    drag.last = (x, y);
+                    let travelled = ((x - drag.start.0).powi(2) + (y - drag.start.1).powi(2)).sqrt() * scale;
+                    if !drag.moved && travelled < DRAG_PX {
+                        return;
+                    }
+                    drag.moved = true;
+                    let (hit, start, start_params) = (drag.hit.clone(), drag.start, drag.start_params.clone());
+                    drop(borrowed);
+                    state.update(cx, |state, cx| match hit {
+                        FreeformHit::Anchor(id) => {
+                            state.drag_mask_point(&start_params, &id, (x as f64, y as f64), false, cx)
+                        }
+                        FreeformHit::Segment(..) => {
+                            let delta = ((x - start.0) as f64, (y - start.1) as f64);
+                            state.drag_mask_path(&start_params, delta, false, cx)
                         }
                     });
                 }
@@ -175,7 +316,12 @@ impl Render for PreviewPanel {
                 let state = self.state.clone();
                 let bounds_cell = Rc::clone(&self.frame_bounds);
                 let pen_press = Rc::clone(&self.pen_press);
+                let path_drag = Rc::clone(&self.path_drag);
                 move |event: &MouseUpEvent, _, cx| {
+                    if let Some(drag) = path_drag.borrow_mut().take() {
+                        finish_path_drag(drag, &state, cx);
+                        return;
+                    }
                     let Some((x0, y0)) = pen_press.take() else {
                         return;
                     };
@@ -189,6 +335,17 @@ impl Render for PreviewPanel {
                     state.update(cx, |state, cx| {
                         state.pen_drag_handles((x0 as f64, y0 as f64), (x as f64, y as f64), cx)
                     });
+                }
+            })
+            .on_mouse_up_out(MouseButton::Left, {
+                let state = self.state.clone();
+                let pen_press = Rc::clone(&self.pen_press);
+                let path_drag = Rc::clone(&self.path_drag);
+                move |_: &MouseUpEvent, _, cx| {
+                    pen_press.set(None);
+                    if let Some(drag) = path_drag.borrow_mut().take() {
+                        finish_path_drag(drag, &state, cx);
+                    }
                 }
             })
             .child(
@@ -208,11 +365,11 @@ impl Render for PreviewPanel {
                         .child("Rendering…"),
                 ),
             })
-            .when_some(overlay, |this, (points, closed)| {
+            .when_some(overlay, |this, overlay| {
                 this.child(
                     canvas(
                         |_, _, _| (),
-                        move |bounds, _, window, _| paint_path_overlay(bounds, canvas_size, &points, closed, window),
+                        move |bounds, _, window, _| paint_path_overlay(bounds, canvas_size, &overlay, window),
                     )
                     .absolute()
                     .inset_0(),

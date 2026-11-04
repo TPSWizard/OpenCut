@@ -61,7 +61,8 @@ main video track, audio) and their elements. Element parameters are a flat
 map with the same keys as the web Editor API (`transform.positionX`,
 `opacity`, `content`, `fontSize`, …), and times are `MediaTime` ticks. An
 element also carries `animations` (keyframe channels by parameter path, with
-times relative to the element's start; `editor::animation`), `effects` (GPU
+times relative to the element's start; `editor::animation`; a colour is four
+linear-light component channels set together by `Command::SetColorKeyframe`), `effects` (GPU
 effects such as `blur` with their own parameters) and `masks` (shapes that
 limit where a video or image shows), all in the web app's JSON shape.
 `Element::params_at` resolves keyframes at a time; effect parameters can be

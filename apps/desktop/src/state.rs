@@ -57,6 +57,34 @@ pub(crate) struct PenTool {
     pub mask_id: String,
 }
 
+/// One point of the selected clip's freeform path for the preview overlay,
+/// in canvas pixels.
+#[derive(Clone, Debug)]
+pub(crate) struct OverlayPoint {
+    pub id: String,
+    pub anchor: (f64, f64),
+    pub in_handle: (f64, f64),
+    pub out_handle: (f64, f64),
+    pub selected: bool,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct FreeformOverlay {
+    pub points: Vec<OverlayPoint>,
+    pub closed: bool,
+    /// Points can be dragged, segments clicked: a closed path that is not
+    /// being drawn.
+    pub editable: bool,
+}
+
+/// What a click on the preview landed on, in a freeform path.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum FreeformHit {
+    Anchor(String),
+    /// A segment and the spot along it nearest to the click.
+    Segment(usize, f64),
+}
+
 pub(crate) struct EditorState {
     /// Focus for the editor's own shortcuts; panels focus it on click so a
     /// text field stops receiving keys.
@@ -78,6 +106,9 @@ pub(crate) struct EditorState {
     pub thumbnails: HashMap<String, Arc<RenderImage>>,
     /// The freeform mask being drawn on the preview, if any.
     pub pen: Option<PenTool>,
+    /// Points of the selected clip's freeform mask that are selected (they
+    /// are what `Delete` removes), as in the web app.
+    pub selected_mask_points: Vec<String>,
     pub export: Option<ExportState>,
     render: RenderHandle,
     audio: Option<AudioOutput>,
@@ -140,6 +171,7 @@ impl EditorState {
             status,
             thumbnails: HashMap::new(),
             pen: None,
+            selected_mask_points: Vec::new(),
             export: None,
             render,
             audio,
@@ -210,6 +242,13 @@ impl EditorState {
             .cloned()
             .collect();
         self.selection = present;
+        if !self.selected_mask_points.is_empty() {
+            let ids: Vec<String> = self
+                .freeform_mask()
+                .map(|(_, mask)| editor::read_freeform_path(&mask.params).into_iter().map(|point| point.id).collect())
+                .unwrap_or_default();
+            self.selected_mask_points.retain(|id| ids.contains(id));
+        }
         let duration = self.project().duration();
         if self.project().playhead > duration {
             self.editor
@@ -250,8 +289,10 @@ impl EditorState {
             } else {
                 self.selection.push(element_id.to_owned());
             }
+            self.selected_mask_points.clear();
         } else if !self.is_selected(element_id) {
             self.selection = vec![element_id.to_owned()];
+            self.selected_mask_points.clear();
         }
         cx.notify();
     }
@@ -261,13 +302,21 @@ impl EditorState {
             self.finish_pen(cx);
         }
         self.selection = element_ids;
+        self.selected_mask_points.clear();
         cx.notify();
     }
 
     pub(crate) fn clear_selection(&mut self, cx: &mut Context<Self>) {
-        // Escape while drawing cancels the drawing, not the selection.
+        // Escape while drawing cancels the drawing, not the selection; with
+        // path points selected it drops those first (the most specific
+        // selection, as in the web app).
         if self.pen.is_some() {
             self.cancel_pen(cx);
+            return;
+        }
+        if !self.selected_mask_points.is_empty() {
+            self.selected_mask_points.clear();
+            cx.notify();
             return;
         }
         if !self.selection.is_empty() {
@@ -285,6 +334,7 @@ impl EditorState {
             .elements()
             .map(|(_, element)| element.id.clone())
             .collect();
+        self.selected_mask_points.clear();
         cx.notify();
     }
 
@@ -297,6 +347,10 @@ impl EditorState {
     }
 
     pub(crate) fn delete_selection(&mut self, cx: &mut Context<Self>) {
+        if !self.selected_mask_points.is_empty() {
+            self.remove_selected_mask_points(cx);
+            return;
+        }
         if self.selection.is_empty() {
             return;
         }
@@ -365,27 +419,9 @@ impl EditorState {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
         let time = self.playhead();
-        let mut plain = Params::new();
-        let mut keyed = Vec::new();
-        for (key, value) in params.iter() {
-            match value.as_number() {
-                Some(number) if element.is_animated(key) => keyed.push((key.clone(), number)),
-                _ => {
-                    plain.set(key.clone(), value.clone());
-                }
-            }
-        }
-        for (path, value) in keyed {
-            self.execute(
-                Command::SetKeyframe {
-                    element_id: element_id.clone(),
-                    path,
-                    time,
-                    value,
-                    segment: None,
-                },
-                cx,
-            );
+        let (plain, keyed) = keyed_edits(element, |key| key.to_owned(), &params, time);
+        for command in keyed {
+            self.execute(command, cx);
         }
         if !plain.is_empty() {
             self.execute(
@@ -426,20 +462,32 @@ impl EditorState {
             );
             return;
         }
-        let Some(value) = animated_value(element, path, time) else {
-            self.set_status(format!("{path} has no value to key"), cx);
+        if let Some(value) = animated_value(element, path, time) {
+            self.execute(
+                Command::SetKeyframe {
+                    element_id,
+                    path: path.to_owned(),
+                    time,
+                    value,
+                    segment: None,
+                },
+                cx,
+            );
             return;
-        };
-        self.execute(
-            Command::SetKeyframe {
-                element_id,
-                path: path.to_owned(),
-                time,
-                value,
-                segment: None,
-            },
-            cx,
-        );
+        }
+        if let Some(color) = animated_color(element, path, time) {
+            self.execute(
+                Command::SetColorKeyframe {
+                    element_id,
+                    path: path.to_owned(),
+                    time,
+                    color,
+                },
+                cx,
+            );
+            return;
+        }
+        self.set_status(format!("{path} has no value to key"), cx);
     }
 
     pub(crate) fn clear_animation(&mut self, path: &str, cx: &mut Context<Self>) {
@@ -497,30 +545,12 @@ impl EditorState {
         let element_id = element.id.clone();
         // Keyframed effect parameters get a key at the playhead.
         let time = self.playhead();
-        let mut plain = Params::new();
-        let mut keyed = Vec::new();
-        if let Some(params) = params {
-            for (key, value) in params.iter() {
-                let path = format!("effects.{effect_id}.params.{key}");
-                match value.as_number() {
-                    Some(number) if element.is_animated(&path) => keyed.push((path, number)),
-                    _ => {
-                        plain.set(key.clone(), value.clone());
-                    }
-                }
-            }
-        }
-        for (path, value) in keyed {
-            self.execute(
-                Command::SetKeyframe {
-                    element_id: element_id.clone(),
-                    path,
-                    time,
-                    value,
-                    segment: None,
-                },
-                cx,
-            );
+        let (plain, keyed) = match params {
+            Some(params) => keyed_edits(element, |key| format!("effects.{effect_id}.params.{key}"), &params, time),
+            None => (Params::new(), Vec::new()),
+        };
+        for command in keyed {
+            self.execute(command, cx);
         }
         if !plain.is_empty() || enabled.is_some() {
             self.execute(
@@ -588,13 +618,30 @@ impl EditorState {
             return;
         };
         let Some(quad) = editor::element_quad(self.project(), element, playhead) else { return };
-        let (x, y) = editor::canvas_to_freeform_local(&quad, &mask.params, canvas_x, canvas_y);
         let mut points = editor::read_freeform_path(&mask.params);
-        points.push(editor::FreeformPoint::corner(x, y));
-        let count = points.len();
         let (element_id, mask_id) = (element.id.clone(), mask.id.clone());
         let mut params = Params::new();
-        params.set("path", editor::write_freeform_path(&points));
+        if points.is_empty() {
+            // The first point becomes the path's centre, as in the web app.
+            let origin = Params::new();
+            let (cx_units, cy_units) = editor::canvas_to_freeform_local(&quad, &origin, canvas_x, canvas_y);
+            points.push(editor::FreeformPoint::corner(0.0, 0.0));
+            params
+                .set("centerX", cx_units)
+                .set("centerY", cy_units)
+                .set("rotation", 0.0)
+                .set("scale", 1.0)
+                .set("path", editor::write_freeform_path(&points));
+        } else {
+            let (x, y) = editor::canvas_to_freeform_local(&quad, &mask.params, canvas_x, canvas_y);
+            points.push(editor::FreeformPoint::corner(x, y));
+            let (center_x, center_y, recentred) = editor::recenter_freeform_path(&quad, &mask.params, &points);
+            params
+                .set("centerX", center_x)
+                .set("centerY", center_y)
+                .set("path", editor::write_freeform_path(&recentred));
+        }
+        let count = points.len();
         self.execute(Command::UpdateMask { element_id, mask_id, params }, cx);
         self.set_status(
             format!("Pen: {count} point(s); double-click or Enter closes the path, Escape cancels"),
@@ -618,9 +665,13 @@ impl EditorState {
         last.out_y = ty - fy;
         last.in_x = fx - tx;
         last.in_y = fy - ty;
+        let (center_x, center_y, recentred) = editor::recenter_freeform_path(&quad, &mask.params, &points);
         let (element_id, mask_id) = (element.id.clone(), mask.id.clone());
         let mut params = Params::new();
-        params.set("path", editor::write_freeform_path(&points));
+        params
+            .set("centerX", center_x)
+            .set("centerY", center_y)
+            .set("path", editor::write_freeform_path(&recentred));
         self.execute(Command::UpdateMask { element_id, mask_id, params }, cx);
     }
 
@@ -682,17 +733,29 @@ impl EditorState {
             .and_then(|(_, element)| element.mask(&pen.mask_id))
     }
 
-    /// The selected clip's freeform path in canvas pixels, with whether it
-    /// is closed, for the preview overlay.
-    pub(crate) fn freeform_overlay(&self) -> Option<(Vec<(f64, f64)>, bool)> {
-        let element = self.selected_element()?;
-        let mask = element.masks.first().filter(|mask| mask.kind == Mask::FREEFORM)?;
+    /// The selected clip's freeform path in canvas pixels for the preview
+    /// overlay: anchors with their handles, which are selected, and whether
+    /// the path is closed and editable.
+    pub(crate) fn freeform_overlay(&self) -> Option<FreeformOverlay> {
+        let (element, mask) = self.freeform_mask()?;
         let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        let to_canvas = |x: f64, y: f64| editor::freeform_local_to_canvas(&quad, &mask.params, x, y);
         let points = editor::read_freeform_path(&mask.params)
             .iter()
-            .map(|point| editor::freeform_local_to_canvas(&quad, &mask.params, point.x, point.y))
+            .map(|point| OverlayPoint {
+                id: point.id.clone(),
+                anchor: to_canvas(point.x, point.y),
+                in_handle: to_canvas(point.x + point.in_x, point.y + point.in_y),
+                out_handle: to_canvas(point.x + point.out_x, point.y + point.out_y),
+                selected: self.selected_mask_points.contains(&point.id),
+            })
             .collect();
-        Some((points, mask.params.bool("closed", false)))
+        let closed = mask.params.bool("closed", false);
+        Some(FreeformOverlay {
+            points,
+            closed,
+            editable: closed && self.pen.is_none(),
+        })
     }
 
     pub(crate) fn add_mask(&mut self, mask: Mask, cx: &mut Context<Self>) {
@@ -701,14 +764,213 @@ impl EditorState {
         self.execute(Command::AddMask { element_id, mask }, cx);
     }
 
+    /// Changes a mask's parameters; a keyframed one gets a key at the
+    /// playhead instead.
     pub(crate) fn update_mask(&mut self, mask_id: &str, params: Params, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
+        let time = self.playhead();
+        let (plain, keyed) = keyed_edits(element, |key| format!("masks.{mask_id}.params.{key}"), &params, time);
+        for command in keyed {
+            self.execute(command, cx);
+        }
+        if plain.is_empty() {
+            return;
+        }
         self.execute(
             Command::UpdateMask {
                 element_id,
                 mask_id: mask_id.to_owned(),
-                params,
+                params: plain,
+            },
+            cx,
+        );
+    }
+
+    /// Shows a mask with other parameters without recording an edit: the
+    /// live picture while a path point is dragged. The edit is committed
+    /// (or the start restored) when the drag ends.
+    pub(crate) fn preview_mask_params(&mut self, mask_id: &str, params: Params, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let mask_id = mask_id.to_owned();
+        self.editor.apply_transient(|project| {
+            let element = project
+                .tracks
+                .iter_mut()
+                .flat_map(|track| track.elements.iter_mut())
+                .find(|element| element.id == element_id);
+            if let Some(element) = element
+                && let Some(mask) = element.masks.iter_mut().find(|mask| mask.id == mask_id)
+            {
+                mask.params.merge(&params);
+            }
+        });
+        self.request_render(cx);
+        cx.notify();
+    }
+
+    // ---- freeform path editing (the web app's mask point handles) ------
+
+    /// The selected clip and its freeform mask, if it has one.
+    pub(crate) fn freeform_mask(&self) -> Option<(&Element, &Mask)> {
+        let element = self.selected_element()?;
+        let mask = element.masks.first().filter(|mask| mask.kind == Mask::FREEFORM)?;
+        Some((element, mask))
+    }
+
+    /// What a canvas pixel lands on in the selected clip's closed path:
+    /// an anchor within `tolerance` canvas pixels, else a segment within it.
+    pub(crate) fn freeform_hit(&self, (x, y): (f64, f64), tolerance: f64) -> Option<FreeformHit> {
+        let overlay = self.freeform_overlay()?;
+        if !overlay.editable {
+            return None;
+        }
+        let near = |(px, py): (f64, f64)| ((px - x).powi(2) + (py - y).powi(2)).sqrt() <= tolerance;
+        if let Some(point) = overlay.points.iter().find(|point| near(point.anchor)) {
+            return Some(FreeformHit::Anchor(point.id.clone()));
+        }
+        let (element, mask) = self.freeform_mask()?;
+        let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        let points = editor::read_freeform_path(&mask.params);
+        let mut best: Option<(usize, f64, f64)> = None;
+        for segment in 0..editor::freeform_segment_count(&points, true) {
+            if let Some((t, distance)) = editor::closest_on_freeform_segment(&quad, &mask.params, &points, true, segment, (x, y))
+                && distance <= tolerance
+                && best.is_none_or(|(_, _, nearest)| distance < nearest)
+            {
+                best = Some((segment, t, distance));
+            }
+        }
+        best.map(|(segment, t, _)| FreeformHit::Segment(segment, t))
+    }
+
+    pub(crate) fn select_mask_point(&mut self, point_id: &str, extend: bool, cx: &mut Context<Self>) {
+        if extend {
+            if let Some(index) = self.selected_mask_points.iter().position(|id| id == point_id) {
+                self.selected_mask_points.remove(index);
+            } else {
+                self.selected_mask_points.push(point_id.to_owned());
+            }
+        } else {
+            self.selected_mask_points = vec![point_id.to_owned()];
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn clear_mask_point_selection(&mut self, cx: &mut Context<Self>) {
+        if !self.selected_mask_points.is_empty() {
+            self.selected_mask_points.clear();
+            cx.notify();
+        }
+    }
+
+    /// The path's parameters with one anchor moved to a canvas pixel,
+    /// computed from the parameters the drag started with so repeated
+    /// moves do not accumulate.
+    fn moved_point_params(&self, start: &Params, point_id: &str, (x, y): (f64, f64)) -> Option<Params> {
+        let (element, _) = self.freeform_mask()?;
+        let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        let (lx, ly) = editor::canvas_to_freeform_local(&quad, start, x, y);
+        let mut points = editor::read_freeform_path(start);
+        let point = points.iter_mut().find(|point| point.id == point_id)?;
+        point.x = lx;
+        point.y = ly;
+        let mut params = Params::new();
+        params.set("path", editor::write_freeform_path(&points));
+        Some(params)
+    }
+
+    /// The mask's centre shifted by a canvas-pixel delta (dragging a segment
+    /// moves the whole path, as in the web app).
+    fn shifted_center_params(&self, start: &Params, (dx, dy): (f64, f64)) -> Option<Params> {
+        let (element, _) = self.freeform_mask()?;
+        let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        if quad.width <= 0.0 || quad.height <= 0.0 {
+            return None;
+        }
+        // Into the element's own (unrotated) frame, in units of its size.
+        let (sin, cos) = (-quad.rotation_degrees).to_radians().sin_cos();
+        let (ex, ey) = (dx * cos - dy * sin, dx * sin + dy * cos);
+        let mut params = Params::new();
+        params
+            .set("centerX", start.number("centerX", 0.0) + ex / quad.width)
+            .set("centerY", start.number("centerY", 0.0) + ey / quad.height);
+        Some(params)
+    }
+
+    /// Previews or commits a dragged anchor (`commit` restores the start
+    /// first, so the edit undoes in one step).
+    pub(crate) fn drag_mask_point(&mut self, start: &Params, point_id: &str, to: (f64, f64), commit: bool, cx: &mut Context<Self>) {
+        let Some(params) = self.moved_point_params(start, point_id, to) else { return };
+        self.apply_drag(start, params, commit, cx);
+    }
+
+    /// Previews or commits a dragged segment: the whole path moves.
+    pub(crate) fn drag_mask_path(&mut self, start: &Params, delta: (f64, f64), commit: bool, cx: &mut Context<Self>) {
+        let Some(params) = self.shifted_center_params(start, delta) else { return };
+        self.apply_drag(start, params, commit, cx);
+    }
+
+    fn apply_drag(&mut self, start: &Params, params: Params, commit: bool, cx: &mut Context<Self>) {
+        let Some((_, mask)) = self.freeform_mask() else { return };
+        let mask_id = mask.id.clone();
+        if commit {
+            self.preview_mask_params(&mask_id, start.clone(), cx);
+            self.update_mask(&mask_id, params, cx);
+        } else {
+            self.preview_mask_params(&mask_id, params, cx);
+        }
+    }
+
+    /// Adds a point on a segment at `t` (a click on the path), recentres
+    /// the path as the web app does, and selects the new point.
+    pub(crate) fn insert_mask_point(&mut self, segment: usize, t: f64, cx: &mut Context<Self>) {
+        let Some((element, mask)) = self.freeform_mask() else { return };
+        let Some(quad) = editor::element_quad(self.project(), element, self.playhead()) else { return };
+        let points = editor::read_freeform_path(&mask.params);
+        let inserted = editor::insert_freeform_point(&points, true, segment, t);
+        if inserted.len() == points.len() {
+            return;
+        }
+        let new_id = inserted
+            .iter()
+            .find(|point| !points.iter().any(|old| old.id == point.id))
+            .map(|point| point.id.clone());
+        let (center_x, center_y, recentred) = editor::recenter_freeform_path(&quad, &mask.params, &inserted);
+        let mask_id = mask.id.clone();
+        let mut params = Params::new();
+        params
+            .set("path", editor::write_freeform_path(&recentred))
+            .set("centerX", center_x)
+            .set("centerY", center_y);
+        self.update_mask(&mask_id, params, cx);
+        if let Some(id) = new_id {
+            self.selected_mask_points = vec![id];
+        }
+        self.set_status(format!("Point added: {} points", recentred.len()), cx);
+    }
+
+    /// Drops the selected points; a path left with fewer than three
+    /// points opens (and so stops masking), as in the web app.
+    pub(crate) fn remove_selected_mask_points(&mut self, cx: &mut Context<Self>) {
+        let ids = std::mem::take(&mut self.selected_mask_points);
+        let Some((_, mask)) = self.freeform_mask() else { return };
+        let points = editor::read_freeform_path(&mask.params);
+        let closed = mask.params.bool("closed", false);
+        let (kept, still_closed) = editor::remove_freeform_points(&points, &ids, closed);
+        if kept.len() == points.len() {
+            return;
+        }
+        let mask_id = mask.id.clone();
+        let mut params = Params::new();
+        params.set("path", editor::write_freeform_path(&kept)).set("closed", still_closed);
+        self.update_mask(&mask_id, params, cx);
+        self.set_status(
+            if still_closed || !closed {
+                format!("{} point(s) removed", points.len() - kept.len())
+            } else {
+                "Point removed; a path needs three points to mask, so it is open now".to_owned()
             },
             cx,
         );
@@ -1193,6 +1455,60 @@ impl EditorState {
 /// The value of a parameter path at a timeline time: the element's own
 /// parameters, or those of one of its effects (`effects.<id>.params.<key>`)
 /// or masks (`masks.<id>.params.<key>`), keyframes included.
+/// The parameters of `params` that are keyframed, as key-setting commands
+/// at `time` (numbers and hex colours), and the rest as a plain patch.
+fn keyed_edits(
+    element: &Element,
+    path_of: impl Fn(&str) -> String,
+    params: &Params,
+    time: MediaTime,
+) -> (Params, Vec<Command>) {
+    let mut plain = Params::new();
+    let mut keyed = Vec::new();
+    for (key, value) in params.iter() {
+        let path = path_of(key);
+        if !element.is_animated(&path) {
+            plain.set(key.clone(), value.clone());
+            continue;
+        }
+        if let Some(number) = value.as_number() {
+            keyed.push(Command::SetKeyframe {
+                element_id: element.id.clone(),
+                path,
+                time,
+                value: number,
+                segment: None,
+            });
+        } else if editor::parse_hex_color(&value.as_text()).is_some() {
+            keyed.push(Command::SetColorKeyframe {
+                element_id: element.id.clone(),
+                path,
+                time,
+                color: value.as_text().trim().to_owned(),
+            });
+        } else {
+            plain.set(key.clone(), value.clone());
+        }
+    }
+    (plain, keyed)
+}
+
+/// The hex colour a keyframe path shows at a timeline time, if it is one.
+pub(crate) fn animated_color(element: &Element, path: &str, time: MediaTime) -> Option<String> {
+    let text = if let Some(rest) = path.strip_prefix("effects.") {
+        let (effect_id, key) = rest.split_once(".params.")?;
+        let effect = element.effect(effect_id)?;
+        element.effect_params_at(effect, time).get(key)?.as_text()
+    } else if let Some(rest) = path.strip_prefix("masks.") {
+        let (mask_id, key) = rest.split_once(".params.")?;
+        let mask = element.mask(mask_id)?;
+        element.mask_params_at(mask, time).get(key)?.as_text()
+    } else {
+        element.params_at(time).get(path)?.as_text()
+    };
+    editor::parse_hex_color(&text).is_some().then(|| text.trim().to_owned())
+}
+
 pub(crate) fn animated_value(element: &Element, path: &str, time: MediaTime) -> Option<f64> {
     if let Some(rest) = path.strip_prefix("effects.") {
         let (effect_id, key) = rest.split_once(".params.")?;
