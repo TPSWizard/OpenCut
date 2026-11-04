@@ -26,6 +26,36 @@ pub enum FrameItemDescriptor {
     SceneEffect {
         effect_pass_groups: Vec<Vec<EffectPassDescriptor>>,
     },
+    /// Two stacks of layers blended by a gl-transitions shader: `from` is
+    /// what the transition leaves, `to` what it reveals, at `progress`
+    /// (0 shows only `from`, 1 only `to`). Either stack may be empty,
+    /// which is a transparent side (a fade in from, or out to, nothing).
+    /// The result is composited over the scene with normal blending.
+    Transition(TransitionDescriptor),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransitionDescriptor {
+    /// A transition name from the catalogue, e.g. `Fade` or `DirectionalWipe`.
+    pub name: String,
+    pub progress: f32,
+    #[serde(default)]
+    pub params: HashMap<String, TransitionParamDescriptor>,
+    #[serde(default)]
+    pub from: Vec<LayerDescriptor>,
+    #[serde(default)]
+    pub to: Vec<LayerDescriptor>,
+}
+
+/// A transition parameter as the project stores it: numbers for `float`
+/// and `int` uniforms, arrays for vectors, booleans for `bool`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TransitionParamDescriptor {
+    Bool(bool),
+    Number(f64),
+    Vector(Vec<f64>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

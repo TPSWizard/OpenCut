@@ -51,6 +51,8 @@ methods answer with the error code `no_project` before that.
 | `timeline.addText` | `{ text, at?, duration?, name?, params?, trackId? }` | `ApiElementInfo` |
 | `timeline.updateElement` | `{ elementId, trackId?, patch }` | `ApiElementInfo` |
 | `timeline.moveElement` | `{ elementId, trackId?, startTime }` | `ApiElementInfo` |
+| `timeline.setTransition` | `{ elementId, trackId?, transition: { type, duration?, params? } \| null }` | `ApiElementInfo` |
+| `transitions.list` | – | `ApiTransitionInfo[]` |
 | `timeline.split` | `{ elements, time }` | `ApiElementRef[]` |
 | `timeline.delete` | `{ elements }` | `{ deleted }` |
 | `timeline.duplicate` | `{ elements }` | `ApiElementRef[]` |
@@ -67,6 +69,14 @@ methods answer with the error code `no_project` before that.
 params). Common params: `transform.positionX/Y`, `transform.scaleX/Y`,
 `transform.rotate`, `opacity`; text elements also take `content`, `fontSize`,
 `fontFamily`, `color`, `textAlign`, `letterSpacing`, `lineHeight`.
+
+A transition (`timeline.setTransition`) belongs to the clip it leads out of
+and plays centred on the cut to the next clip on the track, half over each
+side, so durations never change; a clip with nothing after it fades out over
+its own end. `type` is a name from `transitions.list` (the gl-transitions
+catalogue, for example `Fade`, `DirectionalWipe`, `CrossZoom`), `duration` is
+seconds (default 1) and `params` are the shader's uniforms as `transitions.list`
+describes them. `ApiElementInfo.transition` reads it back.
 
 Errors carry a `code`: `not_found`, `invalid_params`, `no_project`,
 `unknown_method`, `failed`.

@@ -1019,8 +1019,10 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "effects",
+ "gl-transitions",
  "gpu",
  "masks",
+ "pollster 0.4.0",
  "serde",
  "thiserror 2.0.19",
 ]
@@ -2171,6 +2173,12 @@ dependencies = [
  "color_quant",
  "weezl",
 ]
+
+[[package]]
+name = "gl-transitions"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0ff68a3fd3b9c337ce9b5b618ad838af8e60ba6fdf6c3b856e9a20ee6c40c12"
 
 [[package]]
 name = "gl_generator"
@@ -4068,6 +4076,7 @@ dependencies = [
 name = "opencut-desktop"
 version = "0.1.0"
 dependencies = [
+ "compositor",
  "cpal",
  "editor",
  "futures",
@@ -4075,6 +4084,7 @@ dependencies = [
  "image",
  "media",
  "render",
+ "serde_json",
  "smallvec",
  "tempfile",
  "time",

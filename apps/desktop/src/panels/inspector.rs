@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use editor::{
+    ParamValue,
     Background, CanvasSize, Command, Effect, ElementKind, ElementPatch, Mask, MaskSize, Params, SettingsPatch,
 };
 use gpui::{Context, Entity, FocusHandle, FontWeight, ScrollHandle, Window, div, prelude::*, px};
-use time::FrameRate;
+use time::{FrameRate, MediaTime};
 
 use crate::components::{Button, ButtonSize, ButtonVariant, Separator, TextInput, eid};
 use crate::format::timecode;
@@ -165,6 +166,196 @@ impl InspectorPanel {
             }
         }
         row
+    }
+
+    /// The clip's transition out: pick one of the catalogue by name (a
+    /// field that accepts a prefix, Previous/Next, a few common picks),
+    /// set its length in seconds and its parameters, or remove it.
+    fn transition_section<C: ParentElement>(
+        &mut self,
+        mut content: C,
+        element: &editor::Element,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> C {
+        let colors = window.theme().colors;
+        let catalogue = compositor::transition_catalogue();
+        let current = element.transition.clone();
+        let mut header = div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .child(self.heading("Transition", window));
+        if current.is_some() {
+            let state = self.state.clone();
+            header = header.child(
+                Button::new("transition-remove", "Remove")
+                    .variant(ButtonVariant::Ghost)
+                    .size(ButtonSize::XSmall)
+                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.remove_transition(cx))),
+            );
+        }
+        content = content.child(Separator::horizontal()).child(header);
+        let names: Vec<&'static str> = catalogue.iter().map(|info| info.name).collect();
+        let kind_row = self.row(
+            "Type",
+            "transition.kind",
+            "None (type a name)",
+            current.as_ref().map(|transition| transition.kind.clone()).unwrap_or_default(),
+            None,
+            window,
+            cx,
+            Box::new({
+                let names = names.clone();
+                move |text, state, cx| {
+                    let wanted = text.trim().to_ascii_lowercase();
+                    if wanted.is_empty() {
+                        state.remove_transition(cx);
+                        return;
+                    }
+                    let found = names
+                        .iter()
+                        .find(|name| name.to_ascii_lowercase() == wanted)
+                        .or_else(|| names.iter().find(|name| name.to_ascii_lowercase().starts_with(&wanted)))
+                        .or_else(|| names.iter().find(|name| name.to_ascii_lowercase().contains(&wanted)));
+                    match found {
+                        Some(name) => state.set_transition_kind(name, cx),
+                        None => state.set_status(format!("No transition called \"{}\"", text.trim()), cx),
+                    }
+                }
+            }),
+        );
+        content = content.child(kind_row);
+        let index = current
+            .as_ref()
+            .and_then(|transition| names.iter().position(|name| *name == transition.kind));
+        let step = |offset: isize| -> &'static str {
+            let count = names.len() as isize;
+            let base = index.map(|index| index as isize).unwrap_or(-1);
+            names[((base + offset).rem_euclid(count)) as usize]
+        };
+        let previous = step(-1);
+        let next = step(1);
+        let mut picks = div().flex().flex_wrap().items_center().gap(px(4.));
+        for (id, label, name) in [
+            ("transition-prev", "‹ Previous", previous),
+            ("transition-next", "Next ›", next),
+            ("transition-fade", "Fade", "Fade"),
+            ("transition-wipe", "Wipe", "DirectionalWipe"),
+            ("transition-zoom", "Zoom", "CrossZoom"),
+            ("transition-cube", "Cube", "Cube"),
+            ("transition-slide", "Slide", "Directional"),
+        ] {
+            let state = self.state.clone();
+            let active = current.as_ref().is_some_and(|transition| transition.kind == name)
+                && !id.ends_with("prev")
+                && !id.ends_with("next");
+            picks = picks.child(
+                Button::new(id, label)
+                    .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.set_transition_kind(name, cx))),
+            );
+        }
+        content = content.child(picks);
+        let Some(transition) = current else {
+            return content.child(
+                div()
+                    .text_xs()
+                    .text_color(colors.muted_foreground)
+                    .child(format!(
+                        "No transition. One plays centred on the cut to the next clip ({} to choose from).",
+                        names.len()
+                    )),
+            );
+        };
+        let duration_row = self.row(
+            "Duration",
+            "transition.duration",
+            "Seconds",
+            format!("{:.2}", transition.duration.to_seconds_f64()),
+            None,
+            window,
+            cx,
+            Box::new(|text, state, cx| {
+                if let Ok(seconds) = text.trim().parse::<f64>()
+                    && seconds > 0.0
+                    && let Some(duration) = MediaTime::from_seconds_f64(seconds)
+                {
+                    state.update_transition(Some(duration), None, cx);
+                }
+            }),
+        );
+        content = content.child(duration_row);
+        if let Some(info) = compositor::transition_info(&transition.kind) {
+            if let Some(description) = info.description {
+                content = content.child(div().text_xs().text_color(colors.muted_foreground).child(description.to_owned()));
+            }
+            for param in info.params {
+                let stored = transition.params.get(param.name).cloned();
+                let shown = match (&stored, &param.default) {
+                    (Some(ParamValue::Bool(value)), _) => value.to_string(),
+                    (Some(ParamValue::Number(value)), _) => format!("{value}"),
+                    (Some(ParamValue::Json(serde_json::Value::Array(items))), _) => items
+                        .iter()
+                        .filter_map(serde_json::Value::as_f64)
+                        .map(|value| format!("{value}"))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    (_, compositor::TransitionParamDescriptor::Bool(value)) => value.to_string(),
+                    (_, compositor::TransitionParamDescriptor::Number(value)) => format!("{value}"),
+                    (_, compositor::TransitionParamDescriptor::Vector(values)) => values
+                        .iter()
+                        .map(|value| format!("{value}"))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                };
+                let kind = param.kind;
+                let name = param.name;
+                let placeholder: &'static str = match kind {
+                    "bool" => "true or false",
+                    "float" | "int" => "Number",
+                    _ => "Numbers, comma separated",
+                };
+                let row = self.row(
+                    name,
+                    &format!("transition.param.{name}"),
+                    placeholder,
+                    shown,
+                    None,
+                    window,
+                    cx,
+                    Box::new(move |text, state, cx| {
+                        let text = text.trim();
+                        let mut params = Params::new();
+                        let value: Option<ParamValue> = match kind {
+                            "bool" => match text.to_ascii_lowercase().as_str() {
+                                "true" | "1" | "yes" | "on" => Some(ParamValue::Bool(true)),
+                                "false" | "0" | "no" | "off" => Some(ParamValue::Bool(false)),
+                                _ => None,
+                            },
+                            "float" | "int" => text.parse::<f64>().ok().map(ParamValue::Number),
+                            _ => {
+                                let numbers: Option<Vec<f64>> =
+                                    text.split(',').map(|part| part.trim().parse::<f64>().ok()).collect();
+                                numbers.map(|numbers| ParamValue::Json(serde_json::Value::Array(
+                                    numbers.into_iter().filter_map(serde_json::Number::from_f64).map(serde_json::Value::Number).collect(),
+                                )))
+                            }
+                        };
+                        match value {
+                            Some(value) => {
+                                params.set(name, value);
+                                state.update_transition(None, Some(params), cx);
+                            }
+                            None => state.set_status(format!("{name} must be a {kind}"), cx),
+                        }
+                    }),
+                );
+                content = content.child(row);
+            }
+        }
+        content
     }
 
     fn heading(&self, text: &'static str, window: &Window) -> gpui::Div {
@@ -560,6 +751,10 @@ impl Render for InspectorPanel {
                                         }),
                                 )
                         });
+                }
+
+                if is_visual {
+                    content = self.transition_section(content, &element, window, cx);
                 }
 
                 if is_visual {

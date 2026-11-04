@@ -39,6 +39,10 @@ import { ImageNode, loadImageSource } from "./nodes/image-node";
 import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
 import { VideoNode } from "./nodes/video-node";
+import {
+	TransitionNode,
+	type ResolvedTransitionNodeState,
+} from "./nodes/transition-node";
 import type {
 	ResolvedVisualNodeState,
 	ResolvedVisualSourceNodeState,
@@ -85,6 +89,8 @@ async function resolveNode({
 		node.resolved = resolveGraphicNode({ node, context });
 	} else if (node instanceof TextNode) {
 		node.resolved = resolveTextNode({ node, context });
+	} else if (node instanceof TransitionNode) {
+		node.resolved = await resolveTransitionNode({ node, context });
 	} else if (node instanceof BlurBackgroundNode) {
 		node.resolved = await resolveBlurBackgroundNode({ node, context });
 	} else if (node instanceof EffectLayerNode) {
@@ -128,6 +134,75 @@ function resolveEffectPassGroups({
 		});
 }
 
+/**
+ * Whether a clip is drawn at `time`: inside its span (or anywhere, when
+ * extended for a transition) and not inside a window where a transition
+ * draws it instead.
+ */
+function isClipVisible({
+	params,
+	time,
+}: {
+	params: Pick<VisualNodeParams, "timeOffset" | "duration" | "extended" | "suppressedWindows">;
+	time: number;
+}): boolean {
+	if (
+		params.suppressedWindows?.some(
+			(window) => time >= window.start && time < window.end,
+		)
+	) {
+		return false;
+	}
+	const clipTime = time - params.timeOffset;
+	return Boolean(params.extended) || (clipTime >= 0 && clipTime < params.duration);
+}
+
+/**
+ * The source time for a clip time that may lie outside the clip: inside it
+ * the retime map applies; beyond it the handle plays at 1x, clamped to the
+ * source so an exhausted handle holds its edge frame.
+ */
+function resolveSourceTimeTicks({
+	params,
+	clipTime,
+}: {
+	params: VisualNodeParams;
+	clipTime: number;
+}): number {
+	const inside = Math.min(Math.max(clipTime, 0), Math.max(params.duration - 1, 0));
+	let source =
+		params.trimStart +
+		getSourceTimeAtClipTime({ clipTime: inside, retime: params.retime });
+	if (clipTime !== inside) {
+		source += clipTime - inside;
+	}
+	const last = params.trimStart + params.duration + params.trimEnd - 1;
+	return Math.min(Math.max(source, 0), Math.max(last, 0));
+}
+
+async function resolveTransitionNode({
+	node,
+	context,
+}: {
+	node: TransitionNode;
+	context: ResolveContext;
+}): Promise<ResolvedTransitionNodeState | null> {
+	const { windowStart, windowEnd, from, to } = node.params;
+	const sides = [from, to].filter((side): side is AnyBaseNode => side !== null);
+	if (context.time < windowStart || context.time >= windowEnd) {
+		for (const side of sides) side.resolved = null;
+		return null;
+	}
+	await Promise.all(sides.map((side) => resolveNode({ node: side, context })));
+	const length = windowEnd - windowStart;
+	return {
+		progress:
+			length > 0
+				? Math.min(Math.max((context.time - windowStart) / length, 0), 1)
+				: 1,
+	};
+}
+
 function resolveVisualState({
 	params,
 	context,
@@ -139,8 +214,7 @@ function resolveVisualState({
 	sourceWidth: number;
 	sourceHeight: number;
 }): ResolvedVisualNodeState | null {
-	const clipTime = context.time - params.timeOffset;
-	if (clipTime < 0 || clipTime >= params.duration) {
+	if (!isClipVisible({ params, time: context.time })) {
 		return null;
 	}
 
@@ -191,17 +265,14 @@ async function resolveVideoNode({
 	node: VideoNode;
 	context: ResolveContext;
 }): Promise<ResolvedVisualSourceNodeState | null> {
-	const clipTime = context.time - node.params.timeOffset;
-	if (clipTime < 0 || clipTime >= node.params.duration) {
+	if (!isClipVisible({ params: node.params, time: context.time })) {
 		return null;
 	}
 
-	const sourceTimeTicks =
-		node.params.trimStart +
-		getSourceTimeAtClipTime({
-			clipTime,
-			retime: node.params.retime,
-		});
+	const sourceTimeTicks = resolveSourceTimeTicks({
+		params: node.params,
+		clipTime: context.time - node.params.timeOffset,
+	});
 	const frame = await videoCache.getFrameAt({
 		mediaId: node.params.mediaId,
 		file: node.params.file,
@@ -319,9 +390,20 @@ function resolveTextNode({
 	node: TextNode;
 	context: ResolveContext;
 }): ResolvedTextNodeState | null {
+	// Text params carry the element's own fields plus the transition flags
+	// the scene builder spreads in (see `VisualNodeParams`).
+	const clip = node.params as typeof node.params &
+		Pick<VisualNodeParams, "extended" | "suppressedWindows">;
 	if (
-		context.time < node.params.startTime ||
-		context.time >= node.params.startTime + node.params.duration
+		!isClipVisible({
+			params: {
+				timeOffset: clip.startTime,
+				duration: clip.duration,
+				extended: clip.extended,
+				suppressedWindows: clip.suppressedWindows,
+			},
+			time: context.time,
+		})
 	) {
 		return null;
 	}

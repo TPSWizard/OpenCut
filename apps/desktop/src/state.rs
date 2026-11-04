@@ -17,8 +17,7 @@ use std::time::{Duration, Instant};
 
 use editor::{
     Command, Edge, Editor, Effect, Element, ElementPatch, Mask, MediaItem, MediaKind, Outcome,
-    Params, Project, ProjectStore, TrackPlacement, nearest_free_start, plan_audio,
-};
+    Params, Project, ProjectStore, TrackPlacement, nearest_free_start, plan_audio, Transition};
 use futures::StreamExt;
 use gpui::{Context, FocusHandle, RenderImage, Task};
 use media::{Ffmpeg, is_image_path, probe};
@@ -119,6 +118,9 @@ pub(crate) struct EditorState {
     playback_task: Option<Task<()>>,
     _event_task: Task<()>,
 }
+
+/// A new transition lasts this long (one second).
+pub(crate) const DEFAULT_TRANSITION_DURATION: MediaTime = MediaTime::from_ticks(120_000);
 
 impl EditorState {
     pub(crate) fn new(
@@ -997,6 +999,67 @@ impl EditorState {
                 format!("{} point(s) removed", points.len() - kept.len())
             } else {
                 "Point removed; a path needs three points to mask, so it is open now".to_owned()
+            },
+            cx,
+        );
+    }
+
+    // ---- transitions -----------------------------------------------------
+
+    /// Gives the selected clip a transition of `kind` (a catalogue name),
+    /// keeping its duration and parameters when it already has one of
+    /// another kind, else the default of one second.
+    pub(crate) fn set_transition_kind(&mut self, kind: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let duration = element
+            .transition
+            .as_ref()
+            .map(|transition| transition.duration)
+            .unwrap_or(DEFAULT_TRANSITION_DURATION);
+        let transition = Transition {
+            kind: kind.to_owned(),
+            duration,
+            params: Params::new(),
+        };
+        self.execute(
+            Command::SetTransition {
+                element_id,
+                transition: Some(transition),
+            },
+            cx,
+        );
+    }
+
+    /// Changes the selected clip's transition duration (seconds) or
+    /// parameters.
+    pub(crate) fn update_transition(&mut self, duration: Option<MediaTime>, params: Option<Params>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let Some(current) = element.transition.as_ref() else { return };
+        let element_id = element.id.clone();
+        let mut transition = current.clone();
+        if let Some(duration) = duration {
+            transition.duration = duration;
+        }
+        if let Some(params) = params {
+            transition.params.merge(&params);
+        }
+        self.execute(
+            Command::SetTransition {
+                element_id,
+                transition: Some(transition),
+            },
+            cx,
+        );
+    }
+
+    pub(crate) fn remove_transition(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::SetTransition {
+                element_id,
+                transition: None,
             },
             cx,
         );

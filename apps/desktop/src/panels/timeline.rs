@@ -410,6 +410,32 @@ impl Render for TimelinePanel {
                 };
                 key_times.sort();
                 key_times.dedup();
+                // The part of a transition that plays over this clip: the
+                // end of a clip that has one, the start of the clip after it.
+                let mut spans: Vec<(MediaTime, MediaTime, bool)> = Vec::new();
+                if let Some(window) = editor::window_of(track, &element) {
+                    spans.push((window.start.max(element.start_time), window.end.min(element.end_time()), true));
+                }
+                if let Some(window) = editor::window_into(track, &element) {
+                    spans.push((window.start.max(element.start_time), window.end.min(element.end_time()), false));
+                }
+                let transition_marks: Vec<_> = spans
+                    .into_iter()
+                    .filter(|(start, end, _)| end > start)
+                    .map(|(start, end, outgoing)| {
+                        let x = ((start - element.start_time).to_seconds_f64() * zoom as f64) as f32;
+                        let w = ((end - start).to_seconds_f64() * zoom as f64).max(2.0) as f32;
+                        div()
+                            .absolute()
+                            .top_0()
+                            .left(px(x))
+                            .w(px(w))
+                            .h_full()
+                            .bg(gpui::white().opacity(0.22))
+                            .when(outgoing, |this| this.border_l_1().border_color(gpui::white().opacity(0.7)))
+                            .when(!outgoing, |this| this.border_r_1().border_color(gpui::white().opacity(0.7)))
+                    })
+                    .collect();
                 let markers: Vec<_> = key_times
                     .into_iter()
                     .map(|time| {
@@ -512,6 +538,7 @@ impl Render for TimelinePanel {
                                     .child(detail),
                             ),
                     )
+                    .children(transition_marks)
                     .children(markers)
                     .child(
                         div()

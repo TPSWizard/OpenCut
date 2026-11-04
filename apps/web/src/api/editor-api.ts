@@ -1,3 +1,11 @@
+import {
+	DEFAULT_TRANSITION_DURATION,
+	getTransitionCatalogue,
+	getTransitionInfo,
+	isVisualElement,
+	type ElementTransition,
+} from "@/transitions";
+import { setElementTransition } from "@/transitions/apply";
 import type { EditorCore } from "@/core";
 import { processMediaAssets } from "@/media/processing";
 import { PROJECT_BUNDLE_EXTENSION } from "@/project/bundle";
@@ -115,6 +123,14 @@ function toElementInfo({
 		mediaId: "mediaId" in element ? element.mediaId : undefined,
 		hidden: "hidden" in element ? element.hidden : undefined,
 		params: { ...element.params },
+		transition:
+			"transition" in element && element.transition
+				? {
+						type: element.transition.type,
+						duration: seconds(element.transition.duration),
+						...(element.transition.params && { params: element.transition.params }),
+					}
+				: undefined,
 	};
 }
 
@@ -655,6 +671,54 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				});
 			}
 			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"transitions.list": () => getTransitionCatalogue(),
+		"timeline.setTransition": ({ elementId, trackId, transition }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!isVisualElement(element)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "only video, image, text, sticker and graphic elements take a transition",
+				});
+			}
+			let next: ElementTransition | null = null;
+			if (transition !== null) {
+				if (!transition || typeof transition !== "object" || typeof transition.type !== "string") {
+					throw new EditorApiError({
+						code: "invalid_params",
+						message: "transition must be { type, duration?, params? } or null",
+					});
+				}
+				if (!getTransitionInfo({ name: transition.type })) {
+					throw new EditorApiError({
+						code: "invalid_params",
+						message: `unknown transition "${transition.type}"; see transitions.list`,
+					});
+				}
+				const duration =
+					transition.duration === undefined
+						? DEFAULT_TRANSITION_DURATION
+						: ticks(transition.duration, "duration");
+				if (duration <= 0) {
+					throw new EditorApiError({
+						code: "invalid_params",
+						message: "duration must be positive",
+					});
+				}
+				next = {
+					type: transition.type,
+					duration,
+					...(transition.params && { params: transition.params }),
+				};
+			}
+			setElementTransition({
+				editor,
+				trackId: track.id,
+				elementId: element.id,
+				transition: next,
+			});
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
 		},
 		"timeline.moveElement": ({ elementId, trackId, startTime }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

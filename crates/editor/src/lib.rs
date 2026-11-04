@@ -19,6 +19,7 @@ mod frame;
 mod freeform;
 mod params;
 mod store;
+mod transition;
 
 pub use animation::{
     Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, format_linear_rgba, is_param_path,
@@ -33,7 +34,7 @@ pub use commands::{
 pub use document::{
     Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
-    Project, ProjectSettings, Track, TrackKind, now_millis,
+    Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
 };
 pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,
@@ -43,8 +44,11 @@ pub use freeform::{
 pub use editor::Editor;
 pub use error::EditorError;
 pub use frame::{
-    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
-    TextBackground, TextDecoration, TextStyle, fit_contain, parse_hex_color, plan_frame,
+    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
+    TextBackground, TextDecoration, TextStyle, TransitionPlan, fit_contain, parse_hex_color, plan_frame,
+};
+pub use transition::{
+    ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
 pub use store::{ProjectStore, ProjectSummary};

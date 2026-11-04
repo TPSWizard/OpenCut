@@ -3,9 +3,13 @@ use std::sync::Arc;
 
 use compositor::{
     BlendMode, CanvasClearDescriptor, Compositor, FrameDescriptor, FrameItemDescriptor,
-    LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor,
+    LayerDescriptor, LayerMaskDescriptor, QuadTransformDescriptor, TransitionDescriptor,
+    TransitionParamDescriptor,
 };
-use editor::{LayerSource, Mask, TextStyle, MaskPlan, MediaItem, Project, fit_contain, plan_frame};
+use editor::{
+    FrameItemPlan, LayerPlan, LayerSource, Mask, MaskPlan, MediaItem, ParamValue, Params, Project, TextStyle,
+    fit_contain, plan_frame,
+};
 use gpu::{GpuContext, wgpu};
 use media::{Ffmpeg, VideoSource, decode_image};
 use time::MediaTime;
@@ -94,7 +98,7 @@ impl Renderer {
         let scale_x = width as f32 / canvas_width;
         let scale_y = height as f32 / canvas_height;
 
-        let mut items = Vec::with_capacity(plan.layers.len() + plan.backdrops.len());
+        let mut items = Vec::with_capacity(plan.items.len() + plan.backdrops.len());
         for backdrop in &plan.backdrops {
             let Some((texture_id, natural_width, natural_height)) =
                 self.prepare_source(project, &backdrop.element_id, &backdrop.source, scale_x)?
@@ -122,53 +126,29 @@ impl Renderer {
                 mask: None,
             }));
         }
-        for layer in &plan.layers {
-            let Some((texture_id, natural_width, natural_height)) = self.prepare_source(
-                project,
-                &layer.element_id,
-                &layer.source,
-                scale_x * layer.transform.scale_x.abs(),
-            )?
-            else {
-                continue;
-            };
-            let (base_width, base_height) = match layer.source {
-                LayerSource::Text(_) => (natural_width as f32, natural_height as f32),
-                _ => fit_contain(
-                    natural_width as f32,
-                    natural_height as f32,
-                    canvas_width,
-                    canvas_height,
-                ),
-            };
-            let transform = &layer.transform;
-            let quad = QuadTransformDescriptor {
-                center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
-                center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,
-                width: (base_width * transform.scale_x.abs() * scale_x).max(1.0),
-                height: (base_height * transform.scale_y.abs() * scale_y).max(1.0),
-                rotation_degrees: transform.rotate_degrees,
-                flip_x: transform.scale_x < 0.0,
-                flip_y: transform.scale_y < 0.0,
-            };
-            let (mask, stroke) = match layer.mask.as_ref() {
-                Some(mask) => {
-                    let (mask, stroke) =
-                        self.prepare_mask(&layer.element_id, mask, &quad, width, height, scale_x);
-                    (Some(mask), stroke)
+        let frame_size = (width, height, canvas_width, canvas_height, scale_x, scale_y);
+        for item in &plan.items {
+            match item {
+                FrameItemPlan::Layer(layer) => {
+                    items.extend(self.layer_items(project, layer, frame_size)?.into_iter().map(FrameItemDescriptor::Layer));
                 }
-                None => (None, None),
-            };
-            items.push(FrameItemDescriptor::Layer(LayerDescriptor {
-                texture_id,
-                transform: quad,
-                opacity: layer.opacity,
-                blend_mode: parse_blend_mode(&layer.blend_mode),
-                effect_pass_groups: effect_pass_groups(&layer.effects, width, height),
-                mask,
-            }));
-            if let Some(stroke) = stroke {
-                items.push(FrameItemDescriptor::Layer(stroke));
+                FrameItemPlan::Transition(transition) => {
+                    let from = match &transition.from {
+                        Some(layer) => self.layer_items(project, layer, frame_size)?,
+                        None => Vec::new(),
+                    };
+                    let to = match &transition.to {
+                        Some(layer) => self.layer_items(project, layer, frame_size)?,
+                        None => Vec::new(),
+                    };
+                    items.push(FrameItemDescriptor::Transition(TransitionDescriptor {
+                        name: transition.kind.clone(),
+                        progress: transition.progress,
+                        params: transition_params(&transition.params),
+                        from,
+                        to,
+                    }));
+                }
             }
         }
 
@@ -193,6 +173,63 @@ impl Renderer {
             height,
             bgra,
         })
+    }
+
+    /// A planned layer as frame items: the layer itself and, for a mask
+    /// with a stroke, the stroke drawn over it. Empty when the source
+    /// cannot be shown.
+    fn layer_items(
+        &mut self,
+        project: &Project,
+        layer: &LayerPlan,
+        (width, height, canvas_width, canvas_height, scale_x, scale_y): (u32, u32, f32, f32, f32, f32),
+    ) -> Result<Vec<LayerDescriptor>, RenderError> {
+        let Some((texture_id, natural_width, natural_height)) = self.prepare_source(
+            project,
+            &layer.element_id,
+            &layer.source,
+            scale_x * layer.transform.scale_x.abs(),
+        )?
+        else {
+            return Ok(Vec::new());
+        };
+        let (base_width, base_height) = match layer.source {
+            LayerSource::Text(_) => (natural_width as f32, natural_height as f32),
+            _ => fit_contain(
+                natural_width as f32,
+                natural_height as f32,
+                canvas_width,
+                canvas_height,
+            ),
+        };
+        let transform = &layer.transform;
+        let quad = QuadTransformDescriptor {
+            center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
+            center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,
+            width: (base_width * transform.scale_x.abs() * scale_x).max(1.0),
+            height: (base_height * transform.scale_y.abs() * scale_y).max(1.0),
+            rotation_degrees: transform.rotate_degrees,
+            flip_x: transform.scale_x < 0.0,
+            flip_y: transform.scale_y < 0.0,
+        };
+        let (mask, stroke) = match layer.mask.as_ref() {
+            Some(mask) => {
+                let (mask, stroke) =
+                    self.prepare_mask(&layer.element_id, mask, &quad, width, height, scale_x);
+                (Some(mask), stroke)
+            }
+            None => (None, None),
+        };
+        let mut items = vec![LayerDescriptor {
+            texture_id,
+            transform: quad,
+            opacity: layer.opacity,
+            blend_mode: parse_blend_mode(&layer.blend_mode),
+            effect_pass_groups: effect_pass_groups(&layer.effects, width, height),
+            mask,
+        }];
+        items.extend(stroke);
+        Ok(items)
     }
 
     /// Makes sure the source's texture is uploaded and current. Returns the
@@ -472,6 +509,24 @@ fn media_item<'a>(project: &'a Project, media_id: &str) -> Result<&'a MediaItem,
 fn decode_width(shown_width: f32, source_width: u32) -> u32 {
     let wanted = (shown_width.max(16.0) as u32).div_ceil(16) * 16;
     wanted.min(source_width.max(16)).max(16)
+}
+
+/// A transition's stored parameters as the compositor reads them.
+fn transition_params(params: &Params) -> HashMap<String, TransitionParamDescriptor> {
+    params
+        .iter()
+        .filter_map(|(key, value)| {
+            let value = match value {
+                ParamValue::Bool(value) => TransitionParamDescriptor::Bool(*value),
+                ParamValue::Number(value) => TransitionParamDescriptor::Number(*value),
+                ParamValue::Json(serde_json::Value::Array(items)) => TransitionParamDescriptor::Vector(
+                    items.iter().filter_map(serde_json::Value::as_f64).collect(),
+                ),
+                _ => return None,
+            };
+            Some((key.clone(), value))
+        })
+        .collect()
 }
 
 fn parse_blend_mode(name: &str) -> BlendMode {

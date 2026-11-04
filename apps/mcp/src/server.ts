@@ -275,6 +275,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.addText { text, at?, duration?, name?, params?, trackId? }
 - timeline.updateElement { elementId, trackId?, patch: { name?, startTime?, duration?, trimStart?, trimEnd?, hidden?, params? } }
 - timeline.moveElement { elementId, trackId?, startTime }
+- timeline.setTransition { elementId, trackId?, transition: { type, duration?, params? } | null } (a gl-transitions name; plays centred on the cut to the next clip)
+- transitions.list → [{ name, description, tags, params[{ name, kind, default, min, max }] }]
 - timeline.split { elements, time } / timeline.delete { elements } / timeline.duplicate { elements }
 - timeline.addTrack { type, index? } / timeline.removeTrack { trackId }
 - timeline.setTrackMuted { trackId, muted } / timeline.setTrackHidden { trackId, hidden }

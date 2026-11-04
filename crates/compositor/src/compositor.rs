@@ -11,8 +11,10 @@ use crate::{
         EffectPassDescriptor, EffectUniformValueDescriptor, FrameDescriptor, FrameItemDescriptor,
         LayerDescriptor,
     },
+    frame::TransitionDescriptor,
     texture_pool::TexturePool,
     texture_store::TextureStore,
+    transitions::TransitionPipelines,
 };
 
 const LAYER_SHADER_SOURCE: &str = include_str!("shaders/layer.wgsl");
@@ -35,6 +37,7 @@ pub struct Compositor {
     blend_pipeline: wgpu::RenderPipeline,
     mask_uniform_bind_group_layout: wgpu::BindGroupLayout,
     mask_pipeline: wgpu::RenderPipeline,
+    transitions: TransitionPipelines,
 }
 
 #[derive(Debug, Error)]
@@ -277,6 +280,7 @@ impl Compositor {
             blend_pipeline,
             mask_uniform_bind_group_layout,
             mask_pipeline,
+            transitions: TransitionPipelines::new(context),
         }
     }
 
@@ -334,6 +338,18 @@ impl Compositor {
                         effect_pass_groups,
                     )?;
                 }
+                FrameItemDescriptor::Transition(transition) => {
+                    let texture = self.render_transition(context, &mut encoder, frame, transition)?;
+                    scene = self.blend_texture(
+                        context,
+                        &mut encoder,
+                        &scene,
+                        &texture,
+                        BlendMode::Normal,
+                        frame.width,
+                        frame.height,
+                    )?;
+                }
             }
         }
 
@@ -388,6 +404,18 @@ impl Compositor {
                         frame.width,
                         frame.height,
                         effect_pass_groups,
+                    )?;
+                }
+                FrameItemDescriptor::Transition(transition) => {
+                    let texture = self.render_transition(context, &mut encoder, frame, transition)?;
+                    scene = self.blend_texture(
+                        context,
+                        &mut encoder,
+                        &scene,
+                        &texture,
+                        BlendMode::Normal,
+                        frame.width,
+                        frame.height,
                     )?;
                 }
             }
@@ -480,6 +508,60 @@ impl Compositor {
         }
 
         Ok(current)
+    }
+
+    /// A transition's two sides blended by its shader: each side is its
+    /// layers composited onto a transparent frame.
+    fn render_transition(
+        &mut self,
+        context: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &FrameDescriptor,
+        transition: &TransitionDescriptor,
+    ) -> Result<wgpu::Texture, CompositorError> {
+        let from = self.render_stack(context, encoder, frame, &transition.from)?;
+        let to = self.render_stack(context, encoder, frame, &transition.to)?;
+        let target =
+            self.texture_pool
+                .acquire(context, frame.width, frame.height, "compositor-transition");
+        self.transitions.draw(
+            context,
+            encoder,
+            &transition.name,
+            transition.progress,
+            &transition.params,
+            &from,
+            &to,
+            &target,
+            frame.width,
+            frame.height,
+        );
+        Ok(target)
+    }
+
+    /// Layers composited bottom to top onto a transparent frame.
+    fn render_stack(
+        &mut self,
+        context: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &FrameDescriptor,
+        layers: &[LayerDescriptor],
+    ) -> Result<wgpu::Texture, CompositorError> {
+        let mut stack =
+            self.create_cleared_texture(context, encoder, frame.width, frame.height, [0.0; 4]);
+        for layer in layers {
+            let texture = self.render_layer(context, encoder, frame, layer)?;
+            stack = self.blend_texture(
+                context,
+                encoder,
+                &stack,
+                &texture,
+                layer.blend_mode,
+                frame.width,
+                frame.height,
+            )?;
+        }
+        Ok(stack)
     }
 
     fn apply_effect_groups(

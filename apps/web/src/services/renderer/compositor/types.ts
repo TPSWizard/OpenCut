@@ -1,5 +1,6 @@
 import type { BlendMode } from "@/rendering";
 import type { EffectPass } from "@/effects/types";
+import type { TransitionParams } from "@/transitions/types";
 
 export type FrameDescriptor = {
 	width: number;
@@ -10,20 +11,39 @@ export type FrameDescriptor = {
 	items: FrameItemDescriptor[];
 };
 
+export type LayerItemDescriptor = {
+	type: "layer";
+	textureId: string;
+	transform: QuadTransformDescriptor;
+	opacity: number;
+	blendMode: BlendMode;
+	effectPassGroups: EffectPass[][];
+	mask: LayerMaskDescriptor | null;
+};
+
+export type SceneEffectItemDescriptor = {
+	type: "sceneEffect";
+	effectPassGroups: EffectPass[][];
+};
+
+/**
+ * Two stacks of layers blended by a gl-transitions shader (`name`) at
+ * `progress` (0 shows only `from`, 1 only `to`); an empty side is
+ * transparent. Mirrors `TransitionDescriptor` in `crates/compositor`.
+ */
+export type TransitionItemDescriptor = {
+	type: "transition";
+	name: string;
+	progress: number;
+	params: TransitionParams;
+	from: LayerItemDescriptor[];
+	to: LayerItemDescriptor[];
+};
+
 export type FrameItemDescriptor =
-	| {
-			type: "layer";
-			textureId: string;
-			transform: QuadTransformDescriptor;
-			opacity: number;
-			blendMode: BlendMode;
-			effectPassGroups: EffectPass[][];
-			mask: LayerMaskDescriptor | null;
-	  }
-	| {
-			type: "sceneEffect";
-			effectPassGroups: EffectPass[][];
-	  };
+	| LayerItemDescriptor
+	| SceneEffectItemDescriptor
+	| TransitionItemDescriptor;
 
 export type QuadTransformDescriptor = {
 	centerX: number;

@@ -20,11 +20,13 @@ import {
 	RainDropIcon,
 	MusicNote03Icon,
 	MagicWand05Icon,
+	ArrowRightDoubleIcon,
 	DashboardSpeed02Icon,
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
+import { TransitionTab } from "@/transitions/components/transition-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
@@ -176,6 +178,21 @@ function buildClipEffectsTab({
 	};
 }
 
+function buildTransitionTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: "transition",
+		label: "Transition",
+		icon: <HugeiconsIcon icon={ArrowRightDoubleIcon} size={16} />,
+		content: ({ trackId }) => (
+			<TransitionTab element={element} trackId={trackId} />
+		),
+	};
+}
+
 function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 	return {
 		id: "text",
@@ -231,6 +248,7 @@ function getTextConfig({
 			buildTextTab({ element }),
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
+			buildTransitionTab({ element }),
 		],
 	};
 }
@@ -250,6 +268,7 @@ function getVideoConfig({
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
 			buildBlendingTab({ element }),
+			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
@@ -266,6 +285,7 @@ function getImageConfig({
 		tabs: [
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
+			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
@@ -282,6 +302,7 @@ function getStickerConfig({
 		tabs: [
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
+			buildTransitionTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
 	};
@@ -298,6 +319,7 @@ function getGraphicConfig({
 			buildGraphicTab({ element }),
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
+			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],

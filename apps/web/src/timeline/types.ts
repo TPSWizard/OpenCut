@@ -1,4 +1,5 @@
 import type { ElementAnimations } from "@/animation/types";
+import type { ElementTransition } from "@/transitions/types";
 import type { Effect } from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { ParamValues } from "@/params";
@@ -120,6 +121,8 @@ export interface VideoElement extends BaseTimelineElement {
 	isSourceAudioEnabled?: boolean;
 	hidden?: boolean;
 	retime?: RetimeConfig;
+	/** The transition this clip leads out of; see `@/transitions`. */
+	transition?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 }
@@ -128,6 +131,8 @@ export interface ImageElement extends BaseTimelineElement {
 	type: "image";
 	mediaId: string;
 	hidden?: boolean;
+	/** The transition this clip leads out of; see `@/transitions`. */
+	transition?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 }
@@ -135,6 +140,8 @@ export interface ImageElement extends BaseTimelineElement {
 export interface TextElement extends BaseTimelineElement {
 	type: "text";
 	hidden?: boolean;
+	/** The transition this clip leads out of; see `@/transitions`. */
+	transition?: ElementTransition;
 	effects?: Effect[];
 }
 
@@ -145,6 +152,8 @@ export interface StickerElement extends BaseTimelineElement {
 	intrinsicWidth?: number;
 	intrinsicHeight?: number;
 	hidden?: boolean;
+	/** The transition this clip leads out of; see `@/transitions`. */
+	transition?: ElementTransition;
 	effects?: Effect[];
 }
 
@@ -152,6 +161,8 @@ export interface GraphicElement extends BaseTimelineElement {
 	type: "graphic";
 	definitionId: string;
 	hidden?: boolean;
+	/** The transition this clip leads out of; see `@/transitions`. */
+	transition?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 }

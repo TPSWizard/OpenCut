@@ -16,10 +16,12 @@ import { RootNode } from "../nodes/root-node";
 import { StickerNode } from "../nodes/sticker-node";
 import { renderTextToContext, TextNode } from "../nodes/text-node";
 import { VideoNode } from "../nodes/video-node";
+import { TransitionNode } from "../nodes/transition-node";
 import type { ResolvedVisualSourceNodeState } from "../nodes/visual-node";
 import type {
 	FrameDescriptor,
 	FrameItemDescriptor,
+	LayerItemDescriptor,
 	LayerMaskDescriptor,
 	QuadTransformDescriptor,
 	TextureCanvasDrawFn,
@@ -87,6 +89,41 @@ async function collectNode({
 				textures,
 			});
 		}
+		return;
+	}
+
+	if (node instanceof TransitionNode) {
+		if (!node.resolved) {
+			return;
+		}
+		const collectSide = async ({
+			side,
+			suffix,
+		}: {
+			side: AnyBaseNode | null;
+			suffix: string;
+		}): Promise<LayerItemDescriptor[]> => {
+			if (!side) return [];
+			const sideItems: FrameItemDescriptor[] = [];
+			await collectNode({
+				node: side,
+				renderer,
+				path: `${path}:${suffix}`,
+				items: sideItems,
+				textures,
+			});
+			return sideItems.filter(
+				(item): item is LayerItemDescriptor => item.type === "layer",
+			);
+		};
+		items.push({
+			type: "transition",
+			name: node.params.name,
+			progress: node.resolved.progress,
+			params: node.params.params,
+			from: await collectSide({ side: node.params.from, suffix: "from" }),
+			to: await collectSide({ side: node.params.to, suffix: "to" }),
+		});
 		return;
 	}
 

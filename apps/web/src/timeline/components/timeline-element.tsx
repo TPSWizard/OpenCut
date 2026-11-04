@@ -59,6 +59,7 @@ import {
 } from "@/actions";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { resolveStickerId } from "@/stickers";
+import { TransitionMarkers } from "@/transitions/components/timeline-markers";
 import { buildGraphicPreviewUrl } from "@/graphics";
 import Image from "@/compat/image";
 import {
@@ -404,6 +405,16 @@ export function TimelineElement({
 							onResizeStart={onResizeStart}
 							isDropTarget={isDropTarget}
 						/>
+						<div
+							className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden rounded-sm"
+							style={{ height: `${baseTrackHeight}px` }}
+						>
+							<TransitionMarkers
+								element={element}
+								track={track}
+								pixelsPerSecond={timelinePixelsPerSecond}
+							/>
+						</div>
 						{isSelected && (
 							<div
 								className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"

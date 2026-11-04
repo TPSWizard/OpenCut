@@ -2,8 +2,9 @@
 
 use time::MediaTime;
 
-use crate::document::{Background, ElementKind, Project};
+use crate::document::{Background, Element, ElementKind, Project, Track};
 use crate::params::Params;
+use crate::transition::{next_adjacent, transition_window, window_into};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FramePlan {
@@ -16,8 +17,42 @@ pub struct FramePlan {
     /// elements, drawn scaled to cover the canvas and blurred, under the
     /// layers. Their transforms, opacity, effects and masks are ignored.
     pub backdrops: Vec<BackdropPlan>,
-    /// Bottom layer first.
-    pub layers: Vec<LayerPlan>,
+    /// Bottom item first.
+    pub items: Vec<FrameItemPlan>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FrameItemPlan {
+    Layer(LayerPlan),
+    Transition(TransitionPlan),
+}
+
+/// Two clips mid-transition: `from` is the outgoing clip drawn past its end
+/// (or nothing), `to` the incoming one drawn before its start (or nothing).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransitionPlan {
+    pub element_id: String,
+    pub track_id: String,
+    pub kind: String,
+    pub progress: f32,
+    pub params: Params,
+    pub from: Option<LayerPlan>,
+    pub to: Option<LayerPlan>,
+}
+
+impl FramePlan {
+    /// Every layer drawn this frame, transition sides included.
+    pub fn layers(&self) -> Vec<&LayerPlan> {
+        self.items
+            .iter()
+            .flat_map(|item| match item {
+                FrameItemPlan::Layer(layer) => vec![layer],
+                FrameItemPlan::Transition(transition) => {
+                    transition.from.iter().chain(transition.to.iter()).collect()
+                }
+            })
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -246,59 +281,44 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
             }
         }
     }
-    let mut layers = Vec::new();
+    let mut items = Vec::new();
     // Tracks are stored top to bottom; draw bottom first.
     for track in project.tracks.iter().rev() {
         if track.hidden {
             continue;
         }
         for element in &track.elements {
-            if element.hidden || !element.contains(time) || !element.kind.is_visual() {
+            if element.hidden || !element.kind.is_visual() {
                 continue;
             }
-            let params = element.params_at(time);
-            let source = match &element.kind {
-                ElementKind::Video { media_id } => LayerSource::Video {
-                    media_id: media_id.clone(),
-                    time: element.source_time(time),
-                },
-                ElementKind::Image { media_id } => LayerSource::Image {
-                    media_id: media_id.clone(),
-                },
-                ElementKind::Text => {
-                    LayerSource::Text(TextStyle::from_params(&params, canvas.height as f32))
-                }
-                ElementKind::Audio { .. } => continue,
-            };
-            let effects = element
-                .effects
-                .iter()
-                .filter(|effect| effect.enabled)
-                .map(|effect| EffectPlan {
-                    id: effect.id.clone(),
-                    kind: effect.kind.clone(),
-                    params: element.effect_params_at(effect, time),
-                })
-                .collect();
-            let mask = element
-                .can_be_masked()
-                .then(|| element.masks.first())
-                .flatten()
-                .map(|mask| MaskPlan {
-                    id: mask.id.clone(),
-                    kind: mask.kind.clone(),
-                    params: element.mask_params_at(mask, time),
-                });
-            layers.push(LayerPlan {
-                element_id: element.id.clone(),
-                track_id: track.id.clone(),
-                source,
-                transform: LayerTransform::from_params(&params),
-                opacity: params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
-                blend_mode: params.text("blendMode", "normal").into_owned(),
-                effects,
-                mask,
-            });
+            // Mid-transition, the clip is drawn by the transition it is part
+            // of: as the incoming side of the previous clip's transition,
+            // or as the outgoing side of its own.
+            if window_into(track, element).is_some_and(|window| window.contains(time)) {
+                continue;
+            }
+            let next = next_adjacent(track, element);
+            if let Some(window) = transition_window(element, next)
+                && window.contains(time)
+            {
+                let transition = element.transition.as_ref().expect("has a window");
+                items.push(FrameItemPlan::Transition(TransitionPlan {
+                    element_id: element.id.clone(),
+                    track_id: track.id.clone(),
+                    kind: transition.kind.clone(),
+                    progress: window.progress(time),
+                    params: transition.params.clone(),
+                    from: layer_plan(track, element, time, canvas.height as f32, true),
+                    to: next.and_then(|next| layer_plan(track, next, time, canvas.height as f32, true)),
+                }));
+                continue;
+            }
+            if !element.contains(time) {
+                continue;
+            }
+            if let Some(layer) = layer_plan(track, element, time, canvas.height as f32, false) {
+                items.push(FrameItemPlan::Layer(layer));
+            }
         }
     }
     FramePlan {
@@ -307,8 +327,78 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
         height: canvas.height,
         background,
         backdrops,
-        layers,
+        items,
     }
+}
+
+/// A visual element as a layer at `time`. With `extended`, the time may fall
+/// outside the clip (a transition's handles): the source keeps playing from
+/// the material beyond the trim and holds its edge frame when there is none,
+/// while keyframes hold their edge values.
+fn layer_plan(
+    track: &Track,
+    element: &Element,
+    time: MediaTime,
+    canvas_height: f32,
+    extended: bool,
+) -> Option<LayerPlan> {
+    let param_time = if extended {
+        time.clamp(element.start_time, element.end_time() - MediaTime::ONE_TICK)
+    } else {
+        time
+    };
+    let params = element.params_at(param_time);
+    let source = match &element.kind {
+        ElementKind::Video { media_id } => LayerSource::Video {
+            media_id: media_id.clone(),
+            time: if extended { extended_source_time(element, time) } else { element.source_time(time) },
+        },
+        ElementKind::Image { media_id } => LayerSource::Image {
+            media_id: media_id.clone(),
+        },
+        ElementKind::Text => LayerSource::Text(TextStyle::from_params(&params, canvas_height)),
+        ElementKind::Audio { .. } => return None,
+    };
+    let effects = element
+        .effects
+        .iter()
+        .filter(|effect| effect.enabled)
+        .map(|effect| EffectPlan {
+            id: effect.id.clone(),
+            kind: effect.kind.clone(),
+            params: element.effect_params_at(effect, param_time),
+        })
+        .collect();
+    let mask = element
+        .can_be_masked()
+        .then(|| element.masks.first())
+        .flatten()
+        .map(|mask| MaskPlan {
+            id: mask.id.clone(),
+            kind: mask.kind.clone(),
+            params: element.mask_params_at(mask, param_time),
+        });
+    Some(LayerPlan {
+        element_id: element.id.clone(),
+        track_id: track.id.clone(),
+        source,
+        transform: LayerTransform::from_params(&params),
+        opacity: params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
+        blend_mode: params.text("blendMode", "normal").into_owned(),
+        effects,
+        mask,
+    })
+}
+
+/// The source time for a timeline time that may lie outside the clip,
+/// clamped to the source so an exhausted handle holds its edge frame.
+fn extended_source_time(element: &Element, time: MediaTime) -> MediaTime {
+    let raw = element.source_time(time);
+    let last = element
+        .source_duration
+        .map(|source| (source - MediaTime::ONE_TICK).max(MediaTime::ZERO))
+        .unwrap_or(raw);
+    raw.clamp(MediaTime::ZERO, last.max(MediaTime::ZERO))
 }
 
 #[cfg(test)]
@@ -394,7 +484,7 @@ mod tests {
                 media_id: "img".to_owned()
             }
         );
-        assert_eq!(plan.layers.len(), 2, "the backdrop does not replace the layers");
+        assert_eq!(plan.layers().len(), 2, "the backdrop does not replace the layers");
 
         // Outside the element, or with the main track hidden, there is none.
         assert!(plan_frame(&project, seconds(30.0)).backdrops.is_empty());
@@ -442,21 +532,21 @@ mod tests {
         .unwrap();
 
         let plan = plan_frame(&project, seconds(0.5));
-        assert_eq!(plan.layers.len(), 1);
-        assert!(matches!(plan.layers[0].source, LayerSource::Image { .. }));
+        assert_eq!(plan.layers().len(), 1);
+        assert!(matches!(plan.layers()[0].source, LayerSource::Image { .. }));
 
         let plan = plan_frame(&project, seconds(2.0));
-        assert_eq!(plan.layers.len(), 2);
-        assert!(matches!(plan.layers[0].source, LayerSource::Image { .. }));
-        let LayerSource::Text(style) = &plan.layers[1].source else {
+        assert_eq!(plan.layers().len(), 2);
+        assert!(matches!(plan.layers()[0].source, LayerSource::Image { .. }));
+        let LayerSource::Text(style) = &plan.layers()[1].source else {
             panic!("expected text on top");
         };
         assert_eq!(style.content, "Hi");
-        assert_eq!(plan.layers[1].opacity, 0.5);
-        assert_eq!(plan.layers[1].transform.position_x, 20.0);
+        assert_eq!(plan.layers()[1].opacity, 0.5);
+        assert_eq!(plan.layers()[1].transform.position_x, 20.0);
 
         let plan = plan_frame(&project, seconds(6.0));
-        assert!(plan.layers.is_empty());
+        assert!(plan.layers().is_empty());
         assert_eq!((plan.width, plan.height), (1920, 1080));
     }
 
@@ -500,13 +590,102 @@ mod tests {
         .unwrap();
 
         let plan = plan_frame(&project, seconds(2.0));
-        let layer = &plan.layers[0];
+        let layer = &plan.layers()[0];
         assert_eq!(layer.opacity, 0.5, "half way between the keys");
         assert_eq!(layer.effects.len(), 1, "disabled effects are left out");
         assert_eq!(layer.effects[0].params.number("intensity", 0.0), 20.0);
         assert!(layer.mask.is_none(), "text cannot be masked");
 
         let plan = plan_frame(&project, seconds(5.0));
-        assert_eq!(plan.layers[0].opacity, 1.0, "held after the last key");
+        assert_eq!(plan.layers()[0].opacity, 1.0, "held after the last key");
+    }
+    #[test]
+    fn transitions_replace_both_clips_inside_their_window() {
+        use crate::document::Transition;
+        let mut project = Project::new("Transitions");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "vid".to_owned(),
+                name: "vid.mp4".to_owned(),
+                kind: MediaKind::Video,
+                path: "vid.mp4".into(),
+                duration: Some(seconds(10.0)),
+                width: Some(10),
+                height: Some(10),
+                fps: None,
+                has_audio: false,
+            }),
+        )
+        .unwrap();
+        // a: source 0..4 s, on the timeline 0..4 s, with 6 s of handle after it.
+        let mut a = Element::from_media(project.media_item("vid").unwrap(), seconds(0.0));
+        a.id = "a".to_owned();
+        a.duration = seconds(4.0);
+        a.trim_end = seconds(6.0);
+        a.transition = Some(Transition {
+            kind: "DirectionalWipe".to_owned(),
+            duration: seconds(1.0),
+            params: Params::new(),
+        });
+        // b: source 2..6 s, on the timeline 4..8 s, with a 2 s handle before it.
+        let mut b = Element::from_media(project.media_item("vid").unwrap(), seconds(4.0));
+        b.id = "b".to_owned();
+        b.duration = seconds(4.0);
+        b.trim_start = seconds(2.0);
+        b.trim_end = seconds(4.0);
+        for element in [a, b] {
+            apply(
+                &mut project,
+                &Command::InsertElement {
+                    element,
+                    placement: TrackPlacement::Auto,
+                },
+            )
+            .unwrap();
+        }
+        assert_eq!(project.tracks.len(), 1, "adjacent clips share the main track");
+
+        // Before the window: a alone.
+        let plan = plan_frame(&project, seconds(3.0));
+        assert!(matches!(plan.items.as_slice(), [FrameItemPlan::Layer(layer)] if layer.element_id == "a"));
+
+        // Inside the window: one transition item, a past its end and b before its start.
+        let plan = plan_frame(&project, seconds(4.25));
+        let [FrameItemPlan::Transition(transition)] = plan.items.as_slice() else {
+            panic!("expected one transition, got {:?}", plan.items);
+        };
+        assert_eq!(transition.kind, "DirectionalWipe");
+        assert_eq!(transition.progress, 0.75);
+        let from = transition.from.as_ref().unwrap();
+        let to = transition.to.as_ref().unwrap();
+        assert_eq!(from.element_id, "a");
+        assert_eq!(to.element_id, "b");
+        assert_eq!(from.source, LayerSource::Video { media_id: "vid".to_owned(), time: seconds(4.25) });
+        assert_eq!(to.source, LayerSource::Video { media_id: "vid".to_owned(), time: seconds(2.25) });
+
+        // After the window: b alone.
+        let plan = plan_frame(&project, seconds(4.5));
+        assert!(matches!(plan.items.as_slice(), [FrameItemPlan::Layer(layer)] if layer.element_id == "b"));
+
+        // A handle that runs out holds the edge frame: shrink b's lead-in to nothing.
+        for track in &mut project.tracks {
+            for element in &mut track.elements {
+                if element.id == "b" {
+                    element.trim_start = seconds(0.0);
+                }
+            }
+        }
+        let plan = plan_frame(&project, seconds(3.6));
+        let [FrameItemPlan::Transition(transition)] = plan.items.as_slice() else { panic!() };
+        assert_eq!(transition.to.as_ref().unwrap().source, LayerSource::Video { media_id: "vid".to_owned(), time: seconds(0.0) });
+
+        // Remove b: the transition fades a out over its last second.
+        apply(&mut project, &Command::DeleteElements(vec!["b".to_owned()])).unwrap();
+        let plan = plan_frame(&project, seconds(3.5));
+        let [FrameItemPlan::Transition(transition)] = plan.items.as_slice() else { panic!() };
+        assert_eq!(transition.progress, 0.5);
+        assert!(transition.to.is_none());
+        assert_eq!(plan_frame(&project, seconds(2.5)).layers().len(), 1);
     }
 }

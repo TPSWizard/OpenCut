@@ -15,7 +15,7 @@ in the root `Cargo.toml`.
 | `crates/gpu`           | `gpu`          | wgpu device/queue context, blit and fullscreen shaders, texture upload/readback. |
 | `crates/effects`       | `effects`      | GPU effect pipeline (gaussian blur).                                         |
 | `crates/masks`         | `masks`        | Signed-distance-field masks with feathering (jump flooding on the GPU).      |
-| `crates/compositor`    | `compositor`   | Layer compositor: texture pool/store, blend modes, mask and layer shaders.   |
+| `crates/compositor`    | `compositor`   | Layer compositor: texture pool/store, blend modes, mask and layer shaders, and the clip-to-clip transition pass (gl-transitions WGSL, one pipeline per transition, `transition_catalogue()` for the UIs). |
 | `crates/render`        | `render`       | `Renderer` (frame plan → pixels through `media`, cosmic-text and `compositor`; builds blur passes and rasterises mask shapes) and `Mixer` (audio clips → samples) for native front ends. |
 | `crates/wasm`          | `opencut-wasm` | `cdylib` that re-exports the crates above for the web app via wasm-bindgen.  |
 

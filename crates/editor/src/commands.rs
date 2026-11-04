@@ -6,7 +6,7 @@ use time::{FrameRate, MediaTime};
 use crate::animation::{Segment, parse_color_to_linear_rgba, split_animations};
 use crate::document::{
     Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, Project, Track,
-    TrackKind,
+    TrackKind, Transition,
 };
 use crate::error::EditorError;
 use crate::params::{ParamValue, Params};
@@ -146,6 +146,11 @@ pub enum Command {
     RemoveMask {
         element_id: String,
         mask_id: String,
+    },
+    /// Sets or clears the transition a visual clip leads out of.
+    SetTransition {
+        element_id: String,
+        transition: Option<Transition>,
     },
 }
 
@@ -657,6 +662,29 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             let prefix = format!("masks.{mask_id}.");
             element.animations.retain(|path, _| !path.starts_with(&prefix));
+            Outcome::Elements(vec![reference])
+        }
+        Command::SetTransition {
+            element_id,
+            transition,
+        } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            if !element.kind.is_visual() {
+                return Err(EditorError::InvalidParams(
+                    "only video, image and text clips can have a transition".into(),
+                ));
+            }
+            if let Some(transition) = transition {
+                if transition.kind.trim().is_empty() {
+                    return Err(EditorError::InvalidParams("transition type is empty".into()));
+                }
+                if transition.duration <= MediaTime::ZERO {
+                    return Err(EditorError::InvalidParams(
+                        "transition duration must be positive".into(),
+                    ));
+                }
+            }
+            element.transition = transition.clone();
             Outcome::Elements(vec![reference])
         }
         Command::RenameProject(name) => {

@@ -9,6 +9,16 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 
 ## What it does
 
+- **Transitions**: a clip can lead out of its end with any of the 176
+  gl-transitions shaders (`Fade`, `DirectionalWipe`, `CrossZoom`, `Cube`, …),
+  chosen in the inspector's Transition section (type a name, Previous/Next,
+  or a quick pick), with a duration in seconds and the shader's parameters.
+  It plays centred on the cut to the next clip on the track, half over each
+  side, from the clips' trimmed-off handles (an exhausted handle holds its
+  edge frame); with nothing after the clip it fades out over the clip's end.
+  The web app reads and writes the same `transition` field, and both draw it
+  with the same compositor pass.
+
 - **Projects**: a project list with create, open and delete. Projects are JSON
   files in `~/.opencut/projects/<id>/project.json` (set `OPENCUT_PROJECTS` to
   use another folder). Media is referenced by path, never copied.

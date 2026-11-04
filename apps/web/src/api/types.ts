@@ -87,6 +87,37 @@ export interface ApiElementInfo {
 	mediaId?: string;
 	hidden?: boolean;
 	params: ApiParamValues;
+	/** The transition the clip leads out of (visual elements only). */
+	transition?: ApiTransition;
+}
+
+export type ApiTransitionParamValue = number | boolean | number[];
+
+/** A clip's transition: a catalogue name, a duration in seconds, parameters. */
+export interface ApiTransition {
+	type: string;
+	duration: number;
+	params?: Record<string, ApiTransitionParamValue>;
+}
+
+export interface ApiTransitionParamInfo {
+	name: string;
+	kind: string;
+	default: ApiTransitionParamValue;
+	min?: number | null;
+	max?: number | null;
+	step?: number | null;
+	color: boolean;
+	description?: string | null;
+}
+
+export interface ApiTransitionInfo {
+	name: string;
+	author: string;
+	license: string;
+	description?: string | null;
+	tags: string[];
+	params: ApiTransitionParamInfo[];
 }
 
 export interface ApiTrackInfo {
@@ -226,6 +257,18 @@ export interface EditorApiMethods {
 	"timeline.moveElement": {
 		params: ApiElementLocator & { startTime: number };
 		result: ApiElementInfo;
+	};
+	/** Sets, or with `transition: null` removes, the transition a clip leads out of. */
+	"timeline.setTransition": {
+		params: ApiElementLocator & {
+			transition: Omit<ApiTransition, "duration"> & { duration?: number } | null;
+		};
+		result: ApiElementInfo;
+	};
+	/** Every transition the renderer can draw, with its parameters. */
+	"transitions.list": {
+		params: Record<string, never>;
+		result: ApiTransitionInfo[];
 	};
 	"timeline.split": {
 		params: { elements: ApiElementLocator[]; time: number };

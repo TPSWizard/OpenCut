@@ -408,6 +408,19 @@ impl Mask {
     }
 }
 
+/// A transition out of a clip into the next one on its track, centred on
+/// the cut (see [`crate::transition`]). `kind` names a gl-transitions
+/// shader (`Fade`, `DirectionalWipe`, …); `params` are its uniforms.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Transition {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub duration: MediaTime,
+    #[serde(default, skip_serializing_if = "Params::is_empty")]
+    pub params: Params,
+}
+
 /// A clip on the timeline. `duration` is what is visible; `trim_start` and
 /// `trim_end` are how much of the source is cut off at each end.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -437,6 +450,9 @@ pub struct Element {
     /// Only the first mask is applied, as in the web app.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub masks: Vec<Mask>,
+    /// The transition this clip leads out of, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transition: Option<Transition>,
 }
 
 fn zero() -> MediaTime {
@@ -500,6 +516,7 @@ impl Element {
             animations: Animations::new(),
             effects: Vec::new(),
             masks: Vec::new(),
+            transition: None,
         }
     }
 
@@ -520,6 +537,7 @@ impl Element {
             animations: Animations::new(),
             effects: Vec::new(),
             masks: Vec::new(),
+            transition: None,
         }
     }
 

@@ -8,7 +8,11 @@ license.workspace = true
 [dependencies]
 bytemuck = { workspace = true }
 effects = { workspace = true }
+gl-transitions = { workspace = true }
 gpu = { workspace = true }
 masks = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+pollster = { workspace = true }

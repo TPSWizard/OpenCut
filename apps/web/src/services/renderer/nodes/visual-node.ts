@@ -16,6 +16,14 @@ export interface VisualNodeParams {
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];
+	/**
+	 * Resolve at times outside the clip too (a transition's handles): the
+	 * source keeps playing from the material beyond the trim and holds its
+	 * edge frame when there is none; keyframes hold their edge values.
+	 */
+	extended?: boolean;
+	/** Times at which the clip is drawn by a transition instead. */
+	suppressedWindows?: { start: number; end: number }[];
 }
 
 export interface ResolvedVisualNodeState {

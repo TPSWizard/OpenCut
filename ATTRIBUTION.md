@@ -85,3 +85,17 @@ card uses the Segoe UI system font. The OpenCut marks that the web app used
 to ship under `public/logos/opencut` and `public/icons` were removed from the
 site; the upstream marks remain in `brand/marks` for reference only. Licensed
 with the repository (MIT).
+
+## Transitions (`crates/compositor/src/transitions.rs`, the `gl-transitions` crate)
+
+Clip-to-clip transitions are the [gl-transitions](https://gl-transitions.com)
+collection, taken as the `gl-transitions` Rust crate (version 1.0.4, catalogue
+of npm `gl-transitions` as pinned in `Cargo.lock`), which embeds each
+transition's GLSL source and a WGSL translation plus its uniform layout. The
+collection is MIT; two transitions are BSD-2-Clause and BSD-3-Clause, with
+their notices in the crate's `generated/LICENSES.md`. Each transition's author
+and licence are shown by `transition_catalogue()` (`transitions.list` in the
+Editor API). Nothing from the collection is copied into this repository: the
+crate is a dependency, and only the vertex stage and the parameter plumbing in
+`transitions.rs` are ours. Transitions that need an extra input image (a luma
+matte or displacement map) are left out of the catalogue.

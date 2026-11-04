@@ -2,6 +2,7 @@ import type { FrameRate } from "opencut-wasm";
 import type { AnyBaseNode } from "./nodes/base-node";
 import { createCanvasSurface } from "./canvas-utils";
 import { buildFrameDescriptor } from "./compositor/frame-descriptor";
+import type { FrameDescriptor } from "./compositor/types";
 import { wasmCompositor } from "./compositor/wasm-compositor";
 import { resolveRenderTree } from "./resolve";
 import {
@@ -71,6 +72,20 @@ export class CanvasRenderer {
 			name: "renderFrame",
 			fn: () => wasmCompositor.render(frame),
 		});
+		// A debugging aid: `window.__frameSpy = ({ frame, time, canvas }) => …`
+		// sees every frame after it is drawn.
+		const spy = (
+			globalThis as {
+				__frameSpy?: (details: {
+					frame: FrameDescriptor;
+					time: number;
+					canvas: HTMLCanvasElement;
+				}) => void;
+			}
+		).__frameSpy;
+		if (typeof spy === "function") {
+			spy({ frame, time, canvas: wasmCompositor.getCanvas() });
+		}
 	}
 
 	async renderToCanvas({
