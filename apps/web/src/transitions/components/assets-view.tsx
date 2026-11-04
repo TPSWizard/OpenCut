@@ -21,7 +21,13 @@ import { cn } from "@/utils/ui";
 export function TransitionsView() {
 	const [query, setQuery] = useState("");
 	const editor = useEditor();
-	useEditor((e) => e.selection.getSnapshot());
+	// A primitive key, so a fresh snapshot object cannot re-render us forever.
+	useEditor((e) =>
+		e.selection
+			.getSelectedElements()
+			.map((ref) => ref.elementId)
+			.join(","),
+	);
 	const selected = getSelectedVisualClips({ editor });
 	const activeTypes = new Set(
 		selected
