@@ -197,7 +197,7 @@ impl Render for Shell {
         let colors = theme.colors;
 
         let Some(open) = &mut self.editor else {
-            window.set_window_title("OpenCut");
+            window.set_window_title("ConzaCut");
             return div()
                 .size_full()
                 .bg(colors.background)
@@ -218,7 +218,7 @@ impl Render for Shell {
         let focus_handle = state.focus_handle.clone();
         let save_label = if state.is_dirty() { "Unsaved changes" } else { "Saved" };
         let export_running = state.export.as_ref().is_some_and(|e| e.finished.is_none());
-        window.set_window_title(&format!("{name} – OpenCut"));
+        window.set_window_title(&format!("{name} – ConzaCut"));
 
         let state_entity = open.state.clone();
         let header = div()

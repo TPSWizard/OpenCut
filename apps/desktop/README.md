@@ -1,6 +1,8 @@
-# OpenCut Desktop
+# ConzaCut Desktop
 
-The native editor, built with [GPUI](https://www.gpui.rs) on the Rust core in
+The native editor (ConzaCut is this fork's name for OpenCut; the binary, data
+folder, environment variables and `.opencut.zip` bundles keep the OpenCut
+names so projects stay interchangeable with upstream). It is built with [GPUI](https://www.gpui.rs) on the Rust core in
 `../../crates`. It opens the same kind of project as the web app (media,
 multi-track timeline, text, transforms, audio) and renders through the shared
 `compositor` crate on the GPU.
