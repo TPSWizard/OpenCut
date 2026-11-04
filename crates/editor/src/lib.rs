@@ -32,7 +32,7 @@ pub use commands::{
     nearest_free_start,
 };
 pub use document::{
-    Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
+    Background, CanvasSize, CaptionWord, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
 };
@@ -44,8 +44,8 @@ pub use freeform::{
 pub use editor::Editor;
 pub use error::EditorError;
 pub use frame::{
-    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
-    TextBackground, TextDecoration, TextStyle, TransitionPlan, fit_contain, parse_hex_color, plan_frame,
+    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
+    TextBackground, TextDecoration, TextHighlight, TextStyle, TransitionPlan, active_word, caption_highlight, fit_contain, parse_hex_color, plan_frame,
 };
 pub use transition::{
     ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,

@@ -38,6 +38,10 @@ import {
 import { ImageNode, loadImageSource } from "./nodes/image-node";
 import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
+import type { TextElement } from "@/timeline/types";
+import type { MediaTime } from "@/wasm";
+import type { TextWordHighlight } from "@/text/primitives";
+import { getActiveWordState, readCaptionStyle } from "@/captions";
 import { VideoNode } from "./nodes/video-node";
 import {
 	TransitionNode,
@@ -454,6 +458,36 @@ function resolveTextNode({
 			localTime,
 			ctx: getTextMeasurementContext(),
 		}),
+		highlight: resolveCaptionHighlight({
+			element: node.params,
+			localTime: roundMediaTime({ time: localTime }),
+		}),
+	};
+}
+
+/** The caption emphasis for a text element at `localTime`, or null without words. */
+function resolveCaptionHighlight({
+	element,
+	localTime,
+}: {
+	element: TextElement;
+	localTime: MediaTime;
+}): TextWordHighlight | null {
+	const words = element.words;
+	if (!words || words.length === 0) {
+		return null;
+	}
+	const style = readCaptionStyle({ params: element.params });
+	if (style.highlight === "none") {
+		return null;
+	}
+	const state = getActiveWordState({ words, localTime });
+	return {
+		mode: style.highlight,
+		activeColor: style.activeColor,
+		boxColor: style.boxColor,
+		activeIndex: state.activeIndex,
+		spokenCount: state.spokenCount,
 	};
 }
 

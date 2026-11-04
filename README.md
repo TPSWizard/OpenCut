@@ -38,8 +38,8 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
 
 Not there yet: a mobile app (the core crates compile for mobile targets, but
-no mobile UI exists), and effects, masks, keyframes, stickers and captions on
-the desktop (they live in the web editor).
+no mobile UI exists), most effects, stickers and speech transcription on the
+desktop (they live in the web editor; captions made there render on both).
 
 [opencut.app](https://opencut.app) still runs the classic version. The rewrite
 lives at [new.opencut.app](https://new.opencut.app) until it takes over.

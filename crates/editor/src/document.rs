@@ -421,6 +421,17 @@ pub struct Transition {
     pub params: Params,
 }
 
+/// One spoken word of a caption: `start` and `end` are relative to the
+/// element's start. The words are the whitespace-separated tokens of the
+/// element's `content`, in order, as the web app stores them.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptionWord {
+    pub text: String,
+    pub start: MediaTime,
+    pub end: MediaTime,
+}
+
 /// A clip on the timeline. `duration` is what is visible; `trim_start` and
 /// `trim_end` are how much of the source is cut off at each end.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -453,6 +464,10 @@ pub struct Element {
     /// The transition this clip leads out of, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transition: Option<Transition>,
+    /// A caption's timed words (text elements); see [`CaptionWord`]. The
+    /// `caption.*` params say how the spoken word is highlighted.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub words: Vec<CaptionWord>,
 }
 
 fn zero() -> MediaTime {
@@ -517,6 +532,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            words: Vec::new(),
         }
     }
 
@@ -538,6 +554,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            words: Vec::new(),
         }
     }
 

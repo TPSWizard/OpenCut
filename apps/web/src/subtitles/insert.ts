@@ -6,13 +6,17 @@ import {
 } from "@/commands";
 import { buildSubtitleTextElement } from "./build-subtitle-text-element";
 import type { SubtitleCue } from "./types";
+import type { CaptionStyle } from "@/captions";
 
 export function insertCaptionChunksAsTextTrack({
 	editor,
 	captions,
+	captionStyle,
 }: {
 	editor: EditorCore;
 	captions: SubtitleCue[];
+	/** How the words of timed cues are highlighted. */
+	captionStyle?: Partial<CaptionStyle>;
 }): string | null {
 	if (captions.length === 0) {
 		return null;
@@ -29,6 +33,7 @@ export function insertCaptionChunksAsTextTrack({
 					index,
 					caption,
 					canvasSize,
+					captionStyle,
 				}),
 			}),
 	);

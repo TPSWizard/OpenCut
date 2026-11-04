@@ -53,6 +53,8 @@ methods answer with the error code `no_project` before that.
 | `timeline.moveElement` | `{ elementId, trackId?, startTime }` | `ApiElementInfo` |
 | `timeline.setTransition` | `{ elementId, trackId?, transition: { type, duration?, params? } \| null }` | `ApiElementInfo` |
 | `transitions.list` | – | `ApiTransitionInfo[]` |
+| `captions.insert` | `{ captions: ApiCaption[], style?: ApiCaptionStyle }` | `{ trackId, elements: ApiElementRef[] }` |
+| `captions.transcribe` | `{ language?, modelId?, wordsPerCaption?, insert?, style? }` | `{ text, words, captions, trackId }` (in page: runs Whisper) |
 | `timeline.split` | `{ elements, time }` | `ApiElementRef[]` |
 | `timeline.delete` | `{ elements }` | `{ deleted }` |
 | `timeline.duplicate` | `{ elements }` | `ApiElementRef[]` |
@@ -77,6 +79,21 @@ its own end. `type` is a name from `transitions.list` (the gl-transitions
 catalogue, for example `Fade`, `DirectionalWipe`, `CrossZoom`), `duration` is
 seconds (default 1) and `params` are the shader's uniforms as `transitions.list`
 describes them. `ApiElementInfo.transition` reads it back.
+
+Captions are text elements that carry `words`: the content's
+whitespace-separated tokens with the seconds each is spoken, relative to the
+element's start (`ApiElementInfo.words`). `captions.insert` takes captions in
+timeline seconds (`{ text, startTime, duration, words?, style? }`; the words,
+joined by spaces, must spell the text) and puts them on a new text track at
+the top of the overlays. `style.highlight` picks how the spoken word stands
+out: `word` colours it (`activeColor`), `box` also draws a rounded box behind
+it (`boxColor`), `fill` colours every word spoken so far, `none` leaves the
+text plain; the same values live in the `caption.*` params of each element.
+`captions.transcribe` runs the editor's own Whisper worker on the scene's
+audio (`modelId`: `whisper-tiny`, `whisper-base`, `whisper-small` (default),
+`whisper-medium`, `whisper-large-v3-turbo`; the model downloads into the
+browser cache on first use) and returns the words and captions, inserting them
+unless `insert` is false.
 
 Errors carry a `code`: `not_found`, `invalid_params`, `no_project`,
 `unknown_method`, `failed`.

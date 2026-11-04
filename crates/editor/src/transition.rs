@@ -141,6 +141,7 @@ mod tests {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            words: Vec::new(),
         }
     }
 

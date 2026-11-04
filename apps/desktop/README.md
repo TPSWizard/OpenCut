@@ -18,6 +18,14 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   edge frame); with nothing after the clip it fades out over the clip's end.
   The web app reads and writes the same `transition` field, and both draw it
   with the same compositor pass.
+- **Captions**: a text element may carry timed `words` (the web editor's
+  caption generator writes them, in step with the element's start), and its
+  `caption.highlight` param says how the spoken word stands out: `word`
+  colours it, `box` also draws a rounded box behind it, `fill` colours every
+  word spoken so far, `none` leaves the text plain. The inspector's Captions
+  section (shown for text with words) picks the mode and the two colours;
+  the rasteriser colours the words as rich-text spans, so the layout never
+  moves. Transcription itself runs only in the web editor.
 
 - **Projects**: a project list with create, open and delete. Projects are JSON
   files in `~/.opencut/projects/<id>/project.json` (set `OPENCUT_PROJECTS` to
@@ -146,8 +154,9 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Only the blur effect exists natively. The web editor's stickers and
-  captions are read from project files but not rendered. A path point's
+- Only the blur effect exists natively. The web editor's stickers are read
+  from project files but not rendered, and speech is transcribed only in the
+  web editor (captions it made render here). A path point's
   curve handles are set while placing it (drag) and follow the point
   afterwards; they cannot be dragged on their own (the web app has no
   handle dragging either).

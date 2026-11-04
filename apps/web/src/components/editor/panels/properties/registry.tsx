@@ -22,11 +22,13 @@ import {
 	MagicWand05Icon,
 	ArrowRightDoubleIcon,
 	DashboardSpeed02Icon,
+	CaptionsIcon,
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
 import { TransitionTab } from "@/transitions/components/transition-tab";
+import { CaptionsTab } from "@/captions/components/captions-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
@@ -193,6 +195,15 @@ function buildTransitionTab({
 	};
 }
 
+function buildCaptionsTab({ element }: { element: TextElement }): PropertiesTabDef {
+	return {
+		id: "captions",
+		label: "Captions",
+		icon: <HugeiconsIcon icon={CaptionsIcon} size={16} />,
+		content: ({ trackId }) => <CaptionsTab element={element} trackId={trackId} />,
+	};
+}
+
 function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 	return {
 		id: "text",
@@ -246,6 +257,9 @@ function getTextConfig({
 		defaultTab: "text",
 		tabs: [
 			buildTextTab({ element }),
+			...(element.words && element.words.length > 0
+				? [buildCaptionsTab({ element })]
+				: []),
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),

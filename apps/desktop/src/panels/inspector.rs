@@ -40,6 +40,12 @@ const TEXT_NUMBER_PARAMS: &[(&str, &str, f64)] = &[
     ("letterSpacing", "Letter spacing", 0.0),
 ];
 
+/// Caption colours, shown for text elements that carry timed words.
+const CAPTION_COLOR_PARAMS: &[(&str, &str, &str)] = &[
+    ("caption.activeColor", "Active colour", "#ffd60a"),
+    ("caption.boxColor", "Box colour", "#e5484d"),
+];
+
 const TEXT_STRING_PARAMS: &[(&str, &str, &str)] = &[
     ("content", "Text", "Default text"),
     ("fontFamily", "Font", "Arial"),
@@ -706,6 +712,57 @@ impl Render for InspectorPanel {
                                 })
                         });
                     content = content.child(align_row).child(style_row);
+                }
+
+                if is_text && !element.words.is_empty() {
+                    let word_count = element.words.len();
+                    let highlight = params.text("caption.highlight", "none").into_owned();
+                    let mut highlight_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(Self::label_cell("Highlight", window));
+                    for (option, label) in [("none", "None"), ("word", "Word"), ("box", "Box"), ("fill", "Fill")] {
+                        let state = self.state.clone();
+                        let active = highlight == option;
+                        highlight_row = highlight_row.child(
+                            Button::new(eid("caption-highlight", option), label)
+                                .variant(if active {
+                                    ButtonVariant::Default
+                                } else {
+                                    ButtonVariant::Outline
+                                })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set("caption.highlight", option);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading("Captions", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(format!("{word_count} timed word(s); the spoken one is emphasised.")),
+                        )
+                        .child(highlight_row);
+                    for (key, label, default) in CAPTION_COLOR_PARAMS {
+                        let row = self.row(
+                            label,
+                            key,
+                            default,
+                            params.text(key, default).into_owned(),
+                            None,
+                            window,
+                            cx,
+                            set_text_param(key),
+                        );
+                        content = content.child(row);
+                    }
                 }
 
                 if has_audio {

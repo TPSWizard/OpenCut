@@ -2,6 +2,7 @@ import { DEFAULT_NEW_ELEMENT_DURATION } from "@/timeline/creation";
 import type { TTimelineViewState } from "@/project/types";
 import type { BlendMode, Transform } from "@/rendering";
 import { ZERO_MEDIA_TIME } from "@/wasm";
+import { DEFAULT_CAPTION_STYLE } from "@/captions/params";
 import type { TextElement } from "./types";
 
 const defaultTransform: Transform = {
@@ -53,6 +54,9 @@ const defaultTextElement: Omit<TextElement, "id"> = {
 		"background.paddingY": defaultTextBackground.paddingY,
 		"background.offsetX": defaultTextBackground.offsetX,
 		"background.offsetY": defaultTextBackground.offsetY,
+		"caption.highlight": DEFAULT_CAPTION_STYLE.highlight,
+		"caption.activeColor": DEFAULT_CAPTION_STYLE.activeColor,
+		"caption.boxColor": DEFAULT_CAPTION_STYLE.boxColor,
 		"transform.positionX": defaultTransform.position.x,
 		"transform.positionY": defaultTransform.position.y,
 		"transform.scaleX": defaultTransform.scaleX,

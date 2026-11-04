@@ -89,6 +89,8 @@ export interface ApiElementInfo {
 	params: ApiParamValues;
 	/** The transition the clip leads out of (visual elements only). */
 	transition?: ApiTransition;
+	/** A caption's words, seconds from the element's start (text elements). */
+	words?: ApiCaptionWord[];
 }
 
 export type ApiTransitionParamValue = number | boolean | number[];
@@ -98,6 +100,33 @@ export interface ApiTransition {
 	type: string;
 	duration: number;
 	params?: Record<string, ApiTransitionParamValue>;
+}
+
+/** A spoken word; `start` and `end` are seconds on the timeline. */
+export interface ApiCaptionWord {
+	text: string;
+	start: number;
+	end: number;
+}
+
+/** How a caption's spoken word stands out; see the `caption.*` text params. */
+export interface ApiCaptionStyle {
+	highlight?: "none" | "word" | "box" | "fill";
+	activeColor?: string;
+	boxColor?: string;
+}
+
+/**
+ * One caption to insert: seconds on the timeline, optional timed words
+ * (which must spell `text` when joined by spaces, in order) and optional
+ * text styling (font, colour, placement) as the subtitle importer takes it.
+ */
+export interface ApiCaption {
+	text: string;
+	startTime: number;
+	duration: number;
+	words?: ApiCaptionWord[];
+	style?: Record<string, unknown>;
 }
 
 export interface ApiTransitionParamInfo {
@@ -266,6 +295,30 @@ export interface EditorApiMethods {
 		result: ApiElementInfo;
 	};
 	/** Every transition the renderer can draw, with its parameters. */
+	/** Inserts captions as a new text track at the top of the overlays. */
+	"captions.insert": {
+		params: { captions: ApiCaption[]; style?: ApiCaptionStyle };
+		result: { trackId: string; elements: ApiElementRef[] };
+	};
+	/**
+	 * Transcribes the scene's audio in the page (Whisper, downloaded on first
+	 * use) and, unless `insert` is false, inserts the captions.
+	 */
+	"captions.transcribe": {
+		params: {
+			language?: string;
+			modelId?: string;
+			wordsPerCaption?: number;
+			insert?: boolean;
+			style?: ApiCaptionStyle;
+		};
+		result: {
+			text: string;
+			words: ApiCaptionWord[];
+			captions: ApiCaption[];
+			trackId: string | null;
+		};
+	};
 	"transitions.list": {
 		params: Record<string, never>;
 		result: ApiTransitionInfo[];

@@ -54,6 +54,7 @@ class TranscriptionService {
 						resolve({
 							text: response.text,
 							segments: response.segments,
+							words: response.words,
 							language,
 						});
 						break;

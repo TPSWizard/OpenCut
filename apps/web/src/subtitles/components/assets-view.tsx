@@ -8,20 +8,28 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { useReducer, useRef, useState } from "react";
-import { extractTimelineAudio } from "@/media/mediabunny";
 import { useEditor } from "@/editor/use-editor";
 import { TRANSCRIPTION_DIAGNOSTICS_SCOPE } from "@/transcription/diagnostics";
-import { DEFAULT_TRANSCRIPTION_SAMPLE_RATE } from "@/transcription/audio";
 import { TRANSCRIPTION_LANGUAGES } from "@/transcription/supported-languages";
 import type {
 	CaptionChunk,
 	TranscriptionLanguage,
-	TranscriptionProgress,
+	TranscriptionModelId,
 } from "@/transcription/types";
-import { transcriptionService } from "@/services/transcription/service";
-import { decodeAudioToFloat32 } from "@/media/audio";
-import { buildCaptionChunks } from "@/transcription/caption";
+import {
+	DEFAULT_TRANSCRIPTION_MODEL,
+	TRANSCRIPTION_MODELS,
+	isTranscriptionModelId,
+} from "@/transcription/models";
+import { DEFAULT_WORDS_PER_CAPTION } from "@/transcription/caption-defaults";
 import { insertCaptionChunksAsTextTrack } from "@/subtitles/insert";
+import {
+	GENERATED_CAPTION_HIGHLIGHT,
+	isCaptionHighlight,
+	type CaptionHighlight,
+} from "@/captions";
+import { generateCaptions, type GenerateCaptionsStep } from "@/captions/generate";
+import { Input } from "@/components/ui/input";
 import { parseSubtitleFile } from "@/subtitles/parse";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -86,6 +94,15 @@ function processingReducer(
 export function Captions() {
 	const [selectedLanguage, setSelectedLanguage] =
 		useState<TranscriptionLanguage>("auto");
+	const [modelId, setModelId] = useState<TranscriptionModelId>(
+		DEFAULT_TRANSCRIPTION_MODEL,
+	);
+	const [wordsPerCaption, setWordsPerCaption] = useState(
+		DEFAULT_WORDS_PER_CAPTION,
+	);
+	const [highlight, setHighlight] = useState<CaptionHighlight>(
+		GENERATED_CAPTION_HIGHLIGHT,
+	);
 	const [processing, dispatch] = useReducer(processingReducer, IDLE_STATE);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,14 +114,26 @@ export function Captions() {
 		e.diagnostics.getActive({ scope: TRANSCRIPTION_DIAGNOSTICS_SCOPE }),
 	);
 
-	const handleProgress = (progress: TranscriptionProgress) => {
-		if (progress.status === "loading-model") {
-			dispatch({
-				type: "update_step",
-				step: `Loading model ${Math.round(progress.progress)}%`,
-			});
-		} else if (progress.status === "transcribing") {
-			dispatch({ type: "update_step", step: "Transcribing..." });
+	const handleStep = (step: GenerateCaptionsStep) => {
+		switch (step.step) {
+			case "extracting-audio":
+				dispatch({ type: "update_step", step: "Extracting audio..." });
+				break;
+			case "preparing-audio":
+				dispatch({ type: "update_step", step: "Preparing audio..." });
+				break;
+			case "loading-model":
+				dispatch({
+					type: "update_step",
+					step: `Loading model ${Math.round(step.progress)}%`,
+				});
+				break;
+			case "transcribing":
+				dispatch({ type: "update_step", step: "Transcribing..." });
+				break;
+			case "building-captions":
+				dispatch({ type: "update_step", step: "Generating captions..." });
+				break;
 		}
 	};
 
@@ -113,40 +142,39 @@ export function Captions() {
 	}: {
 		captions: CaptionChunk[];
 	}): boolean => {
-		const trackId = insertCaptionChunksAsTextTrack({ editor, captions });
+		const trackId = insertCaptionChunksAsTextTrack({
+			editor,
+			captions,
+			captionStyle: { highlight },
+		});
 		return trackId !== null;
 	};
 
 	const handleGenerateTranscript = async () => {
 		dispatch({ type: "start", step: "Extracting audio..." });
 		try {
-			const audioBlob = await extractTimelineAudio({
-				tracks: editor.scenes.getActiveScene().tracks,
-				mediaAssets: editor.media.getAssets(),
-				totalDuration: editor.timeline.getTotalDuration(),
+			const { result, captions } = await generateCaptions({
+				editor,
+				language: selectedLanguage,
+				modelId,
+				wordsPerCaption,
+				onStep: handleStep,
 			});
 
-			dispatch({ type: "update_step", step: "Preparing audio..." });
-			const { samples } = await decodeAudioToFloat32({
-				audioBlob,
-				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
-			});
-
-			const result = await transcriptionService.transcribe({
-				audioData: samples,
-				language: selectedLanguage === "auto" ? undefined : selectedLanguage,
-				onProgress: handleProgress,
-			});
-
-			dispatch({ type: "update_step", step: "Generating captions..." });
-			const captionChunks = buildCaptionChunks({ segments: result.segments });
-
-			if (!insertCaptions({ captions: captionChunks })) {
+			if (!insertCaptions({ captions })) {
 				dispatch({ type: "fail", error: "No captions were generated" });
 				return;
 			}
 
-			dispatch({ type: "succeed", warnings: [] });
+			dispatch({
+				type: "succeed",
+				warnings:
+					result.words.length === 0
+						? [
+								"This model gave no word timings, so the captions are cut evenly and cannot highlight the spoken word.",
+							]
+						: [],
+			});
 		} catch (error) {
 			console.error("Transcription failed:", error);
 			dispatch({
@@ -304,6 +332,59 @@ export function Captions() {
 											{language.name}
 										</SelectItem>
 									))}
+								</SelectContent>
+							</Select>
+						</SectionField>
+						<SectionField label="Model">
+							<Select
+								value={modelId}
+								onValueChange={(value) => {
+									if (isTranscriptionModelId(value)) setModelId(value);
+								}}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select a model" />
+								</SelectTrigger>
+								<SelectContent>
+									{TRANSCRIPTION_MODELS.map((model) => (
+										<SelectItem key={model.id} value={model.id}>
+											{model.name} · {model.description}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</SectionField>
+						<SectionField label="Words per caption">
+							<Input
+								type="number"
+								min={1}
+								max={12}
+								step={1}
+								value={wordsPerCaption}
+								onChange={(event) => {
+									const next = Number.parseInt(event.target.value, 10);
+									if (Number.isFinite(next) && next >= 1) {
+										setWordsPerCaption(Math.min(12, next));
+									}
+								}}
+								aria-label="Words per caption"
+							/>
+						</SectionField>
+						<SectionField label="Highlight">
+							<Select
+								value={highlight}
+								onValueChange={(value) => {
+									if (isCaptionHighlight(value)) setHighlight(value);
+								}}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">None</SelectItem>
+									<SelectItem value="word">Active word</SelectItem>
+									<SelectItem value="box">Active word in a box</SelectItem>
+									<SelectItem value="fill">Spoken so far (karaoke)</SelectItem>
 								</SelectContent>
 							</Select>
 						</SectionField>

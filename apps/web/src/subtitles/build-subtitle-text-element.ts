@@ -15,6 +15,7 @@ import type {
 	TextFontWeight,
 } from "@/text/primitives";
 import type { SubtitleCue, SubtitleStyleOverrides } from "./types";
+import { captionStyleParams, type CaptionStyle, type CaptionWord } from "@/captions";
 
 const SUBTITLE_MAX_WIDTH_RATIO = 0.8;
 const SUBTITLE_BOTTOM_MARGIN_RATIO = 0.05;
@@ -252,14 +253,44 @@ function resolvePositionY({
 	);
 }
 
+/**
+ * A cue's words as element words: times relative to the cue's start,
+ * clamped into the cue, skipping words whose text is empty.
+ */
+export function buildCaptionWords({
+	caption,
+}: {
+	caption: SubtitleCue;
+}): CaptionWord[] | undefined {
+	if (!caption.words || caption.words.length === 0) {
+		return undefined;
+	}
+	const words: CaptionWord[] = [];
+	for (const word of caption.words) {
+		const text = word.text.trim();
+		if (!text) continue;
+		const start = Math.max(0, Math.min(word.start - caption.startTime, caption.duration));
+		const end = Math.max(start, Math.min(word.end - caption.startTime, caption.duration));
+		words.push({
+			text,
+			start: mediaTimeFromSeconds({ seconds: start }),
+			end: mediaTimeFromSeconds({ seconds: end }),
+		});
+	}
+	return words.length > 0 ? words : undefined;
+}
+
 export function buildSubtitleTextElement({
 	index,
 	caption,
 	canvasSize,
+	captionStyle,
 }: {
 	index: number;
 	caption: SubtitleCue;
 	canvasSize: { width: number; height: number };
+	/** The caption look for cues that carry words. */
+	captionStyle?: Partial<CaptionStyle>;
 }): CreateTextElement {
 	const ctx = createMeasurementContext();
 	const style = resolveSubtitleStyle({
@@ -312,13 +343,17 @@ export function buildSubtitleTextElement({
 		});
 	}
 
+	const words = buildCaptionWords({ caption });
+
 	return {
 		...DEFAULTS.text.element,
 		name: `Caption ${index + 1}`,
 		duration: mediaTimeFromSeconds({ seconds: caption.duration }),
 		startTime: mediaTimeFromSeconds({ seconds: caption.startTime }),
+		...(words && { words }),
 		params: {
 			...DEFAULTS.text.element.params,
+			...(words && captionStyle ? captionStyleParams({ style: captionStyle }) : {}),
 			content,
 			fontSize: style.fontSize,
 			fontFamily: style.fontFamily,

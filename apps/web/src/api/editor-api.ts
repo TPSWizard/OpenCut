@@ -6,6 +6,12 @@ import {
 	type ElementTransition,
 } from "@/transitions";
 import { setElementTransition } from "@/transitions/apply";
+import { generateCaptions, insertGeneratedCaptions } from "@/captions/generate";
+import { isCaptionHighlight, type CaptionStyle } from "@/captions";
+import { insertCaptionChunksAsTextTrack } from "@/subtitles/insert";
+import type { SubtitleCue } from "@/subtitles/types";
+import { isTranscriptionModelId } from "@/transcription/models";
+import type { TranscriptionLanguage } from "@/transcription/types";
 import type { EditorCore } from "@/core";
 import { processMediaAssets } from "@/media/processing";
 import { PROJECT_BUNDLE_EXTENSION } from "@/project/bundle";
@@ -32,6 +38,9 @@ import {
 import {
 	EDITOR_API_VERSION,
 	EditorApiError,
+	type ApiCaption,
+	type ApiCaptionStyle,
+	type ApiCaptionWord,
 	type ApiElementInfo,
 	type ApiElementLocator,
 	type ApiElementRef,
@@ -131,6 +140,93 @@ function toElementInfo({
 						...(element.transition.params && { params: element.transition.params }),
 					}
 				: undefined,
+		words:
+			"words" in element && element.words && element.words.length > 0
+				? element.words.map((word) => ({
+						text: word.text,
+						start: seconds(word.start),
+						end: seconds(word.end),
+					}))
+				: undefined,
+	};
+}
+
+/** Validates one `captions.insert` caption into a subtitle cue (seconds). */
+function toSubtitleCue(raw: unknown, index: number): SubtitleCue {
+	const invalid = (message: string): never => {
+		throw new EditorApiError({
+			code: "invalid_params",
+			message: `captions[${index}]: ${message}`,
+		});
+	};
+	if (!raw || typeof raw !== "object") invalid("must be an object");
+	const caption = raw as ApiCaption;
+	if (typeof caption.text !== "string" || !caption.text.trim()) invalid("text is required");
+	const number = (value: unknown, field: string): number => {
+		if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+			invalid(`${field} must be a non-negative number of seconds`);
+		}
+		return value as number;
+	};
+	const startTime = number(caption.startTime, "startTime");
+	const duration = number(caption.duration, "duration");
+	if (duration <= 0) invalid("duration must be positive");
+	let words: ApiCaptionWord[] | undefined;
+	if (caption.words !== undefined) {
+		if (!Array.isArray(caption.words)) invalid("words must be an array");
+		words = caption.words.map((word, wordIndex) => {
+			if (!word || typeof word !== "object" || typeof word.text !== "string") {
+				invalid(`words[${wordIndex}] must be { text, start, end }`);
+			}
+			const start = number(word.start, `words[${wordIndex}].start`);
+			const end = number(word.end, `words[${wordIndex}].end`);
+			if (end < start) invalid(`words[${wordIndex}] ends before it starts`);
+			return { text: word.text, start, end };
+		});
+		const spelled = words.map((word) => word.text.trim()).filter(Boolean).join(" ");
+		const content = caption.text.trim().split(/\s+/).join(" ");
+		if (spelled !== content) {
+			invalid("words joined by spaces must spell text");
+		}
+	}
+	return {
+		text: caption.text,
+		startTime,
+		duration,
+		...(words && { words }),
+		...(caption.style && typeof caption.style === "object"
+			? { style: caption.style as SubtitleCue["style"] }
+			: {}),
+	};
+}
+
+function toCaptionStyle(raw: unknown): Partial<CaptionStyle> | undefined {
+	if (raw === undefined) return undefined;
+	if (!raw || typeof raw !== "object") {
+		throw new EditorApiError({
+			code: "invalid_params",
+			message: "style must be an object",
+		});
+	}
+	const style = raw as ApiCaptionStyle;
+	if (style.highlight !== undefined && !isCaptionHighlight(style.highlight)) {
+		throw new EditorApiError({
+			code: "invalid_params",
+			message: "style.highlight must be none, word, box or fill",
+		});
+	}
+	for (const key of ["activeColor", "boxColor"] as const) {
+		if (style[key] !== undefined && typeof style[key] !== "string") {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: `style.${key} must be a colour string`,
+			});
+		}
+	}
+	return {
+		...(style.highlight !== undefined && { highlight: style.highlight }),
+		...(style.activeColor !== undefined && { activeColor: style.activeColor }),
+		...(style.boxColor !== undefined && { boxColor: style.boxColor }),
 	};
 }
 
@@ -671,6 +767,78 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				});
 			}
 			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"captions.insert": ({ captions, style }) => {
+			requireProject();
+			if (!Array.isArray(captions) || captions.length === 0) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "captions must be a non-empty array",
+				});
+			}
+			const cues = captions.map(toSubtitleCue);
+			const captionStyle = toCaptionStyle(style);
+			const before = elementIds(tracksOf());
+			const trackId = insertCaptionChunksAsTextTrack({
+				editor,
+				captions: cues,
+				captionStyle: captionStyle ?? { highlight: "word" },
+			});
+			if (!trackId) {
+				throw new EditorApiError({
+					code: "failed",
+					message: "The captions could not be inserted",
+				});
+			}
+			const elements: ApiElementRef[] = [];
+			for (const track of allTracks(tracksOf())) {
+				for (const element of track.elements as TimelineElement[]) {
+					if (!before.has(element.id)) {
+						elements.push({ trackId: track.id, elementId: element.id });
+					}
+				}
+			}
+			return { trackId, elements };
+		},
+		"captions.transcribe": async ({ language, modelId, wordsPerCaption, insert, style }) => {
+			requireProject();
+			if (modelId !== undefined && !isTranscriptionModelId(modelId)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "modelId must be one of whisper-tiny, whisper-base, whisper-small, whisper-medium, whisper-large-v3-turbo",
+				});
+			}
+			if (
+				wordsPerCaption !== undefined &&
+				(typeof wordsPerCaption !== "number" || !Number.isInteger(wordsPerCaption) || wordsPerCaption < 1)
+			) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "wordsPerCaption must be a positive integer",
+				});
+			}
+			const captionStyle = toCaptionStyle(style);
+			const { result, captions } = await generateCaptions({
+				editor,
+				language: (language ?? "auto") as TranscriptionLanguage,
+				modelId,
+				wordsPerCaption,
+			});
+			const trackId =
+				insert === false
+					? null
+					: insertGeneratedCaptions({ editor, captions, style: captionStyle });
+			return {
+				text: result.text,
+				words: result.words,
+				captions: captions.map((caption) => ({
+					text: caption.text,
+					startTime: caption.startTime,
+					duration: caption.duration,
+					...(caption.words && { words: caption.words }),
+				})),
+				trackId,
+			};
 		},
 		"transitions.list": () => getTransitionCatalogue(),
 		"timeline.setTransition": ({ elementId, trackId, transition }) => {

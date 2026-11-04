@@ -277,6 +277,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.moveElement { elementId, trackId?, startTime }
 - timeline.setTransition { elementId, trackId?, transition: { type, duration?, params? } | null } (a gl-transitions name; plays centred on the cut to the next clip)
 - transitions.list → [{ name, description, tags, params[{ name, kind, default, min, max }] }]
+- captions.insert { captions[{ text, startTime, duration, words?[{ text, start, end }], style? }], style?: { highlight?: none|word|box|fill, activeColor?, boxColor? } } → { trackId, elements[] } (timed words make the spoken word highlight)
+- captions.transcribe { language?, modelId?, wordsPerCaption?, insert?, style? } → { text, words[], captions[], trackId } (Whisper in the page; the model downloads on first use)
 - timeline.split { elements, time } / timeline.delete { elements } / timeline.duplicate { elements }
 - timeline.addTrack { type, index? } / timeline.removeTrack { trackId }
 - timeline.setTrackMuted { trackId, muted } / timeline.setTrackHidden { trackId, hidden }
@@ -288,5 +290,6 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 
 Element params of interest: transform.positionX, transform.positionY (pixels from centre),
 transform.scaleX, transform.scaleY, transform.rotate (degrees), opacity (0..1);
-text: content, fontSize, fontFamily, color, textAlign, letterSpacing, lineHeight.
+text: content, fontSize, fontFamily, color, textAlign, letterSpacing, lineHeight;
+captions (text elements with words): caption.highlight, caption.activeColor, caption.boxColor.
 `;

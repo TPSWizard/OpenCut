@@ -9,6 +9,8 @@ import {
 	setCanvasLetterSpacing,
 } from "./layout";
 import { FONT_SIZE_SCALE_REFERENCE } from "./typography";
+import { placeWords } from "@/captions/word-layout";
+import type { CaptionHighlight } from "@/captions/types";
 
 export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
@@ -42,6 +44,25 @@ export interface MeasuredTextLayout extends ResolvedTextLayout {
 	lineMetrics: TextMetrics[];
 	block: TextBlockMeasurement;
 }
+
+/**
+ * Which words of the block stand out and how; see `CaptionHighlight`. The
+ * words are the block's whitespace-separated tokens in order.
+ */
+export interface TextWordHighlight {
+	mode: CaptionHighlight;
+	activeColor: string;
+	boxColor: string;
+	/** Index of the word being spoken, or -1 between words. */
+	activeIndex: number;
+	/** Number of words spoken so far, the active one included. */
+	spokenCount: number;
+}
+
+const HIGHLIGHT_BOX_PADDING_X = 0.18;
+const HIGHLIGHT_BOX_PADDING_Y = 0.08;
+const HIGHLIGHT_BOX_HEIGHT = 1.1;
+const HIGHLIGHT_BOX_RADIUS = 0.2;
 
 export interface ResolvedTextBackgroundLike {
 	enabled: boolean;
@@ -145,6 +166,7 @@ export function drawMeasuredTextLayout({
 	background,
 	backgroundColor,
 	textBaseline = "middle",
+	highlight,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -152,6 +174,7 @@ export function drawMeasuredTextLayout({
 	background?: ResolvedTextBackgroundLike | null;
 	backgroundColor?: string;
 	textBaseline?: CanvasTextBaseline;
+	highlight?: TextWordHighlight | null;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -210,6 +233,89 @@ export function drawMeasuredTextLayout({
 			textAlign: layout.textAlign,
 		});
 	}
+
+	if (highlight && highlight.mode !== "none") {
+		drawHighlightedWords({ ctx, layout, highlight, textColor });
+	}
+}
+
+/** The indices of the words `highlight` singles out. */
+export function highlightedWordIndices({
+	highlight,
+}: {
+	highlight: TextWordHighlight;
+}): number[] {
+	switch (highlight.mode) {
+		case "none":
+			return [];
+		case "word":
+		case "box":
+			return highlight.activeIndex >= 0 ? [highlight.activeIndex] : [];
+		case "fill":
+			return Array.from({ length: Math.max(0, highlight.spokenCount) }, (_, index) => index);
+	}
+}
+
+/**
+ * Redraws the highlighted words over the plain lines: each word is found
+ * by its prefix on its line, so the wrapping does not matter. A box, when
+ * asked for, is a rounded rectangle one em tall behind the active word.
+ */
+function drawHighlightedWords({
+	ctx,
+	layout,
+	highlight,
+	textColor,
+}: {
+	ctx: TextCanvasContext;
+	layout: MeasuredTextLayout;
+	highlight: TextWordHighlight;
+	textColor: string;
+}): void {
+	const wanted = new Set(highlightedWordIndices({ highlight }));
+	if (wanted.size === 0) {
+		return;
+	}
+	const placements = placeWords({ lines: layout.lines }).filter((placement) =>
+		wanted.has(placement.index),
+	);
+	if (placements.length === 0) {
+		return;
+	}
+	const em = layout.scaledFontSize;
+	ctx.save();
+	ctx.textAlign = "left";
+	for (const placement of placements) {
+		const lineWidth = layout.lineMetrics[placement.line].width;
+		const prefixWidth = ctx.measureText(placement.prefix).width;
+		const wordWidth = ctx.measureText(placement.text).width;
+		const lineY = placement.line * layout.lineHeightPx - layout.block.visualCenterOffset;
+		let x = prefixWidth;
+		if (layout.textAlign === "center") {
+			x -= lineWidth / 2;
+		} else if (layout.textAlign === "right") {
+			x -= lineWidth;
+		}
+		if (highlight.mode === "box") {
+			const padX = em * HIGHLIGHT_BOX_PADDING_X;
+			const padY = em * HIGHLIGHT_BOX_PADDING_Y;
+			const height = em * HIGHLIGHT_BOX_HEIGHT + 2 * padY;
+			ctx.fillStyle = highlight.boxColor;
+			ctx.beginPath();
+			ctx.roundRect(
+				x - padX,
+				lineY - height / 2,
+				wordWidth + 2 * padX,
+				height,
+				em * HIGHLIGHT_BOX_RADIUS,
+			);
+			ctx.fill();
+		}
+		ctx.fillStyle = highlight.activeColor;
+		ctx.fillText(placement.text, x, lineY);
+	}
+	ctx.fillStyle = textColor;
+	ctx.restore();
 }
 
 export function strokeMeasuredTextLayout({

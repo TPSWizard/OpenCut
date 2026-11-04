@@ -1,5 +1,6 @@
 import type { ElementAnimations } from "@/animation/types";
 import type { ElementTransition } from "@/transitions/types";
+import type { CaptionWord } from "@/captions/types";
 import type { Effect } from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { ParamValues } from "@/params";
@@ -140,6 +141,12 @@ export interface ImageElement extends BaseTimelineElement {
 export interface TextElement extends BaseTimelineElement {
 	type: "text";
 	hidden?: boolean;
+	/**
+	 * Word timings for a caption: the content's whitespace-separated tokens
+	 * in order, each with its spoken span relative to the element's start.
+	 * The `caption.*` params say how the spoken word is highlighted.
+	 */
+	words?: CaptionWord[];
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
 	effects?: Effect[];

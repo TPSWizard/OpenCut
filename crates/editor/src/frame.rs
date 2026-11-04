@@ -2,7 +2,7 @@
 
 use time::MediaTime;
 
-use crate::document::{Background, Element, ElementKind, Project, Track};
+use crate::document::{Background, CaptionWord, Element, ElementKind, Project, Track};
 use crate::params::Params;
 use crate::transition::{next_adjacent, transition_window, window_into};
 
@@ -146,6 +146,93 @@ pub enum TextDecoration {
     LineThrough,
 }
 
+/// How a caption's spoken word stands out (the web app's `caption.highlight`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HighlightMode {
+    /// The word being spoken takes the active colour.
+    Word,
+    /// The word being spoken sits on a rounded box and takes the active colour.
+    Box,
+    /// Every word spoken so far takes the active colour (karaoke).
+    Fill,
+}
+
+impl HighlightMode {
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "word" => Some(Self::Word),
+            "box" => Some(Self::Box),
+            "fill" => Some(Self::Fill),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Word => "word",
+            Self::Box => "box",
+            Self::Fill => "fill",
+        }
+    }
+}
+
+/// Which words of a caption to emphasise at the planned time. The words are
+/// the whitespace-separated tokens of the content, in order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextHighlight {
+    pub mode: HighlightMode,
+    pub active_color: [f32; 4],
+    pub box_color: [f32; 4],
+    /// The word being spoken, if the time falls inside one.
+    pub active_index: Option<usize>,
+    /// How many words have started (the active one included).
+    pub spoken_count: usize,
+}
+
+impl TextHighlight {
+    /// The indices of the words that take the active colour.
+    pub fn highlighted_indices(&self) -> Vec<usize> {
+        match self.mode {
+            HighlightMode::Word | HighlightMode::Box => self.active_index.into_iter().collect(),
+            HighlightMode::Fill => (0..self.spoken_count).collect(),
+        }
+    }
+}
+
+/// The word spoken at `local_time` and how many words have started by then
+/// (the web app's `getActiveWordState`).
+pub fn active_word(words: &[CaptionWord], local_time: MediaTime) -> (Option<usize>, usize) {
+    let mut active = None;
+    let mut spoken = 0;
+    for (index, word) in words.iter().enumerate() {
+        if word.start > local_time {
+            break;
+        }
+        spoken = index + 1;
+        if local_time < word.end {
+            active = Some(index);
+        }
+    }
+    (active, spoken)
+}
+
+/// The highlight for a caption at `local_time`, or `None` without words or
+/// with `caption.highlight` set to `none`.
+pub fn caption_highlight(params: &Params, words: &[CaptionWord], local_time: MediaTime) -> Option<TextHighlight> {
+    if words.is_empty() {
+        return None;
+    }
+    let mode = HighlightMode::parse(params.text("caption.highlight", "none").as_ref())?;
+    let (active_index, spoken_count) = active_word(words, local_time);
+    Some(TextHighlight {
+        mode,
+        active_color: parse_hex_color(&params.text("caption.activeColor", "#ffd60a")).unwrap_or([1.0, 0.84, 0.04, 1.0]),
+        box_color: parse_hex_color(&params.text("caption.boxColor", "#e5484d")).unwrap_or([0.9, 0.28, 0.3, 1.0]),
+        active_index,
+        spoken_count,
+    })
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
     pub content: String,
@@ -161,6 +248,8 @@ pub struct TextStyle {
     pub letter_spacing: f32,
     pub decoration: TextDecoration,
     pub background: Option<TextBackground>,
+    /// Caption emphasis at the planned time; `None` for plain text.
+    pub highlight: Option<TextHighlight>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -215,6 +304,7 @@ impl TextStyle {
                 _ => TextDecoration::None,
             },
             background,
+            highlight: None,
         }
     }
 }
@@ -356,7 +446,11 @@ fn layer_plan(
         ElementKind::Image { media_id } => LayerSource::Image {
             media_id: media_id.clone(),
         },
-        ElementKind::Text => LayerSource::Text(TextStyle::from_params(&params, canvas_height)),
+        ElementKind::Text => {
+            let mut style = TextStyle::from_params(&params, canvas_height);
+            style.highlight = caption_highlight(&params, &element.words, element.local_time(param_time));
+            LayerSource::Text(style)
+        }
         ElementKind::Audio { .. } => return None,
     };
     let effects = element
@@ -404,7 +498,7 @@ fn extended_source_time(element: &Element, time: MediaTime) -> MediaTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::{Command, TrackPlacement, apply};
+    use crate::commands::{Command, ElementPatch, TrackPlacement, apply};
     use crate::document::{Element, MediaItem, MediaKind};
 
     fn seconds(value: f64) -> MediaTime {
@@ -548,6 +642,55 @@ mod tests {
         let plan = plan_frame(&project, seconds(6.0));
         assert!(plan.layers().is_empty());
         assert_eq!((plan.width, plan.height), (1920, 1080));
+    }
+
+    #[test]
+    fn captions_highlight_the_spoken_word() {
+        let mut project = Project::new("Captions");
+        let mut text = Element::text("Hello there world", seconds(1.0));
+        text.words = vec![
+            CaptionWord { text: "Hello".into(), start: seconds(0.0), end: seconds(0.4) },
+            CaptionWord { text: "there".into(), start: seconds(0.5), end: seconds(0.9) },
+            CaptionWord { text: "world".into(), start: seconds(1.2), end: seconds(1.6) },
+        ];
+        text.params.set("caption.highlight", "box").set("caption.activeColor", "#ff0000");
+        apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+
+        fn style_at(project: &Project, time: f64) -> TextStyle {
+            let plan = plan_frame(project, seconds(time));
+            let LayerSource::Text(style) = &plan.layers()[0].source else { panic!("text") };
+            style.clone()
+        }
+        let element_id = project.tracks[0].elements[0].id.clone();
+        let highlight = style_at(&project, 1.6).highlight.expect("highlighted");
+        assert_eq!(highlight.mode, HighlightMode::Box);
+        assert_eq!(highlight.active_index, Some(1));
+        assert_eq!(highlight.spoken_count, 2);
+        assert_eq!(highlight.active_color, [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(highlight.highlighted_indices(), vec![1]);
+        // In the pause after "there" nothing is active, but two words have been spoken.
+        let pause = style_at(&project, 2.0).highlight.unwrap();
+        assert_eq!((pause.active_index, pause.spoken_count), (None, 2));
+        // At the very start the first word is active.
+        assert_eq!(active_word(&project.tracks[0].elements[0].words, MediaTime::ZERO), (Some(0), 1));
+
+        // `fill` colours everything spoken so far; `none` drops the highlight.
+        let set_highlight = |project: &mut Project, mode: &str| {
+            let mut params = Params::new();
+            params.set("caption.highlight", mode);
+            apply(
+                project,
+                &Command::UpdateElement {
+                    element_id: element_id.clone(),
+                    patch: ElementPatch { params: Some(params), ..Default::default() },
+                },
+            )
+            .unwrap();
+        };
+        set_highlight(&mut project, "fill");
+        assert_eq!(style_at(&project, 2.0).highlight.unwrap().highlighted_indices(), vec![0, 1]);
+        set_highlight(&mut project, "none");
+        assert!(style_at(&project, 2.0).highlight.is_none());
     }
 
     #[test]

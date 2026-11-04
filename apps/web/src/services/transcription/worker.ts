@@ -3,7 +3,11 @@ import {
 	type AutomaticSpeechRecognitionPipeline,
 	type AutomaticSpeechRecognitionOutput,
 } from "@huggingface/transformers";
-import type { TranscriptionSegment } from "@/transcription/types";
+import type {
+	TranscriptionSegment,
+	TranscriptionWord,
+} from "@/transcription/types";
+import { segmentsFromWords } from "@/transcription/segments";
 import {
 	DEFAULT_CHUNK_LENGTH_SECONDS,
 	DEFAULT_STRIDE_SECONDS,
@@ -23,6 +27,7 @@ export type WorkerResponse =
 			type: "transcribe-complete";
 			text: string;
 			segments: TranscriptionSegment[];
+			words: TranscriptionWord[];
 	  }
 	| { type: "transcribe-error"; error: string }
 	| { type: "cancelled" };
@@ -134,12 +139,33 @@ async function handleTranscribe({
 	cancelled = false;
 
 	try {
-		const rawResult = await transcriber(audio, {
+		const options = {
 			chunk_length_s: DEFAULT_CHUNK_LENGTH_SECONDS,
 			stride_length_s: DEFAULT_STRIDE_SECONDS,
 			language: language === "auto" ? undefined : language,
-			return_timestamps: true,
-		});
+		};
+
+		// Word timestamps need a model exported with its alignment heads (the
+		// `_timestamped` repos). A model without them throws before decoding,
+		// so fall back to segment timestamps rather than fail.
+		let rawResult: AutomaticSpeechRecognitionOutput | AutomaticSpeechRecognitionOutput[];
+		let wordLevel = true;
+		try {
+			rawResult = await transcriber(audio, {
+				...options,
+				return_timestamps: "word",
+			});
+		} catch (error) {
+			if (cancelled) return;
+			if (!isMissingAlignmentHeads(error)) {
+				throw error;
+			}
+			wordLevel = false;
+			rawResult = await transcriber(audio, {
+				...options,
+				return_timestamps: true,
+			});
+		}
 
 		if (cancelled) return;
 
@@ -147,24 +173,29 @@ async function handleTranscribe({
 			? rawResult[0]
 			: rawResult;
 
+		const words: TranscriptionWord[] = [];
 		const segments: TranscriptionSegment[] = [];
 
-		if (result.chunks) {
-			for (const chunk of result.chunks) {
-				if (chunk.timestamp && chunk.timestamp.length >= 2) {
-					segments.push({
-						text: chunk.text,
-						start: chunk.timestamp[0] ?? 0,
-						end: chunk.timestamp[1] ?? chunk.timestamp[0] ?? 0,
-					});
-				}
+		for (const chunk of result.chunks ?? []) {
+			const text = chunk.text.trim();
+			if (!text || !chunk.timestamp || chunk.timestamp.length < 2) {
+				continue;
+			}
+			const start = chunk.timestamp[0] ?? 0;
+			// The last chunk of a stream can come without an end.
+			const end = chunk.timestamp[1] ?? start;
+			if (wordLevel) {
+				words.push({ text, start, end: Math.max(end, start) });
+			} else {
+				segments.push({ text, start, end: Math.max(end, start) });
 			}
 		}
 
 		self.postMessage({
 			type: "transcribe-complete",
 			text: result.text,
-			segments,
+			segments: wordLevel ? segmentsFromWords({ words }) : segments,
+			words,
 		} satisfies WorkerResponse);
 	} catch (error) {
 		if (cancelled) return;
@@ -173,4 +204,8 @@ async function handleTranscribe({
 			error: error instanceof Error ? error.message : "Transcription failed",
 		} satisfies WorkerResponse);
 	}
+}
+
+function isMissingAlignmentHeads(error: unknown): boolean {
+	return error instanceof Error && error.message.includes("alignment_heads");
 }

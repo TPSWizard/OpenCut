@@ -5,7 +5,48 @@ use cosmic_text::{
     Align, Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, Style, SwashCache, Weight,
     Wrap,
 };
-use editor::{TextAlign, TextDecoration, TextStyle};
+use editor::{HighlightMode, TextAlign, TextDecoration, TextHighlight, TextStyle};
+
+/// Box padding and shape around a highlighted word, in ems (as the web app).
+const HIGHLIGHT_BOX_PADDING_X: f32 = 0.18;
+const HIGHLIGHT_BOX_PADDING_Y: f32 = 0.08;
+const HIGHLIGHT_BOX_HEIGHT: f32 = 1.1;
+const HIGHLIGHT_BOX_RADIUS: f32 = 0.2;
+
+/// A whitespace-separated token of the content: which line it is on and
+/// its byte range within that line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct WordSpan {
+    line: usize,
+    start: usize,
+    end: usize,
+}
+
+/// The content's words in order, as the web app numbers caption words.
+fn word_spans(content: &str) -> Vec<WordSpan> {
+    let mut spans = Vec::new();
+    for (line, text) in content.split('\n').enumerate() {
+        let mut start = None;
+        for (index, ch) in text.char_indices() {
+            match (ch.is_whitespace(), start) {
+                (false, None) => start = Some(index),
+                (true, Some(begin)) => {
+                    spans.push(WordSpan { line, start: begin, end: index });
+                    start = None;
+                }
+                _ => {}
+            }
+        }
+        if let Some(begin) = start {
+            spans.push(WordSpan { line, start: begin, end: text.len() });
+        }
+    }
+    spans
+}
+
+fn to_color(rgba: [f32; 4]) -> Color {
+    Color::rgba(to_byte(rgba[0]), to_byte(rgba[1]), to_byte(rgba[2]), to_byte(rgba[3]))
+}
 
 /// A rasterised text block: straight-alpha BGRA, tightly packed.
 #[derive(Clone, Debug, PartialEq)]
@@ -70,7 +111,42 @@ impl TextRasterizer {
         } else {
             style.content.as_str()
         };
-        buffer.set_text(&mut self.font_system, content, &attrs, Shaping::Advanced);
+        // Caption emphasis: the highlighted words take the active colour as
+        // rich-text spans; the box behind the active word is drawn below.
+        let spans = word_spans(content);
+        let highlighted: Vec<usize> = style
+            .highlight
+            .as_ref()
+            .map(TextHighlight::highlighted_indices)
+            .unwrap_or_default();
+        if let Some(highlight) = style.highlight.as_ref().filter(|_| !highlighted.is_empty()) {
+            let active = to_color(highlight.active_color);
+            let mut rich: Vec<(&str, Attrs)> = Vec::new();
+            for (line_index, line) in content.split('\n').enumerate() {
+                if line_index > 0 {
+                    rich.push(("\n", attrs.clone()));
+                }
+                let mut cursor = 0;
+                for (word_index, span) in spans.iter().enumerate().filter(|(_, span)| span.line == line_index) {
+                    if span.start > cursor {
+                        rich.push((&line[cursor..span.start], attrs.clone()));
+                    }
+                    let word_attrs = if highlighted.contains(&word_index) {
+                        attrs.clone().color(active)
+                    } else {
+                        attrs.clone()
+                    };
+                    rich.push((&line[span.start..span.end], word_attrs));
+                    cursor = span.end;
+                }
+                if cursor < line.len() {
+                    rich.push((&line[cursor..], attrs.clone()));
+                }
+            }
+            buffer.set_rich_text(&mut self.font_system, rich, &attrs, Shaping::Advanced, None);
+        } else {
+            buffer.set_text(&mut self.font_system, content, &attrs, Shaping::Advanced);
+        }
         let align = match style.align {
             TextAlign::Left => Align::Left,
             TextAlign::Center => Align::Center,
@@ -127,6 +203,44 @@ impl TextRasterizer {
             }
         }
 
+        // The box behind the word being spoken, in text-block coordinates:
+        // its glyphs' horizontal extent padded, one em tall, centred on
+        // the line.
+        let highlight_box: Option<((f32, f32, f32, f32), [f32; 4], f32)> = style
+            .highlight
+            .as_ref()
+            .filter(|highlight| highlight.mode == HighlightMode::Box)
+            .and_then(|highlight| {
+                let span = spans.get(highlight.active_index?)?;
+                let (mut left, mut right, mut line_top, mut line_height) =
+                    (f32::INFINITY, f32::NEG_INFINITY, 0.0f32, 0.0f32);
+                for run in buffer.layout_runs() {
+                    if run.line_i != span.line {
+                        continue;
+                    }
+                    for glyph in run.glyphs {
+                        if glyph.start >= span.start && glyph.end <= span.end {
+                            left = left.min(glyph.x);
+                            right = right.max(glyph.x + glyph.w);
+                            line_top = run.line_top;
+                            line_height = run.line_height;
+                        }
+                    }
+                }
+                if !left.is_finite() || right <= left {
+                    return None;
+                }
+                let pad_x = font_size * HIGHLIGHT_BOX_PADDING_X;
+                let pad_y = font_size * HIGHLIGHT_BOX_PADDING_Y;
+                let box_height = font_size * HIGHLIGHT_BOX_HEIGHT + 2.0 * pad_y;
+                let top = line_top + line_height / 2.0 - box_height / 2.0;
+                Some((
+                    (left - pad_x, top, right - left + 2.0 * pad_x, box_height),
+                    highlight.box_color,
+                    font_size * HIGHLIGHT_BOX_RADIUS,
+                ))
+            });
+
         // The background box around the text, in text-block coordinates
         // (the block's top-left is the origin).
         let background_box = style.background.as_ref().map(|background| {
@@ -143,6 +257,11 @@ impl TextRasterizer {
         let (mut half_width, mut half_height) = (text_width / 2.0, text_height / 2.0);
         half_height = half_height.max(decoration_bottom - text_height / 2.0);
         if let Some((left, top, box_width, box_height)) = background_box {
+            let (cx, cy) = (text_width / 2.0, text_height / 2.0);
+            half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
+            half_height = half_height.max((top - cy).abs()).max((top + box_height - cy).abs());
+        }
+        if let Some(((left, top, box_width, box_height), _, _)) = highlight_box {
             let (cx, cy) = (text_width / 2.0, text_height / 2.0);
             half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
             half_height = half_height.max((top - cy).abs()).max((top + box_height - cy).abs());
@@ -170,12 +289,18 @@ impl TextRasterizer {
             );
         }
 
-        let color = Color::rgba(
-            to_byte(style.color[0]),
-            to_byte(style.color[1]),
-            to_byte(style.color[2]),
-            to_byte(style.color[3]),
-        );
+        if let Some(((left, top, box_width, box_height), box_color, radius)) = highlight_box {
+            fill_rounded_rect(
+                &mut bgra,
+                width,
+                height,
+                (origin_x + left, origin_y + top, box_width, box_height),
+                box_color,
+                radius,
+            );
+        }
+
+        let color = to_color(style.color);
         let offset_x = origin_x.round() as i32;
         let offset_y = origin_y.round() as i32;
         buffer.draw(
@@ -341,7 +466,64 @@ mod tests {
             letter_spacing: 0.0,
             decoration: TextDecoration::None,
             background: None,
+            highlight: None,
         }
+    }
+
+    /// Columns (x) holding a pixel close to `bgr` with alpha above 200.
+    fn columns_of(raster: &TextRaster, bgr: [u8; 3]) -> Vec<u32> {
+        let close = |a: u8, b: u8| (a as i16 - b as i16).abs() <= 40;
+        (0..raster.width)
+            .filter(|&x| {
+                (0..raster.height).any(|y| {
+                    let i = ((y * raster.width + x) * 4) as usize;
+                    let px = &raster.bgra[i..i + 4];
+                    px[3] > 200 && close(px[0], bgr[0]) && close(px[1], bgr[1]) && close(px[2], bgr[2])
+                })
+            })
+            .collect()
+    }
+
+    #[test]
+    fn highlights_the_active_word_in_colour_and_boxes_it() {
+        let mut rasterizer = TextRasterizer::new();
+        let plain = rasterizer.rasterize(&style("one two three"));
+        assert!(columns_of(&plain, [0, 255, 0]).is_empty(), "plain text has no green");
+
+        // "two" in green, the rest red: the green columns sit between red ones.
+        let mut worded = style("one two three");
+        worded.highlight = Some(TextHighlight {
+            mode: HighlightMode::Word,
+            active_color: [0.0, 1.0, 0.0, 1.0],
+            box_color: [0.0, 0.0, 1.0, 1.0],
+            active_index: Some(1),
+            spoken_count: 2,
+        });
+        let raster = rasterizer.rasterize(&worded);
+        assert_eq!((raster.width, raster.height), (plain.width, plain.height), "colour does not change the layout");
+        let green = columns_of(&raster, [0, 255, 0]);
+        let red = columns_of(&raster, [0, 0, 255]);
+        assert!(!green.is_empty() && !red.is_empty());
+        let (g0, g1) = (*green.first().unwrap(), *green.last().unwrap());
+        assert!(red.iter().any(|&x| x < g0) && red.iter().any(|&x| x > g1), "green word sits between red words");
+        assert!(g1 - g0 < raster.width / 2, "only one word is green");
+
+        // `fill` colours "one two" and leaves "three" red.
+        worded.highlight.as_mut().unwrap().mode = HighlightMode::Fill;
+        let filled = rasterizer.rasterize(&worded);
+        let green = columns_of(&filled, [0, 255, 0]);
+        let red = columns_of(&filled, [0, 0, 255]);
+        assert!(green.iter().all(|&x| red.iter().all(|&r| r > x)), "red only to the right of the green words");
+
+        // `box` draws a blue box behind "two" that is wider than the word.
+        worded.highlight.as_mut().unwrap().mode = HighlightMode::Box;
+        let boxed = rasterizer.rasterize(&worded);
+        let blue = columns_of(&boxed, [255, 0, 0]);
+        let green = columns_of(&boxed, [0, 255, 0]);
+        assert!(!blue.is_empty(), "a box was drawn");
+        assert!(*blue.first().unwrap() < *green.first().unwrap() && *blue.last().unwrap() > *green.last().unwrap());
+        assert_eq!(boxed.width, plain.width, "the box stays within the text block");
+        assert!(boxed.height >= plain.height);
     }
 
     /// Opaque pixels in row `y`.

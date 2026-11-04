@@ -2,7 +2,10 @@ import { BaseNode } from "./base-node";
 import type { TextElement } from "@/timeline";
 import type { EffectPass } from "@/effects/types";
 import type { BlendMode, Transform } from "@/rendering";
-import { drawMeasuredTextLayout } from "@/text/primitives";
+import {
+	drawMeasuredTextLayout,
+	type TextWordHighlight,
+} from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
 
 export type TextNodeParams = TextElement & {
@@ -21,6 +24,8 @@ export interface ResolvedTextNodeState {
 	backgroundColor: string;
 	effectPasses: EffectPass[][];
 	measuredText: MeasuredTextElement;
+	/** The caption words to emphasise at this time, if the element has words. */
+	highlight: TextWordHighlight | null;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -55,6 +60,7 @@ export function renderTextToContext({
 		background: resolved.measuredText.resolvedBackground,
 		backgroundColor: resolved.backgroundColor,
 		textBaseline: baseline,
+		highlight: resolved.highlight,
 	});
 
 	ctx.restore();

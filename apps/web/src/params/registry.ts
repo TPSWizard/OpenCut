@@ -15,6 +15,7 @@ import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
+import { DEFAULT_CAPTION_STYLE } from "@/captions/params";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -169,6 +170,37 @@ const audioElementParams: ElementParamDefinition[] = [
 		label: "Muted",
 		type: "boolean",
 		default: false,
+		keyframable: false,
+	},
+];
+
+/** How a caption's spoken word is shown; see `@/captions`. */
+const captionParams: ElementParamDefinition[] = [
+	{
+		key: "caption.highlight",
+		label: "Highlight",
+		type: "select",
+		default: DEFAULT_CAPTION_STYLE.highlight,
+		keyframable: false,
+		options: [
+			{ value: "none", label: "None" },
+			{ value: "word", label: "Active word" },
+			{ value: "box", label: "Active word in a box" },
+			{ value: "fill", label: "Spoken so far (karaoke)" },
+		],
+	},
+	{
+		key: "caption.activeColor",
+		label: "Active Color",
+		type: "color",
+		default: DEFAULT_CAPTION_STYLE.activeColor,
+		keyframable: false,
+	},
+	{
+		key: "caption.boxColor",
+		label: "Box Color",
+		type: "color",
+		default: DEFAULT_CAPTION_STYLE.boxColor,
 		keyframable: false,
 	},
 ];
@@ -338,7 +370,7 @@ elementParamRegistry.register({
 elementParamRegistry.register({ key: "image", definition: visualElementParams });
 elementParamRegistry.register({
 	key: "text",
-	definition: [...textElementParams, ...visualElementParams],
+	definition: [...textElementParams, ...captionParams, ...visualElementParams],
 });
 elementParamRegistry.register({
 	key: "sticker",
