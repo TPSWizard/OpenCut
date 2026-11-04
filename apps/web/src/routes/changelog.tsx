@@ -22,7 +22,7 @@ function ChangelogPage() {
 				<div className="flex flex-col gap-4">
 					<h1 className="text-4xl font-bold tracking-tight">Changelog</h1>
 					<p className="text-muted-foreground text-lg">
-						What changed in each OpenCut release.
+						What changed in each ConzaCut release.
 					</p>
 				</div>
 				<div className="relative flex flex-col gap-16 sm:border-l sm:border-border sm:pl-0 [&>article]:sm:-ml-[6px]">

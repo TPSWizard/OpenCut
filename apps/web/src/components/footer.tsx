@@ -1,8 +1,7 @@
 import Link from "@/compat/link";
-import { RiDiscordFill, RiTwitterXLine } from "react-icons/ri";
 import { FaGithub } from "react-icons/fa6";
 import Image from "@/compat/image";
-import { DEFAULT_LOGO_URL } from "@/site/brand";
+import { DEFAULT_LOGO_URL, UPSTREAM } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { capitalizeFirstLetter } from "@/utils/string";
 
@@ -19,13 +18,11 @@ const links: CategoryLinks = {
 	resources: [
 		{ label: "Changelog", href: "/changelog" },
 		{ label: "Roadmap", href: `${SOCIAL_LINKS.github}/issues` },
-		{ label: "Discord", href: SOCIAL_LINKS.discord },
 	],
 	company: [
 		{ label: "About", href: `${SOCIAL_LINKS.github}/blob/main/README.md` },
-		{ label: "Sponsors", href: `${SOCIAL_LINKS.github}/blob/main/README.md#sponsors` },
-		{ label: "Brand", href: `${SOCIAL_LINKS.github}/tree/main/brand` },
 		{ label: "License", href: `${SOCIAL_LINKS.github}/blob/main/LICENSE` },
+		{ label: `Built on ${UPSTREAM.name}`, href: UPSTREAM.url },
 	],
 };
 
@@ -39,12 +36,12 @@ export function Footer() {
 						<div className="mb-4 flex items-center justify-start gap-2">
 							<Image
 								src={DEFAULT_LOGO_URL}
-								alt="OpenCut"
+								alt="ConzaCut"
 								width={24}
 								height={24}
 								className="invert dark:invert-0"
 							/>
-							<span className="text-lg font-bold">OpenCut</span>
+							<span className="text-lg font-bold">ConzaCut</span>
 						</div>
 						<p className="text-muted-foreground mb-5 text-sm md:text-left">
 							The privacy-first video editor that feels simple to use.
@@ -57,22 +54,6 @@ export function Footer() {
 								rel="noopener noreferrer"
 							>
 								<FaGithub className="size-5" />
-							</Link>
-							<Link
-								href={SOCIAL_LINKS.x}
-								className="text-muted-foreground hover:text-foreground transition-colors"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<RiTwitterXLine className="size-5" />
-							</Link>
-							<Link
-								href={SOCIAL_LINKS.discord}
-								className="text-muted-foreground hover:text-foreground transition-colors"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<RiDiscordFill className="size-5" />
 							</Link>
 						</div>
 					</div>
@@ -112,7 +93,16 @@ export function Footer() {
 				<div className="flex flex-col items-start justify-between gap-4 pt-2 md:flex-row">
 					<div className="text-muted-foreground flex items-center gap-4 text-sm">
 						<span>
-							© {new Date().getFullYear()} OpenCut, All Rights Reserved
+							© {new Date().getFullYear()} ConzaCut. A fork of{" "}
+							<Link
+								href={UPSTREAM.url}
+								className="hover:text-foreground underline underline-offset-4 transition-colors"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								{UPSTREAM.name}
+							</Link>
+							, MIT licensed.
 						</span>
 					</div>
 				</div>

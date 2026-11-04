@@ -254,7 +254,7 @@ export class ProjectManager {
 		const { project, media } = await readProjectBundle({ file });
 		if (project.version > CURRENT_PROJECT_VERSION) {
 			throw new Error(
-				`This bundle was made by a newer OpenCut (project version ${project.version}; this app reads up to ${CURRENT_PROJECT_VERSION})`,
+				`This bundle was made by a newer ConzaCut or OpenCut (project version ${project.version}; this app reads up to ${CURRENT_PROJECT_VERSION})`,
 			);
 		}
 		const existing = await storageService.loadProject({

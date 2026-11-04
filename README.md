@@ -10,6 +10,8 @@
   </tr>
 </table>
 
+> The web editor in this fork is hosted as **ConzaCut** at https://opencut.conzahub.com. It is OpenCut under the MIT licence with its own name and marks; see `ATTRIBUTION.md`.
+
 [![Discord](https://img.shields.io/discord/1386309140057690133?label=Discord&logo=discord&logoColor=fff&color=5865F2&style=flat)](https://discord.gg/zmR9N35cjK)
 [![X](https://img.shields.io/badge/follow-%40opencutapp-000?logo=x&logoColor=fff&style=flat)](https://x.com/opencutapp)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat)](LICENSE)

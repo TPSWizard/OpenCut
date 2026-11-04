@@ -221,7 +221,7 @@ export async function readProjectBundle({
 	const manifestBytes = entries[PROJECT_ENTRY];
 	if (!manifestBytes) {
 		throw new ProjectBundleError(
-			`Not an OpenCut project bundle (no ${PROJECT_ENTRY})`,
+			`Not a ConzaCut project bundle (no ${PROJECT_ENTRY})`,
 		);
 	}
 	let manifest: ProjectBundleManifest;

@@ -159,7 +159,7 @@ describe("project bundles", () => {
 		const noManifest = zipSync({ "readme.txt": strToU8("hi") });
 		await expect(
 			readProjectBundle({ file: new Blob([noManifest as BlobPart]) }),
-		).rejects.toThrow(/not an OpenCut project bundle/i);
+		).rejects.toThrow(/not a ConzaCut project bundle/i);
 
 		const wrongFormat = zipSync({
 			"project.json": strToU8(
