@@ -193,6 +193,34 @@ export interface ApiExportOptions {
 	preset?: string;
 }
 
+export interface ApiDuckOptions {
+	/** The music clip (audio or video element). */
+	element: ApiElementRef;
+	/** Clips carrying the voice; every other audible clip when omitted. */
+	voice?: ApiElementRef[];
+	/** How far the music drops while speech plays, in dB. Default -12. */
+	amountDb?: number;
+	/** RMS level in dBFS above which a window is speech. Default -40. */
+	thresholdDb?: number;
+	/** Default 0.1. */
+	attackSeconds?: number;
+	/** Default 0.5. */
+	releaseSeconds?: number;
+	/** Gaps in speech shorter than this stay ducked. Default 0.3. */
+	holdSeconds?: number;
+}
+
+export interface ApiDuckResult {
+	element: ApiElementInfo;
+	/** Volume keys written. */
+	keyframes: number;
+	/** Where speech was found, in timeline seconds. */
+	intervals: { start: number; end: number }[];
+	speechSeconds: number;
+	/** Elements the voice was measured from. */
+	voiceElementIds: string[];
+}
+
 export interface ApiSafeArea {
 	top: number;
 	bottom: number;
@@ -436,6 +464,14 @@ export interface EditorApiMethods {
 		params: ApiExportOptions;
 		result: { fileName: string; mimeType: string; bytes: number };
 	};
+	/**
+	 * Auto-ducking: measures the voice (every other audible clip, or
+	 * `voice`) over the clip and writes volume keys that dip it while
+	 * speech plays, replacing the clip's volume keys in one undo step.
+	 */
+	"audio.duck": { params: ApiDuckOptions; result: ApiDuckResult };
+	/** Drops the clip's volume keys; its own volume applies again. */
+	"audio.clearDucking": { params: { element: ApiElementRef }; result: ApiElementInfo };
 	/** Platform presets with the encoder settings for the open project. */
 	"export.presets": { params: Record<string, never>; result: ApiPlatformPreset[] };
 	/** What the platform would object to in the project as it is. */

@@ -1,3 +1,4 @@
+import { DuckingSection } from "@/ducking/components/ducking-section";
 import type { ReactNode } from "react";
 import type {
 	EffectElement,
@@ -129,12 +130,15 @@ function buildAudioTab({
 		label: "Audio",
 		icon: <HugeiconsIcon icon={MusicNote03Icon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={AUDIO_PARAM_KEYS}
-				sectionKey="audio"
-			/>
+			<>
+				<ElementParamsTab
+					element={element}
+					trackId={trackId}
+					paramKeys={AUDIO_PARAM_KEYS}
+					sectionKey="audio"
+				/>
+				<DuckingSection element={element} trackId={trackId} />
+			</>
 		),
 	};
 }

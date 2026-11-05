@@ -89,6 +89,13 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   (canvas, frame rate, length, file size) with a button for each project
   setting that clears it. The table lives in `crates/editor/src/platforms.rs`
   and matches the web app's.
+- **Auto-ducking** in the inspector's Audio section: *Duck under voice*
+  measures every other audio clip (or one chosen as the voice) over the
+  selected clip with FFmpeg at 16 kHz, finds speech (RMS above −40 dBFS per
+  50 ms window, gaps under 0.3 s bridged) and writes the clip's volume keys:
+  down by the chosen amount 0.1 s before each passage, back up 0.5 s after,
+  in one undo step. *Clear* drops the keys. The arithmetic lives in
+  `crates/editor/src/ducking.rs` and matches the web app's.
 - **Safe-area guides** under the preview (`Guide` row: TikTok, Reels, Shorts)
   shade the part of a vertical frame the platform's own controls cover. The
   margins are approximate, taken from third-party guides, since no platform

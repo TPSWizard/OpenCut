@@ -115,6 +115,14 @@ pub enum Command {
         path: String,
         keyframe_id: String,
     },
+    /// Replaces every key of `path` with linear keys at times relative to
+    /// the element's start, in one undo step (auto ducking writes a whole
+    /// volume curve this way). No keys clears the path.
+    SetKeyframes {
+        element_id: String,
+        path: String,
+        keys: Vec<(MediaTime, f64)>,
+    },
     /// Drops every keyframe of `path`; the element's own parameter value applies again.
     ClearAnimation {
         element_id: String,
@@ -554,6 +562,28 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if channel.is_empty() {
                 element.animations.remove(path);
+            }
+            Outcome::Elements(vec![reference])
+        }
+        Command::SetKeyframes { element_id, path, keys } => {
+            if path.trim().is_empty() {
+                return Err(EditorError::InvalidParams("keyframe path cannot be empty".to_owned()));
+            }
+            if keys.iter().any(|(_, value)| !value.is_finite()) {
+                return Err(EditorError::InvalidParams("keyframe values must be numbers".to_owned()));
+            }
+            let (reference, element) = element_mut(project, element_id)?;
+            if element.animations.get(path).is_some_and(|channel| channel.is_color()) {
+                return Err(EditorError::InvalidParams(format!(
+                    "{path} is a colour channel; colour keys cannot be set here"
+                )));
+            }
+            element.animations.remove(path);
+            if !keys.is_empty() {
+                let channel = element.animations.entry(path.clone()).or_default();
+                for (time, value) in keys {
+                    channel.upsert(*time, *value, Some(Segment::Linear));
+                }
             }
             Outcome::Elements(vec![reference])
         }

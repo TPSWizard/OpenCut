@@ -495,6 +495,68 @@ impl EditorState {
         self.set_status(format!("{path} has no value to key"), cx);
     }
 
+    /// Ducks the selected clip under the voice: measures the other audio
+    /// clips (or `voice_id` alone) on a background thread and writes the
+    /// clip's volume keys in one undo step.
+    pub(crate) fn duck_selected(&mut self, voice_id: Option<String>, amount_db: f64, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let music_id = element.id.clone();
+        let base_db = element.params.number("volume", 0.0);
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to listen for speech.", cx);
+            return;
+        };
+        let project = self.project().clone();
+        let options = editor::DuckingOptions { amount_db, ..Default::default() };
+        self.set_status("Listening for speech…", cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx
+                .background_executor()
+                .spawn(async move {
+                    crate::ducking::measure_voice(&ffmpeg, &project, &music_id, voice_id.as_deref(), &options)
+                        .map(|voice| (music_id, voice))
+                })
+                .await;
+            this.update(cx, |state, cx| match measured {
+                Ok((music_id, voice)) => {
+                    let intervals = editor::speech_intervals(&voice.levels, &options, voice.clip_start);
+                    let keys = editor::build_ducking_keys(
+                        &intervals,
+                        voice.clip_start,
+                        voice.clip_duration,
+                        base_db,
+                        &options,
+                    );
+                    if keys.is_empty() {
+                        state.set_status("No speech found over this clip; nothing written.", cx);
+                        return;
+                    }
+                    let count = keys.len();
+                    let keys = keys
+                        .into_iter()
+                        .map(|(seconds, db)| (MediaTime::from_seconds_f64(seconds).unwrap_or(MediaTime::ZERO), db))
+                        .collect();
+                    state.execute(
+                        Command::SetKeyframes { element_id: music_id, path: "volume".to_owned(), keys },
+                        cx,
+                    );
+                    state.set_status(
+                        format!(
+                            "{} speech passage(s) ({:.1} s) in {} clip(s): {count} volume keys written.",
+                            intervals.len(),
+                            editor::total_seconds(&intervals),
+                            voice.voice_ids.len()
+                        ),
+                        cx,
+                    );
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn clear_animation(&mut self, path: &str, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();

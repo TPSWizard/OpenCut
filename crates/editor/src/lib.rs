@@ -13,6 +13,7 @@ mod audio;
 mod bundle;
 mod commands;
 mod document;
+mod ducking;
 mod editor;
 mod error;
 mod frame;
@@ -41,6 +42,10 @@ pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,
     freeform_local_to_canvas, freeform_segment_count, insert_freeform_point, read_freeform_path,
     recenter_freeform_path, remove_freeform_points, write_freeform_path,
+};
+pub use ducking::{
+    DuckingKey, DuckingOptions, Interval, SILENCE_DB, build_ducking_keys, mean_square_to_db, rms_db_windows,
+    speech_intervals, total_seconds,
 };
 pub use editor::Editor;
 pub use error::EditorError;

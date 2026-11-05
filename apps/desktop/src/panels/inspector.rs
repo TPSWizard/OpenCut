@@ -22,7 +22,14 @@ pub(crate) struct InspectorPanel {
     /// Text inputs by field key, created on first use.
     fields: HashMap<String, Entity<TextInput>>,
     scroll: ScrollHandle,
+    /// Auto-ducking choices: the voice clip (none = every other clip) and
+    /// how far the music drops.
+    duck_voice: Option<String>,
+    duck_amount_db: f64,
 }
+
+/// Drops offered for auto-ducking, in dB.
+const DUCK_AMOUNTS: &[f64] = &[-6.0, -12.0, -18.0, -24.0];
 
 /// Numeric element parameters shown under "Transform".
 const NUMBER_PARAMS: &[(&str, &str, f64)] = &[
@@ -80,6 +87,8 @@ impl InspectorPanel {
             editor_focus,
             fields: HashMap::new(),
             scroll: ScrollHandle::new(),
+            duck_voice: None,
+            duck_amount_db: -12.0,
         }
     }
 
@@ -437,6 +446,25 @@ impl Render for InspectorPanel {
             Background::Blur { blur_intensity } => ("#000000".to_owned(), Some(*blur_intensity)),
         };
         let canvas = project.settings.canvas;
+        let has_ffmpeg = state.has_ffmpeg();
+        // Voice choices for auto-ducking: every other clip with audio.
+        let duck_others: Vec<(String, String)> = selected
+            .as_ref()
+            .map(|element| {
+                project
+                    .tracks
+                    .iter()
+                    .flat_map(|track| track.elements.iter())
+                    .filter(|other| other.id != element.id)
+                    .filter(|other| match &other.kind {
+                        ElementKind::Audio { .. } => true,
+                        ElementKind::Video { .. } => project.media_for(other).is_some_and(|media| media.has_audio),
+                        _ => false,
+                    })
+                    .map(|other| (other.id.clone(), other.name.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
 
         // Drop inputs that belonged to another element's effects and masks.
         if let Some(element) = &selected {
@@ -808,6 +836,111 @@ impl Render for InspectorPanel {
                                         }),
                                 )
                         });
+
+                    // Auto-ducking: the clip's volume dips while the voice
+                    // (every other audio clip, or one chosen here) speaks.
+                    let others = duck_others.clone();
+                    if !others.iter().any(|(id, _)| Some(id) == self.duck_voice.as_ref()) {
+                        self.duck_voice = None;
+                    }
+                    let voice_label = self
+                        .duck_voice
+                        .as_ref()
+                        .and_then(|id| others.iter().find(|(other, _)| other == id))
+                        .map(|(_, name)| name.clone())
+                        .unwrap_or_else(|| "All other clips".to_owned());
+                    let mut voice_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .child(Self::label_cell("Voice", window));
+                    if others.is_empty() {
+                        voice_row = voice_row.child(
+                            div().text_xs().text_color(colors.muted_foreground).child("Add a voice clip to duck under."),
+                        );
+                    } else {
+                        // Each click moves to the next voice choice, wrapping
+                        // round to "all other clips".
+                        let next_voice: Option<String> = match &self.duck_voice {
+                            None => others.first().map(|(id, _)| id.clone()),
+                            Some(current) => {
+                                let index = others.iter().position(|(id, _)| id == current).unwrap_or(0);
+                                others.get(index + 1).map(|(id, _)| id.clone())
+                            }
+                        };
+                        voice_row = voice_row.child(
+                            Button::new("duck-voice", voice_label)
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.duck_voice = next_voice.clone();
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let mut amount_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Drop (dB)", window));
+                    for amount in DUCK_AMOUNTS {
+                        let amount = *amount;
+                        let active = (self.duck_amount_db - amount).abs() < 0.01;
+                        let label: &'static str = match amount as i32 {
+                            -6 => "-6",
+                            -12 => "-12",
+                            -18 => "-18",
+                            _ => "-24",
+                        };
+                        amount_row = amount_row.child(
+                            Button::new(eid("duck-amount", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.duck_amount_db = amount;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let ducked = element.animations.get("volume").is_some_and(|channel| !channel.is_empty());
+                    let can_duck = !others.is_empty() && has_ffmpeg;
+                    let voice_id = self.duck_voice.clone();
+                    let amount_db = self.duck_amount_db;
+                    let action_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("duck", "Duck under voice")
+                                .size(ButtonSize::XSmall)
+                                .disabled(!can_duck)
+                                .on_click(move |_, _, cx| {
+                                    let voice_id = voice_id.clone();
+                                    state.update(cx, |state, cx| state.duck_selected(voice_id, amount_db, cx));
+                                })
+                        })
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("unduck", "Clear")
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(!ducked)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.clear_animation("volume", cx));
+                                })
+                        });
+                    content = content
+                        .child(self.heading("Ducking", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Dips this clip while speech plays: down 0.1 s before, up 0.5 s after."),
+                        )
+                        .child(voice_row)
+                        .child(amount_row)
+                        .child(action_row);
                 }
 
                 if is_visual {

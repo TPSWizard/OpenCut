@@ -293,6 +293,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - history.undo / history.redo / history.state
 - export.render { format?, quality?, includeAudio?, fps?, fileName?, preset? } → bytes (in-page only)
 - export.download { same } → triggers a file download (used by the headless runner)
+- audio.duck { element, voice?, amountDb?, thresholdDb?, attackSeconds?, releaseSeconds?, holdSeconds? } → { element, keyframes, intervals, speechSeconds, voiceElementIds } (music dips under speech; replaces the clip's volume keys)
+- audio.clearDucking { element } → ApiElementInfo
 - export.presets {} → [{ id, label, canvas, fps, maxDurationSeconds, maxFileBytes, safeArea, verified, source, encode }]
 - export.check { preset, includeAudio? } → { preset, issues: [{ kind, severity, message, fix? }], estimatedBytes }
 

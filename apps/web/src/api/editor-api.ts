@@ -66,6 +66,7 @@ import {
 	getPlatformPreset,
 	platformEncodeSettings,
 } from "@/platforms";
+import { clearDucking, duckElement } from "@/ducking/duck";
 
 type Handlers = {
 	[M in EditorApiMethodName]: (
@@ -1095,6 +1096,55 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		"history.state": () => historyState(),
 
 		"export.render": (options) => renderExport(options),
+		"audio.duck": async (params) => {
+			const { track, element: music } = resolveElement(params.element);
+			const voice = params.voice?.map((ref) => resolveElement(ref).element.id);
+			const numbers: Record<string, number> = {};
+			for (const key of [
+				"amountDb",
+				"thresholdDb",
+				"attackSeconds",
+				"releaseSeconds",
+				"holdSeconds",
+			] as const) {
+				const value = params[key];
+				if (value === undefined) continue;
+				if (typeof value !== "number" || !Number.isFinite(value)) {
+					throw new EditorApiError({
+						code: "invalid_params",
+						message: `${key} must be a number`,
+					});
+				}
+				numbers[key] = value;
+			}
+			let result: Awaited<ReturnType<typeof duckElement>>;
+			try {
+				result = await duckElement({
+					editor,
+					trackId: track.id,
+					elementId: music.id,
+					voiceElementIds: voice,
+					options: numbers,
+				});
+			} catch (error) {
+				throw new EditorApiError({
+					code: "failed",
+					message: error instanceof Error ? error.message : "Ducking failed",
+				});
+			}
+			return {
+				element: elementInfoById({ trackId: track.id, elementId: music.id }),
+				keyframes: result.keyframes,
+				intervals: result.intervals,
+				speechSeconds: result.speechSeconds,
+				voiceElementIds: result.voiceElementIds,
+			};
+		},
+		"audio.clearDucking": ({ element }) => {
+			const { track, element: music } = resolveElement(element);
+			clearDucking({ editor, trackId: track.id, elementId: music.id });
+			return elementInfoById({ trackId: track.id, elementId: music.id });
+		},
 		"export.presets": () => PLATFORM_PRESETS.map(platformPresetInfo),
 		"export.check": (params) => checkPlatform(params),
 		"export.download": async (options) => {
