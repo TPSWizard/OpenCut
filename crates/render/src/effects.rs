@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use compositor::{EffectPassDescriptor, EffectUniformValueDescriptor};
-use editor::{Effect, EffectPlan};
+use editor::{Effect, EffectPlan, effect_spec};
 
 const GAUSSIAN_BLUR_SHADER: &str = "gaussian-blur";
 const MAX_SINGLE_PASS_SIGMA: f64 = 10.0;
@@ -16,26 +16,122 @@ const INTENSITY_TO_SIGMA_DIVISOR: f64 = 5.0;
 const REFERENCE_WIDTH: f64 = 1920.0;
 const REFERENCE_HEIGHT: f64 = 1080.0;
 
-/// One pass group per effect, for a frame of `width` x `height` pixels.
+/// One pass group per effect, for a frame of `width` x `height` pixels at
+/// `time_seconds` into the element (grain and glitch change with time).
 /// Effects the renderer does not know are left out.
 pub fn effect_pass_groups(
     effects: &[EffectPlan],
     width: u32,
     height: u32,
+    time_seconds: f64,
 ) -> Vec<Vec<EffectPassDescriptor>> {
     effects
         .iter()
-        .filter_map(|effect| match effect.kind.as_str() {
-            Effect::BLUR => {
-                let intensity = effect.params.number("intensity", 15.0).clamp(0.0, 100.0);
-                let sigma_x = intensity_to_sigma(intensity, width as f64, REFERENCE_WIDTH);
-                let sigma_y = intensity_to_sigma(intensity, height as f64, REFERENCE_HEIGHT);
-                let passes = gaussian_blur_passes(sigma_x, sigma_y);
-                (!passes.is_empty()).then_some(passes)
-            }
-            _ => None,
+        .filter_map(|effect| {
+            let passes = effect_passes(effect, width, height, time_seconds);
+            (!passes.is_empty()).then_some(passes)
         })
         .collect()
+}
+
+/// Pixel-sized settings are given at a 1080-high reference frame and
+/// scale with the frame's height, as the web app does.
+fn pixel_scale(height: u32) -> f64 {
+    height as f64 / REFERENCE_HEIGHT
+}
+
+fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64) -> Vec<EffectPassDescriptor> {
+    let spec = effect_spec(&effect.kind);
+    // A parameter the plan lacks falls back to the catalogue default.
+    let param = |key: &str| -> f64 {
+        let default = spec
+            .and_then(|spec| spec.params.iter().find(|param| param.key == key))
+            .map(|param| param.default)
+            .unwrap_or(0.0);
+        effect.params.number(key, default)
+    };
+    let scale = pixel_scale(height);
+    match effect.kind.as_str() {
+        Effect::BLUR => {
+            let intensity = param("intensity").clamp(0.0, 100.0);
+            let sigma_x = intensity_to_sigma(intensity, width as f64, REFERENCE_WIDTH);
+            let sigma_y = intensity_to_sigma(intensity, height as f64, REFERENCE_HEIGHT);
+            gaussian_blur_passes(sigma_x, sigma_y)
+        }
+        "color" => vec![numbers_pass(
+            "color-correct",
+            &[
+                ("u_brightness", param("brightness")),
+                ("u_contrast", param("contrast")),
+                ("u_saturation", param("saturation")),
+                ("u_hue", param("hue").to_radians()),
+                ("u_exposure", param("exposure")),
+                ("u_gamma", param("gamma")),
+                ("u_temperature", param("temperature")),
+                ("u_tint", param("tint")),
+            ],
+        )],
+        "vignette" => vec![numbers_pass(
+            "vignette",
+            &[
+                ("u_amount", param("amount")),
+                ("u_radius", param("radius")),
+                ("u_softness", param("softness")),
+            ],
+        )],
+        "grain" => vec![numbers_pass(
+            "film-grain",
+            &[
+                ("u_amount", param("amount")),
+                ("u_size", (param("size") * scale).max(1.0)),
+                ("u_time", time_seconds),
+                ("u_seed", param("seed")),
+            ],
+        )],
+        "rgb-split" => vec![numbers_pass(
+            "rgb-split",
+            &[
+                ("u_amount", param("amount") * scale),
+                ("u_angle", param("angle").to_radians()),
+            ],
+        )],
+        "pixelate" => vec![numbers_pass("pixelate", &[("u_size", (param("size") * scale).max(1.0))])],
+        "sharpen" => vec![numbers_pass("sharpen", &[("u_amount", param("amount"))])],
+        "mirror" => {
+            let mode = spec
+                .and_then(|spec| spec.params.first())
+                .map(|param| param.choice_index(&effect.params.text("mode", "left")))
+                .unwrap_or(0);
+            vec![numbers_pass("mirror", &[("u_mode", mode as f64)])]
+        }
+        "glitch" => vec![numbers_pass(
+            "glitch",
+            &[
+                ("u_amount", param("amount")),
+                ("u_bands", param("bands")),
+                ("u_time", time_seconds),
+                ("u_seed", param("seed")),
+            ],
+        )],
+        "kaleidoscope" => vec![numbers_pass(
+            "kaleidoscope",
+            &[
+                ("u_segments", param("segments")),
+                ("u_angle", param("angle").to_radians()),
+            ],
+        )],
+        _ => Vec::new(),
+    }
+}
+
+fn numbers_pass(shader: &str, numbers: &[(&str, f64)]) -> EffectPassDescriptor {
+    EffectPassDescriptor {
+        shader: shader.to_owned(),
+        uniforms: numbers
+            .iter()
+            .map(|(name, value)| ((*name).to_owned(), EffectUniformValueDescriptor::Number(*value as f32)))
+            .collect(),
+    }
 }
 
 /// Blur passes for a blurred-background backdrop. The web app's presets go
@@ -108,6 +204,14 @@ mod tests {
         }
     }
 
+    fn plan(kind: &str, params: &[(&str, f64)]) -> EffectPlan {
+        let mut values = Params::new();
+        for (key, value) in params {
+            values.set(*key, *value);
+        }
+        EffectPlan { id: "fx".to_owned(), kind: kind.to_owned(), params: values }
+    }
+
     #[test]
     fn blur_builds_separable_passes() {
         let passes = gaussian_blur_passes(3.0, 1.5);
@@ -127,24 +231,55 @@ mod tests {
 
     #[test]
     fn intensity_scales_with_the_frame_size() {
-        let mut params = Params::new();
-        params.set("intensity", 50.0);
-        let plan = EffectPlan {
-            id: "fx".to_owned(),
-            kind: "blur".to_owned(),
-            params,
-        };
-        let groups = effect_pass_groups(&[plan.clone()], 1920, 1080);
+        let plan = plan("blur", &[("intensity", 50.0)]);
+        let groups = effect_pass_groups(&[plan.clone()], 1920, 1080, 0.0);
         assert_eq!(groups.len(), 1);
         assert_eq!(number(&groups[0][0], "u_sigma"), 10.0);
-        let groups = effect_pass_groups(&[plan], 960, 540);
+        let groups = effect_pass_groups(&[plan], 960, 540, 0.0);
         assert_eq!(number(&groups[0][0], "u_sigma"), 5.0, "half-size frames blur half as much");
 
-        let unknown = EffectPlan {
-            id: "x".to_owned(),
-            kind: "sepia".to_owned(),
-            params: Params::new(),
-        };
-        assert!(effect_pass_groups(&[unknown], 100, 100).is_empty());
+        let unknown = plan_unknown();
+        assert!(effect_pass_groups(&[unknown], 100, 100, 0.0).is_empty());
+    }
+
+    fn plan_unknown() -> EffectPlan {
+        EffectPlan { id: "x".to_owned(), kind: "sepia".to_owned(), params: Params::new() }
+    }
+
+    #[test]
+    fn colour_and_stylise_effects_map_their_parameters() {
+        let groups = effect_pass_groups(
+            &[
+                plan("color", &[("hue", 90.0), ("gamma", 1.5)]),
+                plan("rgb-split", &[("amount", 10.0), ("angle", 180.0)]),
+                plan("pixelate", &[("size", 20.0)]),
+                plan("grain", &[("amount", 0.4)]),
+            ],
+            960,
+            540,
+            2.5,
+        );
+        assert_eq!(groups.len(), 4);
+        let colour = &groups[0][0];
+        assert_eq!(colour.shader, "color-correct");
+        assert!((number(colour, "u_hue") - std::f32::consts::FRAC_PI_2).abs() < 1e-6);
+        assert_eq!(number(colour, "u_gamma"), 1.5);
+        assert_eq!(number(colour, "u_brightness"), 0.0, "missing params take the catalogue default");
+        let split = &groups[1][0];
+        assert_eq!(number(split, "u_amount"), 5.0, "pixel offsets scale with a 540-high frame");
+        assert!((number(split, "u_angle") - std::f32::consts::PI).abs() < 1e-6);
+        assert_eq!(number(&groups[2][0], "u_size"), 10.0);
+        let grain = &groups[3][0];
+        assert_eq!(number(grain, "u_time"), 2.5);
+        assert_eq!(number(grain, "u_size"), 1.0, "default grain of 2 px halves to 1 at 540");
+    }
+
+    #[test]
+    fn mirror_turns_its_choice_into_a_mode_number() {
+        let mut params = Params::new();
+        params.set("mode", "bottom");
+        let plan = EffectPlan { id: "m".to_owned(), kind: "mirror".to_owned(), params };
+        let groups = effect_pass_groups(&[plan], 100, 100, 0.0);
+        assert_eq!(number(&groups[0][0], "u_mode"), 3.0);
     }
 }

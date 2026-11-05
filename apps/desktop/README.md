@@ -103,6 +103,13 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   track or nothing closes up behind each cut. The command
   (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
   match the web app's.
+- **Effects** on visual clips, the same ten as the web app and rendered by
+  the same WGSL shaders in `crates/effects`: blur, colour correction
+  (brightness, contrast, saturation, hue, exposure, gamma, warmth, tint),
+  vignette, film grain, RGB split, pixelate, sharpen, mirror, glitch and
+  kaleidoscope. The inspector's Effects section adds any of them and draws
+  a row per setting from `crates/editor/src/effect_catalogue.rs`; number
+  settings can be keyframed, grain and glitch move with the clip's time.
 - **Safe-area guides** under the preview (`Guide` row: TikTok, Reels, Shorts)
   shade the part of a vertical frame the platform's own controls cover. The
   margins are approximate, taken from third-party guides, since no platform
@@ -179,7 +186,7 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Only the blur effect exists natively. The web editor's stickers are read
+- The web editor's stickers are read
   from project files but not rendered, and speech is transcribed only in the
   web editor (captions it made render here). A path point's
   curve handles are set while placing it (drag) and follow the point

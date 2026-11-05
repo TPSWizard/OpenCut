@@ -15,6 +15,7 @@ mod commands;
 mod document;
 mod ducking;
 mod editor;
+mod effect_catalogue;
 mod error;
 mod frame;
 mod freeform;
@@ -49,6 +50,7 @@ pub use ducking::{
     speech_intervals, total_seconds,
 };
 pub use editor::Editor;
+pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect_spec};
 pub use error::EditorError;
 pub use frame::{
     BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,

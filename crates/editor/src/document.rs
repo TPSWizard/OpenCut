@@ -268,9 +268,9 @@ impl Effect {
     }
 
     pub fn label(&self) -> &str {
-        match self.kind.as_str() {
-            Self::BLUR => "Blur",
-            other => other,
+        match crate::effect_catalogue::effect_spec(&self.kind) {
+            Some(spec) => spec.label,
+            None => self.kind.as_str(),
         }
     }
 }

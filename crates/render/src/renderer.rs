@@ -225,7 +225,7 @@ impl Renderer {
             transform: quad,
             opacity: layer.opacity,
             blend_mode: parse_blend_mode(&layer.blend_mode),
-            effect_pass_groups: effect_pass_groups(&layer.effects, width, height),
+            effect_pass_groups: effect_pass_groups(&layer.effects, width, height, layer.local_time.to_seconds_f64()),
             mask,
         }];
         items.extend(stroke);

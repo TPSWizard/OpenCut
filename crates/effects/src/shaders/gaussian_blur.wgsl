@@ -1,23 +1,10 @@
-struct VertexOutput {
-    @builtin(position) position: vec4f,
-    @location(0) tex_coord: vec2f,
-}
-
-struct EffectUniforms {
-    resolution: vec2f,
-    direction: vec2f,
-    scalars: vec4f,
-}
-
-@group(0) @binding(0) var input_texture: texture_2d<f32>;
-@group(0) @binding(1) var input_sampler: sampler;
-@group(1) @binding(0) var<uniform> uniforms: EffectUniforms;
-
+// Separable Gaussian blur. s0.x = sigma in pixels, s0.y = sample step,
+// direction = (1, 0) or (0, 1).
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let texel_size = vec2f(1.0, 1.0) / uniforms.resolution;
-    let sigma = uniforms.scalars.x;
-    let step_size = uniforms.scalars.y;
+    let sigma = uniforms.s0.x;
+    let step_size = uniforms.s0.y;
 
     var color = vec4f(0.0, 0.0, 0.0, 0.0);
     var total_weight = 0.0;

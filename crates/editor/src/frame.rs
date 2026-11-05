@@ -73,6 +73,8 @@ pub struct LayerPlan {
     pub blend_mode: String,
     /// Enabled effects in order, with their parameters evaluated at this time.
     pub effects: Vec<EffectPlan>,
+    /// Time into the element, for effects that move (grain, glitch).
+    pub local_time: MediaTime,
     /// The element's first mask, if any.
     pub mask: Option<MaskPlan>,
 }
@@ -480,6 +482,7 @@ fn layer_plan(
         opacity: params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
         blend_mode: params.text("blendMode", "normal").into_owned(),
         effects,
+        local_time: element.local_time(param_time),
         mask,
     })
 }

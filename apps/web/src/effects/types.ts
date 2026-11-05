@@ -14,22 +14,23 @@ export interface EffectPass {
 	uniforms: Record<string, EffectUniformValue>;
 }
 
+/** What a pass builder gets: the effect's params, the frame size and the
+ * time into the element in seconds (for effects that move). */
+export interface EffectPassContext {
+	effectParams: ParamValues;
+	width: number;
+	height: number;
+	timeSeconds: number;
+}
+
 export interface EffectPassTemplate {
 	shader: string;
-	uniforms(params: {
-		effectParams: ParamValues;
-		width: number;
-		height: number;
-	}): Record<string, EffectUniformValue>;
+	uniforms(params: EffectPassContext): Record<string, EffectUniformValue>;
 }
 
 export interface EffectRendererConfig {
 	passes: EffectPassTemplate[];
-	buildPasses?: (params: {
-		effectParams: ParamValues;
-		width: number;
-		height: number;
-	}) => EffectPass[];
+	buildPasses?: (params: EffectPassContext) => EffectPass[];
 }
 
 export interface EffectDefinition {

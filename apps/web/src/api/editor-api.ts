@@ -44,6 +44,7 @@ import {
 	type ApiElementInfo,
 	type ApiElementLocator,
 	type ApiElementRef,
+	type ApiEffectParamInfo,
 	type ApiExportOptions,
 	type ApiPlatformCheck,
 	type ApiPlatformPreset,
@@ -68,6 +69,7 @@ import {
 } from "@/platforms";
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { cutSilence, detectSilence } from "@/silence/cut";
+import { effectsRegistry } from "@/effects";
 import { isRippleScope } from "@/silence/detect";
 
 type Handlers = {
@@ -151,6 +153,15 @@ function toElementInfo({
 						duration: seconds(element.transition.duration),
 						...(element.transition.params && { params: element.transition.params }),
 					}
+				: undefined,
+		effects:
+			"effects" in element && element.effects && element.effects.length > 0
+				? element.effects.map((effect) => ({
+						id: effect.id,
+						type: effect.type,
+						params: { ...effect.params },
+						enabled: effect.enabled,
+					}))
 				: undefined,
 		words:
 			"words" in element && element.words && element.words.length > 0
@@ -1161,6 +1172,104 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				speechSeconds: result.speechSeconds,
 				voiceElementIds: result.voiceElementIds,
 			};
+		},
+		"effects.list": () =>
+			effectsRegistry.getAll().map((definition) => {
+				const params: ApiEffectParamInfo[] = [];
+				for (const param of definition.params) {
+					if (param.type === "number") {
+						params.push({
+							key: param.key,
+							label: param.label,
+							type: "number",
+							default: param.default,
+							min: param.min,
+							max: param.max,
+							step: param.step,
+						});
+					} else if (param.type === "select") {
+						params.push({
+							key: param.key,
+							label: param.label,
+							type: "select",
+							default: param.default,
+							options: param.options.map((option) => ({ ...option })),
+						});
+					}
+				}
+				return {
+					type: definition.type,
+					name: definition.name,
+					keywords: [...definition.keywords],
+					params,
+				};
+			}),
+		"timeline.addEffect": ({ elementId, trackId, type, params }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (typeof type !== "string" || !effectsRegistry.has(type)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: `Unknown effect type ${String(type)}; see effects.list`,
+				});
+			}
+			const effectId = editor.timeline.addClipEffect({
+				trackId: track.id,
+				elementId: element.id,
+				effectType: type,
+			});
+			if (!effectId) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "Effects apply to visual elements only",
+				});
+			}
+			if (params && typeof params === "object" && Object.keys(params).length > 0) {
+				editor.timeline.updateClipEffectParams({
+					trackId: track.id,
+					elementId: element.id,
+					effectId,
+					params,
+				});
+			}
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.updateEffect": ({ elementId, trackId, effectId, params, enabled }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const effect =
+				"effects" in element
+					? element.effects?.find((candidate) => candidate.id === effectId)
+					: undefined;
+			if (!effect) {
+				throw new EditorApiError({
+					code: "not_found",
+					message: `No effect ${String(effectId)} on ${element.id}`,
+				});
+			}
+			if (params && typeof params === "object" && Object.keys(params).length > 0) {
+				editor.timeline.updateClipEffectParams({
+					trackId: track.id,
+					elementId: element.id,
+					effectId: effect.id,
+					params,
+				});
+			}
+			if (typeof enabled === "boolean" && enabled !== effect.enabled) {
+				editor.timeline.toggleClipEffect({
+					trackId: track.id,
+					elementId: element.id,
+					effectId: effect.id,
+				});
+			}
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.removeEffect": ({ elementId, trackId, effectId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			editor.timeline.removeClipEffect({
+				trackId: track.id,
+				elementId: element.id,
+				effectId: String(effectId),
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
 		},
 		"audio.detectSilence": async (params) => {
 			const { track, element } = resolveElement(params.element);

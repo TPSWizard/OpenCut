@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
 import { resolveEffectParamsAtTime } from "@/animation/effect-param-channel";
@@ -134,6 +135,7 @@ function resolveEffectPassGroups({
 				effectParams: resolvedParams,
 				width,
 				height,
+				timeSeconds: localTime / TICKS_PER_SECOND,
 			});
 		});
 }

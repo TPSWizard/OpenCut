@@ -293,6 +293,10 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - history.undo / history.redo / history.state
 - export.render { format?, quality?, includeAudio?, fps?, fileName?, preset? } → bytes (in-page only)
 - export.download { same } → triggers a file download (used by the headless runner)
+- effects.list {} → [{ type, name, keywords, params: [{ key, label, type, default, min?, max?, step?, options? }] }]
+- timeline.addEffect { elementId, trackId?, type, params? } → ApiElementInfo (effects: [{ id, type, params, enabled }])
+- timeline.updateEffect { elementId, trackId?, effectId, params?, enabled? } → ApiElementInfo
+- timeline.removeEffect { elementId, trackId?, effectId } → ApiElementInfo
 - audio.duck { element, voice?, amountDb?, thresholdDb?, attackSeconds?, releaseSeconds?, holdSeconds? } → { element, keyframes, intervals, speechSeconds, voiceElementIds } (music dips under speech; replaces the clip's volume keys)
 - audio.clearDucking { element } → ApiElementInfo
 - audio.detectSilence { element, thresholdDb?, minSilenceSeconds?, paddingSeconds? } → { intervals, removedSeconds, clipStart, clipDuration }

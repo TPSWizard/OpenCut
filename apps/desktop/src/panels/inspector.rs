@@ -1033,23 +1033,32 @@ impl Render for InspectorPanel {
                                 .flex()
                                 .items_center()
                                 .justify_between()
-                                .child(self.heading("Effects", window))
-                                .child({
-                                    let state = self.state.clone();
-                                    Button::new("add-blur", "Add blur")
-                                        .variant(ButtonVariant::Outline)
-                                        .size(ButtonSize::XSmall)
-                                        .on_click(move |_, _, cx| {
-                                            state.update(cx, |state, cx| state.add_effect(Effect::blur(), cx))
-                                        })
+                                .child(self.heading("Effects", window)),
+                        );
+                    let mut add_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(
+                        div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Add"),
+                    );
+                    for spec in editor::EFFECT_CATALOGUE {
+                        let state = self.state.clone();
+                        let kind = spec.kind;
+                        add_row = add_row.child(
+                            Button::new(eid("add-effect", kind), spec.label)
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    if let Some(effect) = Effect::from_catalogue(kind) {
+                                        state.update(cx, |state, cx| state.add_effect(effect, cx));
+                                    }
                                 }),
                         );
+                    }
+                    content = content.child(add_row);
                     if element.effects.is_empty() {
                         content = content.child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("No effects. Blur softens the whole element; its strength can be keyframed."),
+                                .child("No effects. Number settings can be keyframed; grain and glitch move on their own."),
                         );
                     }
                     for effect in &element.effects {
@@ -1088,20 +1097,54 @@ impl Render for InspectorPanel {
                                     })
                             });
                         content = content.child(header);
-                        if effect.kind == Effect::BLUR {
-                            let path = format!("effects.{effect_id}.params.intensity");
+                        let Some(spec) = editor::effect_spec(&effect.kind) else { continue };
+                        for param in spec.params {
+                            if param.is_choice() {
+                                // A choice: one button per option.
+                                let current = effect_params.text(param.key, param.options[0].0).into_owned();
+                                let mut choice_row = div()
+                                    .flex()
+                                    .flex_wrap()
+                                    .items_center()
+                                    .gap(px(4.))
+                                    .child(Self::label_cell(param.label, window));
+                                for (value, label) in param.options {
+                                    let state = self.state.clone();
+                                    let effect_id = effect_id.clone();
+                                    let active = current == *value;
+                                    let key = param.key;
+                                    choice_row = choice_row.child(
+                                        Button::new(eid(&format!("effect-{effect_id}-{key}"), value), *label)
+                                            .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                            .size(ButtonSize::XSmall)
+                                            .on_click(move |_, _, cx| {
+                                                let mut params = Params::new();
+                                                params.set(key, *value);
+                                                state.update(cx, |state, cx| {
+                                                    state.update_effect(&effect_id, Some(params), None, cx)
+                                                });
+                                            }),
+                                    );
+                                }
+                                content = content.child(choice_row);
+                                continue;
+                            }
+                            let path = format!("effects.{effect_id}.params.{}", param.key);
+                            let effect_id = effect_id.clone();
+                            let (key, min, max) = (param.key, param.min, param.max);
+                            let placeholder: &'static str = "";
                             let row = self.row(
-                                "Intensity",
-                                &format!("effect.{effect_id}.intensity"),
-                                "15",
-                                number_text(effect_params.number("intensity", 15.0)),
+                                param.label,
+                                &format!("effect.{effect_id}.{key}"),
+                                placeholder,
+                                number_text(effect_params.number(key, param.default)),
                                 Some(key_state(&path)),
                                 window,
                                 cx,
                                 Box::new(move |text, state, cx| {
                                     if let Ok(value) = text.trim().parse::<f64>() {
                                         let mut params = Params::new();
-                                        params.set("intensity", value.clamp(0.0, 100.0));
+                                        params.set(key, value.clamp(min, max));
                                         state.update_effect(&effect_id, Some(params), None, cx);
                                     }
                                 }),

@@ -91,6 +91,8 @@ export interface ApiElementInfo {
 	transition?: ApiTransition;
 	/** A caption's words, seconds from the element's start (text elements). */
 	words?: ApiCaptionWord[];
+	/** Effects on a visual element, in the order they apply. */
+	effects?: ApiEffectInfo[];
 }
 
 export type ApiTransitionParamValue = number | boolean | number[];
@@ -219,6 +221,31 @@ export interface ApiDuckResult {
 	speechSeconds: number;
 	/** Elements the voice was measured from. */
 	voiceElementIds: string[];
+}
+
+export interface ApiEffectInfo {
+	id: string;
+	type: string;
+	params: ApiParamValues;
+	enabled: boolean;
+}
+
+export interface ApiEffectParamInfo {
+	key: string;
+	label: string;
+	type: "number" | "select";
+	default: number | string;
+	min?: number;
+	max?: number;
+	step?: number;
+	options?: { value: string; label: string }[];
+}
+
+export interface ApiEffectDefinitionInfo {
+	type: string;
+	name: string;
+	keywords: string[];
+	params: ApiEffectParamInfo[];
 }
 
 export interface ApiSilenceOptions {
@@ -496,6 +523,21 @@ export interface EditorApiMethods {
 	"audio.duck": { params: ApiDuckOptions; result: ApiDuckResult };
 	/** Drops the clip's volume keys; its own volume applies again. */
 	"audio.clearDucking": { params: { element: ApiElementRef }; result: ApiElementInfo };
+	/** The effects both editors offer, with their parameters. */
+	"effects.list": { params: Record<string, never>; result: ApiEffectDefinitionInfo[] };
+	/** Adds an effect to a visual element at its defaults, then applies `params`. */
+	"timeline.addEffect": {
+		params: ApiElementLocator & { type: string; params?: ApiParamValues };
+		result: ApiElementInfo;
+	};
+	"timeline.updateEffect": {
+		params: ApiElementLocator & { effectId: string; params?: ApiParamValues; enabled?: boolean };
+		result: ApiElementInfo;
+	};
+	"timeline.removeEffect": {
+		params: ApiElementLocator & { effectId: string };
+		result: ApiElementInfo;
+	};
 	/** Finds the silent stretches of a clip without changing anything. */
 	"audio.detectSilence": { params: ApiSilenceOptions; result: ApiSilenceReport };
 	/**

@@ -65,6 +65,9 @@ methods answer with the error code `no_project` before that.
 | `history.undo` / `redo` / `state` | – | `{ canUndo, canRedo }` |
 | `export.render` | `ApiExportOptions` | `{ fileName, mimeType, bytes: ArrayBuffer }` |
 | `export.download` | `ApiExportOptions` | `{ fileName, mimeType, bytes }` and a browser download |
+| `effects.list` | – | `ApiEffectDefinitionInfo[]` — blur, colour correction, vignette, film grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, each with its params (key, label, type, default, range or options) |
+| `timeline.addEffect` | `{ elementId, trackId?, type, params? }` | `ApiElementInfo` — adds the effect at its defaults, then applies `params` |
+| `timeline.updateEffect` / `timeline.removeEffect` | `{ elementId, trackId?, effectId, params?, enabled? }` / `{ elementId, trackId?, effectId }` | `ApiElementInfo` |
 | `audio.duck` | `{ element, voice?, amountDb?, thresholdDb?, attackSeconds?, releaseSeconds?, holdSeconds? }` | `{ element, keyframes, intervals, speechSeconds, voiceElementIds }` — auto-ducking: measures the voice (every other audible clip, or the `voice` refs) over the clip and replaces its volume keys with dips of `amountDb` (default −12) while speech plays, ramping down 0.1 s before and up 0.5 s after |
 | `audio.clearDucking` | `{ element }` | `ApiElementInfo` — drops the clip's volume keys |
 | `audio.detectSilence` | `{ element, thresholdDb?, minSilenceSeconds?, paddingSeconds? }` | `{ intervals, removedSeconds, clipStart, clipDuration }` — the clip's silent stretches (under −40 dBFS for 0.5 s or more by default, keeping 0.1 s next to speech), in timeline seconds |
