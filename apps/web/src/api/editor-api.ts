@@ -45,6 +45,8 @@ import {
 	type ApiElementLocator,
 	type ApiElementRef,
 	type ApiExportOptions,
+	type ApiPlatformCheck,
+	type ApiPlatformPreset,
 	type ApiMediaInfo,
 	type ApiPlaybackState,
 	type ApiProjectInfo,
@@ -57,6 +59,13 @@ import {
 	type EditorApiParams,
 	type EditorApiResult,
 } from "./types";
+import {
+	PLATFORM_PRESETS,
+	checkPlatformExport,
+	estimatePlatformFileBytes,
+	getPlatformPreset,
+	platformEncodeSettings,
+} from "@/platforms";
 
 type Handlers = {
 	[M in EditorApiMethodName]: (
@@ -454,9 +463,86 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		return added;
 	};
 
+	const requirePlatformPreset = (id: unknown) => {
+		const preset = getPlatformPreset({
+			id: typeof id === "string" ? id : null,
+		});
+		if (!preset) {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: `Unknown platform preset ${String(id)}; see export.presets`,
+			});
+		}
+		return preset;
+	};
+
+	const platformProjectState = () => {
+		const project = requireProject();
+		return {
+			canvas: project.settings.canvasSize,
+			fps: frameRateToFloat(project.settings.fps),
+			durationSeconds: mediaTimeToSeconds({
+				time: editor.timeline.getTotalDuration(),
+			}),
+		};
+	};
+
+	const platformPresetInfo = (
+		preset: (typeof PLATFORM_PRESETS)[number],
+	): ApiPlatformPreset => {
+		const { canvas, fps } = platformProjectState();
+		return {
+			id: preset.id,
+			label: preset.label,
+			canvas: { ...preset.canvas },
+			fps: preset.fps,
+			maxDurationSeconds: preset.maxDurationSeconds,
+			maxFileBytes: preset.maxFileBytes,
+			safeArea: preset.safeArea ? { ...preset.safeArea } : null,
+			verified: preset.verified,
+			source: preset.source,
+			encode: platformEncodeSettings({ canvas, fps }),
+		};
+	};
+
+	const checkPlatform = ({
+		preset: presetId,
+		includeAudio,
+	}: {
+		preset: unknown;
+		includeAudio?: boolean;
+	}): ApiPlatformCheck => {
+		const preset = requirePlatformPreset(presetId);
+		const { canvas, fps, durationSeconds } = platformProjectState();
+		const audio = includeAudio ?? true;
+		return {
+			preset: preset.id,
+			issues: checkPlatformExport({
+				preset,
+				canvas,
+				fps,
+				durationSeconds,
+				includeAudio: audio,
+			}).map((issue) => ({
+				kind: issue.kind,
+				severity: issue.severity,
+				message: issue.message,
+				...(issue.fix ? { fix: issue.fix } : {}),
+			})),
+			estimatedBytes: estimatePlatformFileBytes({
+				canvas,
+				fps,
+				durationSeconds,
+				includeAudio: audio,
+			}),
+		};
+	};
+
 	const renderExport = async (options: ApiExportOptions) => {
 		const project = requireProject();
-		const format = options.format ?? "mp4";
+		const preset =
+			options.preset !== undefined ? requirePlatformPreset(options.preset) : null;
+		const format = preset ? "mp4" : (options.format ?? "mp4");
 		const quality = options.quality ?? "high";
 		if (format !== "mp4" && format !== "webm") {
 			throw new EditorApiError({
@@ -464,12 +550,21 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				message: `Unknown export format ${String(format)}`,
 			});
 		}
+		const exportFps = options.fps
+			? floatToFrameRate(options.fps)
+			: project.settings.fps;
 		const result = await editor.project.export({
 			options: {
 				format,
 				quality,
 				includeAudio: options.includeAudio ?? true,
-				fps: options.fps ? floatToFrameRate(options.fps) : undefined,
+				fps: exportFps,
+				platform: preset
+					? platformEncodeSettings({
+							canvas: project.settings.canvasSize,
+							fps: frameRateToFloat(exportFps),
+						})
+					: undefined,
 			},
 		});
 		if (!result.success || !result.buffer) {
@@ -1000,6 +1095,8 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		"history.state": () => historyState(),
 
 		"export.render": (options) => renderExport(options),
+		"export.presets": () => PLATFORM_PRESETS.map(platformPresetInfo),
+		"export.check": (params) => checkPlatform(params),
 		"export.download": async (options) => {
 			const rendered = await renderExport(options);
 			const blob = new Blob([rendered.bytes], { type: rendered.mimeType });

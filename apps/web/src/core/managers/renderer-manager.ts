@@ -146,7 +146,7 @@ export class RendererManager {
 		onProgress?: ({ progress }: { progress: number }) => void;
 		onCancel?: () => boolean;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio } = options;
+		const { format, quality, fps, includeAudio, platform } = options;
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -189,6 +189,7 @@ export class RendererManager {
 				fps: exportFps,
 				format,
 				quality,
+				platform,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
 			});

@@ -108,6 +108,8 @@ pub(crate) struct EditorState {
     /// Points of the selected clip's freeform mask that are selected (they
     /// are what `Delete` removes), as in the web app.
     pub selected_mask_points: Vec<String>,
+    /// Platform preset whose safe area the preview shades.
+    pub guide: Option<&'static editor::PlatformPreset>,
     pub export: Option<ExportState>,
     render: RenderHandle,
     audio: Option<AudioOutput>,
@@ -174,6 +176,7 @@ impl EditorState {
             thumbnails: HashMap::new(),
             pen: None,
             selected_mask_points: Vec::new(),
+            guide: None,
             export: None,
             render,
             audio,
@@ -1483,6 +1486,12 @@ impl EditorState {
             settings,
             cancel,
         });
+        cx.notify();
+    }
+
+    /// Shades a platform's safe area over the preview, or clears it.
+    pub(crate) fn set_guide(&mut self, guide: Option<&'static editor::PlatformPreset>, cx: &mut Context<Self>) {
+        self.guide = guide;
         cx.notify();
     }
 

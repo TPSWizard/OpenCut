@@ -8,6 +8,7 @@ import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
 import {
 	FullScreenIcon,
+	GridTableIcon,
 	PauseIcon,
 	PlayIcon,
 } from "@hugeicons/core-free-icons";
@@ -22,6 +23,9 @@ import {
 } from "@/components/ui/select";
 import { PREVIEW_ZOOM_PRESETS } from "@/preview/zoom";
 import { usePreviewViewport } from "./preview-viewport";
+import { GridPopover } from "./guide-popover";
+import { getGuideById } from "@/guides";
+import { usePreviewStore } from "@/preview/preview-store";
 import type { MediaTime } from "@/wasm";
 
 export function PreviewToolbar({
@@ -29,6 +33,8 @@ export function PreviewToolbar({
 }: {
 	onToggleFullscreen: () => void;
 }) {
+	const activeGuide = usePreviewStore((state) => state.activeGuide);
+	const activeGuideDefinition = getGuideById(activeGuide);
 	return (
 		<div className="grid grid-cols-[1fr_auto_1fr] items-center pb-3 pt-5 px-5">
 			<TimecodeDisplay />
@@ -36,11 +42,12 @@ export function PreviewToolbar({
 			<div className="justify-self-end flex items-center gap-2.5">
 				<ZoomSelect />
 				<Separator orientation="vertical" className="h-4" />
-				{/* v0.4.0 */}
-				{/* <GridPopover>
+				<GridPopover>
 					<Button
 						variant={activeGuideDefinition ? "secondary" : "text"}
 						size="icon"
+						aria-label="Guides"
+						title="Guides and safe areas"
 					>
 						{activeGuideDefinition ? (
 							activeGuideDefinition.renderTriggerIcon()
@@ -48,7 +55,7 @@ export function PreviewToolbar({
 							<HugeiconsIcon icon={GridTableIcon} />
 						)}
 					</Button>
-				</GridPopover> */}
+				</GridPopover>
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>

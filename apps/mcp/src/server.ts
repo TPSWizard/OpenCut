@@ -212,6 +212,12 @@ export function createOpenCutMcpServer({
 				quality: z.enum(["low", "medium", "high", "very_high"]).optional(),
 				includeAudio: z.boolean().optional(),
 				fps: z.number().positive().optional(),
+				preset: z
+					.string()
+					.optional()
+					.describe(
+						"Platform preset id (youtube, youtube-shorts, tiktok, instagram-reels, linkedin, x): MP4 with the platform's H.264 settings; run opencut_call export.check first",
+					),
 			},
 		},
 		async (params) => {
@@ -285,8 +291,10 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - playback.getState / playback.play / playback.pause / playback.seek { time }
 - selection.get / selection.set { elements } / selection.clear
 - history.undo / history.redo / history.state
-- export.render { format?, quality?, includeAudio?, fps?, fileName? } → bytes (in-page only)
+- export.render { format?, quality?, includeAudio?, fps?, fileName?, preset? } → bytes (in-page only)
 - export.download { same } → triggers a file download (used by the headless runner)
+- export.presets {} → [{ id, label, canvas, fps, maxDurationSeconds, maxFileBytes, safeArea, verified, source, encode }]
+- export.check { preset, includeAudio? } → { preset, issues: [{ kind, severity, message, fix? }], estimatedBytes }
 
 Element params of interest: transform.positionX, transform.positionY (pixels from centre),
 transform.scaleX, transform.scaleY, transform.rotate (degrees), opacity (0..1);

@@ -1,4 +1,5 @@
 import type { FrameRate } from "opencut-wasm";
+import type { PlatformEncodeSettings } from "@/platforms/catalogue";
 import { EXPORT_MIME_TYPES } from "./mime-types";
 
 export const EXPORT_QUALITY_VALUES = [
@@ -18,6 +19,12 @@ export interface ExportOptions {
 	quality: ExportQuality;
 	fps?: FrameRate;
 	includeAudio?: boolean;
+	/**
+	 * Encode for a platform upload: H.264 High profile at the platform
+	 * bitrate with a half-second closed GOP, the moov atom first and
+	 * 384 kbps audio. Only MP4 takes it; `quality` is ignored.
+	 */
+	platform?: PlatformEncodeSettings;
 }
 
 export interface ExportResult {

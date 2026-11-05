@@ -55,7 +55,7 @@ falls back to a free one with a warning. Point the CLI at a running app with
 | `media` | Alias → file path (relative to the job file) or `http(s)` URL |
 | `timeline` | Ordered steps: `clip` (media alias, `at`, optional `duration`, `trackType`) or `text` (`text`, `at`, `duration`, `params`) |
 | `script` | Path to a JavaScript file (or inline code) run in the editor with `opencut` bound to the Editor API, after the steps and before the export |
-| `export` | `format` (`mp4`/`webm`), `quality` (`low`…`very_high`), `includeAudio`, `fps`, `output` path |
+| `export` | `format` (`mp4`/`webm`), `quality` (`low`…`very_high`), `includeAudio`, `fps`, `preset` (a platform id such as `youtube-shorts`; forces MP4 with that platform's H.264 settings), `output` path |
 
 Times are seconds. Every step goes through the editor's own undoable
 commands, so the resulting project opens normally in the UI.

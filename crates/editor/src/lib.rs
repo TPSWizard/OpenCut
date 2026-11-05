@@ -18,6 +18,7 @@ mod error;
 mod frame;
 mod freeform;
 mod params;
+mod platforms;
 mod store;
 mod transition;
 
@@ -51,6 +52,12 @@ pub use transition::{
     ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
+pub use platforms::{
+    PLATFORM_AUDIO_BITRATE, PLATFORM_PRESETS, PlatformEncodeSettings, PlatformFix, PlatformIssue, PlatformIssueKind,
+    PlatformPreset, PlatformSeverity, SafeArea, Verified, check_platform_export, describe_aspect,
+    estimate_platform_file_bytes, format_bytes, format_duration, platform_encode_settings, platform_preset,
+    recommended_video_bitrate,
+};
 pub use store::{ProjectStore, ProjectSummary};
 pub use time;
 

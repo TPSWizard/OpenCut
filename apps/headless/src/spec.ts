@@ -55,6 +55,8 @@ export interface HeadlessExportSpec {
 	quality?: HeadlessExportQuality;
 	includeAudio?: boolean;
 	fps?: number;
+	/** Platform preset id (`export.presets`): forces MP4 with the platform's encoder settings. */
+	preset?: string;
 	/** Output file path; the extension is added when missing. */
 	output: string;
 }
@@ -205,10 +207,12 @@ export function parseHeadlessJob(value: unknown): HeadlessJob {
 		) {
 			throw new HeadlessSpecError("export.quality must be low, medium, high or very_high");
 		}
+		const preset = optionalString(value.export.preset, "export.preset");
 		job.export = {
 			output: value.export.output,
 			format: format as HeadlessExportFormat | undefined,
 			quality: quality as HeadlessExportQuality | undefined,
+			preset,
 			includeAudio:
 				typeof value.export.includeAudio === "boolean"
 					? value.export.includeAudio

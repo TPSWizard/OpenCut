@@ -184,6 +184,54 @@ export interface ApiExportOptions {
 	fps?: number;
 	/** File name without extension; defaults to the project name. */
 	fileName?: string;
+	/**
+	 * A platform preset id from `export.presets`. Forces MP4 with H.264
+	 * High profile at the platform bitrate, a half-second closed GOP, the
+	 * moov atom first and 384 kbps audio; `quality` is then ignored. The
+	 * canvas and frame rate are not changed: run `export.check` first.
+	 */
+	preset?: string;
+}
+
+export interface ApiSafeArea {
+	top: number;
+	bottom: number;
+	left: number;
+	right: number;
+}
+
+export interface ApiPlatformPreset {
+	id: string;
+	label: string;
+	canvas: { width: number; height: number };
+	fps: number;
+	maxDurationSeconds: number | null;
+	maxFileBytes: number | null;
+	/** Fractions of the frame the platform's controls cover, or null. */
+	safeArea: ApiSafeArea | null;
+	verified: "official" | "third-party";
+	source: string;
+	/** Encoder settings for the open project's canvas and frame rate. */
+	encode: {
+		videoBitrate: number;
+		audioBitrate: number;
+		keyFrameIntervalSeconds: number;
+		codec: string;
+	};
+}
+
+export interface ApiPlatformIssue {
+	kind: "canvas" | "fps" | "duration" | "size";
+	severity: "warning" | "error";
+	message: string;
+	fix?: { canvas?: { width: number; height: number }; fps?: number };
+}
+
+export interface ApiPlatformCheck {
+	preset: string;
+	/** Empty when the project matches the platform. */
+	issues: ApiPlatformIssue[];
+	estimatedBytes: number;
 }
 
 export interface ApiExportResult {
@@ -387,6 +435,13 @@ export interface EditorApiMethods {
 	"export.download": {
 		params: ApiExportOptions;
 		result: { fileName: string; mimeType: string; bytes: number };
+	};
+	/** Platform presets with the encoder settings for the open project. */
+	"export.presets": { params: Record<string, never>; result: ApiPlatformPreset[] };
+	/** What the platform would object to in the project as it is. */
+	"export.check": {
+		params: { preset: string; includeAudio?: boolean };
+		result: ApiPlatformCheck;
 	};
 }
 

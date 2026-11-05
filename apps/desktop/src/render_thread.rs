@@ -12,7 +12,7 @@ use std::thread;
 use editor::{MediaItem, MediaKind, Project, Segment, plan_audio};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::RenderImage;
-use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey};
+use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode};
 use render::{Renderer, RendererOptions};
 use time::MediaTime;
 
@@ -26,6 +26,8 @@ pub(crate) struct ExportSettings {
     pub format: EncodeFormat,
     pub quality: EncodeQuality,
     pub include_audio: bool,
+    /// Platform upload settings; replace `quality` for MP4.
+    pub platform: Option<PlatformEncode>,
 }
 
 pub(crate) enum RenderRequest {
@@ -294,6 +296,7 @@ fn export(
         fps,
         format: settings.format,
         quality: settings.quality,
+        platform: settings.platform,
         duration_seconds: duration.to_seconds_f64(),
         audio,
     };
@@ -438,6 +441,7 @@ mod tests {
                 format: EncodeFormat::Mp4,
                 quality: EncodeQuality::Low,
                 include_audio: true,
+                platform: None,
             },
             &cancel,
             &events,
@@ -465,7 +469,7 @@ mod tests {
         let cancel = AtomicBool::new(true);
         let result = export(
             &project,
-            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false },
+            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None },
             &cancel,
             &events,
             Some(ffmpeg),
@@ -476,8 +480,9 @@ mod tests {
 
     /// Exports the project `<root>/<id>/project.json` named by
     /// `OPENCUT_EXPORT_PROJECT=<root>/<id>` at its canvas size into a
-    /// temporary directory. A developer aid for reproducing an export
-    /// failure outside the app; skipped otherwise.
+    /// temporary directory, with `OPENCUT_EXPORT_PRESET=<platform id>` for a
+    /// platform preset. A developer aid for reproducing an export failure
+    /// outside the app; skipped otherwise.
     #[test]
     fn exports_the_project_named_by_the_environment() {
         let Ok(path) = std::env::var("OPENCUT_EXPORT_PROJECT") else {
@@ -496,6 +501,17 @@ mod tests {
         let output = std::env::var_os("OPENCUT_EXPORT_OUTPUT")
             .map(PathBuf::from)
             .unwrap_or_else(|| dir.path().join("out.mp4"));
+        let platform = std::env::var("OPENCUT_EXPORT_PRESET").ok().map(|id| {
+            let preset = editor::platform_preset(&id).expect("a known platform preset");
+            let fps = project.settings.fps.as_f64().unwrap_or(30.0);
+            let encode = editor::platform_encode_settings(project.settings.canvas, fps);
+            eprintln!("preset {}: {encode:?}", preset.label);
+            PlatformEncode {
+                video_bitrate: encode.video_bitrate,
+                audio_bitrate: encode.audio_bitrate,
+                gop_frames: encode.gop_frames,
+            }
+        });
         let (events, _receiver) = unbounded();
         let cancel = AtomicBool::new(false);
         let result = export(
@@ -505,6 +521,7 @@ mod tests {
                 format: EncodeFormat::Mp4,
                 quality: EncodeQuality::High,
                 include_audio: true,
+                platform,
             },
             &cancel,
             &events,

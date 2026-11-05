@@ -140,6 +140,45 @@ fn canvas_point(bounds: Bounds<Pixels>, canvas_size: (f32, f32), position: Point
     (x >= 0.0 && y >= 0.0 && x <= canvas_size.0 && y <= canvas_size.1).then_some((x, y))
 }
 
+/// Shades the margins a platform's own controls cover and outlines what
+/// stays visible, as the web app's guide overlay does.
+fn paint_safe_area(bounds: Bounds<Pixels>, canvas_size: (f32, f32), area: editor::SafeArea, window: &mut Window) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    if scale <= 0.0 {
+        return;
+    }
+    let (width, height) = (canvas_size.0 * scale, canvas_size.1 * scale);
+    let top = height * area.top as f32;
+    let bottom = height * area.bottom as f32;
+    let left = width * area.left as f32;
+    let right = width * area.right as f32;
+    let shade = hsla(0.0, 0.0, 0.0, 0.45);
+    let quads = [
+        (0.0, 0.0, width, top),
+        (0.0, height - bottom, width, bottom),
+        (0.0, top, left, height - top - bottom),
+        (width - right, top, right, height - top - bottom),
+    ];
+    for (x, y, w, h) in quads {
+        if w > 0.0 && h > 0.0 {
+            window.paint_quad(fill(
+                Bounds::new(point(origin.x + px(x), origin.y + px(y)), size(px(w), px(h))),
+                shade,
+            ));
+        }
+    }
+    let line = hsla(0.0, 0.0, 1.0, 0.9);
+    let corners = [
+        point(origin.x + px(left), origin.y + px(top)),
+        point(origin.x + px(width - right), origin.y + px(top)),
+        point(origin.x + px(width - right), origin.y + px(height - bottom)),
+        point(origin.x + px(left), origin.y + px(height - bottom)),
+    ];
+    for index in 0..4 {
+        paint_line(corners[index], corners[(index + 1) % 4], 0.75, line, window);
+    }
+}
+
 /// A thin quad from `a` to `b`.
 fn paint_line(a: Point<Pixels>, b: Point<Pixels>, half_width: f32, color: gpui::Hsla, window: &mut Window) {
     let (dx, dy) = (f32::from(b.x - a.x), f32::from(b.y - a.y));
@@ -243,6 +282,7 @@ impl Render for PreviewPanel {
         );
 
         let canvas_size = (project.settings.canvas.width as f32, project.settings.canvas.height as f32);
+        let guide = state.guide;
         let pen_active = state.pen.is_some();
         let overlay = state.freeform_overlay();
         let path_editable = overlay.as_ref().is_some_and(|overlay| overlay.editable);
@@ -387,6 +427,16 @@ impl Render for PreviewPanel {
                         .child("Rendering…"),
                 ),
             })
+            .when_some(guide.and_then(|guide| guide.safe_area), |this, safe_area| {
+                this.child(
+                    canvas(
+                        |_, _, _| (),
+                        move |bounds, _, window, _| paint_safe_area(bounds, canvas_size, safe_area, window),
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
+            })
             .when_some(overlay, |this, overlay| {
                 this.child(
                     canvas(
@@ -397,6 +447,30 @@ impl Render for PreviewPanel {
                     .inset_0(),
                 )
             });
+
+        // Platform safe-area guides: the presets that publish one, plus "Off".
+        let mut guide_row = div().flex().items_center().gap(px(2.)).ml(px(8.)).child(
+            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Guide"),
+        );
+        let guide_choices = std::iter::once(None)
+            .chain(editor::PLATFORM_PRESETS.iter().filter(|preset| preset.safe_area.is_some()).map(Some));
+        for choice in guide_choices {
+            let state = self.state.clone();
+            let label = choice.map(|preset| preset.label).unwrap_or("Off");
+            let active = match (choice, guide) {
+                (None, None) => true,
+                (Some(a), Some(b)) => a.id == b.id,
+                _ => false,
+            };
+            guide_row = guide_row.child(
+                Button::new(crate::components::eid("guide", label), label)
+                    .variant(if active { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                    .size(ButtonSize::XSmall)
+                    .on_click(move |_, _, cx| {
+                        state.update(cx, |state, cx| state.set_guide(choice, cx));
+                    }),
+            );
+        }
 
         let transport = |id: &'static str, label: &'static str, action: fn(&mut EditorState, &mut Context<EditorState>)| {
             let state = self.state.clone();
@@ -451,6 +525,8 @@ impl Render for PreviewPanel {
                             .text_color(colors.foreground)
                             .child(format!("{playhead}  /  {duration}")),
                     )
+                    .child(div().flex_1())
+                    .child(guide_row)
                     .child(div().flex_1())
                     .child(
                         div()

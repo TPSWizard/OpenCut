@@ -55,6 +55,20 @@ impl EncodeQuality {
     }
 }
 
+/// Platform upload settings, as YouTube documents them for H.264: High
+/// profile, two B-frames, CABAC, a closed GOP of a fixed length, a target
+/// bitrate and stereo AAC at a given rate. The moov atom goes first in any
+/// case.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlatformEncode {
+    /// Target video bitrate in bits per second.
+    pub video_bitrate: u64,
+    /// AAC bitrate in bits per second.
+    pub audio_bitrate: u64,
+    /// Frames between key frames.
+    pub gop_frames: u32,
+}
+
 /// How a volume key's value reaches the next key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GainEase {
@@ -141,6 +155,9 @@ pub struct EncodeSettings {
     pub fps: f64,
     pub format: EncodeFormat,
     pub quality: EncodeQuality,
+    /// Encode for a platform upload instead of at `quality`. MP4 only; WebM
+    /// ignores it.
+    pub platform: Option<PlatformEncode>,
     /// Total length, so audio can be padded or cut to the picture.
     pub duration_seconds: f64,
     pub audio: Vec<AudioMixClip>,
@@ -316,24 +333,32 @@ pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
     let crf = settings.quality.crf(settings.format);
     match settings.format {
         EncodeFormat::Mp4 => {
-            args.extend(
-                [
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "medium",
-                    "-crf",
-                    &crf.to_string(),
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-movflags",
-                    "+faststart",
-                ]
-                .into_iter()
-                .map(String::from),
-            );
+            args.extend(["-c:v", "libx264", "-preset", "medium"].into_iter().map(String::from));
+            match settings.platform {
+                Some(platform) => {
+                    let gop = platform.gop_frames.max(1).to_string();
+                    let rate = platform.video_bitrate.to_string();
+                    let max_rate = (platform.video_bitrate * 3 / 2).to_string();
+                    let buffer = (platform.video_bitrate * 2).to_string();
+                    args.extend(
+                        [
+                            "-profile:v", "high", "-bf", "2", "-coder", "1", "-b:v", &rate, "-maxrate", &max_rate,
+                            "-bufsize", &buffer, "-g", &gop, "-keyint_min", &gop, "-sc_threshold", "0", "-flags",
+                            "+cgop",
+                        ]
+                        .into_iter()
+                        .map(String::from),
+                    );
+                }
+                None => args.extend(["-crf".to_owned(), crf.to_string()]),
+            }
+            args.extend(["-pix_fmt", "yuv420p", "-movflags", "+faststart"].into_iter().map(String::from));
             if has_audio {
-                args.extend(["-c:a", "aac", "-b:a", "192k"].into_iter().map(String::from));
+                let audio_rate = settings
+                    .platform
+                    .map(|platform| platform.audio_bitrate.to_string())
+                    .unwrap_or_else(|| "192k".to_owned());
+                args.extend(["-c:a".to_owned(), "aac".to_owned(), "-b:a".to_owned(), audio_rate]);
             }
         }
         EncodeFormat::Webm => {
@@ -380,6 +405,7 @@ mod tests {
             fps: 30.0,
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
+            platform: None,
             duration_seconds: 10.0,
             audio: vec![
                 AudioMixClip {
@@ -450,6 +476,7 @@ mod tests {
             fps: 30.0,
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::Low,
+            platform: None,
             duration_seconds: 4.0,
             audio: vec![clip],
         };
@@ -457,6 +484,33 @@ mod tests {
         let graph = &args[args.iter().position(|a| a == "-filter_complex").unwrap() + 1];
         assert!(graph.contains(",asetpts=PTS-STARTPTS,volume='pow(10,(if(lt(t,0.500000)"));
         assert!(graph.contains(":eval=frame,aresample=48000,"));
+    }
+
+    #[test]
+    fn platform_settings_use_high_profile_and_a_closed_gop() {
+        let settings = EncodeSettings {
+            output: PathBuf::from("out.mp4"),
+            width: 1080,
+            height: 1920,
+            fps: 30.0,
+            format: EncodeFormat::Mp4,
+            quality: EncodeQuality::Low,
+            platform: Some(PlatformEncode { video_bitrate: 8_000_000, audio_bitrate: 384_000, gop_frames: 15 }),
+            duration_seconds: 2.0,
+            audio: vec![AudioMixClip {
+                path: PathBuf::from("a.wav"),
+                source_start_seconds: 0.0,
+                source_end_seconds: 2.0,
+                timeline_start_seconds: 0.0,
+                gain: 1.0,
+                gain_keys: Vec::new(),
+            }],
+        };
+        let joined = build_args(&settings).join(" ");
+        assert!(joined.contains("-profile:v high -bf 2 -coder 1 -b:v 8000000 -maxrate 12000000 -bufsize 16000000 -g 15 -keyint_min 15 -sc_threshold 0 -flags +cgop"), "{joined}");
+        assert!(joined.contains("-movflags +faststart"), "{joined}");
+        assert!(joined.contains("-c:a aac -b:a 384000"), "{joined}");
+        assert!(!joined.contains("-crf"), "{joined}");
     }
 
     #[test]
@@ -468,6 +522,7 @@ mod tests {
             fps: 24.0,
             format: EncodeFormat::Webm,
             quality: EncodeQuality::Medium,
+            platform: None,
             duration_seconds: 2.0,
             audio: vec![],
         };

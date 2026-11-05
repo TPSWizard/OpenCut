@@ -81,7 +81,18 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   with fewer than three points opens and stops masking.
 - **Undo/redo** for every edit (`Ctrl/Cmd-Z`, `Ctrl/Cmd-Shift-Z`), autosave.
 - **Export** to MP4 (H.264 + AAC) or WebM (VP9 + Opus) at the canvas size and
-  frame rate, with the audio clips mixed, with progress and cancel.
+  frame rate, with the audio clips mixed, with progress and cancel. A
+  **Platform** row (YouTube, Shorts, TikTok, Reels, LinkedIn, X) encodes the
+  way YouTube documents uploads: H.264 High profile at the bitrate from its
+  SDR table, two B-frames, a closed GOP of half the frame rate, the moov atom
+  first and 384 kbps AAC. The dialog lists what the platform would object to
+  (canvas, frame rate, length, file size) with a button for each project
+  setting that clears it. The table lives in `crates/editor/src/platforms.rs`
+  and matches the web app's.
+- **Safe-area guides** under the preview (`Guide` row: TikTok, Reels, Shorts)
+  shade the part of a vertical frame the platform's own controls cover. The
+  margins are approximate, taken from third-party guides, since no platform
+  publishes a fixed zone.
 
 ### Shortcuts
 

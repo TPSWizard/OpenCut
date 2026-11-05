@@ -1,7 +1,12 @@
 use std::path::PathBuf;
 
+use editor::{
+    CanvasSize, Command, PLATFORM_PRESETS, PlatformFix, PlatformPreset, PlatformSeverity, SettingsPatch, Verified,
+    check_platform_export, describe_aspect, estimate_platform_file_bytes, format_bytes, platform_encode_settings,
+    platform_preset,
+};
 use gpui::{Context, Entity, FontWeight, Window, div, prelude::*, px};
-use media::{EncodeFormat, EncodeQuality};
+use media::{EncodeFormat, EncodeQuality, PlatformEncode};
 
 use crate::components::{Button, ButtonSize, ButtonVariant, eid};
 use crate::render_thread::ExportSettings;
@@ -20,6 +25,8 @@ pub(crate) struct ExportDialog {
     format: EncodeFormat,
     quality: EncodeQuality,
     include_audio: bool,
+    /// Platform preset the export is for; forces MP4 with its encoder settings.
+    platform: Option<&'static PlatformPreset>,
 }
 
 impl ExportDialog {
@@ -38,7 +45,19 @@ impl ExportDialog {
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
             include_audio: true,
+            platform: None,
         }
+    }
+
+    fn choose_platform(&mut self, id: Option<&str>, cx: &mut Context<Self>) {
+        self.platform = id.and_then(platform_preset);
+        if self.platform.is_some() && self.format != EncodeFormat::Mp4 {
+            self.format = EncodeFormat::Mp4;
+            if let Some(output) = &mut self.output {
+                output.set_extension("mp4");
+            }
+        }
+        cx.notify();
     }
 
     fn choose_path(&mut self, cx: &mut Context<Self>) {
@@ -70,11 +89,22 @@ impl ExportDialog {
         if output.extension().is_none() {
             output.set_extension(self.format.extension());
         }
+        let platform = self.platform.filter(|_| self.format == EncodeFormat::Mp4).map(|_| {
+            let project = self.state.read(cx).project();
+            let fps = project.settings.fps.as_f64().unwrap_or(30.0);
+            let encode = platform_encode_settings(project.settings.canvas, fps);
+            PlatformEncode {
+                video_bitrate: encode.video_bitrate,
+                audio_bitrate: encode.audio_bitrate,
+                gop_frames: encode.gop_frames,
+            }
+        });
         let settings = ExportSettings {
             output,
             format: self.format,
             quality: self.quality,
             include_audio: self.include_audio,
+            platform,
         };
         self.state
             .update(cx, |state, cx| state.start_export(settings, cx));
@@ -201,6 +231,99 @@ impl Render for ExportDialog {
                     ),
                 );
         } else {
+            let platform = self.platform;
+            let mut platform_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Platform"),
+            );
+            let choices = std::iter::once(None).chain(PLATFORM_PRESETS.iter().map(Some));
+            for choice in choices {
+                let label = choice.map(|preset| preset.label).unwrap_or("Custom");
+                let active = match (choice, platform) {
+                    (None, None) => true,
+                    (Some(a), Some(b)) => a.id == b.id,
+                    _ => false,
+                };
+                let id = choice.map(|preset| preset.id);
+                platform_row = platform_row.child(
+                    Button::new(eid("platform", label), label)
+                        .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| this.choose_platform(id, cx))),
+                );
+            }
+            let mut platform_notes = div().flex().flex_col().gap(px(4.));
+            if let Some(preset) = platform {
+                let fps_value = project.settings.fps.as_f64().unwrap_or(30.0);
+                let encode = platform_encode_settings(canvas, fps_value);
+                let estimate = estimate_platform_file_bytes(canvas, fps_value, duration, self.include_audio);
+                platform_notes = platform_notes.child(
+                    div().text_xs().text_color(colors.muted_foreground).child(format!(
+                        "MP4, H.264 High profile at {} Mbps, closed GOP every {} frames, moov atom first, about {}. Target {}x{} ({}) at {} fps{}.",
+                        encode.video_bitrate as f64 / 1_000_000.0,
+                        encode.gop_frames,
+                        format_bytes(estimate),
+                        preset.canvas.width,
+                        preset.canvas.height,
+                        describe_aspect(preset.canvas),
+                        preset.fps.as_f64().unwrap_or(30.0),
+                        preset
+                            .max_duration_seconds
+                            .map(|max| format!(", up to {} min", (max / 60.0).round()))
+                            .unwrap_or_default()
+                    )),
+                );
+                if preset.verified == Verified::ThirdParty {
+                    platform_notes = platform_notes.child(
+                        div().text_xs().text_color(colors.muted_foreground).child(format!(
+                            "Limits come from third-party guides, not {}'s own pages.",
+                            preset.label
+                        )),
+                    );
+                }
+                let issues = check_platform_export(preset, canvas, project.settings.fps, duration, self.include_audio);
+                if issues.is_empty() {
+                    platform_notes = platform_notes
+                        .child(div().text_xs().child(format!("The project matches {}.", preset.label)));
+                }
+                for issue in issues {
+                    let color = match issue.severity {
+                        PlatformSeverity::Error => colors.destructive,
+                        PlatformSeverity::Warning => colors.foreground,
+                    };
+                    let mut row = div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().text_xs().text_color(color).child(issue.message.clone()));
+                    if let Some(fix) = issue.fix {
+                        let (label, patch) = match fix {
+                            PlatformFix::Canvas(CanvasSize { width, height }) => (
+                                format!("Set canvas to {width}x{height}"),
+                                SettingsPatch { canvas: Some(CanvasSize { width, height }), ..Default::default() },
+                            ),
+                            PlatformFix::Fps(rate) => (
+                                format!("Set project to {} fps", rate.as_f64().unwrap_or(30.0)),
+                                SettingsPatch { fps: Some(rate), ..Default::default() },
+                            ),
+                        };
+                        let state = self.state.clone();
+                        row = row.child(
+                            div().child(
+                                Button::new(eid("fix", &label), label.clone())
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| {
+                                        let patch = patch.clone();
+                                        state.update(cx, |state, cx| {
+                                            state.execute(Command::UpdateSettings(patch), cx);
+                                        });
+                                    }),
+                            ),
+                        );
+                    }
+                    platform_notes = platform_notes.child(row);
+                }
+            }
             let mut format_row = div().flex().items_center().gap(px(6.)).child(
                 div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Format"),
             );
@@ -275,8 +398,9 @@ impl Render for ExportDialog {
                                 .on_click(cx.listener(|this, _, _, cx| this.choose_path(cx))),
                         ),
                 )
-                .child(format_row)
-                .child(quality_row)
+                .child(platform_row)
+                .child(platform_notes)
+                .when(platform.is_none(), |this| this.child(format_row).child(quality_row))
                 .child(audio_row)
                 .when(!has_ffmpeg, |this| {
                     this.child(

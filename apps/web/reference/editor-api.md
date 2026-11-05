@@ -65,6 +65,14 @@ methods answer with the error code `no_project` before that.
 | `history.undo` / `redo` / `state` | – | `{ canUndo, canRedo }` |
 | `export.render` | `ApiExportOptions` | `{ fileName, mimeType, bytes: ArrayBuffer }` |
 | `export.download` | `ApiExportOptions` | `{ fileName, mimeType, bytes }` and a browser download |
+| `export.presets` | – | `ApiPlatformPreset[]` — platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) with canvas, fps, limits, safe area and the encoder settings for the open project |
+| `export.check` | `{ preset, includeAudio? }` | `{ preset, issues, estimatedBytes }` — what the platform would object to (canvas, fps, length, size), each with a `fix` where a project setting clears it |
+
+`ApiExportOptions.preset` names a platform preset: the export is then MP4
+with H.264 High profile at the platform's recommended bitrate (YouTube's SDR
+table by frame size and rate), a closed GOP of half the frame rate, the moov
+atom first and 384 kbps AAC. The canvas and frame rate stay as the project
+has them, so call `export.check` and `project.updateSettings` first.
 
 `patch` for `timeline.updateElement` takes `name`, `startTime`, `duration`,
 `trimStart`, `trimEnd`, `hidden` and `params` (merged into the element's

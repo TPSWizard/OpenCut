@@ -34,6 +34,13 @@ import {
 } from "@/components/section";
 import { useEditor } from "@/editor/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/export/defaults";
+import {
+	CUSTOM_PLATFORM,
+	PlatformExportSection,
+	type PlatformChoice,
+} from "@/platforms/components/platform-export-section";
+import { getPlatformPreset, platformEncodeSettings } from "@/platforms";
+import { frameRateToFloat } from "@/fps/utils";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -110,16 +117,25 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	const [platform, setPlatform] = useState<PlatformChoice>(CUSTOM_PLATFORM);
+	const platformPreset = getPlatformPreset({ id: platform });
 
 	const handleExport = async () => {
 		if (!activeProject) return;
 
+		const exportFormat = platformPreset ? "mp4" : format;
 		const result = await editor.project.export({
 			options: {
-				format,
+				format: exportFormat,
 				quality,
 				fps: activeProject.settings.fps,
 				includeAudio: shouldIncludeAudio,
+				platform: platformPreset
+					? platformEncodeSettings({
+							canvas: activeProject.settings.canvasSize,
+							fps: frameRateToFloat(activeProject.settings.fps),
+						})
+					: undefined,
 			},
 		});
 
@@ -131,8 +147,8 @@ function ExportPopover({
 		if (result.success && result.buffer) {
 			downloadBuffer({
 				buffer: result.buffer,
-				filename: `${activeProject.metadata.name}${getExportFileExtension({ format })}`,
-				mimeType: getExportMimeType({ format }),
+				filename: `${activeProject.metadata.name}${getExportFileExtension({ format: exportFormat })}`,
+				mimeType: getExportMimeType({ format: exportFormat }),
 			});
 
 			editor.project.clearExportState();
@@ -162,7 +178,13 @@ function ExportPopover({
 					<div className="flex flex-col gap-4">
 						{!isExporting && (
 							<>
+								<PlatformExportSection
+									value={platform}
+									onChange={setPlatform}
+									includeAudio={shouldIncludeAudio}
+								/>
 								<div className="flex flex-col">
+									{!platformPreset && (
 									<Section
 										collapsible
 										defaultOpen={false}
@@ -195,7 +217,9 @@ function ExportPopover({
 											</RadioGroup>
 										</SectionContent>
 									</Section>
+									)}
 
+									{!platformPreset && (
 									<Section collapsible defaultOpen={false}>
 										<SectionHeader>
 											<SectionTitle>Quality</SectionTitle>
@@ -230,6 +254,7 @@ function ExportPopover({
 											</RadioGroup>
 										</SectionContent>
 									</Section>
+									)}
 
 									<Section collapsible defaultOpen={false}>
 										<SectionHeader>

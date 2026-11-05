@@ -538,18 +538,26 @@ export class HeadlessRunner {
 		quality,
 		includeAudio,
 		fps,
+		preset,
 	}: {
 		output: string;
 		format?: "mp4" | "webm";
 		quality?: string;
 		includeAudio?: boolean;
 		fps?: number;
+		/** Platform preset id; forces MP4. */
+		preset?: string;
 	}): Promise<string> {
 		const page = this.requirePage();
-		const chosenFormat = format ?? (output.toLowerCase().endsWith(".webm") ? "webm" : "mp4");
+		const chosenFormat =
+			preset !== undefined
+				? "mp4"
+				: (format ?? (output.toLowerCase().endsWith(".webm") ? "webm" : "mp4"));
 		const target = extname(output) ? output : `${output}.${chosenFormat}`;
 		mkdirSync(dirname(target), { recursive: true });
-		this.log(`exporting ${chosenFormat} (${quality ?? "high"})…`);
+		this.log(
+			`exporting ${chosenFormat} (${preset !== undefined ? `preset ${preset}` : (quality ?? "high")})…`,
+		);
 		const started = Date.now();
 		const downloadPromise = page.waitForEvent("download", { timeout: this.timeoutMs * 4 });
 		const resultPromise = this.call<{ fileName: string; bytes: number }>("export.download", {
@@ -557,6 +565,7 @@ export class HeadlessRunner {
 			quality,
 			includeAudio,
 			fps,
+			preset,
 		});
 		const [download, result] = await Promise.all([downloadPromise, resultPromise]);
 		await download.saveAs(target);

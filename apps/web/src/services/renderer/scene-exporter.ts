@@ -11,6 +11,7 @@ import {
 	QUALITY_MEDIUM,
 	QUALITY_HIGH,
 	QUALITY_VERY_HIGH,
+	Quality,
 } from "mediabunny";
 import type { FrameRate } from "opencut-wasm";
 import { mediaTimeToSeconds } from "opencut-wasm";
@@ -18,6 +19,7 @@ import { TICKS_PER_SECOND } from "@/wasm";
 import { frameRateToFloat } from "@/fps/utils";
 import type { RootNode } from "./nodes/root-node";
 import type { ExportFormat, ExportQuality } from "@/export";
+import type { PlatformEncodeSettings } from "@/platforms/catalogue";
 import { CanvasRenderer } from "./canvas-renderer";
 
 type ExportParams = {
@@ -26,6 +28,7 @@ type ExportParams = {
 	fps: FrameRate;
 	format: ExportFormat;
 	quality: ExportQuality;
+	platform?: PlatformEncodeSettings;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
 };
@@ -48,6 +51,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private renderer: CanvasRenderer;
 	private format: ExportFormat;
 	private quality: ExportQuality;
+	private platform: PlatformEncodeSettings | null;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
 
@@ -59,6 +63,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		fps,
 		format,
 		quality,
+		platform,
 		shouldIncludeAudio,
 		audioBuffer,
 	}: ExportParams) {
@@ -71,6 +76,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		this.format = format;
 		this.quality = quality;
+		this.platform = format === "mp4" ? (platform ?? null) : null;
 		this.shouldIncludeAudio = shouldIncludeAudio ?? false;
 		this.audioBuffer = audioBuffer;
 	}
@@ -91,8 +97,14 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		);
 		const frameCount = Math.floor(rootNode.duration / ticksPerFrame);
 
+		const platform = this.platform;
 		const outputFormat =
-			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
+			this.format === "webm"
+				? new WebMOutputFormat()
+				: new Mp4OutputFormat(
+						// Platforms want the moov atom first (fast start).
+						platform ? { fastStart: "in-memory" } : {},
+					);
 
 		const output = new Output({
 			format: outputFormat,
@@ -101,7 +113,21 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: this.format === "webm" ? "vp9" : "avc",
-			bitrate: qualityMap[this.quality],
+			...(platform
+				? {
+						quality: new Quality({ bitrate: platform.videoBitrate }),
+						keyFrameInterval: platform.keyFrameIntervalSeconds,
+						...((await canEncodeWithCodecString({
+							codec: platform.codec,
+							width: this.renderer.width,
+							height: this.renderer.height,
+							bitrate: platform.videoBitrate,
+							fps: fpsFloat,
+						}))
+							? { fullCodecString: platform.codec }
+							: {}),
+					}
+				: { bitrate: qualityMap[this.quality] }),
 		});
 
 		output.addVideoTrack(videoSource, { frameRate: fpsFloat });
@@ -122,7 +148,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			audioSource = new AudioBufferSource({
 				codec: audioCodec,
-				bitrate: qualityMap[this.quality],
+				bitrate: platform
+					? new Quality({ bitrate: platform.audioBitrate })
+					: qualityMap[this.quality],
 			});
 			output.addAudioTrack(audioSource);
 		}
@@ -167,5 +195,38 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		this.emit("complete", buffer);
 		return buffer;
+	}
+}
+
+/**
+ * Whether this browser's encoder takes the exact codec string (profile and
+ * level). When it does not, the library's own string is used instead, which
+ * keeps the bitrate and GOP but may land on a different profile.
+ */
+async function canEncodeWithCodecString({
+	codec,
+	width,
+	height,
+	bitrate,
+	fps,
+}: {
+	codec: string;
+	width: number;
+	height: number;
+	bitrate: number;
+	fps: number;
+}): Promise<boolean> {
+	if (typeof VideoEncoder === "undefined") return false;
+	try {
+		const { supported } = await VideoEncoder.isConfigSupported({
+			codec,
+			width,
+			height,
+			bitrate,
+			framerate: fps,
+		});
+		return !!supported;
+	} catch {
+		return false;
 	}
 }
