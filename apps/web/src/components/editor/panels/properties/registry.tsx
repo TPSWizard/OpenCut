@@ -1,4 +1,5 @@
 import { DuckingSection } from "@/ducking/components/ducking-section";
+import { SilenceSection } from "@/silence/components/silence-section";
 import type { ReactNode } from "react";
 import type {
 	EffectElement,
@@ -138,6 +139,7 @@ function buildAudioTab({
 					sectionKey="audio"
 				/>
 				<DuckingSection element={element} trackId={trackId} />
+				<SilenceSection element={element} trackId={trackId} />
 			</>
 		),
 	};

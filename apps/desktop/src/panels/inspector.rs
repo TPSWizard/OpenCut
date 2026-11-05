@@ -26,7 +26,14 @@ pub(crate) struct InspectorPanel {
     /// how far the music drops.
     duck_voice: Option<String>,
     duck_amount_db: f64,
+    /// Silence auto-cut choices: the shortest pause that goes, and how the
+    /// gaps close.
+    silence_min_seconds: f64,
+    silence_ripple: editor::RippleScope,
 }
+
+/// Shortest pauses offered for silence auto-cut, in seconds.
+const SILENCE_MIN_SECONDS: &[f64] = &[0.3, 0.5, 1.0, 2.0];
 
 /// Drops offered for auto-ducking, in dB.
 const DUCK_AMOUNTS: &[f64] = &[-6.0, -12.0, -18.0, -24.0];
@@ -89,6 +96,8 @@ impl InspectorPanel {
             scroll: ScrollHandle::new(),
             duck_voice: None,
             duck_amount_db: -12.0,
+            silence_min_seconds: 0.5,
+            silence_ripple: editor::RippleScope::All,
         }
     }
 
@@ -941,6 +950,75 @@ impl Render for InspectorPanel {
                         .child(voice_row)
                         .child(amount_row)
                         .child(action_row);
+
+                    // Silence auto-cut: pauses under -40 dBFS longer than the
+                    // chosen length go, with 0.1 s kept next to the speech.
+                    let mut min_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Longer than", window));
+                    for seconds in SILENCE_MIN_SECONDS {
+                        let seconds = *seconds;
+                        let active = (self.silence_min_seconds - seconds).abs() < 0.01;
+                        let label: &'static str = match (seconds * 10.0) as i32 {
+                            3 => "0.3 s",
+                            5 => "0.5 s",
+                            10 => "1 s",
+                            _ => "2 s",
+                        };
+                        min_row = min_row.child(
+                            Button::new(eid("silence-min", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.silence_min_seconds = seconds;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let ripple = self.silence_ripple;
+                    let (ripple_label, next_ripple) = match ripple {
+                        editor::RippleScope::All => ("Close gaps on every track", editor::RippleScope::Track),
+                        editor::RippleScope::Track => ("Close gaps on this track", editor::RippleScope::None),
+                        editor::RippleScope::None => ("Leave the gaps", editor::RippleScope::All),
+                    };
+                    let ripple_row = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .child(Self::label_cell("Afterwards", window))
+                        .child(
+                            Button::new("silence-ripple", ripple_label)
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.silence_ripple = next_ripple;
+                                    cx.notify();
+                                })),
+                        );
+                    let min_seconds = self.silence_min_seconds;
+                    let silence_row = div().flex().items_center().gap(px(8.)).child({
+                        let state = self.state.clone();
+                        Button::new("cut-silence", "Cut silence")
+                            .size(ButtonSize::XSmall)
+                            .disabled(!has_ffmpeg)
+                            .on_click(move |_, _, cx| {
+                                let options = editor::SilenceOptions { min_silence_seconds: min_seconds, ..Default::default() };
+                                state.update(cx, |state, cx| state.cut_silence_selected(options, ripple, cx));
+                            })
+                    });
+                    content = content
+                        .child(self.heading("Silence", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Removes pauses under -40 dBFS, keeping 0.1 s next to the speech, in one undo step."),
+                        )
+                        .child(min_row)
+                        .child(ripple_row)
+                        .child(silence_row);
                 }
 
                 if is_visual {

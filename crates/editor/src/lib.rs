@@ -20,6 +20,7 @@ mod frame;
 mod freeform;
 mod params;
 mod platforms;
+mod silence;
 mod store;
 mod transition;
 
@@ -63,6 +64,7 @@ pub use platforms::{
     estimate_platform_file_bytes, format_bytes, format_duration, platform_encode_settings, platform_preset,
     recommended_video_bitrate,
 };
+pub use silence::{RippleScope, SilenceOptions, silence_intervals};
 pub use store::{ProjectStore, ProjectSummary};
 pub use time;
 

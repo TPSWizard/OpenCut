@@ -221,6 +221,30 @@ export interface ApiDuckResult {
 	voiceElementIds: string[];
 }
 
+export interface ApiSilenceOptions {
+	/** The clip (audio or video element). */
+	element: ApiElementRef;
+	/** RMS level in dBFS under which a window is silent. Default -40. */
+	thresholdDb?: number;
+	/** Silence shorter than this stays. Default 0.5. */
+	minSilenceSeconds?: number;
+	/** Silence kept on each side of the speech around a cut. Default 0.1. */
+	paddingSeconds?: number;
+}
+
+export interface ApiSilenceReport {
+	/** Stretches to remove, in timeline seconds. */
+	intervals: { start: number; end: number }[];
+	removedSeconds: number;
+	clipStart: number;
+	clipDuration: number;
+}
+
+export interface ApiSilenceCutResult extends ApiSilenceReport {
+	/** The pieces of the clip left on the timeline. */
+	pieces: ApiElementRef[];
+}
+
 export interface ApiSafeArea {
 	top: number;
 	bottom: number;
@@ -472,6 +496,19 @@ export interface EditorApiMethods {
 	"audio.duck": { params: ApiDuckOptions; result: ApiDuckResult };
 	/** Drops the clip's volume keys; its own volume applies again. */
 	"audio.clearDucking": { params: { element: ApiElementRef }; result: ApiElementInfo };
+	/** Finds the silent stretches of a clip without changing anything. */
+	"audio.detectSilence": { params: ApiSilenceOptions; result: ApiSilenceReport };
+	/**
+	 * Cuts the silent stretches out of a clip in one undo step: splits at
+	 * each stretch's edges, removes the pieces inside and, with `ripple`
+	 * "all" (default) or "track", moves everything that starts after a
+	 * removed stretch left to close the gap. Elements on other tracks that
+	 * straddle a stretch stay put.
+	 */
+	"audio.cutSilence": {
+		params: ApiSilenceOptions & { ripple?: "all" | "track" | "none" };
+		result: ApiSilenceCutResult;
+	};
 	/** Platform presets with the encoder settings for the open project. */
 	"export.presets": { params: Record<string, never>; result: ApiPlatformPreset[] };
 	/** What the platform would object to in the project as it is. */

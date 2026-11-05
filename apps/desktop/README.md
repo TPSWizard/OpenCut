@@ -96,6 +96,13 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   down by the chosen amount 0.1 s before each passage, back up 0.5 s after,
   in one undo step. *Clear* drops the keys. The arithmetic lives in
   `crates/editor/src/ducking.rs` and matches the web app's.
+- **Silence auto-cut** next to it: *Cut silence* measures the selected
+  clip's own audio, finds pauses under −40 dBFS longer than the chosen
+  length (0.3 s to 2 s) and removes them in one undo step, keeping 0.1 s
+  next to the speech. *Afterwards* picks whether every track, only this
+  track or nothing closes up behind each cut. The command
+  (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
+  match the web app's.
 - **Safe-area guides** under the preview (`Guide` row: TikTok, Reels, Shorts)
   shade the part of a vertical frame the platform's own controls cover. The
   margins are approximate, taken from third-party guides, since no platform

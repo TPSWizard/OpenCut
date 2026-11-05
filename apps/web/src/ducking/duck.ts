@@ -116,7 +116,7 @@ export async function duckElement({
 
 	const clipStart = music.startTime / TICKS_PER_SECOND;
 	const clipDuration = music.duration / TICKS_PER_SECOND;
-	const levels = voiceLevels({
+	const levels = mixedLevels({
 		voices,
 		from: clipStart,
 		to: clipStart + clipDuration,
@@ -190,11 +190,11 @@ export function clearDucking({
 }
 
 /**
- * RMS level per window of timeline time, summing every voice clip that
+ * RMS level per window of timeline time, summing every given clip that
  * plays in the window. Trims and speed changes are followed; a clip's own
  * volume is not, since speech is detected on the source.
  */
-function voiceLevels({
+export function mixedLevels({
 	voices,
 	from,
 	to,

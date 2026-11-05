@@ -67,6 +67,8 @@ methods answer with the error code `no_project` before that.
 | `export.download` | `ApiExportOptions` | `{ fileName, mimeType, bytes }` and a browser download |
 | `audio.duck` | `{ element, voice?, amountDb?, thresholdDb?, attackSeconds?, releaseSeconds?, holdSeconds? }` | `{ element, keyframes, intervals, speechSeconds, voiceElementIds }` — auto-ducking: measures the voice (every other audible clip, or the `voice` refs) over the clip and replaces its volume keys with dips of `amountDb` (default −12) while speech plays, ramping down 0.1 s before and up 0.5 s after |
 | `audio.clearDucking` | `{ element }` | `ApiElementInfo` — drops the clip's volume keys |
+| `audio.detectSilence` | `{ element, thresholdDb?, minSilenceSeconds?, paddingSeconds? }` | `{ intervals, removedSeconds, clipStart, clipDuration }` — the clip's silent stretches (under −40 dBFS for 0.5 s or more by default, keeping 0.1 s next to speech), in timeline seconds |
+| `audio.cutSilence` | `{ element, ripple?, thresholdDb?, minSilenceSeconds?, paddingSeconds? }` | `{ intervals, removedSeconds, clipStart, clipDuration, pieces }` — cuts those stretches out in one undo step; `ripple` "all" (default) or "track" closes the gaps, "none" leaves them |
 | `export.presets` | – | `ApiPlatformPreset[]` — platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) with canvas, fps, limits, safe area and the encoder settings for the open project |
 | `export.check` | `{ preset, includeAudio? }` | `{ preset, issues, estimatedBytes }` — what the platform would object to (canvas, fps, length, size), each with a `fix` where a project setting clears it |
 

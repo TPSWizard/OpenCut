@@ -67,6 +67,8 @@ import {
 	platformEncodeSettings,
 } from "@/platforms";
 import { clearDucking, duckElement } from "@/ducking/duck";
+import { cutSilence, detectSilence } from "@/silence/cut";
+import { isRippleScope } from "@/silence/detect";
 
 type Handlers = {
 	[M in EditorApiMethodName]: (
@@ -537,6 +539,26 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				includeAudio: audio,
 			}),
 		};
+	};
+
+	const silenceOptions = (params: {
+		thresholdDb?: unknown;
+		minSilenceSeconds?: unknown;
+		paddingSeconds?: unknown;
+	}) => {
+		const options: { thresholdDb?: number; minSilenceSeconds?: number; paddingSeconds?: number } = {};
+		for (const key of ["thresholdDb", "minSilenceSeconds", "paddingSeconds"] as const) {
+			const value = params[key];
+			if (value === undefined) continue;
+			if (typeof value !== "number" || !Number.isFinite(value)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: `${key} must be a number`,
+				});
+			}
+			options[key] = value;
+		}
+		return options;
 	};
 
 	const renderExport = async (options: ApiExportOptions) => {
@@ -1139,6 +1161,45 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				speechSeconds: result.speechSeconds,
 				voiceElementIds: result.voiceElementIds,
 			};
+		},
+		"audio.detectSilence": async (params) => {
+			const { track, element } = resolveElement(params.element);
+			try {
+				return await detectSilence({
+					editor,
+					trackId: track.id,
+					elementId: element.id,
+					options: silenceOptions(params),
+				});
+			} catch (error) {
+				throw new EditorApiError({
+					code: "failed",
+					message: error instanceof Error ? error.message : "Could not measure the clip",
+				});
+			}
+		},
+		"audio.cutSilence": async (params) => {
+			const { track, element } = resolveElement(params.element);
+			if (params.ripple !== undefined && !isRippleScope(params.ripple)) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "ripple must be all, track or none",
+				});
+			}
+			try {
+				return await cutSilence({
+					editor,
+					trackId: track.id,
+					elementId: element.id,
+					ripple: params.ripple ?? "all",
+					options: silenceOptions(params),
+				});
+			} catch (error) {
+				throw new EditorApiError({
+					code: "failed",
+					message: error instanceof Error ? error.message : "Could not cut the clip",
+				});
+			}
 		},
 		"audio.clearDucking": ({ element }) => {
 			const { track, element: music } = resolveElement(element);

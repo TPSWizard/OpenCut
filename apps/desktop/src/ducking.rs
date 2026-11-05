@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use editor::{DuckingOptions, Project, plan_audio};
+use editor::{AudioClipPlan, DuckingOptions, ElementKind, Project, plan_audio};
 use media::{AudioReader, AudioSettings, Ffmpeg};
 
 /// Sample rate the voice is measured at; speech needs no more.
@@ -39,11 +39,7 @@ pub(crate) fn measure_voice(
     let clip_start = music.start_time.to_seconds_f64();
     let clip_duration = music.duration.to_seconds_f64();
     let clip_end = clip_start + clip_duration;
-    let window = ((ANALYSIS_SAMPLE_RATE as f64 * options.window_seconds).round() as usize).max(1);
     let count = ((clip_duration / options.window_seconds).ceil().max(0.0)) as usize;
-    let mut energy = vec![0.0f64; count];
-    let mut counts = vec![0u64; count];
-
     let voices: Vec<_> = plan_audio(project)
         .into_iter()
         .filter(|clip| clip.element_id != music_id)
@@ -57,16 +53,38 @@ pub(crate) fn measure_voice(
         });
     }
 
+    let energy = sum_energy(ffmpeg, &voices, clip_start, clip_end, options.window_seconds, count)?;
+    let levels = levels_from_energy(&energy);
+    Ok(VoiceLevels {
+        clip_start,
+        clip_duration,
+        levels,
+        voice_ids: voices.into_iter().map(|clip| clip.element_id).collect(),
+    })
+}
+
+/// Energy and sample counts per window of timeline time over `[from, to)`,
+/// summed from every clip that plays there, decoded at 16 kHz mono.
+fn sum_energy(
+    ffmpeg: &Arc<Ffmpeg>,
+    clips: &[AudioClipPlan],
+    from: f64,
+    to: f64,
+    window_seconds: f64,
+    count: usize,
+) -> Result<Vec<(f64, u64)>, String> {
+    let window = ((ANALYSIS_SAMPLE_RATE as f64 * window_seconds).round() as usize).max(1);
+    let mut energy = vec![(0.0f64, 0u64); count];
     let settings = AudioSettings { sample_rate: ANALYSIS_SAMPLE_RATE, channels: 1 };
     let mut buffer = vec![0.0f32; window * 16];
-    for clip in &voices {
+    for clip in clips {
         let timeline_start = clip.timeline_start.to_seconds_f64();
         let source_start = clip.source_start.to_seconds_f64();
         let source_end = clip.source_end.to_seconds_f64();
-        // Start reading where the music clip begins, if the voice began earlier.
-        let skip = (clip_start - timeline_start).max(0.0);
+        // Start reading where the span begins, if the clip began earlier.
+        let skip = (from - timeline_start).max(0.0);
         let read_from = source_start + skip;
-        let read_to = source_end.min(source_start + (clip_end - timeline_start));
+        let read_to = source_end.min(source_start + (to - timeline_start));
         if read_to <= read_from {
             continue;
         }
@@ -81,29 +99,66 @@ pub(crate) fn measure_voice(
             }
             for (offset, sample) in buffer[..got].iter().enumerate() {
                 let time = position + offset as f64 / ANALYSIS_SAMPLE_RATE as f64;
-                let index = ((time - clip_start) / options.window_seconds).floor();
+                let index = ((time - from) / window_seconds).floor();
                 if index >= 0.0 && (index as usize) < count {
-                    let index = index as usize;
-                    energy[index] += (*sample as f64) * (*sample as f64);
-                    counts[index] += 1;
+                    let slot = &mut energy[index as usize];
+                    slot.0 += (*sample as f64) * (*sample as f64);
+                    slot.1 += 1;
                 }
             }
             position += got as f64 / ANALYSIS_SAMPLE_RATE as f64;
             remaining -= got;
         }
     }
+    Ok(energy)
+}
 
-    let levels = energy
+fn levels_from_energy(energy: &[(f64, u64)]) -> Vec<f64> {
+    energy
         .iter()
-        .zip(&counts)
         .map(|(energy, count)| editor::mean_square_to_db(if *count > 0 { energy / *count as f64 } else { 0.0 }))
-        .collect();
-    Ok(VoiceLevels {
-        clip_start,
-        clip_duration,
-        levels,
-        voice_ids: voices.into_iter().map(|clip| clip.element_id).collect(),
-    })
+        .collect()
+}
+
+pub(crate) struct ClipLevels {
+    pub clip_start: f64,
+    pub clip_duration: f64,
+    /// RMS level in dBFS of each window from the clip's start.
+    pub levels: Vec<f64>,
+}
+
+/// The clip's own audio, window by window, for silence auto-cut. Muted
+/// tracks and clips are measured all the same.
+pub(crate) fn measure_clip(
+    ffmpeg: &Arc<Ffmpeg>,
+    project: &Project,
+    element_id: &str,
+    window_seconds: f64,
+) -> Result<ClipLevels, String> {
+    let (_, element) = project.element(element_id).ok_or_else(|| "The clip is gone".to_owned())?;
+    let media_id = match &element.kind {
+        ElementKind::Video { media_id } | ElementKind::Audio { media_id } => media_id,
+        _ => return Err("Only audio and video clips can be measured".to_owned()),
+    };
+    let media = project.media_item(media_id).ok_or_else(|| "The clip's media is missing".to_owned())?;
+    if !media.has_audio {
+        return Err("The clip's media has no audio".to_owned());
+    }
+    let plan = AudioClipPlan {
+        element_id: element.id.clone(),
+        media_id: media_id.clone(),
+        path: media.path.clone(),
+        timeline_start: element.start_time,
+        source_start: element.trim_start,
+        source_end: element.trim_start + element.duration,
+        volume_db: 0.0,
+        volume: Default::default(),
+    };
+    let clip_start = element.start_time.to_seconds_f64();
+    let clip_duration = element.duration.to_seconds_f64();
+    let count = ((clip_duration / window_seconds).ceil().max(0.0)) as usize;
+    let energy = sum_energy(ffmpeg, &[plan], clip_start, clip_start + clip_duration, window_seconds, count)?;
+    Ok(ClipLevels { clip_start, clip_duration, levels: levels_from_energy(&energy) })
 }
 
 #[cfg(test)]
@@ -190,5 +245,40 @@ mod tests {
         assert!((at(0.5) - 0.0).abs() < 1e-6, "quiet before speech: {}", at(0.5));
         assert!((at(1.5) + 12.0).abs() < 1e-6, "ducked during speech: {}", at(1.5));
         assert!((at(2.6) - 0.0).abs() < 1e-6, "back up after release: {}", at(2.6));
+
+        // Silence auto-cut on the bursting voice: quiet in 0-1, 2-3, 4-5
+        // and after 6 s; cuts keep 0.1 s of padding next to the bursts.
+        let silence = editor::SilenceOptions::default();
+        let measured = measure_clip(&ffmpeg, &project, &ids[1], silence.window_seconds).unwrap();
+        let cuts = editor::silence_intervals(&measured.levels, measured.clip_start, measured.clip_start + measured.clip_duration, &silence);
+        assert_eq!(cuts.len(), 3, "{cuts:?}");
+        for (cut, (start, end)) in cuts.iter().zip([(0.0, 0.9), (2.1, 2.9), (4.1, 4.9)]) {
+            assert!((cut.start - start).abs() < 0.1, "{cut:?}");
+            assert!((cut.end - end).abs() < 0.1, "{cut:?}");
+        }
+        let outcome = apply(
+            &mut project,
+            &Command::RemoveRanges {
+                element_id: ids[1].clone(),
+                ranges: cuts
+                    .iter()
+                    .map(|cut| {
+                        (
+                            time::MediaTime::from_seconds_f64(cut.start).unwrap(),
+                            time::MediaTime::from_seconds_f64(cut.end).unwrap(),
+                        )
+                    })
+                    .collect(),
+                ripple: editor::RippleScope::Track,
+            },
+        )
+        .unwrap();
+        // The first cut starts at the clip's edge, so the original id is gone
+        // with that piece; the remaining pieces name the track.
+        let first = outcome.element_refs().first().cloned().expect("pieces remain");
+        let (track, _) = project.element(&first.element_id).unwrap();
+        let total: f64 = track.elements.iter().map(|e| e.duration.to_seconds_f64()).sum();
+        assert_eq!(track.elements.len(), 3, "three bursts remain");
+        assert!((total - 3.5).abs() < 0.15, "six seconds less three cuts: {total}");
     }
 }

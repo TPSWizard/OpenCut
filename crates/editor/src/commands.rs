@@ -4,6 +4,7 @@
 use time::{FrameRate, MediaTime};
 
 use crate::animation::{Segment, parse_color_to_linear_rgba, split_animations};
+use crate::silence::RippleScope;
 use crate::document::{
     Background, CanvasSize, Effect, Element, ElementKind, Lane, Mask, MediaItem, Project, Track,
     TrackKind, Transition,
@@ -70,6 +71,16 @@ pub enum Command {
     SplitElement {
         element_id: String,
         time: MediaTime,
+    },
+    /// Cuts timeline stretches out of one element in one step: the element
+    /// is split at each range's edges, the pieces inside the ranges go, and
+    /// with a ripple scope everything that starts after a removed stretch
+    /// moves left to close the gap. Elements on other tracks that straddle
+    /// a stretch stay where they are. Silence auto-cut uses this.
+    RemoveRanges {
+        element_id: String,
+        ranges: Vec<(MediaTime, MediaTime)>,
+        ripple: RippleScope,
     },
     DeleteElements(Vec<String>),
     DuplicateElements(Vec<String>),
@@ -379,6 +390,68 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                     element_id: right_id,
                 },
             ])
+        }
+        Command::RemoveRanges { element_id, ranges, ripple } => {
+            let (track_index, _) = locate(project, element_id)?;
+            let track_id = project.tracks[track_index].id.clone();
+            let mut pieces: Vec<String> = vec![element_id.clone()];
+            let mut sorted: Vec<(MediaTime, MediaTime)> =
+                ranges.iter().copied().filter(|(start, end)| end > start).collect();
+            sorted.sort_by_key(|(start, _)| *start);
+            // Latest first, so earlier cuts keep their timeline positions.
+            for (start, end) in sorted.into_iter().rev() {
+                for edge in [end, start] {
+                    let host = project.tracks[track_index]
+                        .elements
+                        .iter()
+                        .find(|element| {
+                            pieces.contains(&element.id)
+                                && edge > element.start_time + MIN_ELEMENT_DURATION
+                                && edge < element.end_time() - MIN_ELEMENT_DURATION
+                        })
+                        .map(|element| element.id.clone());
+                    let Some(host) = host else { continue };
+                    let outcome = apply(project, &Command::SplitElement { element_id: host, time: edge })?;
+                    pieces.extend(outcome.element_refs().iter().map(|r| r.element_id.clone()));
+                }
+                let tolerance = MIN_ELEMENT_DURATION;
+                let inside: Vec<String> = project.tracks[track_index]
+                    .elements
+                    .iter()
+                    .filter(|element| {
+                        pieces.contains(&element.id)
+                            && element.start_time >= start - tolerance
+                            && element.end_time() <= end + tolerance
+                    })
+                    .map(|element| element.id.clone())
+                    .collect();
+                pieces.retain(|id| !inside.contains(id));
+                project.tracks[track_index].elements.retain(|element| !inside.contains(&element.id));
+                let shift = end - start;
+                match ripple {
+                    RippleScope::None => {}
+                    RippleScope::Track | RippleScope::All => {
+                        for track in project.tracks.iter_mut() {
+                            if *ripple == RippleScope::Track && track.id != track_id {
+                                continue;
+                            }
+                            for element in track.elements.iter_mut() {
+                                if element.start_time >= end {
+                                    element.start_time = element.start_time - shift;
+                                }
+                            }
+                            track.sort_elements();
+                        }
+                    }
+                }
+            }
+            let remaining: Vec<ElementRef> = project.tracks[track_index]
+                .elements
+                .iter()
+                .filter(|element| pieces.contains(&element.id))
+                .map(|element| ElementRef { track_id: track_id.clone(), element_id: element.id.clone() })
+                .collect();
+            Outcome::Elements(remaining)
         }
         Command::DeleteElements(ids) => {
             for id in ids {
@@ -1421,5 +1494,96 @@ mod tests {
             nearest_free_start(track, seconds(3.0), seconds(12.0), None),
             Some(seconds(12.0))
         );
+    }
+
+    #[test]
+    fn remove_ranges_cuts_pieces_and_closes_the_gaps() {
+        use crate::document::{Element, MediaItem, MediaKind};
+        let mut project = Project::new("Silence");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "talk".to_owned(),
+                name: "talk.wav".to_owned(),
+                kind: MediaKind::Audio,
+                path: "talk.wav".into(),
+                duration: MediaTime::from_seconds_f64(10.0),
+                width: None,
+                height: None,
+                fps: None,
+                has_audio: true,
+            }),
+        )
+        .unwrap();
+        let talk = Element::from_media(project.media_item("talk").unwrap(), MediaTime::ZERO);
+        let talk_id = talk.id.clone();
+        apply(&mut project, &Command::InsertElement { element: talk, placement: TrackPlacement::Auto }).unwrap();
+        // A title that starts after the second cut, on another track: it moves left by both gaps.
+        let mut title = Element::text("Later", MediaTime::from_seconds_f64(9.0).unwrap());
+        title.duration = MediaTime::from_seconds_f64(1.0).unwrap();
+        let title_id = title.id.clone();
+        apply(&mut project, &Command::InsertElement { element: title, placement: TrackPlacement::Auto }).unwrap();
+
+        let seconds = |value: f64| MediaTime::from_seconds_f64(value).unwrap();
+        let outcome = apply(
+            &mut project,
+            &Command::RemoveRanges {
+                element_id: talk_id.clone(),
+                ranges: vec![(seconds(2.0), seconds(3.0)), (seconds(6.0), seconds(8.0)), (seconds(9.5), seconds(10.0))],
+                ripple: RippleScope::All,
+            },
+        )
+        .unwrap();
+        let remaining = outcome.element_refs();
+        assert_eq!(remaining.len(), 3, "{remaining:?}");
+        let (track, _) = project.element(&talk_id).expect("the first piece keeps the id");
+        let mut spans: Vec<(f64, f64, f64)> = track
+            .elements
+            .iter()
+            .map(|e| (e.start_time.to_seconds_f64(), e.duration.to_seconds_f64(), e.trim_start.to_seconds_f64()))
+            .collect();
+        spans.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        // Kept: 0-2 (source 0), 3-6 (source 3) now at 2-5, 8-9.5 (source 8) now at 5-6.5.
+        assert_eq!(spans, vec![(0.0, 2.0, 0.0), (2.0, 3.0, 3.0), (5.0, 1.5, 8.0)]);
+        let (_, title) = project.element(&title_id).unwrap();
+        assert_eq!(title.start_time.to_seconds_f64(), 6.0);
+    }
+
+    #[test]
+    fn remove_ranges_can_leave_the_gaps() {
+        use crate::document::{Element, MediaItem, MediaKind};
+        let mut project = Project::new("Silence");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "talk".to_owned(),
+                name: "talk.wav".to_owned(),
+                kind: MediaKind::Audio,
+                path: "talk.wav".into(),
+                duration: MediaTime::from_seconds_f64(10.0),
+                width: None,
+                height: None,
+                fps: None,
+                has_audio: true,
+            }),
+        )
+        .unwrap();
+        let talk = Element::from_media(project.media_item("talk").unwrap(), MediaTime::ZERO);
+        let talk_id = talk.id.clone();
+        apply(&mut project, &Command::InsertElement { element: talk, placement: TrackPlacement::Auto }).unwrap();
+        let seconds = |value: f64| MediaTime::from_seconds_f64(value).unwrap();
+        apply(
+            &mut project,
+            &Command::RemoveRanges {
+                element_id: talk_id.clone(),
+                ranges: vec![(seconds(4.0), seconds(5.0))],
+                ripple: RippleScope::None,
+            },
+        )
+        .unwrap();
+        let (track, _) = project.element(&talk_id).unwrap();
+        let mut starts: Vec<f64> = track.elements.iter().map(|e| e.start_time.to_seconds_f64()).collect();
+        starts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(starts, vec![0.0, 5.0]);
     }
 }

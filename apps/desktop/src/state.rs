@@ -557,6 +557,67 @@ impl EditorState {
         .detach();
     }
 
+    /// Cuts the silent stretches out of the selected clip: measures it on
+    /// a background thread, then removes the stretches in one undo step,
+    /// closing the gaps as `ripple` says.
+    pub(crate) fn cut_silence_selected(
+        &mut self,
+        options: editor::SilenceOptions,
+        ripple: editor::RippleScope,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to listen for silence.", cx);
+            return;
+        };
+        let project = self.project().clone();
+        self.set_status("Listening for silence…", cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx
+                .background_executor()
+                .spawn(async move {
+                    crate::ducking::measure_clip(&ffmpeg, &project, &element_id, options.window_seconds)
+                        .map(|levels| (element_id, levels))
+                })
+                .await;
+            this.update(cx, |state, cx| match measured {
+                Ok((element_id, levels)) => {
+                    let cuts = editor::silence_intervals(
+                        &levels.levels,
+                        levels.clip_start,
+                        levels.clip_start + levels.clip_duration,
+                        &options,
+                    );
+                    if cuts.is_empty() {
+                        state.set_status("No silence long enough to cut.", cx);
+                        return;
+                    }
+                    let removed: f64 = cuts.iter().map(|cut| cut.end - cut.start).sum();
+                    let ranges = cuts
+                        .iter()
+                        .map(|cut| {
+                            (
+                                MediaTime::from_seconds_f64(cut.start).unwrap_or(MediaTime::ZERO),
+                                MediaTime::from_seconds_f64(cut.end).unwrap_or(MediaTime::ZERO),
+                            )
+                        })
+                        .collect();
+                    let outcome = state.execute(Command::RemoveRanges { element_id, ranges, ripple }, cx);
+                    let pieces = outcome.map(|outcome| outcome.element_refs().len()).unwrap_or(0);
+                    state.set_status(
+                        format!("Removed {removed:.1} s of silence in {} cut(s); {pieces} piece(s) remain.", cuts.len()),
+                        cx,
+                    );
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn clear_animation(&mut self, path: &str, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
