@@ -103,6 +103,12 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   track or nothing closes up behind each cut. The command
   (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
   match the web app's.
+- **Fonts from Fontsource**: a text element's *Font files* row fetches
+  the named family's TTF files (regular and bold, with italics where they
+  exist) from jsDelivr into `~/.opencut/fonts/<id>/`, together with the
+  package's LICENSE and a `provenance.json`, and the renderer picks them up
+  at once. Families chosen in the web app's *Open licence* font tab render
+  the same here once fetched. The directory is loaded at start too.
 - **Effects** on visual clips, the same ten as the web app and rendered by
   the same WGSL shaders in `crates/effects`: blur, colour correction
   (brightness, contrast, saturation, hue, exposure, gamma, warmth, tint),

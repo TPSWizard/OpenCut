@@ -65,6 +65,8 @@ methods answer with the error code `no_project` before that.
 | `history.undo` / `redo` / `state` | – | `{ canUndo, canRedo }` |
 | `export.render` | `ApiExportOptions` | `{ fileName, mimeType, bytes: ArrayBuffer }` |
 | `export.download` | `ApiExportOptions` | `{ fileName, mimeType, bytes }` and a browser download |
+| `fonts.list` | `{ query?, limit? }` | `ApiFontInfo[]` — Fontsource families with their SPDX licence, category, weights and styles |
+| `fonts.load` | `{ family }` | `{ family, license, faces }` — declares the family's faces in the page from jsDelivr so text can use it |
 | `effects.list` | – | `ApiEffectDefinitionInfo[]` — blur, colour correction, vignette, film grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, each with its params (key, label, type, default, range or options) |
 | `timeline.addEffect` | `{ elementId, trackId?, type, params? }` | `ApiElementInfo` — adds the effect at its defaults, then applies `params` |
 | `timeline.updateEffect` / `timeline.removeEffect` | `{ elementId, trackId?, effectId, params?, enabled? }` / `{ elementId, trackId?, effectId }` | `ApiElementInfo` |

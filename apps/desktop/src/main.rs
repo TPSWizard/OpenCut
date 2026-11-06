@@ -10,6 +10,7 @@ use media::Ffmpeg;
 mod actions;
 mod audio;
 mod ducking;
+mod fonts;
 mod components;
 mod format;
 mod images;

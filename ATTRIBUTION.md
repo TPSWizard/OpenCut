@@ -99,3 +99,20 @@ Editor API). Nothing from the collection is copied into this repository: the
 crate is a dependency, and only the vertex stage and the parameter plumbing in
 `transitions.rs` are ours. Transitions that need an extra input image (a luma
 matte or displacement map) are left out of the catalogue.
+
+## Fonts and icons fetched at runtime (added 2026-11-05)
+
+- **Fontsource** (`apps/web/src/fonts/fontsource.ts`, `apps/desktop/src/fonts.rs`):
+  the font picker's *Open licence* tab lists families from the keyless
+  Fontsource API and loads their files from jsDelivr; the desktop fetches a
+  family's TTF files into `~/.opencut/fonts/<id>/` together with the
+  package's `LICENSE` and a `provenance.json`. Each family's SPDX licence
+  (OFL-1.1, Apache-2.0, MIT, UFL-1.0, …) is shown in the picker and recorded
+  with the files. No font files are kept in this repository.
+- **Iconify** (`apps/web/src/stickers/providers/icons.ts`): the *Icons*
+  sticker category searches and browses icon sets through the Iconify API
+  (MIT). Only sets whose SPDX licence is MIT, Apache-2.0, ISC, BSD, 0BSD,
+  CC0-1.0, Unlicense or MPL-2.0 are offered, plus CC-BY sets marked as
+  needing credit; every sticker keeps its set's licence, URL and author in
+  its metadata. Icons are rendered from the API at use time; none are kept
+  in this repository.

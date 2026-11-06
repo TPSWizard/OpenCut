@@ -1,11 +1,13 @@
 import { stickersRegistry } from "../registry";
 import type { StickerProvider } from "@/stickers/types";
 import { flagsProvider } from "./flags";
+import { iconsProvider } from "./icons";
 import { logosProvider } from "./logos";
 import { shapesProvider } from "./shapes";
 
 const defaultProviders: StickerProvider[] = [
 	logosProvider,
+	iconsProvider,
 	flagsProvider,
 	shapesProvider,
 ];

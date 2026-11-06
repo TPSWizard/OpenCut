@@ -10,6 +10,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { loadFullFont } from "@/fonts/google-fonts";
+import {
+	describeFontLicense,
+	fetchFontsourceCatalogue,
+	loadFontsourceFont,
+	type FontsourceFamily,
+} from "@/fonts/fontsource";
 import { SYSTEM_FONTS } from "@/fonts/system-fonts";
 import type { FontAtlas, FontAtlasEntry } from "@/fonts/types";
 import { useFontAtlas } from "@/fonts/use-font-atlas";
@@ -20,6 +26,7 @@ import { TextIcon } from "@hugeicons/core-free-icons";
 
 const FONT_TABS = [
 	{ key: "all", label: "All fonts" },
+	{ key: "open", label: "Open licence" },
 	{ key: "my-fonts", label: "My fonts" },
 	{ key: "favorites", label: "Favorites" },
 ] as const;
@@ -48,6 +55,38 @@ export function FontPicker({
 	const [activeTab, setActiveTab] = useState<FontTab>("all");
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const { atlas, status, fontNames, retry: handleRetry } = useFontAtlas({ open });
+	const [catalogue, setCatalogue] = useState<FontsourceFamily[] | null>(null);
+	const [catalogueError, setCatalogueError] = useState<string | null>(null);
+	useEffect(() => {
+		if (activeTab !== "open" || catalogue) return;
+		fetchFontsourceCatalogue()
+			.then((families) => {
+				setCatalogue(families);
+				setCatalogueError(null);
+			})
+			.catch((error: unknown) => {
+				setCatalogueError(error instanceof Error ? error.message : "Could not load the catalogue");
+			});
+	}, [activeTab, catalogue]);
+	const filteredCatalogue = useMemo(() => {
+		if (!catalogue) return [];
+		const query = search.toLowerCase();
+		return query
+			? catalogue.filter((entry) => entry.family.toLowerCase().includes(query))
+			: catalogue;
+	}, [catalogue, search]);
+	const handleSelectOpen = useCallback(
+		async ({ entry }: { entry: FontsourceFamily }) => {
+			try {
+				await loadFontsourceFont({ family: entry.family });
+			} catch {
+				// The family falls back to the system default until it loads.
+			}
+			onValueChange?.(entry.family);
+			setOpen(false);
+		},
+		[onValueChange],
+	);
 
 	const filteredFonts = useMemo(() => {
 		if (!search) return fontNames;
@@ -144,12 +183,51 @@ export function FontPicker({
 						</button>
 					))}
 				</div>
-				{status === "loading" && (
+				{activeTab === "open" && (
+					<div data-testid="open-licence-fonts">
+						{!catalogue && !catalogueError && (
+							<div className="py-8 text-center text-sm text-muted-foreground">
+								Loading the Fontsource catalogue...
+							</div>
+						)}
+						{catalogueError && (
+							<div className="py-6 px-4 text-center text-sm text-muted-foreground">
+								{catalogueError}
+							</div>
+						)}
+						{catalogue && filteredCatalogue.length === 0 && (
+							<div className="py-6 text-center text-sm text-muted-foreground">
+								No fonts found.
+							</div>
+						)}
+						{catalogue && filteredCatalogue.length > 0 && (
+							<List
+								rowCount={filteredCatalogue.length}
+								rowHeight={ROW_HEIGHT}
+								overscanCount={OVERSCAN}
+								rowComponent={OpenFontRow}
+								rowProps={{
+									entries: filteredCatalogue,
+									selectedFont: defaultValue,
+									onSelect: handleSelectOpen,
+								}}
+								style={{
+									height: Math.min(MAX_LIST_HEIGHT, filteredCatalogue.length * ROW_HEIGHT),
+									width: LIST_WIDTH,
+								}}
+							/>
+						)}
+						<p className="px-3 py-1.5 text-[10px] text-muted-foreground border-t">
+							Files from Fontsource on jsDelivr; each family's licence is shown and kept with the font on the desktop.
+						</p>
+					</div>
+				)}
+				{activeTab !== "open" && status === "loading" && (
 					<div className="py-8 text-center text-sm text-muted-foreground">
 						Loading fonts...
 					</div>
 				)}
-				{status === "error" && (
+				{activeTab !== "open" && status === "error" && (
 					<div className="flex flex-col items-center gap-3 py-8 px-4">
 						<p className="text-sm text-muted-foreground text-center">
 							Failed to load font previews.
@@ -159,14 +237,15 @@ export function FontPicker({
 						</Button>
 					</div>
 				)}
-				{status === "idle" &&
+				{activeTab !== "open" &&
+					status === "idle" &&
 					fontNames.length > 0 &&
 					filteredFonts.length === 0 && (
 						<div className="py-6 text-center text-sm text-muted-foreground">
 							No fonts found.
 						</div>
 					)}
-				{status === "idle" && atlas && filteredFonts.length > 0 && (
+				{activeTab !== "open" && status === "idle" && atlas && filteredFonts.length > 0 && (
 					<List
 						rowCount={filteredFonts.length}
 						rowHeight={ROW_HEIGHT}
@@ -183,6 +262,49 @@ export function FontPicker({
 				)}
 			</PopoverContent>
 		</Popover>
+	);
+}
+
+interface OpenFontRowProps {
+	entries: FontsourceFamily[];
+	selectedFont?: string;
+	onSelect: (params: { entry: FontsourceFamily }) => void;
+}
+
+/** A Fontsource family: its name in the default face, category and licence. */
+function OpenFontRow({
+	index,
+	style,
+	entries,
+	selectedFont,
+	onSelect,
+}: RowComponentProps<OpenFontRowProps>) {
+	const entry = entries[index];
+	const isSelected = entry.family === selectedFont;
+	return (
+		<div
+			style={style as CSSProperties}
+			className={cn(
+				"flex cursor-pointer items-center justify-between gap-2 px-3 text-sm hover:bg-accent",
+				isSelected && "bg-accent",
+			)}
+			onClick={() => onSelect({ entry })}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					onSelect({ entry });
+				}
+			}}
+			role="option"
+			aria-selected={isSelected}
+			tabIndex={0}
+			title={`${entry.family} · ${entry.category} · ${describeFontLicense({ license: entry.license })}`}
+		>
+			<span className="truncate">{entry.family}</span>
+			<span className="shrink-0 rounded-sm bg-foreground/5 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+				{entry.license}
+			</span>
+		</div>
 	);
 }
 

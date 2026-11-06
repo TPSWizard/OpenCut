@@ -223,6 +223,17 @@ export interface ApiDuckResult {
 	voiceElementIds: string[];
 }
 
+export interface ApiFontInfo {
+	id: string;
+	family: string;
+	category: string;
+	/** SPDX licence id, such as "OFL-1.1" or "Apache-2.0". */
+	license: string;
+	weights: number[];
+	styles: string[];
+	variable: boolean;
+}
+
 export interface ApiEffectInfo {
 	id: string;
 	type: string;
@@ -523,6 +534,16 @@ export interface EditorApiMethods {
 	"audio.duck": { params: ApiDuckOptions; result: ApiDuckResult };
 	/** Drops the clip's volume keys; its own volume applies again. */
 	"audio.clearDucking": { params: { element: ApiElementRef }; result: ApiElementInfo };
+	/** Open-licence fonts from Fontsource, each with its SPDX licence. */
+	"fonts.list": {
+		params: { query?: string; limit?: number };
+		result: ApiFontInfo[];
+	};
+	/** Loads a Fontsource family into the page so text elements can use it. */
+	"fonts.load": {
+		params: { family: string };
+		result: { family: string; license: string; faces: number };
+	};
 	/** The effects both editors offer, with their parameters. */
 	"effects.list": { params: Record<string, never>; result: ApiEffectDefinitionInfo[] };
 	/** Adds an effect to a visual element at its defaults, then applies `params`. */

@@ -70,6 +70,7 @@ import {
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
+import { fetchFontsourceCatalogue, loadFontsourceFont } from "@/fonts/fontsource";
 import { isRippleScope } from "@/silence/detect";
 
 type Handlers = {
@@ -1172,6 +1173,35 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				speechSeconds: result.speechSeconds,
 				voiceElementIds: result.voiceElementIds,
 			};
+		},
+		"fonts.list": async ({ query, limit }) => {
+			const catalogue = await fetchFontsourceCatalogue();
+			const needle = typeof query === "string" ? query.trim().toLowerCase() : "";
+			const cap = typeof limit === "number" && limit > 0 ? Math.floor(limit) : 200;
+			return catalogue
+				.filter((entry) => !needle || entry.family.toLowerCase().includes(needle))
+				.slice(0, cap)
+				.map((entry) => ({
+					id: entry.id,
+					family: entry.family,
+					category: entry.category,
+					license: entry.license,
+					weights: [...entry.weights],
+					styles: [...entry.styles],
+					variable: entry.variable,
+				}));
+		},
+		"fonts.load": async ({ family }) => {
+			const name = requireString(family, "family");
+			try {
+				const loaded = await loadFontsourceFont({ family: name });
+				return { family: name, license: loaded.license, faces: loaded.faces.length };
+			} catch (error) {
+				throw new EditorApiError({
+					code: "not_found",
+					message: error instanceof Error ? error.message : `Could not load ${name}`,
+				});
+			}
 		},
 		"effects.list": () =>
 			effectsRegistry.getAll().map((definition) => {

@@ -76,6 +76,15 @@ impl TextRasterizer {
         }
     }
 
+    /// Adds every font file under `dir` (fetched from Fontsource, say) to
+    /// the database, so text can name those families. Safe to call again
+    /// after more files arrive.
+    pub fn load_fonts_dir(&mut self, dir: &std::path::Path) {
+        if dir.is_dir() {
+            self.font_system.db_mut().load_fonts_dir(dir);
+        }
+    }
+
     /// Lays `style.content` out (lines break only at newlines, as in the
     /// web app) and rasterises it, including any background box. The
     /// raster stays centred on the text, so a box offset does not move it.

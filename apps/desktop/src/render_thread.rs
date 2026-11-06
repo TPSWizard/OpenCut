@@ -49,6 +49,8 @@ pub(crate) enum RenderRequest {
     },
     /// Stop decoder processes (playback paused for a while).
     Release,
+    /// Font files were added to the fonts directory; lay text out again.
+    ReloadFonts,
     Export {
         project: Arc<Project>,
         settings: ExportSettings,
@@ -90,12 +92,13 @@ impl RenderHandle {
 /// the UI awaits on its foreground executor.
 pub(crate) fn spawn_render_thread(
     ffmpeg: Option<Arc<Ffmpeg>>,
+    fonts_dir: PathBuf,
 ) -> (RenderHandle, UnboundedReceiver<RenderEvent>) {
     let (sender, receiver) = std::sync::mpsc::channel();
     let (events, event_receiver) = unbounded();
     thread::Builder::new()
         .name("opencut-render".into())
-        .spawn(move || render_loop(receiver, events, ffmpeg))
+        .spawn(move || render_loop(receiver, events, ffmpeg, fonts_dir))
         .expect("spawn render thread");
     (RenderHandle { sender }, event_receiver)
 }
@@ -104,9 +107,11 @@ fn render_loop(
     receiver: Receiver<RenderRequest>,
     events: UnboundedSender<RenderEvent>,
     ffmpeg: Option<Arc<Ffmpeg>>,
+    fonts_dir: PathBuf,
 ) {
     let mut renderer = match Renderer::new(RendererOptions {
         ffmpeg: ffmpeg.clone(),
+        fonts_dir: Some(fonts_dir.clone()),
     }) {
         Ok(renderer) => Some(renderer),
         Err(error) => {
@@ -210,6 +215,11 @@ fn handle(
                 renderer.release_decoders();
             }
         }
+        RenderRequest::ReloadFonts => {
+            if let Some(renderer) = renderer.as_mut() {
+                renderer.reload_fonts();
+            }
+        }
         RenderRequest::Export {
             project,
             settings,
@@ -260,6 +270,7 @@ fn export(
     let ffmpeg = ffmpeg.ok_or_else(|| media::MediaError::FfmpegNotFound.to_string())?;
     let mut renderer = Renderer::new(RendererOptions {
         ffmpeg: Some(ffmpeg.clone()),
+        fonts_dir: Some(crate::fonts::fonts_dir(&editor::ProjectStore::default_root())),
     })
     .map_err(|error| error.to_string())?;
 

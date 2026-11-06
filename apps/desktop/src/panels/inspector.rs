@@ -677,6 +677,27 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+                    // A family the machine lacks can be fetched from Fontsource
+                    // (open licences, files kept beside the projects).
+                    let family = params.text("fontFamily", "Arial").into_owned();
+                    content = content.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.))
+                            .child(Self::label_cell("Font files", window))
+                            .child({
+                                let state = self.state.clone();
+                                let label = format!("Fetch {family} from Fontsource");
+                                Button::new("fetch-font", label)
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        let family = family.clone();
+                                        state.update(cx, |state, cx| state.fetch_font(family, cx));
+                                    })
+                            }),
+                    );
                     for (key, label, default) in TEXT_NUMBER_PARAMS {
                         let row = self.row(
                             label,

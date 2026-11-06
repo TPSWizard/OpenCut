@@ -111,6 +111,8 @@ pub(crate) struct EditorState {
     /// Platform preset whose safe area the preview shades.
     pub guide: Option<&'static editor::PlatformPreset>,
     pub export: Option<ExportState>,
+    /// Where fetched font files live (`~/.opencut/fonts`).
+    pub fonts_dir: PathBuf,
     render: RenderHandle,
     audio: Option<AudioOutput>,
     render_generation: u64,
@@ -131,7 +133,8 @@ impl EditorState {
         ffmpeg: Option<Arc<Ffmpeg>>,
         cx: &mut Context<Self>,
     ) -> Self {
-        let (render, mut events) = spawn_render_thread(ffmpeg.clone());
+        let fonts_dir = crate::fonts::fonts_dir(store.root());
+        let (render, mut events) = spawn_render_thread(ffmpeg.clone(), fonts_dir.clone());
         let event_task = cx.spawn(async move |this, cx| {
             while let Some(event) = events.next().await {
                 if this
@@ -177,6 +180,7 @@ impl EditorState {
             pen: None,
             selected_mask_points: Vec::new(),
             guide: None,
+            fonts_dir,
             export: None,
             render,
             audio,
@@ -1610,6 +1614,38 @@ impl EditorState {
             cancel,
         });
         cx.notify();
+    }
+
+    /// Fetches a family's files from Fontsource into the fonts directory
+    /// on a background thread, then has the renderer lay text out again.
+    pub(crate) fn fetch_font(&mut self, family: String, cx: &mut Context<Self>) {
+        let fonts_dir = self.fonts_dir.clone();
+        self.set_status(format!("Fetching {family} from Fontsource…"), cx);
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { crate::fonts::fetch_family(&fonts_dir, &family) })
+                .await;
+            this.update(cx, |state, cx| match result {
+                Ok(fetched) => {
+                    state.render.send(RenderRequest::ReloadFonts);
+                    state.set_status(
+                        format!(
+                            "{} ({}): {} file(s) in {}",
+                            fetched.family,
+                            fetched.license,
+                            fetched.files,
+                            fetched.dir.display()
+                        ),
+                        cx,
+                    );
+                    state.request_render(cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// Shades a platform's safe area over the preview, or clears it.

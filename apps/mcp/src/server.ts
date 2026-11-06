@@ -293,6 +293,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - history.undo / history.redo / history.state
 - export.render { format?, quality?, includeAudio?, fps?, fileName?, preset? } → bytes (in-page only)
 - export.download { same } → triggers a file download (used by the headless runner)
+- fonts.list { query?, limit? } → [{ id, family, category, license, weights, styles, variable }] (Fontsource, open licences)
+- fonts.load { family } → { family, license, faces }
 - effects.list {} → [{ type, name, keywords, params: [{ key, label, type, default, min?, max?, step?, options? }] }]
 - timeline.addEffect { elementId, trackId?, type, params? } → ApiElementInfo (effects: [{ id, type, params, enabled }])
 - timeline.updateEffect { elementId, trackId?, effectId, params?, enabled? } → ApiElementInfo

@@ -24,6 +24,9 @@ pub struct RendererOptions {
     /// Without FFmpeg, video elements render as nothing (images and text
     /// still work).
     pub ffmpeg: Option<Arc<Ffmpeg>>,
+    /// A directory of font files to add to the system fonts, such as the
+    /// desktop's `~/.opencut/fonts`.
+    pub fonts_dir: Option<std::path::PathBuf>,
 }
 
 /// A composited frame: straight-alpha BGRA, tightly packed.
@@ -56,6 +59,7 @@ pub struct Renderer {
     masks: HashMap<String, String>,
     /// Element id → key of the mask stroke texture currently uploaded.
     strokes: HashMap<String, String>,
+    fonts_dir: Option<std::path::PathBuf>,
 }
 
 impl Renderer {
@@ -63,18 +67,32 @@ impl Renderer {
     pub fn new(options: RendererOptions) -> Result<Self, RenderError> {
         let context = pollster::block_on(GpuContext::new())?;
         let compositor = Compositor::new(&context);
+        let mut text = TextRasterizer::new();
+        if let Some(dir) = &options.fonts_dir {
+            text.load_fonts_dir(dir);
+        }
         Ok(Self {
             context,
             compositor,
             ffmpeg: options.ffmpeg,
-            text: TextRasterizer::new(),
+            text,
             slots: HashMap::new(),
             videos: HashMap::new(),
             images: HashMap::new(),
             texts: HashMap::new(),
             masks: HashMap::new(),
             strokes: HashMap::new(),
+            fonts_dir: options.fonts_dir,
         })
+    }
+
+    /// Picks up font files added to the fonts directory since start and
+    /// drops rasterised text so it is laid out again with them.
+    pub fn reload_fonts(&mut self) {
+        if let Some(dir) = self.fonts_dir.clone() {
+            self.text.load_fonts_dir(&dir);
+        }
+        self.texts.clear();
     }
 
     pub fn has_ffmpeg(&self) -> bool {
