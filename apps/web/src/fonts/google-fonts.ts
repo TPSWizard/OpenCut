@@ -1,5 +1,6 @@
 import type { FontAtlas } from "@/fonts/types";
 import { SYSTEM_FONTS } from "@/fonts/system-fonts";
+import { loadFontsourceFont } from "@/fonts/fontsource";
 
 const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com/css2";
 const FONT_ATLAS_PATH = "/fonts/font-atlas.json";
@@ -78,11 +79,30 @@ export async function loadFullFont({
 	fullLoaded.add(family);
 }
 
+/**
+ * Loads every family a project uses: atlas (Google) families from Google
+ * Fonts, anything else from Fontsource, falling back to Google when
+ * Fontsource does not know the family either.
+ */
 export async function loadFonts({
 	families,
 }: {
 	families: string[];
 }): Promise<void> {
-	const googleFonts = families.filter((family) => !SYSTEM_FONTS.has(family));
-	await Promise.all(googleFonts.map((family) => loadFullFont({ family })));
+	const wanted = families.filter((family) => !SYSTEM_FONTS.has(family));
+	if (wanted.length === 0) return;
+	const atlas = await loadFontAtlas();
+	await Promise.all(
+		wanted.map(async (family) => {
+			if (atlas?.fonts[family]) {
+				await loadFullFont({ family });
+				return;
+			}
+			try {
+				await loadFontsourceFont({ family });
+			} catch {
+				await loadFullFont({ family });
+			}
+		}),
+	);
 }
