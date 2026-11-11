@@ -295,6 +295,11 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - export.download { same } → triggers a file download (used by the headless runner)
 - fonts.list { query?, limit? } → [{ id, family, category, license, weights, styles, variable }] (Fontsource, open licences)
 - fonts.load { family } → { family, license, faces }
+- timeline.getKeyframes { elementId, trackId? } → { [path]: [{ id, time, value, interpolation? }] }
+- timeline.setKeyframe { elementId, trackId?, path, time, value, interpolation? } → ApiElementInfo
+- timeline.removeKeyframe { elementId, trackId?, path, time? | keyframeId? } / timeline.clearKeyframes { elementId, trackId?, path } → ApiElementInfo
+- masks.list {} → [{ type, name, params }]
+- timeline.setMask { elementId, trackId?, type, params? } / timeline.updateMask { elementId, trackId?, params?, inverted? } / timeline.removeMask { elementId, trackId? } → ApiElementInfo (masks)
 - effects.list {} → [{ type, name, keywords, params: [{ key, label, type, default, min?, max?, step?, options? }] }]
 - timeline.addEffect { elementId, trackId?, type, params? } → ApiElementInfo (effects: [{ id, type, params, enabled }])
 - timeline.updateEffect { elementId, trackId?, effectId, params?, enabled? } → ApiElementInfo

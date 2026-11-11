@@ -216,6 +216,21 @@ resolution and pipes BGRA frames into `media::Encoder`.
 - **Linux**: renders via Vulkan (Blade), windows via Wayland or X11 (both enabled by default). System packages (Debian/Ubuntu names): `libvulkan1` + working Vulkan drivers, `libwayland-dev`, `libx11-xcb-dev`, `libxkbcommon-x11-dev`, `libfontconfig-dev`, `libasound2-dev` (audio), plus a C toolchain and `cmake`.
 - **WSL2/WSLg**: uses XWayland automatically when available. GPUI 0.2.2 requires `xdg_wm_base` v2–5, while WSLg advertises v1.
 
+## Rendering from the command line
+
+`apps/render-cli` builds `opencut-render`, the same renderer without the
+window: it takes a project directory (`--project ~/.opencut/projects/<id>`)
+or a bundle (`--bundle promo.opencut.zip`) and writes a video (`--out
+promo.mp4`, `--format`, `--quality`, `--no-audio`), applies a platform
+preset (`--preset youtube-shorts`, which sets the canvas and frame rate and
+encodes H.264 High with a closed GOP and faststart), overrides the canvas
+and rate (`--size 1080x1920`, `--fps 30`), writes one still (`--frame-at
+2.5 --out frame.png`), samples stills for QA (`--stills every=1`,
+`--stills at=0.5,2.3`, `--stills-dir qa/`) and tiles them into a contact
+sheet (`--contact-sheet qa/sheet.png`). The export loop lives in
+`crates/render/src/export.rs` and is shared with the desktop's export
+dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
+
 ## Not there yet
 
 - Shapes and other graphics from the web editor are read from project

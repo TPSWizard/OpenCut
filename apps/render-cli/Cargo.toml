@@ -1,0 +1,18 @@
+[package]
+name = "opencut-render"
+description = "Renders a ConzaCut project or bundle to a video, stills or a contact sheet from the command line"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "opencut-render"
+path = "src/main.rs"
+
+[dependencies]
+editor = { workspace = true }
+image = { workspace = true }
+media = { workspace = true }
+render = { workspace = true }
+tempfile = { workspace = true }
+time = { workspace = true }

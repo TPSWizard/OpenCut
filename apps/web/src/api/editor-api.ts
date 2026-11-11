@@ -45,6 +45,8 @@ import {
 	type ApiElementLocator,
 	type ApiElementRef,
 	type ApiEffectParamInfo,
+	type ApiKeyframeInfo,
+	type ApiMaskParamInfo,
 	type ApiExportOptions,
 	type ApiPlatformCheck,
 	type ApiPlatformPreset,
@@ -70,6 +72,11 @@ import {
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
+import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
+import { resolveAnimationTarget } from "@/timeline/animation-targets";
+import { isLeafChannelData } from "@/animation/channel-data";
+import { SetChannelCommand } from "@/commands/timeline/element/keyframes/set-channel";
+import type { Mask, MaskType } from "@/masks/types";
 import { fetchFontsourceCatalogue, loadFontsourceFont } from "@/fonts/fontsource";
 import { isRippleScope } from "@/silence/detect";
 
@@ -154,6 +161,14 @@ function toElementInfo({
 						duration: seconds(element.transition.duration),
 						...(element.transition.params && { params: element.transition.params }),
 					}
+				: undefined,
+		masks:
+			"masks" in element && element.masks && element.masks.length > 0
+				? element.masks.map((mask) => ({
+						id: mask.id,
+						type: mask.type,
+						params: { ...(mask.params as unknown as Record<string, unknown>) },
+					}))
 				: undefined,
 		effects:
 			"effects" in element && element.effects && element.effects.length > 0
@@ -1202,6 +1217,160 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					message: error instanceof Error ? error.message : `Could not load ${name}`,
 				});
 			}
+		},
+		"timeline.getKeyframes": ({ elementId, trackId }) => {
+			const { element } = resolveElement({ elementId, trackId });
+			const result: Record<string, ApiKeyframeInfo[]> = {};
+			const describe = (keys: Array<{ id: string; time: number; value: unknown; segmentToNext?: string }>) =>
+				keys.map((key) => ({
+					id: key.id,
+					time: seconds(key.time as MediaTime),
+					value: key.value as number | string | boolean,
+					...(key.segmentToNext
+						? { interpolation: (key.segmentToNext === "step" ? "hold" : key.segmentToNext) as "linear" | "hold" | "bezier" }
+						: {}),
+				}));
+			for (const [path, data] of Object.entries(element.animations ?? {})) {
+				if (!data) continue;
+				if (isLeafChannelData(data)) {
+					result[path] = describe(data.keys as never);
+				} else {
+					for (const [component, channel] of Object.entries(data)) {
+						if (channel) result[`${path}.${component}`] = describe(channel.keys as never);
+					}
+				}
+			}
+			return result;
+		},
+		"timeline.setKeyframe": ({ elementId, trackId, path, time, value, interpolation }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const propertyPath = requireString(path, "path");
+			if (!resolveAnimationTarget({ element, path: propertyPath })) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: `${propertyPath} cannot be keyframed on this element`,
+				});
+			}
+			if (typeof time !== "number" || !Number.isFinite(time) || time < 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "time must be seconds from the element's start" });
+			}
+			if (interpolation !== undefined && !["linear", "hold", "bezier"].includes(interpolation)) {
+				throw new EditorApiError({ code: "invalid_params", message: "interpolation must be linear, hold or bezier" });
+			}
+			if (typeof value !== "number" && typeof value !== "string" && typeof value !== "boolean") {
+				throw new EditorApiError({ code: "invalid_params", message: "value must be a number, string or boolean" });
+			}
+			editor.timeline.upsertKeyframes({
+				keyframes: [
+					{
+						trackId: track.id,
+						elementId: element.id,
+						propertyPath,
+						time: ticks(time, "time"),
+						value,
+						interpolation,
+					},
+				],
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.removeKeyframe": ({ elementId, trackId, path, time, keyframeId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const propertyPath = requireString(path, "path");
+			const data = element.animations?.[propertyPath];
+			const channels = !data ? [] : isLeafChannelData(data) ? [data] : Object.values(data).filter(Boolean);
+			const wanted = typeof time === "number" ? ticks(time, "time") : null;
+			const ids = new Set<string>();
+			for (const channel of channels) {
+				for (const key of (channel as { keys: Array<{ id: string; time: number }> }).keys) {
+					if ((keyframeId !== undefined && key.id === keyframeId) || (wanted !== null && key.time === wanted)) {
+						ids.add(key.id);
+					}
+				}
+			}
+			if (ids.size === 0) {
+				throw new EditorApiError({ code: "not_found", message: `No key on ${propertyPath} at that time` });
+			}
+			editor.timeline.removeKeyframes({
+				keyframes: [...ids].map((id) => ({ trackId: track.id, elementId: element.id, propertyPath, keyframeId: id })),
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.clearKeyframes": ({ elementId, trackId, path }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const propertyPath = requireString(path, "path");
+			editor.command.execute({
+				command: new SetChannelCommand({ trackId: track.id, elementId: element.id, propertyPath, channel: undefined }),
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"masks.list": () =>
+			masksRegistry.getAll().map((definition) => ({
+				type: definition.type,
+				name: definition.name,
+				params: definition.params.map((param) => {
+					const info: ApiMaskParamInfo = {
+						key: param.key,
+						label: param.label,
+						type: param.type,
+						default: param.default,
+					};
+					if (param.type === "number") {
+						info.min = param.min;
+						info.max = param.max;
+						info.step = param.step;
+					}
+					if (param.type === "select") {
+						info.options = param.options.map((option) => ({ ...option }));
+					}
+					return info;
+				}),
+			})),
+		"timeline.setMask": ({ elementId, trackId, type, params }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!("masks" in element)) {
+				throw new EditorApiError({ code: "invalid_params", message: "Masks apply to video and image elements only" });
+			}
+			const maskType = requireString(type, "type");
+			if (!masksRegistry.has(maskType as MaskType)) {
+				throw new EditorApiError({ code: "invalid_params", message: `Unknown mask type ${maskType}; see masks.list` });
+			}
+			const mask = buildDefaultMaskInstance({ maskType: maskType as MaskType });
+			const merged = {
+				...mask,
+				params: { ...mask.params, ...(params && typeof params === "object" ? params : {}) },
+			} as Mask;
+			editor.timeline.updateElements({
+				updates: [{ trackId: track.id, elementId: element.id, patch: { masks: [merged] } as Partial<TimelineElement> }],
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.updateMask": ({ elementId, trackId, params, inverted }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const mask = "masks" in element ? element.masks?.[0] : undefined;
+			if (!mask) {
+				throw new EditorApiError({ code: "not_found", message: "The element has no mask" });
+			}
+			const merged = {
+				...mask,
+				params: {
+					...mask.params,
+					...(params && typeof params === "object" ? params : {}),
+					...(typeof inverted === "boolean" ? { inverted } : {}),
+				},
+			} as Mask;
+			editor.timeline.updateElements({
+				updates: [{ trackId: track.id, elementId: element.id, patch: { masks: [merged] } as Partial<TimelineElement> }],
+			});
+			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"timeline.removeMask": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const mask = "masks" in element ? element.masks?.[0] : undefined;
+			if (mask) {
+				editor.timeline.removeMask({ trackId: track.id, elementId: element.id, maskId: mask.id });
+			}
+			return elementInfoById({ trackId: track.id, elementId: element.id });
 		},
 		"effects.list": () =>
 			effectsRegistry.getAll().map((definition) => {

@@ -93,6 +93,8 @@ export interface ApiElementInfo {
 	words?: ApiCaptionWord[];
 	/** Effects on a visual element, in the order they apply. */
 	effects?: ApiEffectInfo[];
+	/** The mask on a video or image element, when it has one. */
+	masks?: ApiMaskInfo[];
 }
 
 export type ApiTransitionParamValue = number | boolean | number[];
@@ -232,6 +234,38 @@ export interface ApiFontInfo {
 	weights: number[];
 	styles: string[];
 	variable: boolean;
+}
+
+export interface ApiMaskInfo {
+	id: string;
+	type: string;
+	params: Record<string, unknown>;
+}
+
+export interface ApiMaskParamInfo {
+	key: string;
+	label: string;
+	type: string;
+	default: unknown;
+	min?: number;
+	max?: number;
+	step?: number;
+	options?: { value: string; label: string }[];
+}
+
+export interface ApiMaskDefinitionInfo {
+	type: string;
+	name: string;
+	params: ApiMaskParamInfo[];
+}
+
+export interface ApiKeyframeInfo {
+	id: string;
+	/** Seconds from the element's start. */
+	time: number;
+	value: number | string | boolean;
+	/** How the value reaches the next key: linear, hold or bezier (number channels only). */
+	interpolation?: "linear" | "hold" | "bezier";
 }
 
 export interface ApiEffectInfo {
@@ -544,6 +578,48 @@ export interface EditorApiMethods {
 		params: { family: string };
 		result: { family: string; license: string; faces: number };
 	};
+	/** Every keyframe of an element, by animated path (colour channels appear per component, e.g. `color.r`). */
+	"timeline.getKeyframes": {
+		params: ApiElementLocator;
+		result: Record<string, ApiKeyframeInfo[]>;
+	};
+	/**
+	 * Sets a keyframe at `time` seconds from the element's start on an
+	 * animatable path (`transform.positionX`, `opacity`, `volume`, `color`,
+	 * `effects.<id>.params.<key>`, …); a key already at that time is replaced.
+	 */
+	"timeline.setKeyframe": {
+		params: ApiElementLocator & {
+			path: string;
+			time: number;
+			value: number | string | boolean;
+			interpolation?: "linear" | "hold" | "bezier";
+		};
+		result: ApiElementInfo;
+	};
+	/** Removes the key at `time` (or with `keyframeId`) on `path`. */
+	"timeline.removeKeyframe": {
+		params: ApiElementLocator & { path: string; time?: number; keyframeId?: string };
+		result: ApiElementInfo;
+	};
+	/** Drops every key of `path`; the element's own value applies again. */
+	"timeline.clearKeyframes": {
+		params: ApiElementLocator & { path: string };
+		result: ApiElementInfo;
+	};
+	/** The mask shapes available, with their parameters. */
+	"masks.list": { params: Record<string, never>; result: ApiMaskDefinitionInfo[] };
+	/** Puts a mask of `type` on a video or image element (replacing any mask), at its defaults plus `params`. */
+	"timeline.setMask": {
+		params: ApiElementLocator & { type: string; params?: Record<string, unknown> };
+		result: ApiElementInfo;
+	};
+	/** Changes the element's mask parameters (`inverted` is a shortcut for the param of that name). */
+	"timeline.updateMask": {
+		params: ApiElementLocator & { params?: Record<string, unknown>; inverted?: boolean };
+		result: ApiElementInfo;
+	};
+	"timeline.removeMask": { params: ApiElementLocator; result: ApiElementInfo };
 	/** The effects both editors offer, with their parameters. */
 	"effects.list": { params: Record<string, never>; result: ApiEffectDefinitionInfo[] };
 	/** Adds an effect to a visual element at its defaults, then applies `params`. */

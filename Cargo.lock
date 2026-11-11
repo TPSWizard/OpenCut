@@ -4144,6 +4144,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "opencut-render"
+version = "0.1.0"
+dependencies = [
+ "editor",
+ "image",
+ "media",
+ "render",
+ "tempfile",
+ "time",
+]
+
+[[package]]
 name = "opencut-wasm"
 version = "0.2.10"
 dependencies = [

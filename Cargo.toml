@@ -4,6 +4,7 @@ resolver = "3"
 # crates/media holds only a setup script and has no Cargo.toml.
 members = [
   'apps/desktop',
+  'apps/render-cli',
   'crates/bridge',
   'crates/compositor',
   'crates/editor',

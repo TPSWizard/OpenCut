@@ -9,10 +9,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::thread;
 
-use editor::{MediaItem, MediaKind, Project, Segment, plan_audio};
+use editor::{MediaItem, MediaKind, Project};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::RenderImage;
-use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode};
+use media::{EncodeFormat, EncodeQuality, Ffmpeg, PlatformEncode};
 use render::{Renderer, RendererOptions};
 use time::MediaTime;
 
@@ -333,100 +333,23 @@ fn export(
     })
     .map_err(|error| error.to_string())?;
 
-    let fps_rate = project.settings.fps;
-    let fps = fps_rate.as_f64().unwrap_or(30.0);
-    let duration = project.duration();
-    if duration <= MediaTime::ZERO {
-        return Err("The timeline is empty".to_owned());
-    }
-    let frames_total = (duration.to_seconds_f64() * fps).ceil().max(1.0) as u64;
-    let canvas = project.settings.canvas;
-    let width = canvas.width & !1;
-    let height = canvas.height & !1;
-
-    let audio = if settings.include_audio {
-        plan_audio(project)
-            .into_iter()
-            .map(|clip| AudioMixClip {
-                path: clip.path.clone(),
-                source_start_seconds: clip.source_start.to_seconds_f64(),
-                source_end_seconds: clip.source_end.to_seconds_f64(),
-                timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
-                gain: clip.gain(),
-                gain_keys: gain_keys(&clip.volume),
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-    let encode = EncodeSettings {
+    let job = render::ExportJob {
         output: settings.output.clone(),
-        width,
-        height,
-        fps,
         format: settings.format,
         quality: settings.quality,
         platform: settings.platform,
-        duration_seconds: duration.to_seconds_f64(),
-        audio,
+        include_audio: settings.include_audio,
     };
-    let mut encoder = Encoder::start(&ffmpeg, &encode).map_err(|error| error.to_string())?;
-
-    for frame_index in 0..frames_total {
-        if cancel.load(Ordering::Relaxed) {
-            return Err("Export cancelled".to_owned());
-        }
-        let time = MediaTime::from_frame(frame_index as i64, fps_rate)
-            .unwrap_or(MediaTime::ZERO);
-        let frame = renderer
-            .render(project, time, width, height)
-            .map_err(|error| error.to_string())?;
-        encoder
-            .write_frame(&frame.bgra)
-            .map_err(|error| error.to_string())?;
-        if frame_index % 5 == 0 || frame_index + 1 == frames_total {
-            events
-                .unbounded_send(RenderEvent::ExportProgress {
-                    frames_done: frame_index + 1,
-                    frames_total,
-                })
-                .ok();
-        }
-    }
-    encoder.finish().map_err(|error| error.to_string())
-}
-
-/// Volume keys for the encoder. A Bézier segment is sampled into short
-/// linear pieces (ffmpeg's expression cannot solve the curve); the other
-/// segments map one to one.
-fn gain_keys(volume: &editor::Channel) -> Vec<GainKey> {
-    const BEZIER_PIECES: i64 = 8;
-    let mut keys = Vec::new();
-    for (index, key) in volume.keys.iter().enumerate() {
-        let next = volume.keys.get(index + 1);
-        match (key.segment_to_next, next) {
-            (Segment::Bezier, Some(next)) => {
-                let span = (next.time - key.time).as_ticks();
-                for piece in 0..BEZIER_PIECES {
-                    let time = key.time + time::MediaTime::from_ticks(span * piece / BEZIER_PIECES);
-                    keys.push(GainKey {
-                        seconds: time.to_seconds_f64(),
-                        db: volume.value_at(time).unwrap_or(key.value),
-                        ease: GainEase::Linear,
-                    });
-                }
-            }
-            (segment, _) => keys.push(GainKey {
-                seconds: key.time.to_seconds_f64(),
-                db: key.value,
-                ease: match segment {
-                    Segment::Step => GainEase::Hold,
-                    _ => GainEase::Linear,
-                },
-            }),
-        }
-    }
-    keys
+    render::export_project(
+        &mut renderer,
+        &ffmpeg,
+        project,
+        &job,
+        &|| cancel.load(Ordering::Relaxed),
+        &mut |frames_done, frames_total| {
+            events.unbounded_send(RenderEvent::ExportProgress { frames_done, frames_total }).ok();
+        },
+    )
 }
 
 #[cfg(test)]
