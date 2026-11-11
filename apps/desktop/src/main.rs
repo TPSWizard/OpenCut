@@ -19,6 +19,7 @@ mod render_thread;
 mod shell;
 mod state;
 mod stickers;
+mod transcribe;
 mod theme;
 
 use shell::Shell;

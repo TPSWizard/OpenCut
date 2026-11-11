@@ -11,6 +11,7 @@
 mod animation;
 mod audio;
 mod bundle;
+mod captions;
 mod commands;
 mod document;
 mod ducking;
@@ -31,6 +32,10 @@ pub use animation::{
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, import_bundle};
+pub use captions::{
+    CaptionChunk, DEFAULT_WORDS_PER_CAPTION, GENERATED_CAPTION_HIGHLIGHT, MAX_CAPTION_WORD_GAP_SECONDS,
+    MIN_CAPTION_DURATION_SECONDS, TimedWord, build_caption_chunks, caption_element,
+};
 pub use commands::{
     Command, Edge, ElementPatch, ElementRef, Outcome, SettingsPatch, TrackPlacement, apply,
     nearest_free_start,

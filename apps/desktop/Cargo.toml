@@ -21,6 +21,8 @@ render = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ureq = "3.5.1"
+sha2 = "0.10"
+tempfile = { workspace = true }
 smallvec = { workspace = true }
 time = { workspace = true }
 unicode-segmentation = { workspace = true }

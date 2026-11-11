@@ -135,3 +135,16 @@ its pack.
   downloaded 2026-11-11 from OpenGameArt. The pack's 44.1 kHz 16-bit mono
   WAV files were converted to OGG Vorbis (quality 3) with FFmpeg to keep the
   pack at about 5 MB; the author's `INFO.txt` is kept in `retro/`.
+
+## Native transcription (added 2026-11-11)
+
+- **whisper.cpp** (ggml-org/whisper.cpp, MIT) is used as a separate
+  program: `scripts/build-whisper-cli.sh` clones the pinned tag v1.8.3 and
+  builds `whisper-cli` under `~/.opencut/tools/`; `apps/desktop/src/transcribe.rs`
+  runs it and parses its JSON. No whisper.cpp source is kept in this
+  repository.
+- **ggml Whisper models** (ggml-tiny/base/small from
+  huggingface.co/ggerganov/whisper.cpp, conversions of OpenAI Whisper, MIT)
+  are fetched by the desktop into `~/.opencut/models/` when first used; the
+  file size is checked on download and the SHA-256 and source URL are
+  written beside each model. None are kept in this repository.

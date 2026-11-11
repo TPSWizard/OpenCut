@@ -26,6 +26,8 @@ pub(crate) struct InspectorPanel {
     /// how far the music drops.
     duck_voice: Option<String>,
     duck_amount_db: f64,
+    /// Whisper model chosen for transcription.
+    transcribe_model: &'static str,
     /// Silence auto-cut choices: the shortest pause that goes, and how the
     /// gaps close.
     silence_min_seconds: f64,
@@ -96,6 +98,7 @@ impl InspectorPanel {
             scroll: ScrollHandle::new(),
             duck_voice: None,
             duck_amount_db: -12.0,
+            transcribe_model: "base",
             silence_min_seconds: 0.5,
             silence_ripple: editor::RippleScope::All,
         }
@@ -1029,6 +1032,47 @@ impl Render for InspectorPanel {
                                 state.update(cx, |state, cx| state.cut_silence_selected(options, ripple, cx));
                             })
                     });
+                    // Native speech-to-text through whisper.cpp.
+                    let mut model_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Model", window));
+                    for model in crate::transcribe::MODELS {
+                        let active = self.transcribe_model == model.id;
+                        let id = model.id;
+                        model_row = model_row.child(
+                            Button::new(eid("whisper-model", id), model.label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.transcribe_model = id;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let model_id = self.transcribe_model;
+                    let transcribe_row = div().flex().items_center().gap(px(8.)).child({
+                        let state = self.state.clone();
+                        Button::new("transcribe", "Transcribe to captions")
+                            .size(ButtonSize::XSmall)
+                            .disabled(!has_ffmpeg)
+                            .on_click(move |_, _, cx| {
+                                state.update(cx, |state, cx| state.transcribe_selected(model_id, cx));
+                            })
+                    });
+                    content = content
+                        .child(self.heading("Captions", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Word-timed captions from this clip's speech, on a new text track; the model is fetched once into ~/.opencut/models."),
+                        )
+                        .child(model_row)
+                        .child(transcribe_row);
+
                     content = content
                         .child(self.heading("Silence", window))
                         .child(

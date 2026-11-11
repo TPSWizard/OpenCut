@@ -1646,6 +1646,71 @@ impl EditorState {
         }
     }
 
+    /// Transcribes the selected clip with whisper.cpp on a background thread
+    /// (fetching the model first when needed) and adds the captions as a
+    /// text track in one undo step.
+    pub(crate) fn transcribe_selected(&mut self, model_id: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let Some(clip) = crate::transcribe::clip_plan(self.project(), &element.id) else {
+            self.set_status("Select a clip with audio to transcribe.", cx);
+            return;
+        };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to read the clip's audio.", cx);
+            return;
+        };
+        let Some(model) = crate::transcribe::model_spec(model_id) else { return };
+        let tools = crate::transcribe::tools_dir(self.store.root());
+        let Some(cli) = crate::transcribe::whisper_cli(&tools) else {
+            self.set_status(
+                format!(
+                    "whisper-cli was not found. Build it with scripts/build-whisper-cli.sh (CMake and a C++ toolchain) or set OPENCUT_WHISPER_CLI; looked in {}",
+                    tools.display()
+                ),
+                cx,
+            );
+            return;
+        };
+        let models = crate::transcribe::models_dir(self.store.root());
+        let canvas = self.project().settings.canvas;
+        self.set_status(format!("Transcribing with the {} model…", model.id), cx);
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let path = crate::transcribe::ensure_model(&models, model, &|_, _| {})?;
+                    let samples = crate::transcribe::clip_samples(&ffmpeg, &clip)?;
+                    let words = crate::transcribe::transcribe(&cli, &path, &samples, None, clip.timeline_start.to_seconds_f64())?;
+                    let chunks = editor::build_caption_chunks(
+                        &words,
+                        editor::DEFAULT_WORDS_PER_CAPTION,
+                        editor::MIN_CAPTION_DURATION_SECONDS,
+                        editor::MAX_CAPTION_WORD_GAP_SECONDS,
+                    );
+                    let elements: Vec<editor::Element> = chunks
+                        .iter()
+                        .enumerate()
+                        .map(|(index, chunk)| editor::caption_element(index, chunk, canvas))
+                        .collect();
+                    Ok::<_, String>((words.len(), elements))
+                })
+                .await;
+            this.update(cx, |state, cx| match result {
+                Ok((word_count, elements)) if elements.is_empty() => {
+                    state.set_status(format!("No speech found ({word_count} words)."), cx);
+                }
+                Ok((word_count, elements)) => {
+                    let count = elements.len();
+                    state.execute(Command::InsertCaptions { elements }, cx);
+                    state.set_status(format!("{count} caption(s) from {word_count} words added on a Captions track."), cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Fetches the SVG of every sticker in the project that is not on disk
     /// yet, on a background thread, then renders again. Cheap to call often.
     pub(crate) fn ensure_stickers(&mut self, cx: &mut Context<Self>) {

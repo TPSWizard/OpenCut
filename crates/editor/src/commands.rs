@@ -82,6 +82,11 @@ pub enum Command {
         ranges: Vec<(MediaTime, MediaTime)>,
         ripple: RippleScope,
     },
+    /// Adds a text track at the top and puts these elements on it, in one
+    /// step: what transcription produces.
+    InsertCaptions {
+        elements: Vec<Element>,
+    },
     DeleteElements(Vec<String>),
     DuplicateElements(Vec<String>),
     UpdateElement {
@@ -452,6 +457,20 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 .map(|element| ElementRef { track_id: track_id.clone(), element_id: element.id.clone() })
                 .collect();
             Outcome::Elements(remaining)
+        }
+        Command::InsertCaptions { elements } => {
+            let mut track = new_track(project, TrackKind::Text);
+            track.name = "Captions".to_owned();
+            let id = track.id.clone();
+            for element in elements {
+                if element.kind != ElementKind::Text {
+                    return Err(EditorError::InvalidParams("captions must be text elements".to_owned()));
+                }
+                track.elements.push(element.clone());
+            }
+            track.sort_elements();
+            project.tracks.insert(0, track);
+            Outcome::Track(id)
         }
         Command::DeleteElements(ids) => {
             for id in ids {

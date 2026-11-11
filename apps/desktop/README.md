@@ -103,6 +103,15 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   track or nothing closes up behind each cut. The command
   (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
   match the web app's.
+- **Native transcription**: the inspector's Captions section on a clip with
+  audio runs whisper.cpp's `whisper-cli` (built once with
+  `scripts/build-whisper-cli.sh`, which needs git, CMake and a C++
+  toolchain, or pointed at with `OPENCUT_WHISPER_CLI`) on the clip's audio
+  at 16 kHz with one word per segment. The chosen ggml model (tiny, base or
+  small) is fetched from Hugging Face into `~/.opencut/models/` on first
+  use, checked by size, with its SHA-256 and provenance written beside it.
+  The words become caption elements with the web app's chunking and
+  karaoke highlight, on a new Captions track in one undo step.
 - **Stickers** from the web app's icon sets (`icons:<set>:<name>`, through
   the Iconify API) and flags (`flags:<code>`) render here: the SVG is fetched
   once into `~/.opencut/stickers/` and rasterised with resvg at the size it
@@ -208,13 +217,12 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- Shapes and other graphics from the web editor are read from project files
-  but not rendered, and speech is transcribed only in the web editor
-  (captions it made render here; native transcription waits on a C++
-  toolchain with CMake, which whisper.cpp needs). A path point's
-  curve handles are set while placing it (drag) and follow the point
-  afterwards; they cannot be dragged on their own (the web app has no
-  handle dragging either).
+- Shapes and other graphics from the web editor are read from project
+  files but not rendered. Transcription runs through `whisper-cli` on the
+  CPU; there is no GPU path or language picker yet (the language is
+  detected). A path point's curve handles are set while placing it (drag)
+  and follow the point afterwards; they cannot be dragged on their own (the
+  web app has no handle dragging either).
 - Project bundles move projects between the two editors: **Save bundle…**
   in the header writes `<name>.opencut.zip` (the project in the web app's
   JSON shape plus copies of its media), and **Import bundle…** on the
