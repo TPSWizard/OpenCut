@@ -165,6 +165,7 @@ impl Track {
             (self.kind, kind),
             (TrackKind::Video, ElementKind::Video { .. })
                 | (TrackKind::Video, ElementKind::Image { .. })
+                | (TrackKind::Video, ElementKind::Sticker { .. })
                 | (TrackKind::Text, ElementKind::Text)
                 | (TrackKind::Audio, ElementKind::Audio { .. })
         )
@@ -199,6 +200,16 @@ pub enum ElementKind {
     Image { media_id: String },
     Audio { media_id: String },
     Text,
+    /// A web-app sticker (`provider:value`); the desktop draws icon and flag
+    /// stickers from fetched SVG files, sized by the intrinsic size the web
+    /// app stored when the sticker was placed.
+    Sticker {
+        sticker_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        intrinsic_width: Option<f64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        intrinsic_height: Option<f64>,
+    },
 }
 
 impl ElementKind {
@@ -208,6 +219,7 @@ impl ElementKind {
             Self::Image { .. } => "image",
             Self::Audio { .. } => "audio",
             Self::Text => "text",
+            Self::Sticker { .. } => "sticker",
         }
     }
 
@@ -216,13 +228,13 @@ impl ElementKind {
             Self::Video { media_id } | Self::Image { media_id } | Self::Audio { media_id } => {
                 Some(media_id)
             }
-            Self::Text => None,
+            Self::Text | Self::Sticker { .. } => None,
         }
     }
 
     pub fn track_kind(&self) -> TrackKind {
         match self {
-            Self::Video { .. } | Self::Image { .. } => TrackKind::Video,
+            Self::Video { .. } | Self::Image { .. } | Self::Sticker { .. } => TrackKind::Video,
             Self::Text => TrackKind::Text,
             Self::Audio { .. } => TrackKind::Audio,
         }

@@ -41,6 +41,10 @@ pub(crate) enum RenderRequest {
     Thumbnail {
         media: MediaItem,
     },
+    /// Waveform peaks of a media file's audio, for the timeline.
+    Peaks {
+        media: MediaItem,
+    },
     Forget {
         media_id: String,
     },
@@ -68,6 +72,12 @@ pub(crate) enum RenderEvent {
         media_id: String,
         image: Arc<RenderImage>,
     },
+    /// Peak amplitude (0..1) per [`PEAKS_PER_SECOND`]th of a second; empty
+    /// when the file has no audio that could be read.
+    Peaks {
+        media_id: String,
+        peaks: Arc<Vec<f32>>,
+    },
     /// Something the user should see (a renderer that could not start, a
     /// file that would not decode).
     Status(String),
@@ -93,12 +103,13 @@ impl RenderHandle {
 pub(crate) fn spawn_render_thread(
     ffmpeg: Option<Arc<Ffmpeg>>,
     fonts_dir: PathBuf,
+    stickers_dir: PathBuf,
 ) -> (RenderHandle, UnboundedReceiver<RenderEvent>) {
     let (sender, receiver) = std::sync::mpsc::channel();
     let (events, event_receiver) = unbounded();
     thread::Builder::new()
         .name("opencut-render".into())
-        .spawn(move || render_loop(receiver, events, ffmpeg, fonts_dir))
+        .spawn(move || render_loop(receiver, events, ffmpeg, fonts_dir, stickers_dir))
         .expect("spawn render thread");
     (RenderHandle { sender }, event_receiver)
 }
@@ -108,10 +119,12 @@ fn render_loop(
     events: UnboundedSender<RenderEvent>,
     ffmpeg: Option<Arc<Ffmpeg>>,
     fonts_dir: PathBuf,
+    stickers_dir: PathBuf,
 ) {
     let mut renderer = match Renderer::new(RendererOptions {
         ffmpeg: ffmpeg.clone(),
         fonts_dir: Some(fonts_dir.clone()),
+        stickers_dir: Some(stickers_dir.clone()),
     }) {
         Ok(renderer) => Some(renderer),
         Err(error) => {
@@ -200,6 +213,15 @@ fn handle(
                     .ok();
             }
         }
+        RenderRequest::Peaks { media } => {
+            let peaks = audio_peaks(&media, ffmpeg).unwrap_or_default();
+            events
+                .unbounded_send(RenderEvent::Peaks {
+                    media_id: media.id,
+                    peaks: Arc::new(peaks),
+                })
+                .ok();
+        }
         RenderRequest::Forget { media_id } => {
             if let Some(renderer) = renderer.as_mut() {
                 renderer.forget_media(&media_id);
@@ -238,6 +260,42 @@ fn handle(
     }
 }
 
+/// How many peaks a second of audio becomes.
+pub(crate) const PEAKS_PER_SECOND: usize = 50;
+const PEAKS_SAMPLE_RATE: u32 = 8_000;
+
+/// The largest absolute sample in each 20 ms of the file's audio, mixed
+/// to mono at 8 kHz through FFmpeg. None without FFmpeg or audio.
+fn audio_peaks(media: &MediaItem, ffmpeg: &Option<Arc<Ffmpeg>>) -> Option<Vec<f32>> {
+    let ffmpeg = ffmpeg.as_ref()?;
+    if !media.has_audio {
+        return None;
+    }
+    let settings = media::AudioSettings { sample_rate: PEAKS_SAMPLE_RATE, channels: 1 };
+    let mut reader = media::AudioReader::open(ffmpeg, &media.path, 0.0, settings).ok()?;
+    let bucket = PEAKS_SAMPLE_RATE as usize / PEAKS_PER_SECOND;
+    let mut buffer = vec![0.0f32; bucket * 64];
+    let mut carry: Vec<f32> = Vec::new();
+    let mut peaks = Vec::new();
+    loop {
+        let got = reader.read(&mut buffer).ok()?;
+        if got == 0 {
+            break;
+        }
+        carry.extend_from_slice(&buffer[..got]);
+        let full = carry.len() / bucket;
+        for index in 0..full {
+            let slice = &carry[index * bucket..(index + 1) * bucket];
+            peaks.push(slice.iter().fold(0.0f32, |peak, sample| peak.max(sample.abs())).min(1.0));
+        }
+        carry.drain(..full * bucket);
+    }
+    if !carry.is_empty() {
+        peaks.push(carry.iter().fold(0.0f32, |peak, sample| peak.max(sample.abs())).min(1.0));
+    }
+    Some(peaks)
+}
+
 fn thumbnail(media: &MediaItem, ffmpeg: &Option<Arc<Ffmpeg>>) -> Option<Arc<RenderImage>> {
     let frame = match media.kind {
         MediaKind::Image => media::decode_image(&media.path).ok()?,
@@ -271,6 +329,7 @@ fn export(
     let mut renderer = Renderer::new(RendererOptions {
         ffmpeg: Some(ffmpeg.clone()),
         fonts_dir: Some(crate::fonts::fonts_dir(&editor::ProjectStore::default_root())),
+        stickers_dir: Some(crate::stickers::stickers_dir(&editor::ProjectStore::default_root())),
     })
     .map_err(|error| error.to_string())?;
 
@@ -376,6 +435,41 @@ mod tests {
     use editor::{Command, Element, TrackPlacement, apply};
     use futures::StreamExt;
     use std::process::Command as Process;
+
+    /// Peaks of a synthetic clip: a 440 Hz tone for one second, then a
+    /// second of silence. Needs FFmpeg; skips otherwise.
+    #[test]
+    fn peaks_follow_the_audio() {
+        let Ok(ffmpeg) = Ffmpeg::locate() else {
+            eprintln!("ffmpeg not installed; skipping");
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tone.wav");
+        let status = Process::new(ffmpeg.ffmpeg_path())
+            .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "aevalsrc=0.8*sin(440*2*PI*t)*lt(t\\,1):d=2"])
+            .arg(&path)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let media = MediaItem {
+            id: "tone".to_owned(),
+            name: "tone.wav".to_owned(),
+            kind: MediaKind::Audio,
+            path,
+            duration: MediaTime::from_seconds_f64(2.0),
+            width: None,
+            height: None,
+            fps: None,
+            has_audio: true,
+        };
+        let peaks = audio_peaks(&media, &Some(ffmpeg)).unwrap();
+        assert!((peaks.len() as i64 - 2 * PEAKS_PER_SECOND as i64).abs() <= 2, "{}", peaks.len());
+        let loud = &peaks[5..PEAKS_PER_SECOND - 5];
+        let quiet = &peaks[PEAKS_PER_SECOND + 5..];
+        assert!(loud.iter().all(|peak| *peak > 0.6), "tone second is loud: {loud:?}");
+        assert!(quiet.iter().all(|peak| *peak < 0.01), "silent second is quiet");
+    }
 
     /// Renders and encodes a short project the way the export dialog does.
     /// Needs FFmpeg and a GPU adapter; skips otherwise.

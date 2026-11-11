@@ -18,6 +18,7 @@ mod panels;
 mod render_thread;
 mod shell;
 mod state;
+mod stickers;
 mod theme;
 
 use shell::Shell;

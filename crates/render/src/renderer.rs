@@ -27,6 +27,18 @@ pub struct RendererOptions {
     /// A directory of font files to add to the system fonts, such as the
     /// desktop's `~/.opencut/fonts`.
     pub fonts_dir: Option<std::path::PathBuf>,
+    /// Where sticker SVG files live, named by [`sticker_file_name`]; a
+    /// sticker without a file there is not drawn.
+    pub stickers_dir: Option<std::path::PathBuf>,
+}
+
+/// The file a sticker id's SVG is kept under in the stickers directory.
+pub fn sticker_file_name(sticker_id: &str) -> String {
+    let safe: String = sticker_id
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    format!("{safe}.svg")
 }
 
 /// A composited frame: straight-alpha BGRA, tightly packed.
@@ -60,6 +72,9 @@ pub struct Renderer {
     /// Element id → key of the mask stroke texture currently uploaded.
     strokes: HashMap<String, String>,
     fonts_dir: Option<std::path::PathBuf>,
+    stickers_dir: Option<std::path::PathBuf>,
+    /// Rasterised stickers by texture id: the pixel size uploaded.
+    stickers: HashMap<String, (u32, u32)>,
 }
 
 impl Renderer {
@@ -83,6 +98,8 @@ impl Renderer {
             masks: HashMap::new(),
             strokes: HashMap::new(),
             fonts_dir: options.fonts_dir,
+            stickers_dir: options.stickers_dir,
+            stickers: HashMap::new(),
         })
     }
 
@@ -213,6 +230,12 @@ impl Renderer {
         };
         let (base_width, base_height) = match layer.source {
             LayerSource::Text(_) => (natural_width as f32, natural_height as f32),
+            LayerSource::Sticker { intrinsic_width, intrinsic_height, .. } => fit_contain(
+                intrinsic_width.map(|w| w as f32).unwrap_or(natural_width as f32),
+                intrinsic_height.map(|h| h as f32).unwrap_or(natural_height as f32),
+                canvas_width,
+                canvas_height,
+            ),
             _ => fit_contain(
                 natural_width as f32,
                 natural_height as f32,
@@ -261,6 +284,55 @@ impl Renderer {
         output_scale: f32,
     ) -> Result<Option<(String, u32, u32)>, RenderError> {
         match source {
+            LayerSource::Sticker { sticker_id, intrinsic_width, intrinsic_height } => {
+                let Some(dir) = self.stickers_dir.clone() else {
+                    return Ok(None);
+                };
+                let path = dir.join(sticker_file_name(sticker_id));
+                let Ok(bytes) = std::fs::read(&path) else {
+                    return Ok(None);
+                };
+                let tree = match resvg::usvg::Tree::from_data(&bytes, &resvg::usvg::Options::default()) {
+                    Ok(tree) => tree,
+                    Err(error) => {
+                        eprintln!("render: sticker {sticker_id}: {error}");
+                        return Ok(None);
+                    }
+                };
+                let svg_size = tree.size();
+                let natural_width = intrinsic_width.map(|w| w as f32).unwrap_or(svg_size.width()).max(1.0);
+                let natural_height = intrinsic_height.map(|h| h as f32).unwrap_or(svg_size.height()).max(1.0);
+                // Rasterise at the size it will be shown, in steps so a slow
+                // zoom does not re-rasterise every frame.
+                let canvas = project.settings.canvas;
+                let (fit_width, fit_height) =
+                    fit_contain(natural_width, natural_height, canvas.width as f32, canvas.height as f32);
+                let shown_width = (fit_width * output_scale).clamp(16.0, 4096.0);
+                let bucket = (shown_width / 64.0).ceil() * 64.0;
+                let pixel_width = bucket.round().max(1.0) as u32;
+                let pixel_height = ((bucket * fit_height / fit_width.max(1.0)).round().max(1.0) as u32).min(4096);
+                let texture_id = format!("sticker:{sticker_id}@{pixel_width}");
+                if self.stickers.contains_key(&texture_id) {
+                    return Ok(Some((texture_id, natural_width.round() as u32, natural_height.round() as u32)));
+                }
+                let Some(mut pixmap) = resvg::tiny_skia::Pixmap::new(pixel_width, pixel_height) else {
+                    return Ok(None);
+                };
+                let transform = resvg::tiny_skia::Transform::from_scale(
+                    pixel_width as f32 / svg_size.width().max(1.0),
+                    pixel_height as f32 / svg_size.height().max(1.0),
+                );
+                resvg::render(&tree, transform, &mut pixmap.as_mut());
+                // Premultiplied RGBA → straight BGRA, as every other source.
+                let mut bgra = Vec::with_capacity(pixmap.data().len());
+                for px in pixmap.pixels() {
+                    let c = px.demultiply();
+                    bgra.extend_from_slice(&[c.blue(), c.green(), c.red(), c.alpha()]);
+                }
+                self.upload(&texture_id, pixel_width, pixel_height, &bgra);
+                self.stickers.insert(texture_id.clone(), (pixel_width, pixel_height));
+                Ok(Some((texture_id, natural_width.round() as u32, natural_height.round() as u32)))
+            }
             LayerSource::Image { media_id } => {
                 let media = media_item(project, media_id)?;
                 let texture_id = format!("media:{media_id}");

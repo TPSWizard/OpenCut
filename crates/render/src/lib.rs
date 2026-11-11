@@ -15,5 +15,5 @@ pub use effects::{backdrop_blur_passes, effect_pass_groups};
 pub use error::RenderError;
 pub use mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask, rasterize_text_mask_stroke};
 pub use mixer::Mixer;
-pub use renderer::{RenderedFrame, Renderer, RendererOptions};
+pub use renderer::{sticker_file_name, RenderedFrame, Renderer, RendererOptions};
 pub use text::{TextRaster, TextRasterizer};

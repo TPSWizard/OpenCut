@@ -104,6 +104,13 @@ pub enum LayerSource {
         media_id: String,
     },
     Text(TextStyle),
+    /// A sticker by id, with the intrinsic size the web app stored (SVG
+    /// size when none).
+    Sticker {
+        sticker_id: String,
+        intrinsic_width: Option<f64>,
+        intrinsic_height: Option<f64>,
+    },
 }
 
 /// Offsets are canvas pixels from the canvas centre; scale is a multiplier
@@ -447,6 +454,11 @@ fn layer_plan(
         },
         ElementKind::Image { media_id } => LayerSource::Image {
             media_id: media_id.clone(),
+        },
+        ElementKind::Sticker { sticker_id, intrinsic_width, intrinsic_height } => LayerSource::Sticker {
+            sticker_id: sticker_id.clone(),
+            intrinsic_width: *intrinsic_width,
+            intrinsic_height: *intrinsic_height,
         },
         ElementKind::Text => {
             let mut style = TextStyle::from_params(&params, canvas_height);

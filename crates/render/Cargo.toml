@@ -12,6 +12,7 @@ crate-type = ["rlib"]
 [dependencies]
 compositor = { workspace = true }
 cosmic-text = { workspace = true }
+resvg = "0.49.0"
 editor = { workspace = true }
 gpu = { workspace = true }
 media = { workspace = true }

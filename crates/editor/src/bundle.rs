@@ -282,6 +282,8 @@ fn convert_track(track: &Value, lane: Lane, skipped: &mut Vec<String>) -> Option
         Some("video") => TrackKind::Video,
         Some("text") => TrackKind::Text,
         Some("audio") => TrackKind::Audio,
+        // Graphic tracks hold stickers (kept) and shapes (skipped below).
+        Some("graphic") => TrackKind::Video,
         other => {
             let count = track
                 .get("elements")
@@ -314,6 +316,7 @@ fn convert_track(track: &Value, lane: Lane, skipped: &mut Vec<String>) -> Option
         let kind = element.get("type").and_then(Value::as_str).unwrap_or("");
         let supported = match kind {
             "video" | "image" | "text" => true,
+            "sticker" => element.get("stickerId").and_then(Value::as_str).is_some(),
             "audio" => {
                 element.get("sourceType").and_then(Value::as_str) != Some("library")
                     && element.get("mediaId").is_some()
@@ -699,12 +702,18 @@ mod tests {
         let store = ProjectStore::new(dir.path().join("projects"));
         let report = import_bundle(&bundle_path, &store).unwrap();
         assert_eq!(report.project.created_at, 1_715_000_000_123);
-        assert_eq!(report.project.tracks.len(), 3, "text, main and audio tracks");
+        assert_eq!(report.project.tracks.len(), 4, "text, graphics (as video), main and audio tracks");
         assert_eq!(report.project.tracks[0].elements.len(), 1, "the title");
-        assert!(report.project.tracks[1].elements.is_empty(), "the clip's media is missing");
-        assert!(report.project.tracks[2].elements.is_empty(), "library sound skipped");
+        let graphics = report.project.tracks.iter().find(|track| track.name == "Graphics").unwrap();
+        assert_eq!(graphics.kind, TrackKind::Video, "a graphic track lands on the video lane");
+        assert_eq!(graphics.elements.len(), 1, "the sticker is kept");
+        assert!(matches!(graphics.elements[0].kind, ElementKind::Sticker { ref sticker_id, .. } if sticker_id == "x"));
+        let main = report.project.tracks.iter().find(|track| track.lane == Lane::Main).unwrap();
+        assert!(main.elements.is_empty(), "the clip's media is missing");
+        let audio = report.project.tracks.iter().find(|track| track.kind == TrackKind::Audio).unwrap();
+        assert!(audio.elements.is_empty(), "library sound skipped");
         let skipped = report.skipped.join("\n");
-        assert!(skipped.contains("graphic track"), "{skipped}");
+        assert!(!skipped.contains("Sticker"), "{skipped}");
         assert!(skipped.contains("Library sound"), "{skipped}");
         assert!(skipped.contains("not in the bundle"), "{skipped}");
 

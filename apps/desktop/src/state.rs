@@ -9,7 +9,7 @@ pub(crate) fn trace_input() -> bool {
     *ON.get_or_init(|| std::env::var_os("OPENCUT_TRACE_INPUT").is_some_and(|v| !v.is_empty() && v != "0"))
 }
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -103,6 +103,9 @@ pub(crate) struct EditorState {
     preview_size: (u32, u32),
     pub status: Option<String>,
     pub thumbnails: HashMap<String, Arc<RenderImage>>,
+    /// Waveform peaks by media id, once the render thread has read them.
+    pub peaks: HashMap<String, Arc<Vec<f32>>>,
+    peaks_pending: HashSet<String>,
     /// The freeform mask being drawn on the preview, if any.
     pub pen: Option<PenTool>,
     /// Points of the selected clip's freeform mask that are selected (they
@@ -113,6 +116,10 @@ pub(crate) struct EditorState {
     pub export: Option<ExportState>,
     /// Where fetched font files live (`~/.opencut/fonts`).
     pub fonts_dir: PathBuf,
+    /// Where fetched sticker SVGs live (`~/.opencut/stickers`).
+    pub stickers_dir: PathBuf,
+    /// Sticker ids already on disk, being fetched, or that failed.
+    stickers_tried: HashSet<String>,
     render: RenderHandle,
     audio: Option<AudioOutput>,
     render_generation: u64,
@@ -134,7 +141,8 @@ impl EditorState {
         cx: &mut Context<Self>,
     ) -> Self {
         let fonts_dir = crate::fonts::fonts_dir(store.root());
-        let (render, mut events) = spawn_render_thread(ffmpeg.clone(), fonts_dir.clone());
+        let stickers_dir = crate::stickers::stickers_dir(store.root());
+        let (render, mut events) = spawn_render_thread(ffmpeg.clone(), fonts_dir.clone(), stickers_dir.clone());
         let event_task = cx.spawn(async move |this, cx| {
             while let Some(event) = events.next().await {
                 if this
@@ -180,7 +188,11 @@ impl EditorState {
             pen: None,
             selected_mask_points: Vec::new(),
             guide: None,
+            peaks: HashMap::new(),
+            peaks_pending: HashSet::new(),
             fonts_dir,
+            stickers_dir,
+            stickers_tried: HashSet::new(),
             export: None,
             render,
             audio,
@@ -1540,6 +1552,11 @@ impl EditorState {
                 self.thumbnails.insert(media_id, image);
                 cx.notify();
             }
+            RenderEvent::Peaks { media_id, peaks } => {
+                self.peaks_pending.remove(&media_id);
+                self.peaks.insert(media_id, peaks);
+                cx.notify();
+            }
             RenderEvent::Status(message) => self.set_status(message, cx),
             RenderEvent::ExportProgress {
                 frames_done,
@@ -1614,6 +1631,55 @@ impl EditorState {
             cancel,
         });
         cx.notify();
+    }
+
+    /// Asks the render thread for the waveform peaks of media files the
+    /// timeline wants to draw and does not have yet.
+    pub(crate) fn request_peaks(&mut self, media_ids: Vec<String>) {
+        for media_id in media_ids {
+            if self.peaks.contains_key(&media_id) || self.peaks_pending.contains(&media_id) {
+                continue;
+            }
+            let Some(media) = self.project().media_item(&media_id).cloned() else { continue };
+            self.peaks_pending.insert(media_id);
+            self.render.send(RenderRequest::Peaks { media });
+        }
+    }
+
+    /// Fetches the SVG of every sticker in the project that is not on disk
+    /// yet, on a background thread, then renders again. Cheap to call often.
+    pub(crate) fn ensure_stickers(&mut self, cx: &mut Context<Self>) {
+        let missing = crate::stickers::missing_stickers(self.project(), &self.stickers_dir, &self.stickers_tried);
+        if missing.is_empty() {
+            return;
+        }
+        for id in &missing {
+            self.stickers_tried.insert(id.clone());
+        }
+        let dir = self.stickers_dir.clone();
+        cx.spawn(async move |this, cx| {
+            let results = cx
+                .background_executor()
+                .spawn(async move {
+                    missing
+                        .into_iter()
+                        .map(|id| (id.clone(), crate::stickers::fetch_sticker(&dir, &id)))
+                        .collect::<Vec<_>>()
+                })
+                .await;
+            this.update(cx, |state, cx| {
+                let failures: Vec<String> = results
+                    .into_iter()
+                    .filter_map(|(id, result)| result.err().map(|message| format!("{id}: {message}")))
+                    .collect();
+                if !failures.is_empty() {
+                    state.set_status(format!("Sticker(s) not fetched: {}", failures.join("; ")), cx);
+                }
+                state.request_render(cx);
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// Fetches a family's files from Fontsource into the fonts directory

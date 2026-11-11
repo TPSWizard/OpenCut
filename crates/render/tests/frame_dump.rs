@@ -26,7 +26,7 @@ fn renders_the_frames_named_by_the_environment() {
     let store = editor::ProjectStore::new(path.parent().unwrap());
     let project = store.load(&id).expect("project loads");
     let ffmpeg = Ffmpeg::locate().ok();
-    let mut renderer = Renderer::new(RendererOptions { ffmpeg, fonts_dir: None }).expect("renderer");
+    let mut renderer = Renderer::new(RendererOptions { ffmpeg, fonts_dir: None, stickers_dir: None }).expect("renderer");
     let (width, height) = (project.settings.canvas.width, project.settings.canvas.height);
     std::fs::create_dir_all(&output).unwrap();
     for seconds in times {

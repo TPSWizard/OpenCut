@@ -1,10 +1,13 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use editor::{Edge, Element, ElementKind, TrackKind};
 use gpui::{
     Bounds, Context, DragMoveEvent, Entity, FontWeight, Hsla, MouseButton, MouseDownEvent,
-    MouseUpEvent, Pixels, Point, ScrollWheelEvent, Window, canvas, div, hsla, prelude::*, px,
+    MouseUpEvent, Pixels, Point, ScrollWheelEvent, Window, canvas, div, fill, hsla, point, prelude::*, px, size,
 };
 use time::MediaTime;
 
@@ -192,6 +195,7 @@ impl TimelinePanel {
             ElementKind::Image { .. } => hsla(0.40, 0.45, 0.40, 1.0),
             ElementKind::Text => hsla(0.08, 0.70, 0.50, 1.0),
             ElementKind::Audio { .. } => hsla(0.75, 0.45, 0.50, 1.0),
+            ElementKind::Sticker { .. } => hsla(0.48, 0.50, 0.42, 1.0),
         }
     }
 
@@ -225,6 +229,8 @@ impl Render for TimelinePanel {
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
+        let peaks_by_media: HashMap<String, Arc<Vec<f32>>> = state.peaks.clone();
+        let mut peaks_wanted: Vec<String> = Vec::new();
         let status = state.status.clone();
         let focus_handle = state.focus_handle.clone();
         let preview = self.preview.clone();
@@ -396,6 +402,30 @@ impl Render for TimelinePanel {
                 let focus_for_clip = focus_handle.clone();
                 let start_seconds = element.start_time.to_seconds_f64();
 
+                // Audio on the clip: its peaks, the gain curve and mute.
+                let audio_media = match &element.kind {
+                    ElementKind::Audio { media_id } | ElementKind::Video { media_id } => project
+                        .media_item(media_id)
+                        .filter(|media| media.has_audio)
+                        .map(|media| media.id.clone()),
+                    _ => None,
+                };
+                let waveform = audio_media.as_ref().and_then(|media_id| match peaks_by_media.get(media_id) {
+                    Some(peaks) => Some(Waveform {
+                        peaks: Arc::clone(peaks),
+                        source_start: element.trim_start.to_seconds_f64(),
+                        zoom,
+                        static_db: element.params.number("volume", 0.0),
+                        volume: element.animations.get("volume").cloned(),
+                        muted: element.params.bool("muted", false) || dimmed,
+                    }),
+                    None => {
+                        peaks_wanted.push(media_id.clone());
+                        None
+                    }
+                });
+                let muted_badge = element.params.bool("muted", false);
+
                 // Keyframe markers: one dot per distinct key time, on the
                 // selected clip only.
                 let mut key_times: Vec<MediaTime> = if selected {
@@ -514,6 +544,30 @@ impl Render for TimelinePanel {
                             }
                         },
                     )
+                    .when_some(waveform, |this, waveform| {
+                        this.child(
+                            canvas(
+                                |_, _, _| (),
+                                move |bounds, _, window, _| paint_waveform(bounds, &waveform, window),
+                            )
+                            .absolute()
+                            .inset_0(),
+                        )
+                    })
+                    .when(muted_badge, |this| {
+                        this.child(
+                            div()
+                                .absolute()
+                                .top(px(3.))
+                                .right(px(HANDLE_WIDTH + 2.0))
+                                .px(px(4.))
+                                .rounded(px(3.))
+                                .bg(gpui::black().opacity(0.55))
+                                .text_size(px(9.))
+                                .text_color(gpui::white())
+                                .child("MUTED"),
+                        )
+                    })
                     .child(
                         div()
                             .flex()
@@ -704,6 +758,11 @@ impl Render for TimelinePanel {
         }
 
         let playhead_x = to_x(playhead.to_seconds_f64());
+        if !peaks_wanted.is_empty() {
+            peaks_wanted.sort();
+            peaks_wanted.dedup();
+            self.state.update(cx, |state, _| state.request_peaks(peaks_wanted));
+        }
         let playhead_line = div()
             .absolute()
             .top_0()
@@ -825,5 +884,101 @@ impl Render for TimelinePanel {
                         .child(status),
                 )
             })
+    }
+}
+
+
+/// What a clip's waveform is drawn from.
+struct Waveform {
+    peaks: Arc<Vec<f32>>,
+    /// Seconds into the source where the clip starts.
+    source_start: f64,
+    /// Timeline pixels per second.
+    zoom: f32,
+    /// The clip's volume in dB when it has no keys.
+    static_db: f64,
+    volume: Option<editor::Channel>,
+    muted: bool,
+}
+
+impl Waveform {
+    /// Linear gain at a time into the clip, from the volume keys or the
+    /// static volume.
+    fn gain_at(&self, local_seconds: f64) -> f32 {
+        let db = self
+            .volume
+            .as_ref()
+            .filter(|channel| !channel.is_empty())
+            .and_then(|channel| channel.value_at(MediaTime::from_seconds_f64(local_seconds).unwrap_or(MediaTime::ZERO)))
+            .unwrap_or(self.static_db);
+        (10f64.powf(db / 20.0) as f32).clamp(0.0, 2.0)
+    }
+}
+
+/// Peaks as a centred bar per pixel column, scaled by the gain at that
+/// point, with the gain curve drawn over them (mid-height is 0 dB).
+fn paint_waveform(bounds: Bounds<Pixels>, waveform: &Waveform, window: &mut Window) {
+    let width = f32::from(bounds.size.width);
+    let height = f32::from(bounds.size.height);
+    if width < 1.0 || height < 4.0 || waveform.peaks.is_empty() {
+        return;
+    }
+    let peaks_per_second = crate::render_thread::PEAKS_PER_SECOND as f64;
+    let middle = height / 2.0;
+    let bar = gpui::white().opacity(if waveform.muted { 0.18 } else { 0.45 });
+    let line = if waveform.muted { gpui::white().opacity(0.25) } else { hsla(0.14, 0.9, 0.65, 0.9) };
+    let columns = width.ceil() as usize;
+    let mut previous_y: Option<f32> = None;
+    for column in 0..columns {
+        let x = column as f32;
+        let local_seconds = x as f64 / waveform.zoom.max(0.01) as f64;
+        let source_seconds = waveform.source_start + local_seconds;
+        // The loudest peak in the stretch of source this column covers.
+        let first = (source_seconds * peaks_per_second).floor().max(0.0) as usize;
+        let last = ((source_seconds + 1.0 / waveform.zoom.max(0.01) as f64) * peaks_per_second).ceil() as usize;
+        let peak = waveform.peaks[first.min(waveform.peaks.len())..last.min(waveform.peaks.len())]
+            .iter()
+            .fold(0.0f32, |peak, value| peak.max(*value));
+        let gain = waveform.gain_at(local_seconds);
+        let half = (peak * gain.min(1.0) * (middle - 2.0)).max(0.5);
+        window.paint_quad(fill(
+            Bounds::new(
+                point(bounds.origin.x + px(x), bounds.origin.y + px(middle - half)),
+                size(px(1.0), px(half * 2.0)),
+            ),
+            bar,
+        ));
+        // Gain line: 0 dB at the middle, +6 dB at the top, silence at the bottom.
+        let y = height - (gain / 2.0).min(1.0) * (height - 2.0) - 1.0;
+        if column % 2 == 0 {
+            let top = previous_y.map(|p| p.min(y)).unwrap_or(y);
+            let bottom = previous_y.map(|p| p.max(y)).unwrap_or(y);
+            window.paint_quad(fill(
+                Bounds::new(
+                    point(bounds.origin.x + px(x), bounds.origin.y + px(top - 0.75)),
+                    size(px(2.0), px((bottom - top) + 1.5)),
+                ),
+                line,
+            ));
+            previous_y = Some(y);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_gain_line_follows_static_and_keyed_volume() {
+        let flat = Waveform { peaks: Arc::new(vec![1.0]), source_start: 0.0, zoom: 100.0, static_db: -6.0, volume: None, muted: false };
+        assert!((flat.gain_at(0.5) - 0.501).abs() < 0.01);
+        let mut channel = editor::Channel::default();
+        channel.upsert(MediaTime::ZERO, 0.0, None);
+        channel.upsert(MediaTime::from_seconds_f64(1.0).unwrap(), -20.0, None);
+        let keyed = Waveform { volume: Some(channel), ..flat };
+        assert!((keyed.gain_at(0.0) - 1.0).abs() < 1e-6);
+        assert!((keyed.gain_at(1.0) - 0.1).abs() < 1e-6);
+        assert!(keyed.gain_at(0.5) < 1.0 && keyed.gain_at(0.5) > 0.1);
     }
 }

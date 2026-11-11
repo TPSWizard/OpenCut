@@ -74,7 +74,7 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
             }
             let media_id = match &element.kind {
                 ElementKind::Video { media_id } | ElementKind::Audio { media_id } => media_id,
-                ElementKind::Image { .. } | ElementKind::Text => continue,
+                ElementKind::Image { .. } | ElementKind::Text | ElementKind::Sticker { .. } => continue,
             };
             let Some(media) = project.media_item(media_id) else {
                 continue;

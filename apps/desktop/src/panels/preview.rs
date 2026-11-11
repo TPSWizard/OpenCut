@@ -263,6 +263,7 @@ impl Render for PreviewPanel {
         if shown_width > 0 && shown_height > 0 {
             self.state.update(cx, |state, cx| {
                 state.set_preview_size(shown_width, shown_height, cx);
+                state.ensure_stickers(cx);
             });
         }
 

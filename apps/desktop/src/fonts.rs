@@ -41,7 +41,7 @@ pub(crate) fn fontsource_id(family: &str) -> String {
 }
 
 #[derive(Deserialize)]
-struct FamilyDetail {
+pub(crate) struct FamilyDetail {
     family: String,
     #[serde(default)]
     license: String,

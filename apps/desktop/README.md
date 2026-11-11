@@ -103,6 +103,17 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   track or nothing closes up behind each cut. The command
   (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
   match the web app's.
+- **Stickers** from the web app's icon sets (`icons:<set>:<name>`, through
+  the Iconify API) and flags (`flags:<code>`) render here: the SVG is fetched
+  once into `~/.opencut/stickers/` and rasterised with resvg at the size it
+  is shown, sized by the intrinsic size the web app stored. Bundle import
+  keeps sticker elements, including those on graphic tracks (which land on
+  the video lane); shapes and other graphics stay web-only and are reported.
+- **Waveforms** on audio and video clips in the timeline: peaks are read
+  through FFmpeg (8 kHz mono, one peak per 20 ms) on the render thread the
+  first time a clip is shown, drawn as bars scaled by the clip's gain, with
+  the gain curve over them (mid-height is 0 dB) and a MUTED badge on muted
+  clips.
 - **Bundled sounds** placed in the web app (Kenney Interface Sounds, Kenney
   UI Audio and Juhani Junkala's 512 retro sounds, all CC0) travel inside a
   project bundle as ordinary audio media, so they play here after *Import
@@ -197,9 +208,10 @@ resolution and pipes BGRA frames into `media::Encoder`.
 
 ## Not there yet
 
-- The web editor's stickers are read
-  from project files but not rendered, and speech is transcribed only in the
-  web editor (captions it made render here). A path point's
+- Shapes and other graphics from the web editor are read from project files
+  but not rendered, and speech is transcribed only in the web editor
+  (captions it made render here; native transcription waits on a C++
+  toolchain with CMake, which whisper.cpp needs). A path point's
   curve handles are set while placing it (drag) and follow the point
   afterwards; they cannot be dragged on their own (the web app has no
   handle dragging either).

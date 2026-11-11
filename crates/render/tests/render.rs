@@ -14,7 +14,7 @@ fn seconds(value: f64) -> MediaTime {
 }
 
 fn renderer(ffmpeg: Option<std::sync::Arc<Ffmpeg>>) -> Option<Renderer> {
-    match Renderer::new(RendererOptions { ffmpeg, fonts_dir: None }) {
+    match Renderer::new(RendererOptions { ffmpeg, fonts_dir: None, stickers_dir: None }) {
         Ok(renderer) => Some(renderer),
         Err(RenderError::Gpu(error)) => {
             eprintln!("no GPU adapter ({error}); skipping");
