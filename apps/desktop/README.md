@@ -103,6 +103,11 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   track or nothing closes up behind each cut. The command
   (`Command::RemoveRanges`) and the detection (`crates/editor/src/silence.rs`)
   match the web app's.
+- **Bundled sounds** placed in the web app (Kenney Interface Sounds, Kenney
+  UI Audio and Juhani Junkala's 512 retro sounds, all CC0) travel inside a
+  project bundle as ordinary audio media, so they play here after *Import
+  bundle…*. Freesound previews still do not: they stay web-only and are
+  listed as skipped on import.
 - **Fonts from Fontsource**: a text element's *Font files* row fetches
   the named family's TTF files (regular and bold, with italics where they
   exist) from jsDelivr into `~/.opencut/fonts/<id>/`, together with the

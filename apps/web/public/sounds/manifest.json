@@ -1,0 +1,6521 @@
+{
+"packs": [
+{
+"id": "kenney-interface",
+"name": "Kenney Interface Sounds",
+"author": "Kenney",
+"license": "CC0-1.0",
+"url": "https://kenney.nl/assets/interface-sounds"
+},
+{
+"id": "kenney-ui",
+"name": "Kenney UI Audio",
+"author": "Kenney",
+"license": "CC0-1.0",
+"url": "https://kenney.nl/assets/ui-audio"
+},
+{
+"id": "retro",
+"name": "The Essential Retro Video Game Sound Effects Collection (512 sounds)",
+"author": "Juhani Junkala",
+"license": "CC0-1.0",
+"url": "https://opengameart.org/content/512-sound-effects-8-bit-style"
+}
+],
+"sounds": [
+{
+"pack": "kenney-interface",
+"name": "back 001",
+"file": "kenney-interface/back-001.ogg",
+"tags": [
+"back"
+],
+"duration": 0.064
+},
+{
+"pack": "kenney-interface",
+"name": "back 002",
+"file": "kenney-interface/back-002.ogg",
+"tags": [
+"back"
+],
+"duration": 0.07
+},
+{
+"pack": "kenney-interface",
+"name": "back 003",
+"file": "kenney-interface/back-003.ogg",
+"tags": [
+"back"
+],
+"duration": 0.093
+},
+{
+"pack": "kenney-interface",
+"name": "back 004",
+"file": "kenney-interface/back-004.ogg",
+"tags": [
+"back"
+],
+"duration": 0.073
+},
+{
+"pack": "kenney-interface",
+"name": "bong 001",
+"file": "kenney-interface/bong-001.ogg",
+"tags": [
+"bong"
+],
+"duration": 0.123
+},
+{
+"pack": "kenney-interface",
+"name": "click 001",
+"file": "kenney-interface/click-001.ogg",
+"tags": [
+"click"
+],
+"duration": 0.1
+},
+{
+"pack": "kenney-interface",
+"name": "click 002",
+"file": "kenney-interface/click-002.ogg",
+"tags": [
+"click"
+],
+"duration": 0.01
+},
+{
+"pack": "kenney-interface",
+"name": "click 003",
+"file": "kenney-interface/click-003.ogg",
+"tags": [
+"click"
+],
+"duration": 0.01
+},
+{
+"pack": "kenney-interface",
+"name": "click 004",
+"file": "kenney-interface/click-004.ogg",
+"tags": [
+"click"
+],
+"duration": 0.01
+},
+{
+"pack": "kenney-interface",
+"name": "click 005",
+"file": "kenney-interface/click-005.ogg",
+"tags": [
+"click"
+],
+"duration": 0.01
+},
+{
+"pack": "kenney-interface",
+"name": "close 001",
+"file": "kenney-interface/close-001.ogg",
+"tags": [
+"close"
+],
+"duration": 0.148
+},
+{
+"pack": "kenney-interface",
+"name": "close 002",
+"file": "kenney-interface/close-002.ogg",
+"tags": [
+"close"
+],
+"duration": 0.314
+},
+{
+"pack": "kenney-interface",
+"name": "close 003",
+"file": "kenney-interface/close-003.ogg",
+"tags": [
+"close"
+],
+"duration": 0.314
+},
+{
+"pack": "kenney-interface",
+"name": "close 004",
+"file": "kenney-interface/close-004.ogg",
+"tags": [
+"close"
+],
+"duration": 0.323
+},
+{
+"pack": "kenney-interface",
+"name": "confirmation 001",
+"file": "kenney-interface/confirmation-001.ogg",
+"tags": [
+"confirmation"
+],
+"duration": 0.29
+},
+{
+"pack": "kenney-interface",
+"name": "confirmation 002",
+"file": "kenney-interface/confirmation-002.ogg",
+"tags": [
+"confirmation"
+],
+"duration": 0.539
+},
+{
+"pack": "kenney-interface",
+"name": "confirmation 003",
+"file": "kenney-interface/confirmation-003.ogg",
+"tags": [
+"confirmation"
+],
+"duration": 0.322
+},
+{
+"pack": "kenney-interface",
+"name": "confirmation 004",
+"file": "kenney-interface/confirmation-004.ogg",
+"tags": [
+"confirmation"
+],
+"duration": 0.49
+},
+{
+"pack": "kenney-interface",
+"name": "drop 001",
+"file": "kenney-interface/drop-001.ogg",
+"tags": [
+"drop"
+],
+"duration": 0.11
+},
+{
+"pack": "kenney-interface",
+"name": "drop 002",
+"file": "kenney-interface/drop-002.ogg",
+"tags": [
+"drop"
+],
+"duration": 0.191
+},
+{
+"pack": "kenney-interface",
+"name": "drop 003",
+"file": "kenney-interface/drop-003.ogg",
+"tags": [
+"drop"
+],
+"duration": 0.191
+},
+{
+"pack": "kenney-interface",
+"name": "drop 004",
+"file": "kenney-interface/drop-004.ogg",
+"tags": [
+"drop"
+],
+"duration": 0.287
+},
+{
+"pack": "kenney-interface",
+"name": "error 001",
+"file": "kenney-interface/error-001.ogg",
+"tags": [
+"error"
+],
+"duration": 0.165
+},
+{
+"pack": "kenney-interface",
+"name": "error 002",
+"file": "kenney-interface/error-002.ogg",
+"tags": [
+"error"
+],
+"duration": 0.165
+},
+{
+"pack": "kenney-interface",
+"name": "error 003",
+"file": "kenney-interface/error-003.ogg",
+"tags": [
+"error"
+],
+"duration": 0.533
+},
+{
+"pack": "kenney-interface",
+"name": "error 004",
+"file": "kenney-interface/error-004.ogg",
+"tags": [
+"error"
+],
+"duration": 0.103
+},
+{
+"pack": "kenney-interface",
+"name": "error 005",
+"file": "kenney-interface/error-005.ogg",
+"tags": [
+"error"
+],
+"duration": 0.5
+},
+{
+"pack": "kenney-interface",
+"name": "error 006",
+"file": "kenney-interface/error-006.ogg",
+"tags": [
+"error"
+],
+"duration": 0.5
+},
+{
+"pack": "kenney-interface",
+"name": "error 007",
+"file": "kenney-interface/error-007.ogg",
+"tags": [
+"error"
+],
+"duration": 0.192
+},
+{
+"pack": "kenney-interface",
+"name": "error 008",
+"file": "kenney-interface/error-008.ogg",
+"tags": [
+"error"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "glass 001",
+"file": "kenney-interface/glass-001.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.278
+},
+{
+"pack": "kenney-interface",
+"name": "glass 002",
+"file": "kenney-interface/glass-002.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.125
+},
+{
+"pack": "kenney-interface",
+"name": "glass 003",
+"file": "kenney-interface/glass-003.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.124
+},
+{
+"pack": "kenney-interface",
+"name": "glass 004",
+"file": "kenney-interface/glass-004.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.692
+},
+{
+"pack": "kenney-interface",
+"name": "glass 005",
+"file": "kenney-interface/glass-005.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.111
+},
+{
+"pack": "kenney-interface",
+"name": "glass 006",
+"file": "kenney-interface/glass-006.ogg",
+"tags": [
+"glass"
+],
+"duration": 0.111
+},
+{
+"pack": "kenney-interface",
+"name": "glitch 001",
+"file": "kenney-interface/glitch-001.ogg",
+"tags": [
+"glitch"
+],
+"duration": 0.02
+},
+{
+"pack": "kenney-interface",
+"name": "glitch 002",
+"file": "kenney-interface/glitch-002.ogg",
+"tags": [
+"glitch"
+],
+"duration": 0.03
+},
+{
+"pack": "kenney-interface",
+"name": "glitch 003",
+"file": "kenney-interface/glitch-003.ogg",
+"tags": [
+"glitch"
+],
+"duration": 0.01
+},
+{
+"pack": "kenney-interface",
+"name": "glitch 004",
+"file": "kenney-interface/glitch-004.ogg",
+"tags": [
+"glitch"
+],
+"duration": 0.023
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 001",
+"file": "kenney-interface/maximize-001.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.258
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 002",
+"file": "kenney-interface/maximize-002.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.258
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 003",
+"file": "kenney-interface/maximize-003.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.212
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 004",
+"file": "kenney-interface/maximize-004.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.418
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 005",
+"file": "kenney-interface/maximize-005.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.526
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 006",
+"file": "kenney-interface/maximize-006.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.38
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 007",
+"file": "kenney-interface/maximize-007.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.186
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 008",
+"file": "kenney-interface/maximize-008.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.225
+},
+{
+"pack": "kenney-interface",
+"name": "maximize 009",
+"file": "kenney-interface/maximize-009.ogg",
+"tags": [
+"maximize"
+],
+"duration": 0.225
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 001",
+"file": "kenney-interface/minimize-001.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.258
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 002",
+"file": "kenney-interface/minimize-002.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.258
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 003",
+"file": "kenney-interface/minimize-003.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.212
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 004",
+"file": "kenney-interface/minimize-004.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.418
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 005",
+"file": "kenney-interface/minimize-005.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.526
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 006",
+"file": "kenney-interface/minimize-006.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.38
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 007",
+"file": "kenney-interface/minimize-007.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.186
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 008",
+"file": "kenney-interface/minimize-008.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.225
+},
+{
+"pack": "kenney-interface",
+"name": "minimize 009",
+"file": "kenney-interface/minimize-009.ogg",
+"tags": [
+"minimize"
+],
+"duration": 0.225
+},
+{
+"pack": "kenney-interface",
+"name": "open 001",
+"file": "kenney-interface/open-001.ogg",
+"tags": [
+"open"
+],
+"duration": 0.148
+},
+{
+"pack": "kenney-interface",
+"name": "open 002",
+"file": "kenney-interface/open-002.ogg",
+"tags": [
+"open"
+],
+"duration": 0.314
+},
+{
+"pack": "kenney-interface",
+"name": "open 003",
+"file": "kenney-interface/open-003.ogg",
+"tags": [
+"open"
+],
+"duration": 0.314
+},
+{
+"pack": "kenney-interface",
+"name": "open 004",
+"file": "kenney-interface/open-004.ogg",
+"tags": [
+"open"
+],
+"duration": 0.323
+},
+{
+"pack": "kenney-interface",
+"name": "pluck 001",
+"file": "kenney-interface/pluck-001.ogg",
+"tags": [
+"pluck"
+],
+"duration": 0.102
+},
+{
+"pack": "kenney-interface",
+"name": "pluck 002",
+"file": "kenney-interface/pluck-002.ogg",
+"tags": [
+"pluck"
+],
+"duration": 0.165
+},
+{
+"pack": "kenney-interface",
+"name": "question 001",
+"file": "kenney-interface/question-001.ogg",
+"tags": [
+"question"
+],
+"duration": 0.491
+},
+{
+"pack": "kenney-interface",
+"name": "question 002",
+"file": "kenney-interface/question-002.ogg",
+"tags": [
+"question"
+],
+"duration": 0.333
+},
+{
+"pack": "kenney-interface",
+"name": "question 003",
+"file": "kenney-interface/question-003.ogg",
+"tags": [
+"question"
+],
+"duration": 0.332
+},
+{
+"pack": "kenney-interface",
+"name": "question 004",
+"file": "kenney-interface/question-004.ogg",
+"tags": [
+"question"
+],
+"duration": 0.332
+},
+{
+"pack": "kenney-interface",
+"name": "scratch 001",
+"file": "kenney-interface/scratch-001.ogg",
+"tags": [
+"scratch"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "scratch 002",
+"file": "kenney-interface/scratch-002.ogg",
+"tags": [
+"scratch"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "scratch 003",
+"file": "kenney-interface/scratch-003.ogg",
+"tags": [
+"scratch"
+],
+"duration": 0.123
+},
+{
+"pack": "kenney-interface",
+"name": "scratch 004",
+"file": "kenney-interface/scratch-004.ogg",
+"tags": [
+"scratch"
+],
+"duration": 0.325
+},
+{
+"pack": "kenney-interface",
+"name": "scratch 005",
+"file": "kenney-interface/scratch-005.ogg",
+"tags": [
+"scratch"
+],
+"duration": 0.325
+},
+{
+"pack": "kenney-interface",
+"name": "scroll 001",
+"file": "kenney-interface/scroll-001.ogg",
+"tags": [
+"scroll"
+],
+"duration": 1.0
+},
+{
+"pack": "kenney-interface",
+"name": "scroll 002",
+"file": "kenney-interface/scroll-002.ogg",
+"tags": [
+"scroll"
+],
+"duration": 1.0
+},
+{
+"pack": "kenney-interface",
+"name": "scroll 003",
+"file": "kenney-interface/scroll-003.ogg",
+"tags": [
+"scroll"
+],
+"duration": 1.0
+},
+{
+"pack": "kenney-interface",
+"name": "scroll 004",
+"file": "kenney-interface/scroll-004.ogg",
+"tags": [
+"scroll"
+],
+"duration": 1.0
+},
+{
+"pack": "kenney-interface",
+"name": "scroll 005",
+"file": "kenney-interface/scroll-005.ogg",
+"tags": [
+"scroll"
+],
+"duration": 1.0
+},
+{
+"pack": "kenney-interface",
+"name": "select 001",
+"file": "kenney-interface/select-001.ogg",
+"tags": [
+"select"
+],
+"duration": 0.043
+},
+{
+"pack": "kenney-interface",
+"name": "select 002",
+"file": "kenney-interface/select-002.ogg",
+"tags": [
+"select"
+],
+"duration": 0.043
+},
+{
+"pack": "kenney-interface",
+"name": "select 003",
+"file": "kenney-interface/select-003.ogg",
+"tags": [
+"select"
+],
+"duration": 0.383
+},
+{
+"pack": "kenney-interface",
+"name": "select 004",
+"file": "kenney-interface/select-004.ogg",
+"tags": [
+"select"
+],
+"duration": 0.383
+},
+{
+"pack": "kenney-interface",
+"name": "select 005",
+"file": "kenney-interface/select-005.ogg",
+"tags": [
+"select"
+],
+"duration": 0.383
+},
+{
+"pack": "kenney-interface",
+"name": "select 006",
+"file": "kenney-interface/select-006.ogg",
+"tags": [
+"select"
+],
+"duration": 1.944
+},
+{
+"pack": "kenney-interface",
+"name": "select 007",
+"file": "kenney-interface/select-007.ogg",
+"tags": [
+"select"
+],
+"duration": 0.047
+},
+{
+"pack": "kenney-interface",
+"name": "select 008",
+"file": "kenney-interface/select-008.ogg",
+"tags": [
+"select"
+],
+"duration": 0.047
+},
+{
+"pack": "kenney-interface",
+"name": "switch 001",
+"file": "kenney-interface/switch-001.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.618
+},
+{
+"pack": "kenney-interface",
+"name": "switch 002",
+"file": "kenney-interface/switch-002.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.611
+},
+{
+"pack": "kenney-interface",
+"name": "switch 003",
+"file": "kenney-interface/switch-003.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.5
+},
+{
+"pack": "kenney-interface",
+"name": "switch 004",
+"file": "kenney-interface/switch-004.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.5
+},
+{
+"pack": "kenney-interface",
+"name": "switch 005",
+"file": "kenney-interface/switch-005.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.612
+},
+{
+"pack": "kenney-interface",
+"name": "switch 006",
+"file": "kenney-interface/switch-006.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.611
+},
+{
+"pack": "kenney-interface",
+"name": "switch 007",
+"file": "kenney-interface/switch-007.ogg",
+"tags": [
+"switch"
+],
+"duration": 0.614
+},
+{
+"pack": "kenney-interface",
+"name": "tick 001",
+"file": "kenney-interface/tick-001.ogg",
+"tags": [
+"tick"
+],
+"duration": 0.023
+},
+{
+"pack": "kenney-interface",
+"name": "tick 002",
+"file": "kenney-interface/tick-002.ogg",
+"tags": [
+"tick"
+],
+"duration": 0.023
+},
+{
+"pack": "kenney-interface",
+"name": "tick 004",
+"file": "kenney-interface/tick-004.ogg",
+"tags": [
+"tick"
+],
+"duration": 0.055
+},
+{
+"pack": "kenney-interface",
+"name": "toggle 001",
+"file": "kenney-interface/toggle-001.ogg",
+"tags": [
+"toggle"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "toggle 002",
+"file": "kenney-interface/toggle-002.ogg",
+"tags": [
+"toggle"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "toggle 003",
+"file": "kenney-interface/toggle-003.ogg",
+"tags": [
+"toggle"
+],
+"duration": 0.139
+},
+{
+"pack": "kenney-interface",
+"name": "toggle 004",
+"file": "kenney-interface/toggle-004.ogg",
+"tags": [
+"toggle"
+],
+"duration": 0.066
+},
+{
+"pack": "kenney-ui",
+"name": "click1",
+"file": "kenney-ui/click1.ogg",
+"tags": [
+"click1"
+],
+"duration": 0.094
+},
+{
+"pack": "kenney-ui",
+"name": "click2",
+"file": "kenney-ui/click2.ogg",
+"tags": [
+"click2"
+],
+"duration": 0.056
+},
+{
+"pack": "kenney-ui",
+"name": "click3",
+"file": "kenney-ui/click3.ogg",
+"tags": [
+"click3"
+],
+"duration": 0.086
+},
+{
+"pack": "kenney-ui",
+"name": "click4",
+"file": "kenney-ui/click4.ogg",
+"tags": [
+"click4"
+],
+"duration": 0.037
+},
+{
+"pack": "kenney-ui",
+"name": "click5",
+"file": "kenney-ui/click5.ogg",
+"tags": [
+"click5"
+],
+"duration": 0.032
+},
+{
+"pack": "kenney-ui",
+"name": "mouseclick1",
+"file": "kenney-ui/mouseclick1.ogg",
+"tags": [
+"mouseclick1"
+],
+"duration": 0.059
+},
+{
+"pack": "kenney-ui",
+"name": "mouserelease1",
+"file": "kenney-ui/mouserelease1.ogg",
+"tags": [
+"mouserelease1"
+],
+"duration": 0.069
+},
+{
+"pack": "kenney-ui",
+"name": "rollover1",
+"file": "kenney-ui/rollover1.ogg",
+"tags": [
+"rollover1"
+],
+"duration": 0.227
+},
+{
+"pack": "kenney-ui",
+"name": "rollover2",
+"file": "kenney-ui/rollover2.ogg",
+"tags": [
+"rollover2"
+],
+"duration": 0.057
+},
+{
+"pack": "kenney-ui",
+"name": "rollover3",
+"file": "kenney-ui/rollover3.ogg",
+"tags": [
+"rollover3"
+],
+"duration": 0.069
+},
+{
+"pack": "kenney-ui",
+"name": "rollover4",
+"file": "kenney-ui/rollover4.ogg",
+"tags": [
+"rollover4"
+],
+"duration": 0.113
+},
+{
+"pack": "kenney-ui",
+"name": "rollover5",
+"file": "kenney-ui/rollover5.ogg",
+"tags": [
+"rollover5"
+],
+"duration": 0.112
+},
+{
+"pack": "kenney-ui",
+"name": "rollover6",
+"file": "kenney-ui/rollover6.ogg",
+"tags": [
+"rollover6"
+],
+"duration": 0.174
+},
+{
+"pack": "kenney-ui",
+"name": "switch1",
+"file": "kenney-ui/switch1.ogg",
+"tags": [
+"switch1"
+],
+"duration": 0.315
+},
+{
+"pack": "kenney-ui",
+"name": "switch10",
+"file": "kenney-ui/switch10.ogg",
+"tags": [
+"switch10"
+],
+"duration": 0.367
+},
+{
+"pack": "kenney-ui",
+"name": "switch11",
+"file": "kenney-ui/switch11.ogg",
+"tags": [
+"switch11"
+],
+"duration": 0.297
+},
+{
+"pack": "kenney-ui",
+"name": "switch12",
+"file": "kenney-ui/switch12.ogg",
+"tags": [
+"switch12"
+],
+"duration": 0.054
+},
+{
+"pack": "kenney-ui",
+"name": "switch13",
+"file": "kenney-ui/switch13.ogg",
+"tags": [
+"switch13"
+],
+"duration": 0.028
+},
+{
+"pack": "kenney-ui",
+"name": "switch14",
+"file": "kenney-ui/switch14.ogg",
+"tags": [
+"switch14"
+],
+"duration": 0.033
+},
+{
+"pack": "kenney-ui",
+"name": "switch15",
+"file": "kenney-ui/switch15.ogg",
+"tags": [
+"switch15"
+],
+"duration": 0.256
+},
+{
+"pack": "kenney-ui",
+"name": "switch16",
+"file": "kenney-ui/switch16.ogg",
+"tags": [
+"switch16"
+],
+"duration": 0.359
+},
+{
+"pack": "kenney-ui",
+"name": "switch17",
+"file": "kenney-ui/switch17.ogg",
+"tags": [
+"switch17"
+],
+"duration": 0.333
+},
+{
+"pack": "kenney-ui",
+"name": "switch18",
+"file": "kenney-ui/switch18.ogg",
+"tags": [
+"switch18"
+],
+"duration": 0.435
+},
+{
+"pack": "kenney-ui",
+"name": "switch19",
+"file": "kenney-ui/switch19.ogg",
+"tags": [
+"switch19"
+],
+"duration": 0.384
+},
+{
+"pack": "kenney-ui",
+"name": "switch2",
+"file": "kenney-ui/switch2.ogg",
+"tags": [
+"switch2"
+],
+"duration": 0.297
+},
+{
+"pack": "kenney-ui",
+"name": "switch20",
+"file": "kenney-ui/switch20.ogg",
+"tags": [
+"switch20"
+],
+"duration": 0.359
+},
+{
+"pack": "kenney-ui",
+"name": "switch21",
+"file": "kenney-ui/switch21.ogg",
+"tags": [
+"switch21"
+],
+"duration": 0.41
+},
+{
+"pack": "kenney-ui",
+"name": "switch22",
+"file": "kenney-ui/switch22.ogg",
+"tags": [
+"switch22"
+],
+"duration": 0.359
+},
+{
+"pack": "kenney-ui",
+"name": "switch23",
+"file": "kenney-ui/switch23.ogg",
+"tags": [
+"switch23"
+],
+"duration": 0.384
+},
+{
+"pack": "kenney-ui",
+"name": "switch24",
+"file": "kenney-ui/switch24.ogg",
+"tags": [
+"switch24"
+],
+"duration": 0.282
+},
+{
+"pack": "kenney-ui",
+"name": "switch25",
+"file": "kenney-ui/switch25.ogg",
+"tags": [
+"switch25"
+],
+"duration": 0.384
+},
+{
+"pack": "kenney-ui",
+"name": "switch26",
+"file": "kenney-ui/switch26.ogg",
+"tags": [
+"switch26"
+],
+"duration": 0.23
+},
+{
+"pack": "kenney-ui",
+"name": "switch27",
+"file": "kenney-ui/switch27.ogg",
+"tags": [
+"switch27"
+],
+"duration": 0.282
+},
+{
+"pack": "kenney-ui",
+"name": "switch28",
+"file": "kenney-ui/switch28.ogg",
+"tags": [
+"switch28"
+],
+"duration": 0.205
+},
+{
+"pack": "kenney-ui",
+"name": "switch29",
+"file": "kenney-ui/switch29.ogg",
+"tags": [
+"switch29"
+],
+"duration": 0.307
+},
+{
+"pack": "kenney-ui",
+"name": "switch3",
+"file": "kenney-ui/switch3.ogg",
+"tags": [
+"switch3"
+],
+"duration": 0.367
+},
+{
+"pack": "kenney-ui",
+"name": "switch30",
+"file": "kenney-ui/switch30.ogg",
+"tags": [
+"switch30"
+],
+"duration": 0.359
+},
+{
+"pack": "kenney-ui",
+"name": "switch31",
+"file": "kenney-ui/switch31.ogg",
+"tags": [
+"switch31"
+],
+"duration": 0.435
+},
+{
+"pack": "kenney-ui",
+"name": "switch32",
+"file": "kenney-ui/switch32.ogg",
+"tags": [
+"switch32"
+],
+"duration": 0.435
+},
+{
+"pack": "kenney-ui",
+"name": "switch33",
+"file": "kenney-ui/switch33.ogg",
+"tags": [
+"switch33"
+],
+"duration": 0.512
+},
+{
+"pack": "kenney-ui",
+"name": "switch34",
+"file": "kenney-ui/switch34.ogg",
+"tags": [
+"switch34"
+],
+"duration": 0.461
+},
+{
+"pack": "kenney-ui",
+"name": "switch35",
+"file": "kenney-ui/switch35.ogg",
+"tags": [
+"switch35"
+],
+"duration": 0.333
+},
+{
+"pack": "kenney-ui",
+"name": "switch36",
+"file": "kenney-ui/switch36.ogg",
+"tags": [
+"switch36"
+],
+"duration": 0.307
+},
+{
+"pack": "kenney-ui",
+"name": "switch37",
+"file": "kenney-ui/switch37.ogg",
+"tags": [
+"switch37"
+],
+"duration": 0.307
+},
+{
+"pack": "kenney-ui",
+"name": "switch38",
+"file": "kenney-ui/switch38.ogg",
+"tags": [
+"switch38"
+],
+"duration": 0.424
+},
+{
+"pack": "kenney-ui",
+"name": "switch4",
+"file": "kenney-ui/switch4.ogg",
+"tags": [
+"switch4"
+],
+"duration": 0.42
+},
+{
+"pack": "kenney-ui",
+"name": "switch5",
+"file": "kenney-ui/switch5.ogg",
+"tags": [
+"switch5"
+],
+"duration": 0.315
+},
+{
+"pack": "kenney-ui",
+"name": "switch6",
+"file": "kenney-ui/switch6.ogg",
+"tags": [
+"switch6"
+],
+"duration": 0.35
+},
+{
+"pack": "kenney-ui",
+"name": "switch7",
+"file": "kenney-ui/switch7.ogg",
+"tags": [
+"switch7"
+],
+"duration": 0.192
+},
+{
+"pack": "kenney-ui",
+"name": "switch8",
+"file": "kenney-ui/switch8.ogg",
+"tags": [
+"switch8"
+],
+"duration": 0.332
+},
+{
+"pack": "kenney-ui",
+"name": "switch9",
+"file": "kenney-ui/switch9.ogg",
+"tags": [
+"switch9"
+],
+"duration": 0.262
+},
+{
+"pack": "retro",
+"name": "deathscream alien1",
+"file": "retro/sfx-deathscream-alien1.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 1.5
+},
+{
+"pack": "retro",
+"name": "deathscream alien2",
+"file": "retro/sfx-deathscream-alien2.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 0.782
+},
+{
+"pack": "retro",
+"name": "deathscream alien3",
+"file": "retro/sfx-deathscream-alien3.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 0.84
+},
+{
+"pack": "retro",
+"name": "deathscream alien4",
+"file": "retro/sfx-deathscream-alien4.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 0.834
+},
+{
+"pack": "retro",
+"name": "deathscream alien5",
+"file": "retro/sfx-deathscream-alien5.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 0.713
+},
+{
+"pack": "retro",
+"name": "deathscream alien6",
+"file": "retro/sfx-deathscream-alien6.ogg",
+"tags": [
+"death screams",
+"alien"
+],
+"duration": 0.433
+},
+{
+"pack": "retro",
+"name": "deathscream android1",
+"file": "retro/sfx-deathscream-android1.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.383
+},
+{
+"pack": "retro",
+"name": "deathscream android2",
+"file": "retro/sfx-deathscream-android2.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.394
+},
+{
+"pack": "retro",
+"name": "deathscream android3",
+"file": "retro/sfx-deathscream-android3.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.389
+},
+{
+"pack": "retro",
+"name": "deathscream android4",
+"file": "retro/sfx-deathscream-android4.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.391
+},
+{
+"pack": "retro",
+"name": "deathscream android5",
+"file": "retro/sfx-deathscream-android5.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.307
+},
+{
+"pack": "retro",
+"name": "deathscream android6",
+"file": "retro/sfx-deathscream-android6.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.387
+},
+{
+"pack": "retro",
+"name": "deathscream android7",
+"file": "retro/sfx-deathscream-android7.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.461
+},
+{
+"pack": "retro",
+"name": "deathscream android8",
+"file": "retro/sfx-deathscream-android8.ogg",
+"tags": [
+"death screams",
+"android"
+],
+"duration": 0.458
+},
+{
+"pack": "retro",
+"name": "deathscream human1",
+"file": "retro/sfx-deathscream-human1.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.532
+},
+{
+"pack": "retro",
+"name": "deathscream human10",
+"file": "retro/sfx-deathscream-human10.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.461
+},
+{
+"pack": "retro",
+"name": "deathscream human11",
+"file": "retro/sfx-deathscream-human11.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.536
+},
+{
+"pack": "retro",
+"name": "deathscream human12",
+"file": "retro/sfx-deathscream-human12.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.462
+},
+{
+"pack": "retro",
+"name": "deathscream human13",
+"file": "retro/sfx-deathscream-human13.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.534
+},
+{
+"pack": "retro",
+"name": "deathscream human14",
+"file": "retro/sfx-deathscream-human14.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.446
+},
+{
+"pack": "retro",
+"name": "deathscream human2",
+"file": "retro/sfx-deathscream-human2.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.612
+},
+{
+"pack": "retro",
+"name": "deathscream human3",
+"file": "retro/sfx-deathscream-human3.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.68
+},
+{
+"pack": "retro",
+"name": "deathscream human4",
+"file": "retro/sfx-deathscream-human4.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.498
+},
+{
+"pack": "retro",
+"name": "deathscream human5",
+"file": "retro/sfx-deathscream-human5.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.713
+},
+{
+"pack": "retro",
+"name": "deathscream human6",
+"file": "retro/sfx-deathscream-human6.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.458
+},
+{
+"pack": "retro",
+"name": "deathscream human7",
+"file": "retro/sfx-deathscream-human7.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.461
+},
+{
+"pack": "retro",
+"name": "deathscream human8",
+"file": "retro/sfx-deathscream-human8.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.377
+},
+{
+"pack": "retro",
+"name": "deathscream human9",
+"file": "retro/sfx-deathscream-human9.ogg",
+"tags": [
+"death screams",
+"human"
+],
+"duration": 0.43
+},
+{
+"pack": "retro",
+"name": "deathscream robot1",
+"file": "retro/sfx-deathscream-robot1.ogg",
+"tags": [
+"death screams",
+"robot"
+],
+"duration": 0.604
+},
+{
+"pack": "retro",
+"name": "deathscream robot2",
+"file": "retro/sfx-deathscream-robot2.ogg",
+"tags": [
+"death screams",
+"robot"
+],
+"duration": 0.753
+},
+{
+"pack": "retro",
+"name": "deathscream robot3",
+"file": "retro/sfx-deathscream-robot3.ogg",
+"tags": [
+"death screams",
+"robot"
+],
+"duration": 1.913
+},
+{
+"pack": "retro",
+"name": "deathscream robot4",
+"file": "retro/sfx-deathscream-robot4.ogg",
+"tags": [
+"death screams",
+"robot"
+],
+"duration": 0.557
+},
+{
+"pack": "retro",
+"name": "exp cluster1",
+"file": "retro/sfx-exp-cluster1.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 2.474
+},
+{
+"pack": "retro",
+"name": "exp cluster10",
+"file": "retro/sfx-exp-cluster10.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.863
+},
+{
+"pack": "retro",
+"name": "exp cluster11",
+"file": "retro/sfx-exp-cluster11.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 2.734
+},
+{
+"pack": "retro",
+"name": "exp cluster2",
+"file": "retro/sfx-exp-cluster2.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.133
+},
+{
+"pack": "retro",
+"name": "exp cluster3",
+"file": "retro/sfx-exp-cluster3.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.405
+},
+{
+"pack": "retro",
+"name": "exp cluster4",
+"file": "retro/sfx-exp-cluster4.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 0.581
+},
+{
+"pack": "retro",
+"name": "exp cluster5",
+"file": "retro/sfx-exp-cluster5.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.488
+},
+{
+"pack": "retro",
+"name": "exp cluster6",
+"file": "retro/sfx-exp-cluster6.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.301
+},
+{
+"pack": "retro",
+"name": "exp cluster7",
+"file": "retro/sfx-exp-cluster7.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 1.01
+},
+{
+"pack": "retro",
+"name": "exp cluster8",
+"file": "retro/sfx-exp-cluster8.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 2.492
+},
+{
+"pack": "retro",
+"name": "exp cluster9",
+"file": "retro/sfx-exp-cluster9.ogg",
+"tags": [
+"explosions",
+"clusters"
+],
+"duration": 2.268
+},
+{
+"pack": "retro",
+"name": "exp double1",
+"file": "retro/sfx-exp-double1.ogg",
+"tags": [
+"explosions",
+"double"
+],
+"duration": 1.517
+},
+{
+"pack": "retro",
+"name": "exp double2",
+"file": "retro/sfx-exp-double2.ogg",
+"tags": [
+"explosions",
+"double"
+],
+"duration": 1.376
+},
+{
+"pack": "retro",
+"name": "exp double3",
+"file": "retro/sfx-exp-double3.ogg",
+"tags": [
+"explosions",
+"double"
+],
+"duration": 1.369
+},
+{
+"pack": "retro",
+"name": "exp long1",
+"file": "retro/sfx-exp-long1.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 1.726
+},
+{
+"pack": "retro",
+"name": "exp long2",
+"file": "retro/sfx-exp-long2.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 2.23
+},
+{
+"pack": "retro",
+"name": "exp long3",
+"file": "retro/sfx-exp-long3.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 1.956
+},
+{
+"pack": "retro",
+"name": "exp long4",
+"file": "retro/sfx-exp-long4.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 2.154
+},
+{
+"pack": "retro",
+"name": "exp long5",
+"file": "retro/sfx-exp-long5.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 4.678
+},
+{
+"pack": "retro",
+"name": "exp long6",
+"file": "retro/sfx-exp-long6.ogg",
+"tags": [
+"explosions",
+"long"
+],
+"duration": 4.678
+},
+{
+"pack": "retro",
+"name": "exp medium1",
+"file": "retro/sfx-exp-medium1.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.727
+},
+{
+"pack": "retro",
+"name": "exp medium10",
+"file": "retro/sfx-exp-medium10.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.065
+},
+{
+"pack": "retro",
+"name": "exp medium11",
+"file": "retro/sfx-exp-medium11.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.443
+},
+{
+"pack": "retro",
+"name": "exp medium12",
+"file": "retro/sfx-exp-medium12.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.71
+},
+{
+"pack": "retro",
+"name": "exp medium13",
+"file": "retro/sfx-exp-medium13.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.541
+},
+{
+"pack": "retro",
+"name": "exp medium2",
+"file": "retro/sfx-exp-medium2.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.399
+},
+{
+"pack": "retro",
+"name": "exp medium3",
+"file": "retro/sfx-exp-medium3.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.129
+},
+{
+"pack": "retro",
+"name": "exp medium4",
+"file": "retro/sfx-exp-medium4.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 2.114
+},
+{
+"pack": "retro",
+"name": "exp medium5",
+"file": "retro/sfx-exp-medium5.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.289
+},
+{
+"pack": "retro",
+"name": "exp medium6",
+"file": "retro/sfx-exp-medium6.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.269
+},
+{
+"pack": "retro",
+"name": "exp medium7",
+"file": "retro/sfx-exp-medium7.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.243
+},
+{
+"pack": "retro",
+"name": "exp medium8",
+"file": "retro/sfx-exp-medium8.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.122
+},
+{
+"pack": "retro",
+"name": "exp medium9",
+"file": "retro/sfx-exp-medium9.ogg",
+"tags": [
+"explosions",
+"medium length"
+],
+"duration": 1.847
+},
+{
+"pack": "retro",
+"name": "exp odd1",
+"file": "retro/sfx-exp-odd1.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 1.251
+},
+{
+"pack": "retro",
+"name": "exp odd2",
+"file": "retro/sfx-exp-odd2.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 3.233
+},
+{
+"pack": "retro",
+"name": "exp odd3",
+"file": "retro/sfx-exp-odd3.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 1.565
+},
+{
+"pack": "retro",
+"name": "exp odd4",
+"file": "retro/sfx-exp-odd4.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 1.904
+},
+{
+"pack": "retro",
+"name": "exp odd5",
+"file": "retro/sfx-exp-odd5.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 1.241
+},
+{
+"pack": "retro",
+"name": "exp odd6",
+"file": "retro/sfx-exp-odd6.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 0.986
+},
+{
+"pack": "retro",
+"name": "exp odd7",
+"file": "retro/sfx-exp-odd7.ogg",
+"tags": [
+"explosions",
+"odd"
+],
+"duration": 0.65
+},
+{
+"pack": "retro",
+"name": "exp short hard1",
+"file": "retro/sfx-exp-short-hard1.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.602
+},
+{
+"pack": "retro",
+"name": "exp short hard10",
+"file": "retro/sfx-exp-short-hard10.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.55
+},
+{
+"pack": "retro",
+"name": "exp short hard11",
+"file": "retro/sfx-exp-short-hard11.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 1.839
+},
+{
+"pack": "retro",
+"name": "exp short hard12",
+"file": "retro/sfx-exp-short-hard12.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.427
+},
+{
+"pack": "retro",
+"name": "exp short hard13",
+"file": "retro/sfx-exp-short-hard13.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.688
+},
+{
+"pack": "retro",
+"name": "exp short hard14",
+"file": "retro/sfx-exp-short-hard14.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.578
+},
+{
+"pack": "retro",
+"name": "exp short hard15",
+"file": "retro/sfx-exp-short-hard15.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.929
+},
+{
+"pack": "retro",
+"name": "exp short hard16",
+"file": "retro/sfx-exp-short-hard16.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.666
+},
+{
+"pack": "retro",
+"name": "exp short hard17",
+"file": "retro/sfx-exp-short-hard17.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.557
+},
+{
+"pack": "retro",
+"name": "exp short hard2",
+"file": "retro/sfx-exp-short-hard2.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.489
+},
+{
+"pack": "retro",
+"name": "exp short hard3",
+"file": "retro/sfx-exp-short-hard3.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.628
+},
+{
+"pack": "retro",
+"name": "exp short hard4",
+"file": "retro/sfx-exp-short-hard4.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.471
+},
+{
+"pack": "retro",
+"name": "exp short hard5",
+"file": "retro/sfx-exp-short-hard5.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.853
+},
+{
+"pack": "retro",
+"name": "exp short hard6",
+"file": "retro/sfx-exp-short-hard6.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.615
+},
+{
+"pack": "retro",
+"name": "exp short hard7",
+"file": "retro/sfx-exp-short-hard7.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 4.732
+},
+{
+"pack": "retro",
+"name": "exp short hard8",
+"file": "retro/sfx-exp-short-hard8.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.587
+},
+{
+"pack": "retro",
+"name": "exp short hard9",
+"file": "retro/sfx-exp-short-hard9.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.723
+},
+{
+"pack": "retro",
+"name": "exp short soft1",
+"file": "retro/sfx-exp-short-soft1.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.475
+},
+{
+"pack": "retro",
+"name": "exp short soft10",
+"file": "retro/sfx-exp-short-soft10.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.477
+},
+{
+"pack": "retro",
+"name": "exp short soft11",
+"file": "retro/sfx-exp-short-soft11.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.746
+},
+{
+"pack": "retro",
+"name": "exp short soft12",
+"file": "retro/sfx-exp-short-soft12.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.521
+},
+{
+"pack": "retro",
+"name": "exp short soft2",
+"file": "retro/sfx-exp-short-soft2.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.607
+},
+{
+"pack": "retro",
+"name": "exp short soft3",
+"file": "retro/sfx-exp-short-soft3.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.78
+},
+{
+"pack": "retro",
+"name": "exp short soft4",
+"file": "retro/sfx-exp-short-soft4.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.581
+},
+{
+"pack": "retro",
+"name": "exp short soft5",
+"file": "retro/sfx-exp-short-soft5.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.539
+},
+{
+"pack": "retro",
+"name": "exp short soft6",
+"file": "retro/sfx-exp-short-soft6.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.475
+},
+{
+"pack": "retro",
+"name": "exp short soft7",
+"file": "retro/sfx-exp-short-soft7.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.571
+},
+{
+"pack": "retro",
+"name": "exp short soft8",
+"file": "retro/sfx-exp-short-soft8.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.605
+},
+{
+"pack": "retro",
+"name": "exp short soft9",
+"file": "retro/sfx-exp-short-soft9.ogg",
+"tags": [
+"explosions",
+"short"
+],
+"duration": 0.563
+},
+{
+"pack": "retro",
+"name": "exp shortest hard1",
+"file": "retro/sfx-exp-shortest-hard1.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.67
+},
+{
+"pack": "retro",
+"name": "exp shortest hard10",
+"file": "retro/sfx-exp-shortest-hard10.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.766
+},
+{
+"pack": "retro",
+"name": "exp shortest hard2",
+"file": "retro/sfx-exp-shortest-hard2.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.185
+},
+{
+"pack": "retro",
+"name": "exp shortest hard3",
+"file": "retro/sfx-exp-shortest-hard3.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.608
+},
+{
+"pack": "retro",
+"name": "exp shortest hard4",
+"file": "retro/sfx-exp-shortest-hard4.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.325
+},
+{
+"pack": "retro",
+"name": "exp shortest hard5",
+"file": "retro/sfx-exp-shortest-hard5.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.283
+},
+{
+"pack": "retro",
+"name": "exp shortest hard6",
+"file": "retro/sfx-exp-shortest-hard6.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.23
+},
+{
+"pack": "retro",
+"name": "exp shortest hard7",
+"file": "retro/sfx-exp-shortest-hard7.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.386
+},
+{
+"pack": "retro",
+"name": "exp shortest hard8",
+"file": "retro/sfx-exp-shortest-hard8.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.216
+},
+{
+"pack": "retro",
+"name": "exp shortest hard9",
+"file": "retro/sfx-exp-shortest-hard9.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.185
+},
+{
+"pack": "retro",
+"name": "exp shortest soft1",
+"file": "retro/sfx-exp-shortest-soft1.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.19
+},
+{
+"pack": "retro",
+"name": "exp shortest soft2",
+"file": "retro/sfx-exp-shortest-soft2.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.257
+},
+{
+"pack": "retro",
+"name": "exp shortest soft3",
+"file": "retro/sfx-exp-shortest-soft3.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.278
+},
+{
+"pack": "retro",
+"name": "exp shortest soft4",
+"file": "retro/sfx-exp-shortest-soft4.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.29
+},
+{
+"pack": "retro",
+"name": "exp shortest soft5",
+"file": "retro/sfx-exp-shortest-soft5.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.282
+},
+{
+"pack": "retro",
+"name": "exp shortest soft6",
+"file": "retro/sfx-exp-shortest-soft6.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.25
+},
+{
+"pack": "retro",
+"name": "exp shortest soft7",
+"file": "retro/sfx-exp-shortest-soft7.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.163
+},
+{
+"pack": "retro",
+"name": "exp shortest soft8",
+"file": "retro/sfx-exp-shortest-soft8.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.224
+},
+{
+"pack": "retro",
+"name": "exp shortest soft9",
+"file": "retro/sfx-exp-shortest-soft9.ogg",
+"tags": [
+"explosions",
+"shortest"
+],
+"duration": 0.344
+},
+{
+"pack": "retro",
+"name": "exp various1",
+"file": "retro/sfx-exp-various1.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.364
+},
+{
+"pack": "retro",
+"name": "exp various2",
+"file": "retro/sfx-exp-various2.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.358
+},
+{
+"pack": "retro",
+"name": "exp various3",
+"file": "retro/sfx-exp-various3.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.371
+},
+{
+"pack": "retro",
+"name": "exp various4",
+"file": "retro/sfx-exp-various4.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.348
+},
+{
+"pack": "retro",
+"name": "exp various5",
+"file": "retro/sfx-exp-various5.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.41
+},
+{
+"pack": "retro",
+"name": "exp various6",
+"file": "retro/sfx-exp-various6.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 0.915
+},
+{
+"pack": "retro",
+"name": "exp various7",
+"file": "retro/sfx-exp-various7.ogg",
+"tags": [
+"explosions",
+"various"
+],
+"duration": 4.059
+},
+{
+"pack": "retro",
+"name": "alarm loop1",
+"file": "retro/sfx-alarm-loop1.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.79
+},
+{
+"pack": "retro",
+"name": "alarm loop2",
+"file": "retro/sfx-alarm-loop2.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.812
+},
+{
+"pack": "retro",
+"name": "alarm loop3",
+"file": "retro/sfx-alarm-loop3.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 1.03
+},
+{
+"pack": "retro",
+"name": "alarm loop4",
+"file": "retro/sfx-alarm-loop4.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.981
+},
+{
+"pack": "retro",
+"name": "alarm loop5",
+"file": "retro/sfx-alarm-loop5.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.534
+},
+{
+"pack": "retro",
+"name": "alarm loop6",
+"file": "retro/sfx-alarm-loop6.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.51
+},
+{
+"pack": "retro",
+"name": "alarm loop7",
+"file": "retro/sfx-alarm-loop7.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.7
+},
+{
+"pack": "retro",
+"name": "alarm loop8",
+"file": "retro/sfx-alarm-loop8.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"alarms"
+],
+"duration": 0.702
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop1",
+"file": "retro/sfx-lowhealth-alarmloop1.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.8
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop2",
+"file": "retro/sfx-lowhealth-alarmloop2.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.8
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop3",
+"file": "retro/sfx-lowhealth-alarmloop3.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.8
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop4",
+"file": "retro/sfx-lowhealth-alarmloop4.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.8
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop5",
+"file": "retro/sfx-lowhealth-alarmloop5.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.45
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop6",
+"file": "retro/sfx-lowhealth-alarmloop6.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.3
+},
+{
+"pack": "retro",
+"name": "lowhealth alarmloop7",
+"file": "retro/sfx-lowhealth-alarmloop7.ogg",
+"tags": [
+"general sounds",
+"alarms",
+"low health alarms"
+],
+"duration": 0.56
+},
+{
+"pack": "retro",
+"name": "sounds button1",
+"file": "retro/sfx-sounds-button1.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.333
+},
+{
+"pack": "retro",
+"name": "sounds button10",
+"file": "retro/sfx-sounds-button10.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.067
+},
+{
+"pack": "retro",
+"name": "sounds button11",
+"file": "retro/sfx-sounds-button11.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "sounds button12",
+"file": "retro/sfx-sounds-button12.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.193
+},
+{
+"pack": "retro",
+"name": "sounds button13",
+"file": "retro/sfx-sounds-button13.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.415
+},
+{
+"pack": "retro",
+"name": "sounds button14",
+"file": "retro/sfx-sounds-button14.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.425
+},
+{
+"pack": "retro",
+"name": "sounds button2",
+"file": "retro/sfx-sounds-button2.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.52
+},
+{
+"pack": "retro",
+"name": "sounds button3",
+"file": "retro/sfx-sounds-button3.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.155
+},
+{
+"pack": "retro",
+"name": "sounds button4",
+"file": "retro/sfx-sounds-button4.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.461
+},
+{
+"pack": "retro",
+"name": "sounds button5",
+"file": "retro/sfx-sounds-button5.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.283
+},
+{
+"pack": "retro",
+"name": "sounds button6",
+"file": "retro/sfx-sounds-button6.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.185
+},
+{
+"pack": "retro",
+"name": "sounds button7",
+"file": "retro/sfx-sounds-button7.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.244
+},
+{
+"pack": "retro",
+"name": "sounds button8",
+"file": "retro/sfx-sounds-button8.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.513
+},
+{
+"pack": "retro",
+"name": "sounds button9",
+"file": "retro/sfx-sounds-button9.ogg",
+"tags": [
+"general sounds",
+"buttons"
+],
+"duration": 0.232
+},
+{
+"pack": "retro",
+"name": "coin cluster1",
+"file": "retro/sfx-coin-cluster1.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.693
+},
+{
+"pack": "retro",
+"name": "coin cluster2",
+"file": "retro/sfx-coin-cluster2.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.41
+},
+{
+"pack": "retro",
+"name": "coin cluster3",
+"file": "retro/sfx-coin-cluster3.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.469
+},
+{
+"pack": "retro",
+"name": "coin cluster4",
+"file": "retro/sfx-coin-cluster4.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.683
+},
+{
+"pack": "retro",
+"name": "coin cluster5",
+"file": "retro/sfx-coin-cluster5.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.68
+},
+{
+"pack": "retro",
+"name": "coin cluster6",
+"file": "retro/sfx-coin-cluster6.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.68
+},
+{
+"pack": "retro",
+"name": "coin cluster7",
+"file": "retro/sfx-coin-cluster7.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.541
+},
+{
+"pack": "retro",
+"name": "coin cluster8",
+"file": "retro/sfx-coin-cluster8.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.928
+},
+{
+"pack": "retro",
+"name": "coin cluster9",
+"file": "retro/sfx-coin-cluster9.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.742
+},
+{
+"pack": "retro",
+"name": "coin double1",
+"file": "retro/sfx-coin-double1.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.209
+},
+{
+"pack": "retro",
+"name": "coin double2",
+"file": "retro/sfx-coin-double2.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.325
+},
+{
+"pack": "retro",
+"name": "coin double3",
+"file": "retro/sfx-coin-double3.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.35
+},
+{
+"pack": "retro",
+"name": "coin double4",
+"file": "retro/sfx-coin-double4.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.263
+},
+{
+"pack": "retro",
+"name": "coin double5",
+"file": "retro/sfx-coin-double5.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "coin double6",
+"file": "retro/sfx-coin-double6.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.271
+},
+{
+"pack": "retro",
+"name": "coin double7",
+"file": "retro/sfx-coin-double7.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.09
+},
+{
+"pack": "retro",
+"name": "coin single1",
+"file": "retro/sfx-coin-single1.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.416
+},
+{
+"pack": "retro",
+"name": "coin single2",
+"file": "retro/sfx-coin-single2.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.171
+},
+{
+"pack": "retro",
+"name": "coin single3",
+"file": "retro/sfx-coin-single3.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.131
+},
+{
+"pack": "retro",
+"name": "coin single4",
+"file": "retro/sfx-coin-single4.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "coin single5",
+"file": "retro/sfx-coin-single5.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.131
+},
+{
+"pack": "retro",
+"name": "coin single6",
+"file": "retro/sfx-coin-single6.ogg",
+"tags": [
+"general sounds",
+"coins"
+],
+"duration": 0.458
+},
+{
+"pack": "retro",
+"name": "sounds fanfare1",
+"file": "retro/sfx-sounds-fanfare1.ogg",
+"tags": [
+"general sounds",
+"fanfares"
+],
+"duration": 0.516
+},
+{
+"pack": "retro",
+"name": "sounds fanfare2",
+"file": "retro/sfx-sounds-fanfare2.ogg",
+"tags": [
+"general sounds",
+"fanfares"
+],
+"duration": 0.28
+},
+{
+"pack": "retro",
+"name": "sounds fanfare3",
+"file": "retro/sfx-sounds-fanfare3.ogg",
+"tags": [
+"general sounds",
+"fanfares"
+],
+"duration": 0.286
+},
+{
+"pack": "retro",
+"name": "sounds high1",
+"file": "retro/sfx-sounds-high1.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.082
+},
+{
+"pack": "retro",
+"name": "sounds high2",
+"file": "retro/sfx-sounds-high2.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.177
+},
+{
+"pack": "retro",
+"name": "sounds high3",
+"file": "retro/sfx-sounds-high3.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.195
+},
+{
+"pack": "retro",
+"name": "sounds high4",
+"file": "retro/sfx-sounds-high4.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.282
+},
+{
+"pack": "retro",
+"name": "sounds high5",
+"file": "retro/sfx-sounds-high5.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.295
+},
+{
+"pack": "retro",
+"name": "sounds high6",
+"file": "retro/sfx-sounds-high6.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.111
+},
+{
+"pack": "retro",
+"name": "sounds high7",
+"file": "retro/sfx-sounds-high7.ogg",
+"tags": [
+"general sounds",
+"high pitched sounds"
+],
+"duration": 0.246
+},
+{
+"pack": "retro",
+"name": "sounds impact1",
+"file": "retro/sfx-sounds-impact1.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "sounds impact10",
+"file": "retro/sfx-sounds-impact10.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.362
+},
+{
+"pack": "retro",
+"name": "sounds impact11",
+"file": "retro/sfx-sounds-impact11.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.33
+},
+{
+"pack": "retro",
+"name": "sounds impact12",
+"file": "retro/sfx-sounds-impact12.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.278
+},
+{
+"pack": "retro",
+"name": "sounds impact13",
+"file": "retro/sfx-sounds-impact13.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.212
+},
+{
+"pack": "retro",
+"name": "sounds impact14",
+"file": "retro/sfx-sounds-impact14.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.222
+},
+{
+"pack": "retro",
+"name": "sounds impact15",
+"file": "retro/sfx-sounds-impact15.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.229
+},
+{
+"pack": "retro",
+"name": "sounds impact2",
+"file": "retro/sfx-sounds-impact2.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.138
+},
+{
+"pack": "retro",
+"name": "sounds impact3",
+"file": "retro/sfx-sounds-impact3.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.046
+},
+{
+"pack": "retro",
+"name": "sounds impact4",
+"file": "retro/sfx-sounds-impact4.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.046
+},
+{
+"pack": "retro",
+"name": "sounds impact5",
+"file": "retro/sfx-sounds-impact5.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "sounds impact6",
+"file": "retro/sfx-sounds-impact6.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "sounds impact7",
+"file": "retro/sfx-sounds-impact7.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "sounds impact8",
+"file": "retro/sfx-sounds-impact8.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 0.14
+},
+{
+"pack": "retro",
+"name": "sounds impact9",
+"file": "retro/sfx-sounds-impact9.ogg",
+"tags": [
+"general sounds",
+"impacts"
+],
+"duration": 1.64
+},
+{
+"pack": "retro",
+"name": "sounds interaction1",
+"file": "retro/sfx-sounds-interaction1.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.116
+},
+{
+"pack": "retro",
+"name": "sounds interaction10",
+"file": "retro/sfx-sounds-interaction10.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.292
+},
+{
+"pack": "retro",
+"name": "sounds interaction11",
+"file": "retro/sfx-sounds-interaction11.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.593
+},
+{
+"pack": "retro",
+"name": "sounds interaction12",
+"file": "retro/sfx-sounds-interaction12.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.565
+},
+{
+"pack": "retro",
+"name": "sounds interaction13",
+"file": "retro/sfx-sounds-interaction13.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.546
+},
+{
+"pack": "retro",
+"name": "sounds interaction14",
+"file": "retro/sfx-sounds-interaction14.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "sounds interaction15",
+"file": "retro/sfx-sounds-interaction15.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.551
+},
+{
+"pack": "retro",
+"name": "sounds interaction16",
+"file": "retro/sfx-sounds-interaction16.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.464
+},
+{
+"pack": "retro",
+"name": "sounds interaction17",
+"file": "retro/sfx-sounds-interaction17.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.562
+},
+{
+"pack": "retro",
+"name": "sounds interaction18",
+"file": "retro/sfx-sounds-interaction18.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.232
+},
+{
+"pack": "retro",
+"name": "sounds interaction19",
+"file": "retro/sfx-sounds-interaction19.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.174
+},
+{
+"pack": "retro",
+"name": "sounds interaction2",
+"file": "retro/sfx-sounds-interaction2.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.667
+},
+{
+"pack": "retro",
+"name": "sounds interaction20",
+"file": "retro/sfx-sounds-interaction20.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.499
+},
+{
+"pack": "retro",
+"name": "sounds interaction21",
+"file": "retro/sfx-sounds-interaction21.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.549
+},
+{
+"pack": "retro",
+"name": "sounds interaction22",
+"file": "retro/sfx-sounds-interaction22.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.18
+},
+{
+"pack": "retro",
+"name": "sounds interaction23",
+"file": "retro/sfx-sounds-interaction23.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.608
+},
+{
+"pack": "retro",
+"name": "sounds interaction24",
+"file": "retro/sfx-sounds-interaction24.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.284
+},
+{
+"pack": "retro",
+"name": "sounds interaction25",
+"file": "retro/sfx-sounds-interaction25.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.236
+},
+{
+"pack": "retro",
+"name": "sounds interaction26",
+"file": "retro/sfx-sounds-interaction26.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.209
+},
+{
+"pack": "retro",
+"name": "sounds interaction3",
+"file": "retro/sfx-sounds-interaction3.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.985
+},
+{
+"pack": "retro",
+"name": "sounds interaction4",
+"file": "retro/sfx-sounds-interaction4.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.563
+},
+{
+"pack": "retro",
+"name": "sounds interaction5",
+"file": "retro/sfx-sounds-interaction5.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.424
+},
+{
+"pack": "retro",
+"name": "sounds interaction6",
+"file": "retro/sfx-sounds-interaction6.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.475
+},
+{
+"pack": "retro",
+"name": "sounds interaction7",
+"file": "retro/sfx-sounds-interaction7.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "sounds interaction8",
+"file": "retro/sfx-sounds-interaction8.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 2.084
+},
+{
+"pack": "retro",
+"name": "sounds interaction9",
+"file": "retro/sfx-sounds-interaction9.ogg",
+"tags": [
+"general sounds",
+"interactions"
+],
+"duration": 0.056
+},
+{
+"pack": "retro",
+"name": "menu move1",
+"file": "retro/sfx-menu-move1.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.039
+},
+{
+"pack": "retro",
+"name": "menu move2",
+"file": "retro/sfx-menu-move2.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.06
+},
+{
+"pack": "retro",
+"name": "menu move3",
+"file": "retro/sfx-menu-move3.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.076
+},
+{
+"pack": "retro",
+"name": "menu move4",
+"file": "retro/sfx-menu-move4.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "menu move5",
+"file": "retro/sfx-menu-move5.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.046
+},
+{
+"pack": "retro",
+"name": "menu select1",
+"file": "retro/sfx-menu-select1.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.351
+},
+{
+"pack": "retro",
+"name": "menu select2",
+"file": "retro/sfx-menu-select2.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.305
+},
+{
+"pack": "retro",
+"name": "menu select3",
+"file": "retro/sfx-menu-select3.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.733
+},
+{
+"pack": "retro",
+"name": "menu select4",
+"file": "retro/sfx-menu-select4.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 1.076
+},
+{
+"pack": "retro",
+"name": "menu select5",
+"file": "retro/sfx-menu-select5.ogg",
+"tags": [
+"general sounds",
+"menu sounds"
+],
+"duration": 0.36
+},
+{
+"pack": "retro",
+"name": "sounds damage1",
+"file": "retro/sfx-sounds-damage1.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.174
+},
+{
+"pack": "retro",
+"name": "sounds damage2",
+"file": "retro/sfx-sounds-damage2.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "sounds damage3",
+"file": "retro/sfx-sounds-damage3.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.173
+},
+{
+"pack": "retro",
+"name": "sounds error1",
+"file": "retro/sfx-sounds-error1.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.325
+},
+{
+"pack": "retro",
+"name": "sounds error10",
+"file": "retro/sfx-sounds-error10.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.299
+},
+{
+"pack": "retro",
+"name": "sounds error11",
+"file": "retro/sfx-sounds-error11.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.457
+},
+{
+"pack": "retro",
+"name": "sounds error12",
+"file": "retro/sfx-sounds-error12.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.836
+},
+{
+"pack": "retro",
+"name": "sounds error13",
+"file": "retro/sfx-sounds-error13.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.377
+},
+{
+"pack": "retro",
+"name": "sounds error14",
+"file": "retro/sfx-sounds-error14.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "sounds error15",
+"file": "retro/sfx-sounds-error15.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.199
+},
+{
+"pack": "retro",
+"name": "sounds error2",
+"file": "retro/sfx-sounds-error2.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.265
+},
+{
+"pack": "retro",
+"name": "sounds error3",
+"file": "retro/sfx-sounds-error3.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.211
+},
+{
+"pack": "retro",
+"name": "sounds error4",
+"file": "retro/sfx-sounds-error4.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.046
+},
+{
+"pack": "retro",
+"name": "sounds error5",
+"file": "retro/sfx-sounds-error5.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.325
+},
+{
+"pack": "retro",
+"name": "sounds error6",
+"file": "retro/sfx-sounds-error6.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.1
+},
+{
+"pack": "retro",
+"name": "sounds error7",
+"file": "retro/sfx-sounds-error7.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "sounds error8",
+"file": "retro/sfx-sounds-error8.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.29
+},
+{
+"pack": "retro",
+"name": "sounds error9",
+"file": "retro/sfx-sounds-error9.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.321
+},
+{
+"pack": "retro",
+"name": "sounds negative1",
+"file": "retro/sfx-sounds-negative1.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 1.447
+},
+{
+"pack": "retro",
+"name": "sounds negative2",
+"file": "retro/sfx-sounds-negative2.ogg",
+"tags": [
+"general sounds",
+"negative sounds"
+],
+"duration": 0.765
+},
+{
+"pack": "retro",
+"name": "sound neutral1",
+"file": "retro/sfx-sound-neutral1.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.266
+},
+{
+"pack": "retro",
+"name": "sound neutral10",
+"file": "retro/sfx-sound-neutral10.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.471
+},
+{
+"pack": "retro",
+"name": "sound neutral11",
+"file": "retro/sfx-sound-neutral11.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.32
+},
+{
+"pack": "retro",
+"name": "sound neutral2",
+"file": "retro/sfx-sound-neutral2.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.318
+},
+{
+"pack": "retro",
+"name": "sound neutral3",
+"file": "retro/sfx-sound-neutral3.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 1.225
+},
+{
+"pack": "retro",
+"name": "sound neutral4",
+"file": "retro/sfx-sound-neutral4.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.522
+},
+{
+"pack": "retro",
+"name": "sound neutral5",
+"file": "retro/sfx-sound-neutral5.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.604
+},
+{
+"pack": "retro",
+"name": "sound neutral6",
+"file": "retro/sfx-sound-neutral6.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.377
+},
+{
+"pack": "retro",
+"name": "sound neutral7",
+"file": "retro/sfx-sound-neutral7.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.691
+},
+{
+"pack": "retro",
+"name": "sound neutral8",
+"file": "retro/sfx-sound-neutral8.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.098
+},
+{
+"pack": "retro",
+"name": "sound neutral9",
+"file": "retro/sfx-sound-neutral9.ogg",
+"tags": [
+"general sounds",
+"neutral sounds"
+],
+"duration": 0.658
+},
+{
+"pack": "retro",
+"name": "sounds pause1 in",
+"file": "retro/sfx-sounds-pause1-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.259
+},
+{
+"pack": "retro",
+"name": "sounds pause1 out",
+"file": "retro/sfx-sounds-pause1-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.22
+},
+{
+"pack": "retro",
+"name": "sounds pause2 in",
+"file": "retro/sfx-sounds-pause2-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.26
+},
+{
+"pack": "retro",
+"name": "sounds pause2 out",
+"file": "retro/sfx-sounds-pause2-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.26
+},
+{
+"pack": "retro",
+"name": "sounds pause3 in",
+"file": "retro/sfx-sounds-pause3-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.273
+},
+{
+"pack": "retro",
+"name": "sounds pause3 out",
+"file": "retro/sfx-sounds-pause3-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.272
+},
+{
+"pack": "retro",
+"name": "sounds pause4 in",
+"file": "retro/sfx-sounds-pause4-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.271
+},
+{
+"pack": "retro",
+"name": "sounds pause4 out",
+"file": "retro/sfx-sounds-pause4-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.272
+},
+{
+"pack": "retro",
+"name": "sounds pause5 in",
+"file": "retro/sfx-sounds-pause5-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.459
+},
+{
+"pack": "retro",
+"name": "sounds pause5 out",
+"file": "retro/sfx-sounds-pause5-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.451
+},
+{
+"pack": "retro",
+"name": "sounds pause6 in",
+"file": "retro/sfx-sounds-pause6-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.377
+},
+{
+"pack": "retro",
+"name": "sounds pause6 out",
+"file": "retro/sfx-sounds-pause6-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.377
+},
+{
+"pack": "retro",
+"name": "sounds pause7 in",
+"file": "retro/sfx-sounds-pause7-in.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.52
+},
+{
+"pack": "retro",
+"name": "sounds pause7 out",
+"file": "retro/sfx-sounds-pause7-out.ogg",
+"tags": [
+"general sounds",
+"pause sounds"
+],
+"duration": 0.516
+},
+{
+"pack": "retro",
+"name": "sounds powerup1",
+"file": "retro/sfx-sounds-powerup1.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.836
+},
+{
+"pack": "retro",
+"name": "sounds powerup10",
+"file": "retro/sfx-sounds-powerup10.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.254
+},
+{
+"pack": "retro",
+"name": "sounds powerup11",
+"file": "retro/sfx-sounds-powerup11.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.448
+},
+{
+"pack": "retro",
+"name": "sounds powerup12",
+"file": "retro/sfx-sounds-powerup12.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.608
+},
+{
+"pack": "retro",
+"name": "sounds powerup13",
+"file": "retro/sfx-sounds-powerup13.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.425
+},
+{
+"pack": "retro",
+"name": "sounds powerup14",
+"file": "retro/sfx-sounds-powerup14.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.514
+},
+{
+"pack": "retro",
+"name": "sounds powerup15",
+"file": "retro/sfx-sounds-powerup15.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.188
+},
+{
+"pack": "retro",
+"name": "sounds powerup16",
+"file": "retro/sfx-sounds-powerup16.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.695
+},
+{
+"pack": "retro",
+"name": "sounds powerup17",
+"file": "retro/sfx-sounds-powerup17.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.369
+},
+{
+"pack": "retro",
+"name": "sounds powerup18",
+"file": "retro/sfx-sounds-powerup18.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.705
+},
+{
+"pack": "retro",
+"name": "sounds powerup2",
+"file": "retro/sfx-sounds-powerup2.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.743
+},
+{
+"pack": "retro",
+"name": "sounds powerup3",
+"file": "retro/sfx-sounds-powerup3.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.418
+},
+{
+"pack": "retro",
+"name": "sounds powerup4",
+"file": "retro/sfx-sounds-powerup4.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.738
+},
+{
+"pack": "retro",
+"name": "sounds powerup5",
+"file": "retro/sfx-sounds-powerup5.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.227
+},
+{
+"pack": "retro",
+"name": "sounds powerup6",
+"file": "retro/sfx-sounds-powerup6.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.294
+},
+{
+"pack": "retro",
+"name": "sounds powerup7",
+"file": "retro/sfx-sounds-powerup7.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.664
+},
+{
+"pack": "retro",
+"name": "sounds powerup8",
+"file": "retro/sfx-sounds-powerup8.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.394
+},
+{
+"pack": "retro",
+"name": "sounds powerup9",
+"file": "retro/sfx-sounds-powerup9.ogg",
+"tags": [
+"general sounds",
+"positive sounds"
+],
+"duration": 0.645
+},
+{
+"pack": "retro",
+"name": "sounds Blip1",
+"file": "retro/sfx-sounds-blip1.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.064
+},
+{
+"pack": "retro",
+"name": "sounds Blip10",
+"file": "retro/sfx-sounds-blip10.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.06
+},
+{
+"pack": "retro",
+"name": "sounds Blip11",
+"file": "retro/sfx-sounds-blip11.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.09
+},
+{
+"pack": "retro",
+"name": "sounds Blip2",
+"file": "retro/sfx-sounds-blip2.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.173
+},
+{
+"pack": "retro",
+"name": "sounds Blip3",
+"file": "retro/sfx-sounds-blip3.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.086
+},
+{
+"pack": "retro",
+"name": "sounds Blip4",
+"file": "retro/sfx-sounds-blip4.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.043
+},
+{
+"pack": "retro",
+"name": "sounds Blip5",
+"file": "retro/sfx-sounds-blip5.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.115
+},
+{
+"pack": "retro",
+"name": "sounds Blip6",
+"file": "retro/sfx-sounds-blip6.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.101
+},
+{
+"pack": "retro",
+"name": "sounds Blip7",
+"file": "retro/sfx-sounds-blip7.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.047
+},
+{
+"pack": "retro",
+"name": "sounds Blip8",
+"file": "retro/sfx-sounds-blip8.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.068
+},
+{
+"pack": "retro",
+"name": "sounds Blip9",
+"file": "retro/sfx-sounds-blip9.ogg",
+"tags": [
+"general sounds",
+"simple bleeps"
+],
+"duration": 0.065
+},
+{
+"pack": "retro",
+"name": "damage hit1",
+"file": "retro/sfx-damage-hit1.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.059
+},
+{
+"pack": "retro",
+"name": "damage hit10",
+"file": "retro/sfx-damage-hit10.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.085
+},
+{
+"pack": "retro",
+"name": "damage hit2",
+"file": "retro/sfx-damage-hit2.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.051
+},
+{
+"pack": "retro",
+"name": "damage hit3",
+"file": "retro/sfx-damage-hit3.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.114
+},
+{
+"pack": "retro",
+"name": "damage hit4",
+"file": "retro/sfx-damage-hit4.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.042
+},
+{
+"pack": "retro",
+"name": "damage hit5",
+"file": "retro/sfx-damage-hit5.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.106
+},
+{
+"pack": "retro",
+"name": "damage hit6",
+"file": "retro/sfx-damage-hit6.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.065
+},
+{
+"pack": "retro",
+"name": "damage hit7",
+"file": "retro/sfx-damage-hit7.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.078
+},
+{
+"pack": "retro",
+"name": "damage hit8",
+"file": "retro/sfx-damage-hit8.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.076
+},
+{
+"pack": "retro",
+"name": "damage hit9",
+"file": "retro/sfx-damage-hit9.ogg",
+"tags": [
+"general sounds",
+"simple damage sounds"
+],
+"duration": 0.058
+},
+{
+"pack": "retro",
+"name": "sound bling",
+"file": "retro/sfx-sound-bling.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 1.028
+},
+{
+"pack": "retro",
+"name": "sound depressurizing",
+"file": "retro/sfx-sound-depressurizing.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 5.382
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise1",
+"file": "retro/sfx-sound-mechanicalnoise1.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.735
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise2",
+"file": "retro/sfx-sound-mechanicalnoise2.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.177
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise3",
+"file": "retro/sfx-sound-mechanicalnoise3.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 1.532
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise4",
+"file": "retro/sfx-sound-mechanicalnoise4.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 0.869
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise5",
+"file": "retro/sfx-sound-mechanicalnoise5.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.444
+},
+{
+"pack": "retro",
+"name": "sound mechanicalnoise6",
+"file": "retro/sfx-sound-mechanicalnoise6.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.276
+},
+{
+"pack": "retro",
+"name": "sound nagger1",
+"file": "retro/sfx-sound-nagger1.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 0.511
+},
+{
+"pack": "retro",
+"name": "sound nagger2",
+"file": "retro/sfx-sound-nagger2.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 0.282
+},
+{
+"pack": "retro",
+"name": "sound noise",
+"file": "retro/sfx-sound-noise.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 1.457
+},
+{
+"pack": "retro",
+"name": "sound poweron",
+"file": "retro/sfx-sound-poweron.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 1.608
+},
+{
+"pack": "retro",
+"name": "sound refereewhistle",
+"file": "retro/sfx-sound-refereewhistle.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 0.371
+},
+{
+"pack": "retro",
+"name": "sound shutdown1",
+"file": "retro/sfx-sound-shutdown1.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.042
+},
+{
+"pack": "retro",
+"name": "sound shutdown2",
+"file": "retro/sfx-sound-shutdown2.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 2.392
+},
+{
+"pack": "retro",
+"name": "sound vaporizing",
+"file": "retro/sfx-sound-vaporizing.ogg",
+"tags": [
+"general sounds",
+"weird sounds"
+],
+"duration": 1.864
+},
+{
+"pack": "retro",
+"name": "movement ladder1a",
+"file": "retro/sfx-movement-ladder1a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.068
+},
+{
+"pack": "retro",
+"name": "movement ladder1b",
+"file": "retro/sfx-movement-ladder1b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.071
+},
+{
+"pack": "retro",
+"name": "movement ladder1loop",
+"file": "retro/sfx-movement-ladder1loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.267
+},
+{
+"pack": "retro",
+"name": "movement ladder2a",
+"file": "retro/sfx-movement-ladder2a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.067
+},
+{
+"pack": "retro",
+"name": "movement ladder2b",
+"file": "retro/sfx-movement-ladder2b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.067
+},
+{
+"pack": "retro",
+"name": "movement ladder2loop",
+"file": "retro/sfx-movement-ladder2loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.241
+},
+{
+"pack": "retro",
+"name": "movement ladder3a",
+"file": "retro/sfx-movement-ladder3a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.067
+},
+{
+"pack": "retro",
+"name": "movement ladder3b",
+"file": "retro/sfx-movement-ladder3b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.033
+},
+{
+"pack": "retro",
+"name": "movement ladder3loop",
+"file": "retro/sfx-movement-ladder3loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.25
+},
+{
+"pack": "retro",
+"name": "movement ladder4a",
+"file": "retro/sfx-movement-ladder4a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "movement ladder4b",
+"file": "retro/sfx-movement-ladder4b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.048
+},
+{
+"pack": "retro",
+"name": "movement ladder4loop",
+"file": "retro/sfx-movement-ladder4loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.3
+},
+{
+"pack": "retro",
+"name": "movement ladder5a",
+"file": "retro/sfx-movement-ladder5a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "movement ladder5b",
+"file": "retro/sfx-movement-ladder5b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.047
+},
+{
+"pack": "retro",
+"name": "movement ladder5loop",
+"file": "retro/sfx-movement-ladder5loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.217
+},
+{
+"pack": "retro",
+"name": "movement ladder6a",
+"file": "retro/sfx-movement-ladder6a.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.04
+},
+{
+"pack": "retro",
+"name": "movement ladder6b",
+"file": "retro/sfx-movement-ladder6b.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.035
+},
+{
+"pack": "retro",
+"name": "movement ladder6loop",
+"file": "retro/sfx-movement-ladder6loop.ogg",
+"tags": [
+"movement",
+"climbing ladder"
+],
+"duration": 0.2
+},
+{
+"pack": "retro",
+"name": "movement stairs1a",
+"file": "retro/sfx-movement-stairs1a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "movement stairs1b",
+"file": "retro/sfx-movement-stairs1b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "movement stairs1loop",
+"file": "retro/sfx-movement-stairs1loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.483
+},
+{
+"pack": "retro",
+"name": "movement stairs2a",
+"file": "retro/sfx-movement-stairs2a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "movement stairs2b",
+"file": "retro/sfx-movement-stairs2b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "movement stairs2loop",
+"file": "retro/sfx-movement-stairs2loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.417
+},
+{
+"pack": "retro",
+"name": "movement stairs3a",
+"file": "retro/sfx-movement-stairs3a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.048
+},
+{
+"pack": "retro",
+"name": "movement stairs3b",
+"file": "retro/sfx-movement-stairs3b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "movement stairs3loop",
+"file": "retro/sfx-movement-stairs3loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.483
+},
+{
+"pack": "retro",
+"name": "movement stairs4a",
+"file": "retro/sfx-movement-stairs4a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.063
+},
+{
+"pack": "retro",
+"name": "movement stairs4b",
+"file": "retro/sfx-movement-stairs4b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.062
+},
+{
+"pack": "retro",
+"name": "movement stairs4loop",
+"file": "retro/sfx-movement-stairs4loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.417
+},
+{
+"pack": "retro",
+"name": "movement stairs5a",
+"file": "retro/sfx-movement-stairs5a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.064
+},
+{
+"pack": "retro",
+"name": "movement stairs5b",
+"file": "retro/sfx-movement-stairs5b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.064
+},
+{
+"pack": "retro",
+"name": "movement stairs5loop",
+"file": "retro/sfx-movement-stairs5loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.35
+},
+{
+"pack": "retro",
+"name": "movement stairs6a",
+"file": "retro/sfx-movement-stairs6a.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.051
+},
+{
+"pack": "retro",
+"name": "movement stairs6b",
+"file": "retro/sfx-movement-stairs6b.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "movement stairs6loop",
+"file": "retro/sfx-movement-stairs6loop.ogg",
+"tags": [
+"movement",
+"climbing stairs"
+],
+"duration": 0.283
+},
+{
+"pack": "retro",
+"name": "sounds falling1",
+"file": "retro/sfx-sounds-falling1.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 0.795
+},
+{
+"pack": "retro",
+"name": "sounds falling10",
+"file": "retro/sfx-sounds-falling10.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 2.905
+},
+{
+"pack": "retro",
+"name": "sounds falling11",
+"file": "retro/sfx-sounds-falling11.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 0.754
+},
+{
+"pack": "retro",
+"name": "sounds falling12",
+"file": "retro/sfx-sounds-falling12.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 2.554
+},
+{
+"pack": "retro",
+"name": "sounds falling2",
+"file": "retro/sfx-sounds-falling2.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 0.902
+},
+{
+"pack": "retro",
+"name": "sounds falling3",
+"file": "retro/sfx-sounds-falling3.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 0.953
+},
+{
+"pack": "retro",
+"name": "sounds falling4",
+"file": "retro/sfx-sounds-falling4.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 1.579
+},
+{
+"pack": "retro",
+"name": "sounds falling5",
+"file": "retro/sfx-sounds-falling5.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 0.916
+},
+{
+"pack": "retro",
+"name": "sounds falling6",
+"file": "retro/sfx-sounds-falling6.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 1.03
+},
+{
+"pack": "retro",
+"name": "sounds falling7",
+"file": "retro/sfx-sounds-falling7.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 2.911
+},
+{
+"pack": "retro",
+"name": "sounds falling8",
+"file": "retro/sfx-sounds-falling8.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 3.389
+},
+{
+"pack": "retro",
+"name": "sounds falling9",
+"file": "retro/sfx-sounds-falling9.ogg",
+"tags": [
+"movement",
+"falling sounds"
+],
+"duration": 1.486
+},
+{
+"pack": "retro",
+"name": "movement footsteps1a",
+"file": "retro/sfx-movement-footsteps1a.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.049
+},
+{
+"pack": "retro",
+"name": "movement footsteps1b",
+"file": "retro/sfx-movement-footsteps1b.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "movement footsteps5",
+"file": "retro/sfx-movement-footsteps5.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.052
+},
+{
+"pack": "retro",
+"name": "movement footstepsloop3 fast",
+"file": "retro/sfx-movement-footstepsloop3-fast.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.321
+},
+{
+"pack": "retro",
+"name": "movement footstepsloop3 slow",
+"file": "retro/sfx-movement-footstepsloop3-slow.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.458
+},
+{
+"pack": "retro",
+"name": "movement footstepsloop4 fast",
+"file": "retro/sfx-movement-footstepsloop4-fast.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.359
+},
+{
+"pack": "retro",
+"name": "movement footstepsloop4 slow",
+"file": "retro/sfx-movement-footstepsloop4-slow.ogg",
+"tags": [
+"movement",
+"footsteps"
+],
+"duration": 0.494
+},
+{
+"pack": "retro",
+"name": "movement jump1",
+"file": "retro/sfx-movement-jump1.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "movement jump10",
+"file": "retro/sfx-movement-jump10.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.11
+},
+{
+"pack": "retro",
+"name": "movement jump10 landing",
+"file": "retro/sfx-movement-jump10-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.072
+},
+{
+"pack": "retro",
+"name": "movement jump11",
+"file": "retro/sfx-movement-jump11.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.392
+},
+{
+"pack": "retro",
+"name": "movement jump11 landing",
+"file": "retro/sfx-movement-jump11-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.082
+},
+{
+"pack": "retro",
+"name": "movement jump12",
+"file": "retro/sfx-movement-jump12.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.162
+},
+{
+"pack": "retro",
+"name": "movement jump12 landing",
+"file": "retro/sfx-movement-jump12-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.1
+},
+{
+"pack": "retro",
+"name": "movement jump13",
+"file": "retro/sfx-movement-jump13.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.162
+},
+{
+"pack": "retro",
+"name": "movement jump13 landing",
+"file": "retro/sfx-movement-jump13-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.097
+},
+{
+"pack": "retro",
+"name": "movement jump14",
+"file": "retro/sfx-movement-jump14.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.187
+},
+{
+"pack": "retro",
+"name": "movement jump14 landing",
+"file": "retro/sfx-movement-jump14-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.04
+},
+{
+"pack": "retro",
+"name": "movement jump15",
+"file": "retro/sfx-movement-jump15.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.141
+},
+{
+"pack": "retro",
+"name": "movement jump15 landing",
+"file": "retro/sfx-movement-jump15-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.076
+},
+{
+"pack": "retro",
+"name": "movement jump16",
+"file": "retro/sfx-movement-jump16.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.234
+},
+{
+"pack": "retro",
+"name": "movement jump16 landing",
+"file": "retro/sfx-movement-jump16-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.112
+},
+{
+"pack": "retro",
+"name": "movement jump17",
+"file": "retro/sfx-movement-jump17.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.224
+},
+{
+"pack": "retro",
+"name": "movement jump17 landing",
+"file": "retro/sfx-movement-jump17-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.136
+},
+{
+"pack": "retro",
+"name": "movement jump18",
+"file": "retro/sfx-movement-jump18.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.143
+},
+{
+"pack": "retro",
+"name": "movement jump18 landing",
+"file": "retro/sfx-movement-jump18-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.067
+},
+{
+"pack": "retro",
+"name": "movement jump19",
+"file": "retro/sfx-movement-jump19.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.378
+},
+{
+"pack": "retro",
+"name": "movement jump19 landing",
+"file": "retro/sfx-movement-jump19-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.111
+},
+{
+"pack": "retro",
+"name": "movement jump2",
+"file": "retro/sfx-movement-jump2.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.186
+},
+{
+"pack": "retro",
+"name": "movement jump20",
+"file": "retro/sfx-movement-jump20.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.14
+},
+{
+"pack": "retro",
+"name": "movement jump3",
+"file": "retro/sfx-movement-jump3.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.186
+},
+{
+"pack": "retro",
+"name": "movement jump4",
+"file": "retro/sfx-movement-jump4.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.186
+},
+{
+"pack": "retro",
+"name": "movement jump5",
+"file": "retro/sfx-movement-jump5.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.093
+},
+{
+"pack": "retro",
+"name": "movement jump6",
+"file": "retro/sfx-movement-jump6.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.463
+},
+{
+"pack": "retro",
+"name": "movement jump7",
+"file": "retro/sfx-movement-jump7.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.277
+},
+{
+"pack": "retro",
+"name": "movement jump8",
+"file": "retro/sfx-movement-jump8.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.226
+},
+{
+"pack": "retro",
+"name": "movement jump9",
+"file": "retro/sfx-movement-jump9.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.255
+},
+{
+"pack": "retro",
+"name": "movement jump9 landing",
+"file": "retro/sfx-movement-jump9-landing.ogg",
+"tags": [
+"movement",
+"jumping and landing"
+],
+"duration": 0.073
+},
+{
+"pack": "retro",
+"name": "movement dooropen1",
+"file": "retro/sfx-movement-dooropen1.ogg",
+"tags": [
+"movement",
+"opening doors"
+],
+"duration": 0.127
+},
+{
+"pack": "retro",
+"name": "movement dooropen2",
+"file": "retro/sfx-movement-dooropen2.ogg",
+"tags": [
+"movement",
+"opening doors"
+],
+"duration": 0.128
+},
+{
+"pack": "retro",
+"name": "movement dooropen3",
+"file": "retro/sfx-movement-dooropen3.ogg",
+"tags": [
+"movement",
+"opening doors"
+],
+"duration": 0.146
+},
+{
+"pack": "retro",
+"name": "movement dooropen4",
+"file": "retro/sfx-movement-dooropen4.ogg",
+"tags": [
+"movement",
+"opening doors"
+],
+"duration": 0.105
+},
+{
+"pack": "retro",
+"name": "movement portal1",
+"file": "retro/sfx-movement-portal1.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 1.405
+},
+{
+"pack": "retro",
+"name": "movement portal2",
+"file": "retro/sfx-movement-portal2.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 2.186
+},
+{
+"pack": "retro",
+"name": "movement portal3",
+"file": "retro/sfx-movement-portal3.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 1.176
+},
+{
+"pack": "retro",
+"name": "movement portal4",
+"file": "retro/sfx-movement-portal4.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 1.382
+},
+{
+"pack": "retro",
+"name": "movement portal5",
+"file": "retro/sfx-movement-portal5.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 0.882
+},
+{
+"pack": "retro",
+"name": "movement portal6",
+"file": "retro/sfx-movement-portal6.ogg",
+"tags": [
+"movement",
+"portals and transitions"
+],
+"duration": 1.668
+},
+{
+"pack": "retro",
+"name": "vehicle breaks",
+"file": "retro/sfx-vehicle-breaks.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 0.279
+},
+{
+"pack": "retro",
+"name": "vehicle carloop1",
+"file": "retro/sfx-vehicle-carloop1.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.1
+},
+{
+"pack": "retro",
+"name": "vehicle carloop2",
+"file": "retro/sfx-vehicle-carloop2.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 0.809
+},
+{
+"pack": "retro",
+"name": "vehicle engineloop",
+"file": "retro/sfx-vehicle-engineloop.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.145
+},
+{
+"pack": "retro",
+"name": "vehicle helicopterloop1",
+"file": "retro/sfx-vehicle-helicopterloop1.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 0.789
+},
+{
+"pack": "retro",
+"name": "vehicle helicopterloop2",
+"file": "retro/sfx-vehicle-helicopterloop2.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.847
+},
+{
+"pack": "retro",
+"name": "vehicle helicopterloop3",
+"file": "retro/sfx-vehicle-helicopterloop3.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.47
+},
+{
+"pack": "retro",
+"name": "vehicle helicopterloop4",
+"file": "retro/sfx-vehicle-helicopterloop4.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.505
+},
+{
+"pack": "retro",
+"name": "vehicle plainloop",
+"file": "retro/sfx-vehicle-plainloop.ogg",
+"tags": [
+"movement",
+"vehicles"
+],
+"duration": 1.699
+},
+{
+"pack": "retro",
+"name": "wpn cannon1",
+"file": "retro/sfx-wpn-cannon1.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 0.899
+},
+{
+"pack": "retro",
+"name": "wpn cannon2",
+"file": "retro/sfx-wpn-cannon2.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 1.287
+},
+{
+"pack": "retro",
+"name": "wpn cannon3",
+"file": "retro/sfx-wpn-cannon3.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 2.869
+},
+{
+"pack": "retro",
+"name": "wpn cannon4",
+"file": "retro/sfx-wpn-cannon4.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 0.768
+},
+{
+"pack": "retro",
+"name": "wpn cannon5",
+"file": "retro/sfx-wpn-cannon5.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 1.476
+},
+{
+"pack": "retro",
+"name": "wpn cannon6",
+"file": "retro/sfx-wpn-cannon6.ogg",
+"tags": [
+"weapons",
+"cannon"
+],
+"duration": 1.762
+},
+{
+"pack": "retro",
+"name": "wpn grenadewhistle1",
+"file": "retro/sfx-wpn-grenadewhistle1.ogg",
+"tags": [
+"weapons",
+"grenade whistles"
+],
+"duration": 0.975
+},
+{
+"pack": "retro",
+"name": "wpn grenadewhistle2",
+"file": "retro/sfx-wpn-grenadewhistle2.ogg",
+"tags": [
+"weapons",
+"grenade whistles"
+],
+"duration": 1.579
+},
+{
+"pack": "retro",
+"name": "wpn missilelaunch",
+"file": "retro/sfx-wpn-missilelaunch.ogg",
+"tags": [
+"weapons",
+"grenade whistles"
+],
+"duration": 0.783
+},
+{
+"pack": "retro",
+"name": "wpn laser 10",
+"file": "retro/sfx-wpn-laser-10.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.581
+},
+{
+"pack": "retro",
+"name": "wpn laser1",
+"file": "retro/sfx-wpn-laser1.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.364
+},
+{
+"pack": "retro",
+"name": "wpn laser10",
+"file": "retro/sfx-wpn-laser10.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.186
+},
+{
+"pack": "retro",
+"name": "wpn laser11",
+"file": "retro/sfx-wpn-laser11.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.892
+},
+{
+"pack": "retro",
+"name": "wpn laser12",
+"file": "retro/sfx-wpn-laser12.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.679
+},
+{
+"pack": "retro",
+"name": "wpn laser2",
+"file": "retro/sfx-wpn-laser2.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.116
+},
+{
+"pack": "retro",
+"name": "wpn laser3",
+"file": "retro/sfx-wpn-laser3.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.756
+},
+{
+"pack": "retro",
+"name": "wpn laser4",
+"file": "retro/sfx-wpn-laser4.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.348
+},
+{
+"pack": "retro",
+"name": "wpn laser5",
+"file": "retro/sfx-wpn-laser5.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 1.07
+},
+{
+"pack": "retro",
+"name": "wpn laser6",
+"file": "retro/sfx-wpn-laser6.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.492
+},
+{
+"pack": "retro",
+"name": "wpn laser7",
+"file": "retro/sfx-wpn-laser7.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.393
+},
+{
+"pack": "retro",
+"name": "wpn laser8",
+"file": "retro/sfx-wpn-laser8.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.15
+},
+{
+"pack": "retro",
+"name": "wpn laser9",
+"file": "retro/sfx-wpn-laser9.ogg",
+"tags": [
+"weapons",
+"lasers"
+],
+"duration": 0.325
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop1",
+"file": "retro/sfx-wpn-machinegun-loop1.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.062
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop2",
+"file": "retro/sfx-wpn-machinegun-loop2.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.222
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop3",
+"file": "retro/sfx-wpn-machinegun-loop3.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.058
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop4",
+"file": "retro/sfx-wpn-machinegun-loop4.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.058
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop5",
+"file": "retro/sfx-wpn-machinegun-loop5.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.215
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop6",
+"file": "retro/sfx-wpn-machinegun-loop6.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.323
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop7",
+"file": "retro/sfx-wpn-machinegun-loop7.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.343
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop8",
+"file": "retro/sfx-wpn-machinegun-loop8.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.457
+},
+{
+"pack": "retro",
+"name": "wpn machinegun loop9",
+"file": "retro/sfx-wpn-machinegun-loop9.ogg",
+"tags": [
+"weapons",
+"machinegun"
+],
+"duration": 0.384
+},
+{
+"pack": "retro",
+"name": "wpn dagger",
+"file": "retro/sfx-wpn-dagger.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.021
+},
+{
+"pack": "retro",
+"name": "wpn punch1",
+"file": "retro/sfx-wpn-punch1.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.103
+},
+{
+"pack": "retro",
+"name": "wpn punch2",
+"file": "retro/sfx-wpn-punch2.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.103
+},
+{
+"pack": "retro",
+"name": "wpn punch3",
+"file": "retro/sfx-wpn-punch3.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.104
+},
+{
+"pack": "retro",
+"name": "wpn punch4",
+"file": "retro/sfx-wpn-punch4.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.215
+},
+{
+"pack": "retro",
+"name": "wpn sword1",
+"file": "retro/sfx-wpn-sword1.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.111
+},
+{
+"pack": "retro",
+"name": "wpn sword2",
+"file": "retro/sfx-wpn-sword2.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.096
+},
+{
+"pack": "retro",
+"name": "wpn sword3",
+"file": "retro/sfx-wpn-sword3.ogg",
+"tags": [
+"weapons",
+"melee"
+],
+"duration": 0.137
+},
+{
+"pack": "retro",
+"name": "wpn noammo1",
+"file": "retro/sfx-wpn-noammo1.ogg",
+"tags": [
+"weapons",
+"out of ammo"
+],
+"duration": 0.099
+},
+{
+"pack": "retro",
+"name": "wpn noammo2",
+"file": "retro/sfx-wpn-noammo2.ogg",
+"tags": [
+"weapons",
+"out of ammo"
+],
+"duration": 0.09
+},
+{
+"pack": "retro",
+"name": "wpn noammo3",
+"file": "retro/sfx-wpn-noammo3.ogg",
+"tags": [
+"weapons",
+"out of ammo"
+],
+"duration": 0.172
+},
+{
+"pack": "retro",
+"name": "wpn reload",
+"file": "retro/sfx-wpn-reload.ogg",
+"tags": [
+"weapons",
+"out of ammo"
+],
+"duration": 0.232
+},
+{
+"pack": "retro",
+"name": "weapon shotgun1",
+"file": "retro/sfx-weapon-shotgun1.ogg",
+"tags": [
+"weapons",
+"shotgun"
+],
+"duration": 0.372
+},
+{
+"pack": "retro",
+"name": "weapon shotgun2",
+"file": "retro/sfx-weapon-shotgun2.ogg",
+"tags": [
+"weapons",
+"shotgun"
+],
+"duration": 0.627
+},
+{
+"pack": "retro",
+"name": "weapon shotgun3",
+"file": "retro/sfx-weapon-shotgun3.ogg",
+"tags": [
+"weapons",
+"shotgun"
+],
+"duration": 0.649
+},
+{
+"pack": "retro",
+"name": "weapon singleshot1",
+"file": "retro/sfx-weapon-singleshot1.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.139
+},
+{
+"pack": "retro",
+"name": "weapon singleshot10",
+"file": "retro/sfx-weapon-singleshot10.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.156
+},
+{
+"pack": "retro",
+"name": "weapon singleshot11",
+"file": "retro/sfx-weapon-singleshot11.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.041
+},
+{
+"pack": "retro",
+"name": "weapon singleshot12",
+"file": "retro/sfx-weapon-singleshot12.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.095
+},
+{
+"pack": "retro",
+"name": "weapon singleshot13",
+"file": "retro/sfx-weapon-singleshot13.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.173
+},
+{
+"pack": "retro",
+"name": "weapon singleshot14",
+"file": "retro/sfx-weapon-singleshot14.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.05
+},
+{
+"pack": "retro",
+"name": "weapon singleshot15",
+"file": "retro/sfx-weapon-singleshot15.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.06
+},
+{
+"pack": "retro",
+"name": "weapon singleshot16",
+"file": "retro/sfx-weapon-singleshot16.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.045
+},
+{
+"pack": "retro",
+"name": "weapon singleshot17",
+"file": "retro/sfx-weapon-singleshot17.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.12
+},
+{
+"pack": "retro",
+"name": "weapon singleshot18",
+"file": "retro/sfx-weapon-singleshot18.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.146
+},
+{
+"pack": "retro",
+"name": "weapon singleshot19",
+"file": "retro/sfx-weapon-singleshot19.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.074
+},
+{
+"pack": "retro",
+"name": "weapon singleshot2",
+"file": "retro/sfx-weapon-singleshot2.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.129
+},
+{
+"pack": "retro",
+"name": "weapon singleshot20",
+"file": "retro/sfx-weapon-singleshot20.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.046
+},
+{
+"pack": "retro",
+"name": "weapon singleshot21",
+"file": "retro/sfx-weapon-singleshot21.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.128
+},
+{
+"pack": "retro",
+"name": "weapon singleshot22",
+"file": "retro/sfx-weapon-singleshot22.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.121
+},
+{
+"pack": "retro",
+"name": "weapon singleshot3",
+"file": "retro/sfx-weapon-singleshot3.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.186
+},
+{
+"pack": "retro",
+"name": "weapon singleshot4",
+"file": "retro/sfx-weapon-singleshot4.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.057
+},
+{
+"pack": "retro",
+"name": "weapon singleshot5",
+"file": "retro/sfx-weapon-singleshot5.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.036
+},
+{
+"pack": "retro",
+"name": "weapon singleshot6",
+"file": "retro/sfx-weapon-singleshot6.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.118
+},
+{
+"pack": "retro",
+"name": "weapon singleshot7",
+"file": "retro/sfx-weapon-singleshot7.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.134
+},
+{
+"pack": "retro",
+"name": "weapon singleshot8",
+"file": "retro/sfx-weapon-singleshot8.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.331
+},
+{
+"pack": "retro",
+"name": "weapon singleshot9",
+"file": "retro/sfx-weapon-singleshot9.ogg",
+"tags": [
+"weapons",
+"single shot sounds"
+],
+"duration": 0.069
+}
+]
+}

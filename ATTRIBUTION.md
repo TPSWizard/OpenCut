@@ -116,3 +116,22 @@ matte or displacement map) are left out of the catalogue.
   needing credit; every sticker keeps its set's licence, URL and author in
   its metadata. Icons are rendered from the API at use time; none are kept
   in this repository.
+
+## Bundled sound effects (`apps/web/public/sounds`, added 2026-11-11)
+
+All three packs are released under CC0 1.0 (public domain dedication), so
+no credit is required; it is given anyway. Each pack directory keeps the
+licence text that came with it, and `manifest.json` lists every sound with
+its pack.
+
+- **Kenney Interface Sounds** (100 files) and **Kenney UI Audio** (50
+  files) by Kenney Vleugels, https://kenney.nl/assets/interface-sounds and
+  https://kenney.nl/assets/ui-audio, downloaded 2026-11-11 from kenney.nl.
+  Files are the packs' own OGG files, renamed to URL-safe names
+  (`kenney-interface/LICENSE.txt`, `kenney-ui/LICENSE.txt`).
+- **The Essential Retro Video Game Sound Effects Collection (512 sounds)**
+  by Juhani Junkala (SubspaceAudio),
+  https://opengameart.org/content/512-sound-effects-8-bit-style,
+  downloaded 2026-11-11 from OpenGameArt. The pack's 44.1 kHz 16-bit mono
+  WAV files were converted to OGG Vorbis (quality 3) with FFmpeg to keep the
+  pack at about 5 MB; the author's `INFO.txt` is kept in `retro/`.

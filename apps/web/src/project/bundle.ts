@@ -188,10 +188,15 @@ export async function buildProjectBundle({
 			file: entry,
 		});
 	}
+	const serialized = serializeProject({ project });
+	for (const embedded of await embedBundledSounds({ serialized })) {
+		files[embedded.data.file] = [embedded.bytes, { level: 0 }];
+		media.push(embedded.data);
+	}
 	const manifest: ProjectBundleManifest = {
 		format: PROJECT_BUNDLE_FORMAT,
 		formatVersion: PROJECT_BUNDLE_FORMAT_VERSION,
-		project: serializeProject({ project }),
+		project: serialized,
 		media,
 	};
 	files[PROJECT_ENTRY] = [
@@ -200,6 +205,78 @@ export async function buildProjectBundle({
 	];
 	const bytes = await zipAsync(files);
 	return new Blob([bytes as BlobPart], { type: "application/zip" });
+}
+
+/** Where the editor's bundled CC0 sound packs are served from. */
+const BUNDLED_SOUNDS_PREFIX = "/sounds/";
+
+/**
+ * Library sounds that come from the editor's bundled packs are copied into
+ * the bundle as media and their elements rewritten to ordinary uploaded
+ * audio, so the desktop editor (which cannot reach the web app's files)
+ * plays them. Other library sounds (Freesound previews) stay as they are.
+ * Returns the media entries added; the serialized project is changed in
+ * place.
+ */
+export async function embedBundledSounds({
+	serialized,
+	fetchImpl = fetch,
+}: {
+	serialized: SerializedProject;
+	fetchImpl?: typeof fetch;
+}): Promise<Array<{ data: BundledMediaData; bytes: Uint8Array }>> {
+	const added = new Map<string, { data: BundledMediaData; bytes: Uint8Array }>();
+	for (const scene of serialized.scenes) {
+		const tracks = scene.tracks as unknown as { audio?: Array<{ elements: Array<Record<string, unknown>> }> };
+		for (const track of tracks.audio ?? []) {
+			for (let index = 0; index < track.elements.length; index++) {
+				const element = track.elements[index];
+				if (element.type !== "audio" || element.sourceType !== "library") continue;
+				const sourceUrl = element.sourceUrl;
+				if (typeof sourceUrl !== "string" || !sourceUrl.startsWith(BUNDLED_SOUNDS_PREFIX)) continue;
+				const relative = sourceUrl.slice(BUNDLED_SOUNDS_PREFIX.length);
+				const mediaId = `bundled-sound-${relative.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+				let entry = added.get(mediaId);
+				if (!entry) {
+					let bytes: Uint8Array;
+					try {
+						const response = await fetchImpl(sourceUrl);
+						if (!response.ok) continue;
+						bytes = new Uint8Array(await response.arrayBuffer());
+					} catch {
+						continue;
+					}
+					const extension = relative.includes(".") ? `.${relative.split(".").pop()}` : ".ogg";
+					const duration =
+						typeof element.sourceDuration === "number"
+							? element.sourceDuration / 120_000
+							: typeof element.duration === "number"
+								? element.duration / 120_000
+								: undefined;
+					entry = {
+						bytes,
+						data: {
+							id: mediaId,
+							name: typeof element.name === "string" ? element.name : relative,
+							type: "audio",
+							size: bytes.byteLength,
+							lastModified: 0,
+							width: undefined,
+							height: undefined,
+							duration,
+							fps: undefined,
+							hasAudio: true,
+							file: `media/${mediaId}${extension}`,
+						},
+					};
+					added.set(mediaId, entry);
+				}
+				const { sourceUrl: _url, buffer: _buffer, ...rest } = element;
+				track.elements[index] = { ...rest, sourceType: "upload", mediaId };
+			}
+		}
+	}
+	return [...added.values()];
 }
 
 export class ProjectBundleError extends Error {}

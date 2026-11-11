@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchBundledSounds, searchBundledSounds } from "@/sounds/bundled";
 import { apiUrl } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,18 @@ function SoundEffectsView() {
 	const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
 		null,
 	);
+	// The CC0 packs that ship with the editor: listed first, searched
+	// locally, and there even without a Freesound key.
+	const [bundledSounds, setBundledSounds] = useState<SoundEffect[]>([]);
+	useEffect(() => {
+		let cancelled = false;
+		fetchBundledSounds().then((sounds) => {
+			if (!cancelled) setBundledSounds(sounds);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	const { scrollAreaRef, handleScroll } = useInfiniteScroll({
 		onLoadMore: loadMore,
@@ -195,7 +208,13 @@ function SoundEffectsView() {
 		handleScroll({ currentTarget } as React.UIEvent<HTMLDivElement>);
 	};
 
-	const displayedSounds = searchQuery ? searchResults : topSoundEffects;
+	const bundledMatches = searchQuery
+		? searchBundledSounds({ sounds: bundledSounds, query: searchQuery })
+		: bundledSounds;
+	const displayedSounds = [
+		...bundledMatches,
+		...(searchQuery ? searchResults : topSoundEffects),
+	];
 
 	const playSound = ({ sound }: { sound: SoundEffect }) => {
 		if (playingId === sound.id) {
@@ -271,9 +290,15 @@ function SoundEffectsView() {
 					onScrollCapture={handleScrollWithPosition}
 				>
 					<div className="flex flex-col gap-4">
-						{isLoading && !searchQuery && (
+						{isLoading && !searchQuery && bundledSounds.length === 0 && (
 							<div className="text-muted-foreground text-sm">
 								Loading sounds...
+							</div>
+						)}
+						{bundledMatches.length > 0 && (
+							<div className="text-muted-foreground text-xs" data-testid="bundled-sounds-note">
+								{bundledMatches.length} bundled CC0 sounds (Kenney, Juhani Junkala)
+								{searchQuery ? " match" : ""}; Freesound results follow.
 							</div>
 						)}
 						{isSearching && searchQuery && (

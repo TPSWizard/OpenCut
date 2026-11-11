@@ -27,7 +27,7 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 
 | Goal | Where it lives |
 | --- | --- |
-| Editor | `apps/web` – projects, media import, multi-track timeline, GPU-composited preview, text (open-licence fonts from Fontsource), stickers (flags, shapes, licence-filtered icon sets from Iconify), effects (colour correction, vignette, grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, blur), masks, keyframes, captions, auto-ducking, silence auto-cut, sounds, MP4/WebM export with platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) and safe-area guides |
+| Editor | `apps/web` – projects, media import, multi-track timeline, GPU-composited preview, text (open-licence fonts from Fontsource), stickers (flags, shapes, licence-filtered icon sets from Iconify), effects (colour correction, vignette, grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, blur), masks, keyframes, captions, auto-ducking, silence auto-cut, sounds (663 bundled CC0 effects plus Freesound), MP4/WebM export with platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) and safe-area guides |
 | Editor API | `apps/web/src/api` – one typed, JSON surface (`window.opencut`) over the editor; [reference](apps/web/reference/editor-api.md) |
 | Plugins | `apps/web/src/plugins` – manifest-based plugins with sandboxed panels and background workers, installed from Settings → Plugins; [guide](apps/web/reference/plugins.md) |
 | Scripting tab | `apps/web/src/scripting` – CodeMirror editor in the assets panel; scripts run in a Worker against the Editor API |
