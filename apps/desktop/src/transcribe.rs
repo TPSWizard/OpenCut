@@ -2,8 +2,9 @@
 //! run as a subprocess (the way Shotcut does it), with ggml models fetched
 //! from Hugging Face into `~/.opencut/models/` and checked by size on
 //! download (the SHA-256 is recorded beside each file). A clip's audio is
-//! read through FFmpeg at 16 kHz mono, written as WAV, run with one word
-//! per segment, and the words become caption elements with the web app's
+//! read through FFmpeg at 16 kHz mono, written as WAV, run with DTW
+//! token timestamps (flash attention off, which DTW needs), and the tokens
+//! are grouped into words that become caption elements with the web app's
 //! chunking (`editor::captions`).
 //!
 //! `whisper-cli` is looked for at `OPENCUT_WHISPER_CLI`, then under
@@ -184,7 +185,8 @@ pub(crate) fn write_wav(path: &Path, samples: &[f32]) -> Result<(), String> {
 /// absolute times in seconds (offset by the clip's timeline start).
 pub(crate) fn transcribe(
     cli: &Path,
-    model: &Path,
+    model: &ModelSpec,
+    model_file: &Path,
     samples: &[f32],
     language: Option<&str>,
     offset_seconds: f64,
@@ -196,13 +198,14 @@ pub(crate) fn transcribe(
     let wav = dir.path().join("clip.wav");
     write_wav(&wav, samples)?;
     let out_base = dir.path().join("clip");
+    // Full JSON carries per-token DTW times; DTW needs flash attention off.
     let output = Command::new(cli)
         .arg("-m")
-        .arg(model)
+        .arg(model_file)
         .arg("-f")
         .arg(&wav)
         .args(["-l", language.unwrap_or("auto")])
-        .args(["-ml", "1", "-sow", "-oj", "-np", "-nt"])
+        .args(["-ojf", "-np", "-nt", "-nfa", "--dtw", model.id])
         .arg("-of")
         .arg(&out_base)
         .output()
@@ -212,53 +215,73 @@ pub(crate) fn transcribe(
         return Err(format!("whisper-cli failed: {}", stderr.lines().last().unwrap_or("no output")));
     }
     let json = fs::read_to_string(out_base.with_extension("json")).map_err(|error| error.to_string())?;
-    Ok(merge_split_tokens(parse_whisper_json(&json, offset_seconds)?))
+    parse_whisper_json(&json, offset_seconds)
 }
 
-/// The words in `whisper-cli`'s JSON output (`-oj`): one entry per segment
-/// with millisecond offsets, which `-ml 1 -sow` makes one word each.
+/// The words in `whisper-cli`'s full JSON output (`-ojf`): tokens grouped
+/// into words at leading spaces, each word starting at its first token's
+/// DTW time and ending where the next word starts (the last word keeps a
+/// short tail). Without DTW times (`t_dtw` of -1) the tokens' own offsets
+/// are used instead.
 pub(crate) fn parse_whisper_json(json: &str, offset_seconds: f64) -> Result<Vec<TimedWord>, String> {
     let value: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
-    let entries = value
+    let segments = value
         .get("transcription")
         .and_then(|t| t.as_array())
         .ok_or_else(|| "whisper-cli output has no transcription".to_owned())?;
-    let mut words = Vec::new();
-    for entry in entries {
-        let text = entry.get("text").and_then(|t| t.as_str()).unwrap_or("").to_owned();
-        if text.trim().is_empty() || text.trim().starts_with('[') || text.trim().starts_with('(') {
+    let mut pieces: Vec<(String, f64, f64)> = Vec::new();
+    for segment in segments {
+        let Some(tokens) = segment.get("tokens").and_then(|t| t.as_array()) else {
+            // Plain output: one entry per segment.
+            let text = segment.get("text").and_then(|t| t.as_str()).unwrap_or("").to_owned();
+            let from = segment.pointer("/offsets/from").and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0;
+            let to = segment.pointer("/offsets/to").and_then(|v| v.as_f64()).unwrap_or(from * 1000.0) / 1000.0;
+            if !text.trim().is_empty() {
+                pieces.push((text, from, to.max(from)));
+            }
             continue;
-        }
-        let from = entry.pointer("/offsets/from").and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0;
-        let to = entry.pointer("/offsets/to").and_then(|v| v.as_f64()).unwrap_or(from * 1000.0) / 1000.0;
-        words.push(TimedWord { text, start: offset_seconds + from, end: offset_seconds + to.max(from) });
-    }
-    Ok(words)
-}
-
-/// Whisper sometimes splits a word into pieces without a leading space;
-/// pieces are joined back, keeping the first start and the last end.
-fn merge_split_tokens(words: Vec<TimedWord>) -> Vec<TimedWord> {
-    let mut merged: Vec<TimedWord> = Vec::with_capacity(words.len());
-    for word in words {
-        let joins = merged
-            .last()
-            .map(|previous| {
-                !word.text.starts_with(' ')
-                    && word.text.chars().next().is_some_and(|c| c.is_alphanumeric())
-                    && previous.text.chars().last().is_some_and(|c| c.is_alphanumeric())
-                    && (word.start - previous.end).abs() < 0.001
-            })
-            .unwrap_or(false);
-        if joins {
-            let previous = merged.last_mut().unwrap();
-            previous.text.push_str(word.text.trim());
-            previous.end = word.end.max(previous.end);
-        } else {
-            merged.push(TimedWord { text: word.text.trim().to_owned(), ..word });
+        };
+        for token in tokens {
+            let text = token.get("text").and_then(|t| t.as_str()).unwrap_or("");
+            if text.is_empty() || text.starts_with("[_") || text.starts_with("<|") {
+                continue;
+            }
+            let dtw = token.get("t_dtw").and_then(|v| v.as_f64()).unwrap_or(-1.0);
+            let (start, end) = if dtw >= 0.0 {
+                (dtw / 100.0, dtw / 100.0)
+            } else {
+                (
+                    token.pointer("/offsets/from").and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0,
+                    token.pointer("/offsets/to").and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0,
+                )
+            };
+            pieces.push((text.to_owned(), start, end.max(start)));
         }
     }
-    merged
+    // Group tokens into words: a token with a leading space starts one.
+    let mut words: Vec<TimedWord> = Vec::new();
+    for (text, start, end) in pieces {
+        if text.starts_with(' ') || words.is_empty() {
+            words.push(TimedWord { text: text.trim().to_owned(), start, end });
+        } else if let Some(last) = words.last_mut() {
+            last.text.push_str(text.trim());
+            last.end = last.end.max(end);
+        }
+    }
+    // A word lasts until the next one starts; the last keeps a short tail.
+    for index in 0..words.len() {
+        let next_start = words.get(index + 1).map(|next| next.start);
+        let word = &mut words[index];
+        word.end = match next_start {
+            Some(next) if next > word.start => next,
+            _ => word.end.max(word.start + 0.3),
+        };
+    }
+    Ok(words
+        .into_iter()
+        .filter(|word| word.text.chars().any(|c| c.is_alphanumeric()))
+        .map(|word| TimedWord { text: word.text, start: offset_seconds + word.start, end: offset_seconds + word.end })
+        .collect())
 }
 
 /// The audio clip plan for an element, whatever its track's mute state.
@@ -286,29 +309,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn split_tokens_join_when_they_touch() {
-        let words = vec![
-            TimedWord { text: "Cap".into(), start: 0.0, end: 0.2 },
-            TimedWord { text: "tions".into(), start: 0.2, end: 0.4 },
-            TimedWord { text: " follow".into(), start: 0.5, end: 0.8 },
-        ];
-        let merged = merge_split_tokens(words);
-        assert_eq!(merged.len(), 2);
-        assert_eq!(merged[0], TimedWord { text: "Captions".into(), start: 0.0, end: 0.4 });
-        assert_eq!(merged[1].text, "follow");
+    fn full_json_tokens_become_words_with_dtw_times() {
+        let json = r#"{"transcription":[{"offsets":{"from":0,"to":30000},"text":" The quick dog. Captions.","tokens":[
+            {"text":" The","offsets":{"from":130,"to":1160},"t_dtw":8},
+            {"text":" quick","offsets":{"from":1200,"to":2490},"t_dtw":52},
+            {"text":" dog","offsets":{"from":6650,"to":6650},"t_dtw":264},
+            {"text":".","offsets":{"from":6650,"to":6650},"t_dtw":360},
+            {"text":" Capt","offsets":{"from":6650,"to":6650},"t_dtw":382},
+            {"text":"ions","offsets":{"from":6650,"to":6650},"t_dtw":400},
+            {"text":".","offsets":{"from":6650,"to":6650},"t_dtw":662},
+            {"text":"[_EOT_]","offsets":{"from":30000,"to":30000},"t_dtw":-1}
+        ]}]}"#;
+        let words = parse_whisper_json(json, 2.0).unwrap();
+        let texts: Vec<&str> = words.iter().map(|w| w.text.as_str()).collect();
+        assert_eq!(texts, ["The", "quick", "dog.", "Captions."]);
+        assert!((words[0].start - 2.08).abs() < 1e-9);
+        assert!((words[0].end - 2.52).abs() < 1e-9, "a word ends where the next starts");
+        assert!((words[2].end - words[3].start).abs() < 1e-9);
+        assert!(words[3].end > words[3].start);
     }
 
     #[test]
-    fn whisper_json_becomes_words_with_offsets() {
-        let json = r#"{"transcription":[
-            {"timestamps":{"from":"00:00:00,000","to":"00:00:00,500"},"offsets":{"from":0,"to":500},"text":" The"},
-            {"timestamps":{"from":"00:00:00,500","to":"00:00:00,900"},"offsets":{"from":500,"to":900},"text":" quick"},
-            {"timestamps":{"from":"00:00:01,000","to":"00:00:01,200"},"offsets":{"from":1000,"to":1200},"text":" [BLANK_AUDIO]"}
-        ]}"#;
-        let words = parse_whisper_json(json, 10.0).unwrap();
+    fn plain_json_falls_back_to_token_offsets() {
+        let json = r#"{"transcription":[{"offsets":{"from":0,"to":30000},"text":" Hi there","tokens":[
+            {"text":" Hi","offsets":{"from":100,"to":400},"t_dtw":-1},
+            {"text":" there","offsets":{"from":500,"to":900},"t_dtw":-1}
+        ]}]}"#;
+        let words = parse_whisper_json(json, 0.0).unwrap();
         assert_eq!(words.len(), 2);
-        assert_eq!(words[0], TimedWord { text: " The".into(), start: 10.0, end: 10.5 });
-        assert_eq!(words[1].end, 10.9);
+        assert!((words[0].start - 0.1).abs() < 1e-9);
+        assert!((words[0].end - 0.5).abs() < 1e-9);
     }
 
     #[test]
@@ -320,6 +350,89 @@ mod tests {
         assert_eq!(&bytes[..4], b"RIFF");
         assert_eq!(bytes.len(), 44 + 6);
         assert_eq!(i16::from_le_bytes([bytes[46], bytes[47]]), 16383);
+    }
+
+    /// End to end against the real tool and model: fetches the tiny model if
+    /// needed, transcribes `OPENCUT_TRANSCRIBE_CHECK` (a speech file) and
+    /// prints the words and captions. Skipped unless that variable is set,
+    /// since it downloads 75 MB and needs whisper-cli and FFmpeg.
+    #[test]
+    fn transcribes_a_speech_file_end_to_end() {
+        let Ok(path) = std::env::var("OPENCUT_TRANSCRIBE_CHECK") else {
+            return;
+        };
+        let root = editor::ProjectStore::default_root();
+        let cli = whisper_cli(&tools_dir(&root)).expect("whisper-cli built");
+        let model = ensure_model(&models_dir(&root), model_spec("tiny").unwrap(), &|done, total| {
+            if done % (16 << 20) < (1 << 20) {
+                eprintln!("model: {} / {} MB", done >> 20, total >> 20);
+            }
+        })
+        .expect("model fetched");
+        let ffmpeg = Arc::new(Ffmpeg::locate().expect("ffmpeg"));
+        let info = media::probe(&ffmpeg, Path::new(&path)).expect("probe");
+        let clip = AudioClipPlan {
+            element_id: "e".into(),
+            media_id: "m".into(),
+            path: PathBuf::from(&path),
+            timeline_start: time::MediaTime::from_seconds_f64(2.0).unwrap(),
+            source_start: time::MediaTime::ZERO,
+            source_end: info.duration.unwrap(),
+            volume_db: 0.0,
+            volume: Default::default(),
+        };
+        let samples = clip_samples(&ffmpeg, &clip).expect("samples");
+        let started = std::time::Instant::now();
+        let words = transcribe(&cli, model_spec("tiny").unwrap(), &model, &samples, None, 2.0).expect("transcribe");
+        eprintln!("{} words in {:.1} s:", words.len(), started.elapsed().as_secs_f64());
+        for word in &words {
+            eprintln!("  {:6.2}-{:6.2} {}", word.start, word.end, word.text);
+        }
+        let text = words.iter().map(|w| w.text.to_lowercase()).collect::<Vec<_>>().join(" ");
+        assert!(text.contains("quick") && text.contains("fox"), "{text}");
+        assert!(words.iter().all(|w| w.start >= 2.0 && w.end >= w.start), "offset applied");
+        let chunks = editor::build_caption_chunks(&words, 3, 0.8, 1.0);
+        for chunk in &chunks {
+            eprintln!("caption {:6.2} +{:4.2}: {}", chunk.start, chunk.duration, chunk.text);
+        }
+        assert!(chunks.len() >= 3);
+
+        // Put the captions on a project with the speech as its audio clip and
+        // write it where the headless export test can render it.
+        if let Ok(out_dir) = std::env::var("OPENCUT_TRANSCRIBE_PROJECT") {
+            let mut project = Project::new("Transcribed");
+            project.settings.canvas = editor::CanvasSize { width: 1280, height: 720 };
+            editor::apply(
+                &mut project,
+                &editor::Command::AddMedia(editor::MediaItem {
+                    id: "speech".to_owned(),
+                    name: "speech.wav".to_owned(),
+                    kind: editor::MediaKind::Audio,
+                    path: PathBuf::from(&path),
+                    duration: info.duration,
+                    width: None,
+                    height: None,
+                    fps: None,
+                    has_audio: true,
+                }),
+            )
+            .unwrap();
+            let mut clip_element = editor::Element::from_media(project.media_item("speech").unwrap(), clip.timeline_start);
+            clip_element.start_time = clip.timeline_start;
+            editor::apply(&mut project, &editor::Command::InsertElement { element: clip_element, placement: editor::TrackPlacement::Auto }).unwrap();
+            let elements: Vec<editor::Element> = chunks
+                .iter()
+                .enumerate()
+                .map(|(index, chunk)| editor::caption_element(index, chunk, project.settings.canvas))
+                .collect();
+            editor::apply(&mut project, &editor::Command::InsertCaptions { elements }).unwrap();
+            assert_eq!(project.tracks[0].name, "Captions");
+            assert_eq!(project.tracks[0].elements.len(), chunks.len());
+            let dir = PathBuf::from(out_dir);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("project.json"), serde_json::to_string_pretty(&project).unwrap()).unwrap();
+            eprintln!("wrote {}", dir.join("project.json").display());
+        }
     }
 
     #[test]

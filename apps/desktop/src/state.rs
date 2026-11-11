@@ -1680,7 +1680,7 @@ impl EditorState {
                 .spawn(async move {
                     let path = crate::transcribe::ensure_model(&models, model, &|_, _| {})?;
                     let samples = crate::transcribe::clip_samples(&ffmpeg, &clip)?;
-                    let words = crate::transcribe::transcribe(&cli, &path, &samples, None, clip.timeline_start.to_seconds_f64())?;
+                    let words = crate::transcribe::transcribe(&cli, model, &path, &samples, None, clip.timeline_start.to_seconds_f64())?;
                     let chunks = editor::build_caption_chunks(
                         &words,
                         editor::DEFAULT_WORDS_PER_CAPTION,

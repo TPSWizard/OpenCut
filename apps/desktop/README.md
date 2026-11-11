@@ -107,7 +107,8 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   audio runs whisper.cpp's `whisper-cli` (built once with
   `scripts/build-whisper-cli.sh`, which needs git, CMake and a C++
   toolchain, or pointed at with `OPENCUT_WHISPER_CLI`) on the clip's audio
-  at 16 kHz with one word per segment. The chosen ggml model (tiny, base or
+  at 16 kHz with DTW token timestamps (flash attention off), grouping the
+  tokens into words. The chosen ggml model (tiny, base or
   small) is fetched from Hugging Face into `~/.opencut/models/` on first
   use, checked by size, with its SHA-256 and provenance written beside it.
   The words become caption elements with the web app's chunking and
