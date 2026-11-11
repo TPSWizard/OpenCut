@@ -71,7 +71,7 @@ methods answer with the error code `no_project` before that.
 | `timeline.setKeyframe` | `{ elementId, trackId?, path, time, value, interpolation? }` | `ApiElementInfo` — sets (or replaces) a key on an animatable path: `transform.positionX/Y`, `transform.scaleX/Y`, `transform.rotate`, `opacity`, `volume`, `color`, `background.*`, `effects.<id>.params.<key>` |
 | `timeline.removeKeyframe` / `timeline.clearKeyframes` | `{ elementId, trackId?, path, time? \| keyframeId? }` / `{ elementId, trackId?, path }` | `ApiElementInfo` |
 | `masks.list` | – | `[{ type, name, params }]` — split, cinematic-bars, rectangle, ellipse, heart, diamond, star, text, freeform |
-| `timeline.setMask` / `timeline.updateMask` / `timeline.removeMask` | `{ elementId, trackId?, type, params? }` / `{ elementId, trackId?, params?, inverted? }` / `{ elementId, trackId? }` | `ApiElementInfo` (its `masks`) |
+| `timeline.setMask` / `timeline.updateMask` / `timeline.removeMask` | `{ elementId, trackId?, type, params? }` / `{ elementId, trackId?, params?, inverted? }` / `{ elementId, trackId? }` | `ApiElementInfo` (its `masks`); video, image and graphic elements |
 | `effects.list` | – | `ApiEffectDefinitionInfo[]` — blur, colour correction, vignette, film grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, each with its params (key, label, type, default, range or options) |
 | `timeline.addEffect` | `{ elementId, trackId?, type, params? }` | `ApiElementInfo` — adds the effect at its defaults, then applies `params` |
 | `timeline.updateEffect` / `timeline.removeEffect` | `{ elementId, trackId?, effectId, params?, enabled? }` / `{ elementId, trackId?, effectId }` | `ApiElementInfo` |

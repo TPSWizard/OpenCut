@@ -135,6 +135,11 @@ function allTracks(tracks: SceneTracks): TimelineTrack[] {
 	return [...tracks.overlay, tracks.main, ...tracks.audio];
 }
 
+/** The element kinds that carry a mask (video, image and graphic). */
+function maskable(element: TimelineElement): element is TimelineElement & { masks?: Mask[] } {
+	return element.type === "video" || element.type === "image" || element.type === "graphic";
+}
+
 function toElementInfo({
 	element,
 	trackId,
@@ -163,7 +168,7 @@ function toElementInfo({
 					}
 				: undefined,
 		masks:
-			"masks" in element && element.masks && element.masks.length > 0
+			maskable(element) && element.masks && element.masks.length > 0
 				? element.masks.map((mask) => ({
 						id: mask.id,
 						type: mask.type,
@@ -1328,8 +1333,8 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			})),
 		"timeline.setMask": ({ elementId, trackId, type, params }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
-			if (!("masks" in element)) {
-				throw new EditorApiError({ code: "invalid_params", message: "Masks apply to video and image elements only" });
+			if (!maskable(element)) {
+				throw new EditorApiError({ code: "invalid_params", message: "Masks apply to video, image and graphic elements only" });
 			}
 			const maskType = requireString(type, "type");
 			if (!masksRegistry.has(maskType as MaskType)) {
@@ -1347,7 +1352,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		},
 		"timeline.updateMask": ({ elementId, trackId, params, inverted }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
-			const mask = "masks" in element ? element.masks?.[0] : undefined;
+			const mask = maskable(element) ? element.masks?.[0] : undefined;
 			if (!mask) {
 				throw new EditorApiError({ code: "not_found", message: "The element has no mask" });
 			}
@@ -1366,7 +1371,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		},
 		"timeline.removeMask": ({ elementId, trackId }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
-			const mask = "masks" in element ? element.masks?.[0] : undefined;
+			const mask = maskable(element) ? element.masks?.[0] : undefined;
 			if (mask) {
 				editor.timeline.removeMask({ trackId: track.id, elementId: element.id, maskId: mask.id });
 			}
