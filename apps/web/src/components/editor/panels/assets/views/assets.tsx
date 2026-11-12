@@ -48,6 +48,7 @@ import {
 import { MASKABLE_ELEMENT_TYPES } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { useProxyJobs } from "@/media/proxy-store";
+import { MissingMediaSection } from "@/components/editor/panels/assets/missing-media";
 import { cn } from "@/utils/ui";
 import {
 	CloudUploadIcon,
@@ -209,6 +210,7 @@ export function MediaView() {
 				contentClassName="h-full"
 				{...dragProps}
 			>
+				<MissingMediaSection />
 				{isDragOver || filteredMediaItems.length === 0 ? (
 					<MediaDragOverlay
 						isVisible={true}

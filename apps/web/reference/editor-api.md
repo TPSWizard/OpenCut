@@ -48,6 +48,12 @@ methods answer with the error code `no_project` before that.
 | `media.remove` | `{ mediaId }` | `{ removed: true }` |
 | `media.makeProxy` | `{ mediaId }` | `ApiMediaInfo` — makes a small proxy of a video (longer side 960 px, H.264 in MP4 or VP9 in WebM, no audio) that the preview decodes instead of the original; export always reads the original. `ApiMediaInfo.proxy` reports its size, `proxyPending` is true while one is made. Videos above 1080p get one on import while auto proxies are on |
 | `media.removeProxy` | `{ mediaId }` | `ApiMediaInfo` — deletes the proxy; the preview decodes the original again |
+| `media.missing` | – | `ApiMissingMedia[]` `{ id, name, type, size }` — the open project's media whose file is gone from the browser's storage (the record survived). Their clips stay empty until relinked |
+| `media.relink` | `{ mediaId, file: File }` | `ApiMediaInfo` — gives a media item (missing or not) a new file under the same id, after checking it is the same kind; clips using it play the new file (in page / structured clone only) |
+| `storage.status` | – | `ApiStorageStatus` `{ level: protected \| at-risk \| unknown, persisted, browser, standalone, sevenDayRule, reasons, advice, usageBytes, quotaBytes }` — at-risk when the browser may clear the site's storage on low disk, or under Safari's 7-day rule (Safari in a tab, not installed) |
+| `storage.persist` | – | `ApiStorageStatus` — asks the browser to keep the site's storage |
+| `storage.usage` | – | `ApiProjectStorage[]` `{ projectId, name, mediaBytes, proxyBytes, mediaCount, missing, lastBackupAt, needsBackup }` — backups are bundle exports from this browser |
+| `storage.clearProxies` | `{ projectId? }` | `{ freedBytes }` — deletes a project's proxies (default: the open project) |
 | `preview.getSettings` | – | `ApiPreviewSettings` `{ quality, useProxies, autoProxies }` (kept per browser) |
 | `preview.setSettings` | `{ quality?: "auto" \| "full" \| "half" \| "quarter", useProxies?, autoProxies? }` | `ApiPreviewSettings` — preview decode quality: auto fits each video to the canvas, half and quarter go lower, full decodes every pixel; export is unaffected |
 | `preview.capture` | `{ time? }` | `{ width, height, centre: [r, g, b], decoders: [{ key, width, height }] }` — renders the preview's own scene (proxies and quality applied) at `time` seconds and lists the open video decoders (`<mediaId>\|proxy@native`, `<mediaId>\|original@1920x1080`, or the bare media id for export) |

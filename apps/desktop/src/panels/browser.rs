@@ -21,6 +21,44 @@ impl MediaPanel {
     }
 
     /// Opens the file picker and imports whatever is chosen.
+    /// Picks the file a missing media item should point at.
+    fn relink(state: &Entity<EditorState>, media_id: String, cx: &mut gpui::App) {
+        let receiver = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some("Relink".into()),
+        });
+        let state = state.clone();
+        cx.spawn(async move |cx| {
+            if let Ok(Ok(Some(paths))) = receiver.await
+                && let Some(path) = paths.into_iter().next()
+            {
+                state.update(cx, |state, cx| state.relink_media(&media_id, path, cx)).ok();
+            }
+        })
+        .detach();
+    }
+
+    /// Picks a folder to look for every missing file in.
+    fn find_missing(state: &Entity<EditorState>, cx: &mut gpui::App) {
+        let receiver = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some("Look here".into()),
+        });
+        let state = state.clone();
+        cx.spawn(async move |cx| {
+            if let Ok(Ok(Some(paths))) = receiver.await
+                && let Some(dir) = paths.into_iter().next()
+            {
+                state.update(cx, |state, cx| state.relink_missing_in(dir, cx)).ok();
+            }
+        })
+        .detach();
+    }
+
     pub(crate) fn import(state: &Entity<EditorState>, cx: &mut gpui::App) {
         let receiver = cx.prompt_for_paths(PathPromptOptions {
             files: true,
@@ -94,6 +132,8 @@ impl Render for MediaPanel {
                         .unwrap_or_default(),
                 };
                 let proxy_media_id = id.clone();
+                let relink_media_id = id.clone();
+                let missing = state.missing_media.contains(&media.id);
                 let is_video = media.kind == MediaKind::Video;
                 let proxy_ready = state.proxies_ready.contains(&media.id);
                 let proxy_making = state.proxies_making.contains(&media.id);
@@ -158,6 +198,7 @@ impl Render for MediaPanel {
                                     .items_center()
                                     .gap(px(6.))
                                     .child(Badge::new(kind).variant(BadgeVariant::Outline))
+                                    .when(missing, |row| row.child(Badge::new("missing").variant(BadgeVariant::Destructive)))
                                     .when(proxy_ready, |row| row.child(Badge::new("proxy").variant(BadgeVariant::Secondary)))
                                     .when(proxy_making, |row| row.child(Badge::new("proxy…").variant(BadgeVariant::Outline)))
                                     .child(
@@ -180,7 +221,17 @@ impl Render for MediaPanel {
                                 state.update(cx, |state, cx| state.add_media_to_timeline(&media_id, cx));
                             })
                     })
-                    .when(is_video && has_ffmpeg && !proxy_making, |row| {
+                    .when(missing, |row| {
+                        let state = self.state.clone();
+                        let media_id = relink_media_id.clone();
+                        row.child(
+                            Button::new(eid("relink", &relink_media_id), "Relink…")
+                                .variant(ButtonVariant::Secondary)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| Self::relink(&state, media_id.clone(), cx)),
+                        )
+                    })
+                    .when(is_video && has_ffmpeg && !proxy_making && !missing, |row| {
                         let state = self.state.clone();
                         let proxy_id = proxy_media_id.clone();
                         row.child(
@@ -211,6 +262,8 @@ impl Render for MediaPanel {
 
         let state_for_import = self.state.clone();
         let state_for_text = self.state.clone();
+        let state_for_find = self.state.clone();
+        let missing_count = state.missing_media.len();
         div()
             .flex()
             .flex_col()
@@ -233,6 +286,14 @@ impl Render for MediaPanel {
                             .font_weight(FontWeight::SEMIBOLD)
                             .child("Media"),
                     )
+                    .when(missing_count > 0, |row| {
+                        row.child(
+                            Button::new("find-missing", format!("Find {missing_count} missing…"))
+                                .variant(ButtonVariant::Secondary)
+                                .size(ButtonSize::Small)
+                                .on_click(move |_, _, cx| Self::find_missing(&state_for_find, cx)),
+                        )
+                    })
                     .child(
                         Button::new("add-text", "Text")
                             .variant(ButtonVariant::Outline)

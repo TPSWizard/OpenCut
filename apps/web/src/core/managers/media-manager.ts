@@ -1,6 +1,8 @@
 import type { EditorCore } from "@/core";
 import { toast } from "sonner";
 import type { MediaAsset } from "@/media/types";
+import type { MediaAssetData } from "@/services/storage/types";
+import { processMediaAssets } from "@/media/processing";
 import { storageService } from "@/services/storage/service";
 import { generateUUID } from "@/utils/id";
 import { videoCache } from "@/services/video-cache/service";
@@ -12,6 +14,8 @@ import { usePreviewStore } from "@/preview/preview-store";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
+	/** Items whose record is stored but whose file is gone; see `relinkMedia`. */
+	private missing: MediaAssetData[] = [];
 	private isLoading = false;
 	private listeners = new Set<() => void>();
 	private proxyJobs = new Map<string, Promise<MediaAsset>>();
@@ -101,11 +105,17 @@ export class MediaManager {
 		this.notify();
 
 		try {
-			const mediaAssets = await storageService.loadAllMediaAssets({
+			const { assets, missing } = await storageService.loadProjectMediaState({
 				projectId,
 			});
-			this.assets = mediaAssets;
+			this.assets = assets;
+			this.missing = missing;
 			this.notify();
+			if (missing.length > 0) {
+				toast.warning(`${missing.length} media file(s) are missing from this browser's storage`, {
+					description: "Relink them from the media panel; clips using them stay empty until then.",
+				});
+			}
 		} catch (error) {
 			console.error("Failed to load media assets:", error);
 		} finally {
@@ -126,8 +136,9 @@ export class MediaManager {
 			}
 		});
 
-		const mediaIds = this.assets.map((asset) => asset.id);
+		const mediaIds = [...this.assets.map((asset) => asset.id), ...this.missing.map((item) => item.id)];
 		this.assets = [];
+		this.missing = [];
 		this.notify();
 
 		try {
@@ -155,6 +166,79 @@ export class MediaManager {
 		});
 
 		this.assets = [];
+		this.missing = [];
+		this.notify();
+	}
+
+	getMissingAssets(): MediaAssetData[] {
+		return this.missing;
+	}
+
+	/**
+	 * Gives a stored media item a new file (it went missing, or the user is
+	 * swapping in a better copy). The id stays, so clips keep using it.
+	 */
+	async relinkMedia({
+		projectId,
+		mediaId,
+		file,
+	}: {
+		projectId: string;
+		mediaId: string;
+		file: File;
+	}): Promise<MediaAsset> {
+		const current = this.assets.find((item) => item.id === mediaId) ?? this.missing.find((item) => item.id === mediaId);
+		if (!current) throw new Error("No such media item");
+		const [processed] = await processMediaAssets({ files: [file] });
+		if (!processed) throw new Error(`${file.name} could not be read`);
+		if (processed.type !== current.type) {
+			const kind = (type: string) => (type === "image" ? "an image" : type === "audio" ? "an audio file" : "a video");
+			throw new Error(`${file.name} is ${kind(processed.type)}; ${current.name} was ${kind(current.type)}`);
+		}
+		const asset: MediaAsset = { ...processed, id: mediaId };
+		await storageService.saveMediaAsset({ projectId, mediaAsset: asset });
+		const old = this.assets.find((item) => item.id === mediaId);
+		if (old?.url) URL.revokeObjectURL(old.url);
+		videoCache.clearVideo({ mediaId });
+		this.assets = old ? this.assets.map((item) => (item.id === mediaId ? asset : item)) : [...this.assets, asset];
+		this.missing = this.missing.filter((item) => item.id !== mediaId);
+		this.notify();
+		return asset;
+	}
+
+	/**
+	 * Relinks missing items to picked files with the same name (ignoring
+	 * case; the same size wins when names repeat). Returns what matched.
+	 */
+	async relinkByFiles({
+		projectId,
+		files,
+	}: {
+		projectId: string;
+		files: File[];
+	}): Promise<{ relinked: string[]; unmatched: string[]; failed: string[] }> {
+		const relinked: string[] = [];
+		const failed: string[] = [];
+		const used = new Set<File>();
+		for (const item of [...this.missing]) {
+			const sameName = files.filter((file) => !used.has(file) && file.name.toLowerCase() === item.name.toLowerCase());
+			const file = sameName.find((candidate) => candidate.size === item.size) ?? sameName[0];
+			if (!file) continue;
+			used.add(file);
+			try {
+				await this.relinkMedia({ projectId, mediaId: item.id, file });
+				relinked.push(item.id);
+			} catch (error) {
+				failed.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return { relinked, unmatched: files.filter((file) => !used.has(file)).map((file) => file.name), failed };
+	}
+
+	/** Drops a missing item's record (its clips stay empty). */
+	async forgetMissing({ projectId, mediaId }: { projectId: string; mediaId: string }): Promise<void> {
+		await storageService.deleteMediaAsset({ projectId, id: mediaId });
+		this.missing = this.missing.filter((item) => item.id !== mediaId);
 		this.notify();
 	}
 

@@ -38,6 +38,9 @@ import {
 	type MediaTime,
 } from "@/wasm";
 import { useProxyJobs } from "@/media/proxy-store";
+import { needsBackup, readBackups, readDurability, requestPersistence } from "@/services/storage/durability";
+import { readStorageQuotaStatus } from "@/services/storage/quota";
+import { storageService } from "@/services/storage/service";
 import { isPreviewQuality } from "@/media/proxy";
 import { usePreviewStore } from "@/preview/preview-store";
 import { buildScene } from "@/services/renderer/scene-builder";
@@ -60,6 +63,7 @@ import {
 	type ApiPlatformPreset,
 	type ApiMediaInfo,
 	type ApiPreviewSettings,
+	type ApiStorageStatus,
 	type ApiPlaybackState,
 	type ApiProjectInfo,
 	type ApiProjectSummary,
@@ -339,6 +343,22 @@ function toMediaInfo(asset: MediaAsset): ApiMediaInfo {
 			? { proxy: { width: asset.proxyWidth, height: asset.proxyHeight } }
 			: {}),
 		...(asset.id in useProxyJobs.getState().making ? { proxyPending: true } : {}),
+	};
+}
+
+async function storageStatus(): Promise<ApiStorageStatus> {
+	const durability = await readDurability();
+	const quota = await readStorageQuotaStatus();
+	return {
+		level: durability.level,
+		persisted: durability.persisted,
+		browser: durability.browser,
+		standalone: durability.standalone,
+		sevenDayRule: durability.sevenDayRule,
+		reasons: durability.reasons,
+		advice: durability.advice,
+		usageBytes: quota.usageBytes,
+		quotaBytes: quota.quotaBytes,
 	};
 }
 
@@ -853,6 +873,57 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			const updated = await editor.media.removeProxy({ projectId: project.metadata.id, mediaId });
 			if (!updated) throw new EditorApiError({ code: "not_found", message: `No media ${mediaId}` });
 			return toMediaInfo(updated);
+		},
+		"storage.status": () => storageStatus(),
+		"storage.persist": async () => {
+			await requestPersistence();
+			return storageStatus();
+		},
+		"storage.usage": async () => {
+			await editor.project.loadAllProjects();
+			const backups = readBackups();
+			return Promise.all(
+				editor.project.getSavedProjects().map(async (project) => {
+					const sizes = await storageService.measureProjectMedia({ projectId: project.id });
+					const lastBackupAt = backups[project.id] ?? null;
+					return {
+						projectId: project.id,
+						name: project.name,
+						mediaBytes: sizes.mediaBytes,
+						proxyBytes: sizes.proxyBytes,
+						mediaCount: sizes.mediaCount,
+						missing: sizes.missing,
+						lastBackupAt: lastBackupAt ? new Date(lastBackupAt).toISOString() : null,
+						needsBackup: needsBackup({ updatedAt: new Date(project.updatedAt).getTime(), lastBackupAt }),
+					};
+				}),
+			);
+		},
+		"storage.clearProxies": async ({ projectId }) => {
+			const id = projectId ?? requireProject().metadata.id;
+			const freedBytes = await storageService.clearProjectProxies({ projectId: id });
+			if (id === editor.project.getActive()?.metadata.id) {
+				for (const asset of editor.media.getAssets().filter((item) => item.proxyFile)) {
+					await editor.media.removeProxy({ projectId: id, mediaId: asset.id });
+				}
+			}
+			return { freedBytes };
+		},
+		"media.missing": () => {
+			requireProject();
+			return editor.media.getMissingAssets().map((item) => ({ id: item.id, name: item.name, type: item.type, size: item.size }));
+		},
+		"media.relink": async ({ mediaId, file }) => {
+			const project = requireProject();
+			if (!(file instanceof Blob)) {
+				throw new EditorApiError({ code: "invalid_params", message: "file must be a File" });
+			}
+			try {
+				const named = file instanceof File ? file : new File([file], "relinked", { type: (file as Blob).type });
+				return toMediaInfo(await editor.media.relinkMedia({ projectId: project.metadata.id, mediaId, file: named }));
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"preview.getSettings": () => previewSettings(),
 		"preview.setSettings": ({ quality, useProxies, autoProxies }) => {

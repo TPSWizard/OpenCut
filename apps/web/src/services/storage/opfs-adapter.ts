@@ -64,6 +64,21 @@ export class OPFSAdapter implements StorageAdapter<File> {
 		return keys;
 	}
 
+	/** Each stored file's size in bytes, by key. */
+	async sizes(): Promise<Record<string, number>> {
+		const directory = await this.getDirectory();
+		const sizes: Record<string, number> = {};
+		for await (const name of directory.keys()) {
+			try {
+				const handle = await directory.getFileHandle(name);
+				sizes[name] = (await handle.getFile()).size;
+			} catch {
+				// A folder or a file that vanished meanwhile.
+			}
+		}
+		return sizes;
+	}
+
 	async clear(): Promise<void> {
 		const directory = await this.getDirectory();
 

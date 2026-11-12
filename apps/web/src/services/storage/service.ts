@@ -459,21 +459,75 @@ class StorageService {
 	}: {
 		projectId: string;
 	}): Promise<MediaAsset[]> {
+		return (await this.loadProjectMediaState({ projectId })).assets;
+	}
+
+	/**
+	 * The project's media, plus the items whose record is stored but whose
+	 * file is gone (the browser cleared part of the site's storage, or a
+	 * save was cut short). Those can be relinked to a file the user picks.
+	 */
+	async loadProjectMediaState({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<{ assets: MediaAsset[]; missing: MediaAssetData[] }> {
 		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
 			projectId,
 		});
 
 		const mediaIds = await mediaMetadataAdapter.list();
-		const mediaItems: MediaAsset[] = [];
+		const assets: MediaAsset[] = [];
+		const missing: MediaAssetData[] = [];
 
 		for (const id of mediaIds) {
 			const item = await this.loadMediaAsset({ projectId, id });
 			if (item) {
-				mediaItems.push(item);
+				assets.push(item);
+				continue;
 			}
+			const metadata = await mediaMetadataAdapter.get(id);
+			if (metadata) missing.push(metadata);
 		}
 
-		return mediaItems;
+		return { assets, missing };
+	}
+
+	/** Bytes the project's media and proxies take, and which media files are gone. */
+	async measureProjectMedia({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<{ mediaBytes: number; proxyBytes: number; mediaCount: number; missing: string[] }> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter, mediaProxiesAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		const [ids, files, proxies] = await Promise.all([
+			mediaMetadataAdapter.list(),
+			mediaAssetsAdapter.sizes().catch(() => ({}) as Record<string, number>),
+			mediaProxiesAdapter.sizes().catch(() => ({}) as Record<string, number>),
+		]);
+		const sum = (sizes: Record<string, number>) => Object.values(sizes).reduce((total, size) => total + size, 0);
+		return {
+			mediaBytes: sum(files),
+			proxyBytes: sum(proxies),
+			mediaCount: ids.length,
+			missing: ids.filter((id) => !(id in files)),
+		};
+	}
+
+	/** Deletes every proxy of a project (they can be made again); returns the bytes freed. */
+	async clearProjectProxies({ projectId }: { projectId: string }): Promise<number> {
+		const { mediaMetadataAdapter, mediaProxiesAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		const sizes = await mediaProxiesAdapter.sizes().catch(() => ({}) as Record<string, number>);
+		for (const id of await mediaMetadataAdapter.list()) {
+			const metadata = await mediaMetadataAdapter.get(id);
+			if (metadata?.proxyWidth) {
+				await this.deleteMediaProxy({ projectId, mediaId: id });
+			}
+		}
+		await mediaProxiesAdapter.clear().catch(() => {});
+		return Object.values(sizes).reduce((total, size) => total + size, 0);
 	}
 
 	async deleteMediaAsset({

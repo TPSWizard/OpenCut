@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { StoragePersistenceDialog } from "@/services/storage/components/storage-persistence-dialog";
+import { StorageRiskBanner, StorageStatusButton } from "@/services/storage/components/storage-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -111,6 +112,7 @@ export function ProjectsPage() {
 			<StoragePersistenceDialog />
 			<ChangelogNotification />
 			<ProjectsHeader />
+			<StorageRiskBanner hasProjects={projectsToDisplay.length > 0} />
 			<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
 			<main className="mx-auto px-4 pt-2 pb-6 flex flex-col gap-4">
 				{isLoading || !isInitialized ? (
@@ -187,6 +189,7 @@ function ProjectsHeader() {
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
 					<InstallAppButton />
+					<StorageStatusButton />
 					<ImportProjectButton />
 					<NewProjectButton />
 				</div>

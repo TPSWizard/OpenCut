@@ -109,6 +109,8 @@ pub(crate) struct EditorState {
     pub proxies_ready: HashSet<String>,
     /// Media ids whose proxy is being made.
     pub proxies_making: HashSet<String>,
+    /// Media ids whose file is not where the project says.
+    pub missing_media: HashSet<String>,
     pub status: Option<String>,
     pub thumbnails: HashMap<String, Arc<RenderImage>>,
     /// Waveform peaks by media id, once the render thread has read them.
@@ -204,6 +206,7 @@ impl EditorState {
             settings: crate::settings::load(),
             proxies_ready: HashSet::new(),
             proxies_making: HashSet::new(),
+            missing_media: HashSet::new(),
             status,
             thumbnails: HashMap::new(),
             pen: None,
@@ -233,6 +236,13 @@ impl EditorState {
             state.render.send(RenderRequest::Thumbnail { media });
         }
         state.refresh_proxies();
+        state.refresh_missing();
+        if !state.missing_media.is_empty() {
+            state.status = Some(format!(
+                "{} media file(s) are missing; use Relink… or Find missing… in the media panel",
+                state.missing_media.len()
+            ));
+        }
         state.sync_audio_clips();
         state.request_render(cx);
         state
@@ -282,7 +292,100 @@ impl EditorState {
         }
     }
 
+    /// Notes which media files are not where the project says.
+    fn refresh_missing(&mut self) {
+        self.missing_media = editor::missing_media(self.project()).into_iter().collect();
+    }
+
+    /// Points a media item at another file (picked by the user) after
+    /// checking it is the same kind; clips using it play the new file.
+    pub(crate) fn relink_media(&mut self, media_id: &str, path: PathBuf, cx: &mut Context<Self>) {
+        self.relink_many(vec![(media_id.to_owned(), path)], cx);
+    }
+
+    /// Looks under `dir` for files named like the missing media and relinks
+    /// every one it finds.
+    pub(crate) fn relink_missing_in(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
+        let missing: Vec<String> = self.missing_media.iter().cloned().collect();
+        if missing.is_empty() {
+            self.set_status("No media is missing", cx);
+            return;
+        }
+        let found = editor::find_relink_candidates(self.project(), &missing, &dir);
+        if found.is_empty() {
+            self.set_status(format!("None of the {} missing file(s) are in {}", missing.len(), dir.display()), cx);
+            return;
+        }
+        self.relink_many(found.into_iter().collect(), cx);
+    }
+
+    fn relink_many(&mut self, pairs: Vec<(String, PathBuf)>, cx: &mut Context<Self>) {
+        let ffmpeg = self.ffmpeg.clone();
+        let wanted: Vec<(MediaItem, PathBuf)> = pairs
+            .into_iter()
+            .filter_map(|(id, path)| self.project().media_item(&id).cloned().map(|media| (media, path)))
+            .collect();
+        if wanted.is_empty() {
+            return;
+        }
+        self.set_status(format!("Relinking {} file(s)…", wanted.len()), cx);
+        cx.spawn(async move |this, cx| {
+            let probed = cx
+                .background_executor()
+                .spawn(async move {
+                    wanted
+                        .into_iter()
+                        .map(|(media, path)| {
+                            let item = probe_media(ffmpeg.as_deref(), path)?;
+                            if item.kind != media.kind {
+                                return Err(format!("{} is not a {:?} like {}", item.name, media.kind, media.name));
+                            }
+                            Ok(MediaItem { id: media.id, ..item })
+                        })
+                        .collect::<Vec<Result<MediaItem, String>>>()
+                })
+                .await;
+            this.update(cx, |state, cx| {
+                let mut commands = Vec::new();
+                let mut failures = Vec::new();
+                for result in probed {
+                    match result {
+                        Ok(item) => commands.push(Command::RelinkMedia(item)),
+                        Err(message) => failures.push(message),
+                    }
+                }
+                let relinked: Vec<MediaItem> = commands
+                    .iter()
+                    .filter_map(|command| match command {
+                        Command::RelinkMedia(item) => Some(item.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if !commands.is_empty() && state.execute(Command::Batch(commands), cx).is_some() {
+                    for media in relinked.iter() {
+                        state.thumbnails.remove(&media.id);
+                        state.render.send(RenderRequest::Forget { media_id: media.id.clone() });
+                        state.render.send(RenderRequest::Thumbnail { media: media.clone() });
+                    }
+                    state.refresh_proxies();
+                    state.request_render(cx);
+                }
+                let mut message = format!("Relinked {} file(s)", relinked.len());
+                if !failures.is_empty() {
+                    message.push_str(&format!("; {}", failures.join("; ")));
+                }
+                if !state.missing_media.is_empty() {
+                    message.push_str(&format!("; {} still missing", state.missing_media.len()));
+                }
+                state.set_status(message, cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn after_change(&mut self, cx: &mut Context<Self>) {
+        self.refresh_missing();
         let present: Vec<String> = self
             .selection
             .iter()

@@ -81,6 +81,39 @@ export interface ApiMediaInfo {
 
 export type ApiPreviewQuality = "auto" | "full" | "half" | "quarter";
 
+export interface ApiStorageStatus {
+	/** protected: the browser keeps the data; at-risk: it may delete it (low disk, or Safari's 7-day rule); unknown: it does not say. */
+	level: "protected" | "at-risk" | "unknown";
+	persisted: boolean | null;
+	browser: "safari" | "firefox" | "chromium" | "other";
+	standalone: boolean;
+	sevenDayRule: boolean;
+	reasons: string[];
+	advice: string[];
+	usageBytes: number | null;
+	quotaBytes: number | null;
+}
+
+export interface ApiProjectStorage {
+	projectId: string;
+	name: string;
+	mediaBytes: number;
+	proxyBytes: number;
+	mediaCount: number;
+	/** Media ids whose file is gone from the browser's storage. */
+	missing: string[];
+	lastBackupAt: string | null;
+	/** Changed since the last bundle export, or never exported. */
+	needsBackup: boolean;
+}
+
+export interface ApiMissingMedia {
+	id: string;
+	name: string;
+	type: "image" | "video" | "audio";
+	size: number;
+}
+
 export interface ApiPreviewSettings {
 	/** How finely the preview decodes video: auto fits the canvas, half and quarter go lower, full decodes every pixel. */
 	quality: ApiPreviewQuality;
@@ -466,6 +499,18 @@ export interface EditorApiMethods {
 	 */
 	"media.makeProxy": { params: { mediaId: string }; result: ApiMediaInfo };
 	"media.removeProxy": { params: { mediaId: string }; result: ApiMediaInfo };
+	/** How safe the browser's copy of the projects is, and how much it uses. */
+	"storage.status": { params: Record<string, never>; result: ApiStorageStatus };
+	/** Asks the browser to keep this site's storage (`navigator.storage.persist()`). */
+	"storage.persist": { params: Record<string, never>; result: ApiStorageStatus };
+	/** Per project: bytes of media and proxies, missing files and backup state. */
+	"storage.usage": { params: Record<string, never>; result: ApiProjectStorage[] };
+	/** Deletes a project's proxies (made again on request); default: the open project. */
+	"storage.clearProxies": { params: { projectId?: string }; result: { freedBytes: number } };
+	/** The open project's media whose file is gone from the browser's storage. */
+	"media.missing": { params: Record<string, never>; result: ApiMissingMedia[] };
+	/** Gives a media item (missing or not) a new file under the same id; its clips play the new file. */
+	"media.relink": { params: { mediaId: string; file: File }; result: ApiMediaInfo };
 	/** Preview quality and proxy settings (kept per browser). */
 	"preview.getSettings": { params: Record<string, never>; result: ApiPreviewSettings };
 	"preview.setSettings": { params: Partial<ApiPreviewSettings>; result: ApiPreviewSettings };

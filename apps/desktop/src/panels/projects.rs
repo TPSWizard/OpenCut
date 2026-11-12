@@ -16,6 +16,8 @@ pub(crate) struct ProjectsView {
     store: ProjectStore,
     projects: Vec<ProjectSummary>,
     error: Option<String>,
+    /// Regenerable files in ~/.opencut/processed (proxies, retimed audio).
+    cache: (usize, u64),
 }
 
 impl EventEmitter<ProjectsEvent> for ProjectsView {}
@@ -26,12 +28,14 @@ impl ProjectsView {
             store,
             projects: Vec::new(),
             error: None,
+            cache: (0, 0),
         };
         view.refresh();
         view
     }
 
     pub(crate) fn refresh(&mut self) {
+        self.cache = render::regenerable_cache(&render::default_cache_dir());
         match self.store.list() {
             Ok(projects) => {
                 self.projects = projects;
@@ -39,6 +43,13 @@ impl ProjectsView {
             }
             Err(error) => self.error = Some(format!("Could not list projects: {error}")),
         }
+    }
+
+    fn clear_cache(&mut self, cx: &mut Context<Self>) {
+        let (count, bytes) = render::clear_regenerable_cache(&render::default_cache_dir());
+        self.cache = render::regenerable_cache(&render::default_cache_dir());
+        self.error = Some(format!("Cleared {count} cached file(s), {}", crate::format::byte_size(bytes)));
+        cx.notify();
     }
 
     fn create(&mut self, cx: &mut Context<Self>) {
@@ -260,6 +271,27 @@ impl Render for ProjectsView {
                                 )
                             })
                             .children(rows),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.))
+                            .text_xs()
+                            .text_color(colors.muted_foreground)
+                            .child(format!(
+                                "Cache you can clear (proxies, retimed audio): {} file(s), {}. They are made again when needed.",
+                                self.cache.0,
+                                crate::format::byte_size(self.cache.1)
+                            ))
+                            .when(self.cache.0 > 0, |row| {
+                                row.child(
+                                    Button::new("clear-cache", "Clear")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(cx.listener(|this, _, _, cx| this.clear_cache(cx))),
+                                )
+                            }),
                     ),
             )
     }

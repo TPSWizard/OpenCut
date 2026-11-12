@@ -9,6 +9,7 @@ import type {
 } from "@/project/types";
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
 import { storageService } from "@/services/storage/service";
+import { recordBackup } from "@/services/storage/durability";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
 import { UpdateProjectSettingsCommand } from "@/commands/project";
@@ -239,6 +240,22 @@ export class ProjectManager {
 			projectId: project.metadata.id,
 		});
 		const blob = await buildProjectBundle({ project, mediaAssets });
+		recordBackup({ projectId: project.metadata.id });
+		return {
+			blob,
+			fileName: `${bundleFileName({ name: project.metadata.name })}${PROJECT_BUNDLE_EXTENSION}`,
+		};
+	}
+
+	/** A bundle of any stored project (the open one is saved first). */
+	async exportProjectBundleById({ id }: { id: string }): Promise<{ blob: Blob; fileName: string }> {
+		if (this.active?.metadata.id === id) return this.exportProjectBundle();
+		const stored = await storageService.loadProject({ id });
+		if (!stored) throw new Error("No such project");
+		const project = stored.project;
+		const mediaAssets = await storageService.loadAllMediaAssets({ projectId: id });
+		const blob = await buildProjectBundle({ project, mediaAssets });
+		recordBackup({ projectId: id });
 		return {
 			blob,
 			fileName: `${bundleFileName({ name: project.metadata.name })}${PROJECT_BUNDLE_EXTENSION}`,

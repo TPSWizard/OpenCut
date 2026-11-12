@@ -52,6 +52,9 @@ pub enum TrackPlacement {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Command {
     AddMedia(MediaItem),
+    /// Points an existing media item (same id and kind) at another file and
+    /// takes that file's size, length and frame rate; clips keep playing it.
+    RelinkMedia(MediaItem),
     RemoveMedia {
         media_id: String,
     },
@@ -252,6 +255,19 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 )));
             }
             project.media.push(item.clone());
+            Outcome::None
+        }
+        Command::RelinkMedia(item) => {
+            let Some(index) = project.media.iter().position(|media| media.id == item.id) else {
+                return Err(EditorError::InvalidParams(format!("no media item {}", item.id)));
+            };
+            if project.media[index].kind != item.kind {
+                return Err(EditorError::InvalidParams(format!(
+                    "{} is a {:?}; it cannot be relinked to a {:?}",
+                    project.media[index].name, project.media[index].kind, item.kind
+                )));
+            }
+            project.media[index] = item.clone();
             Outcome::None
         }
         Command::RemoveMedia { media_id } => {

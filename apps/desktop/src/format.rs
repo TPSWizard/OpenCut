@@ -64,3 +64,31 @@ mod tests {
         );
     }
 }
+
+/// A byte count for people: `0 B`, `512 KB`, `1.4 GB`.
+pub(crate) fn byte_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 || value >= 10.0 {
+        format!("{value:.0} {}", UNITS[unit])
+    } else {
+        format!("{value:.1} {}", UNITS[unit])
+    }
+}
+
+#[cfg(test)]
+mod byte_size_tests {
+    use super::byte_size;
+
+    #[test]
+    fn sizes_read_naturally() {
+        assert_eq!(byte_size(0), "0 B");
+        assert_eq!(byte_size(512 * 1024), "512 KB");
+        assert_eq!(byte_size(1_500_000_000), "1.4 GB");
+    }
+}

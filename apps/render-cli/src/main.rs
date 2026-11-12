@@ -288,6 +288,15 @@ fn run() -> Result<(), String> {
         }
     }
 
+    let missing = editor::missing_media(&project);
+    if !missing.is_empty() && !args.quiet {
+        let names: Vec<String> = missing
+            .iter()
+            .filter_map(|id| project.media_item(id))
+            .map(|media| media.path.display().to_string())
+            .collect();
+        eprintln!("opencut-render: {} media file(s) are missing and will not show: {}", names.len(), names.join(", "));
+    }
     let ffmpeg = match Ffmpeg::locate() {
         Ok(ffmpeg) => Some(ffmpeg),
         Err(error) => {
