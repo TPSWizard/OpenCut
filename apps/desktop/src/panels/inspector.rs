@@ -34,6 +34,7 @@ pub(crate) struct InspectorPanel {
     loudness_target: usize,
     shot_threshold: f64,
     beats_every: usize,
+    denoise_db: f64,
     silence_ripple: editor::RippleScope,
 }
 
@@ -106,6 +107,7 @@ impl InspectorPanel {
             loudness_target: 0,
             shot_threshold: 20.0,
             beats_every: 1,
+            denoise_db: 12.0,
             silence_ripple: editor::RippleScope::All,
         }
     }
@@ -1093,6 +1095,46 @@ impl Render for InspectorPanel {
                         .child(min_row)
                         .child(ripple_row)
                         .child(silence_row);
+
+                    // Noise reduction: a denoised copy of the clip's audio
+                    // (FFmpeg afftdn) becomes a new media item the clip plays.
+                    let mut reduction_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Reduction", window));
+                    for (label, value) in [("Light 6 dB", 6.0), ("Normal 12 dB", 12.0), ("Strong 20 dB", 20.0), ("Max 30 dB", 30.0)] {
+                        let active = (self.denoise_db - value).abs() < 0.01;
+                        reduction_row = reduction_row.child(
+                            Button::new(eid("denoise-db", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.denoise_db = value;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let reduction_db = self.denoise_db;
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading("Noise", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Subtracts the clip's steady background (hiss, hum, room tone) and writes a denoised copy the clip then plays; undo puts the original back."),
+                        )
+                        .child(reduction_row)
+                        .child(
+                            Button::new("reduce-noise", "Reduce noise")
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.reduce_noise_selected(reduction_db, cx));
+                                }),
+                        );
 
                     // Beat markers: tempo from the clip's onsets; markers the
                     // timeline snaps to while clips are dragged.

@@ -644,6 +644,15 @@ export interface EditorApiMethods {
 			applied: number;
 		};
 	};
+	/**
+	 * Writes a denoised copy of the clip's audio (spectral subtraction of
+	 * the steady background, `reductionDb` default 12) as a new media asset
+	 * and points the clip at it; a video clip's audio is separated first.
+	 */
+	"audio.reduceNoise": {
+		params: ApiElementLocator & { reductionDb?: number };
+		result: { assetId: string; assetName: string; elementId: string; trackId: string; seconds: number; channels: number };
+	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {
 		params: Record<string, never>;

@@ -306,6 +306,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.updateEffect { elementId, trackId?, effectId, params?, enabled? } → ApiElementInfo
 - timeline.removeEffect { elementId, trackId?, effectId } → ApiElementInfo
 - shots.detect { elementId, trackId?, threshold?, minGapSeconds?, sampleFps?, apply?: "none" | "bookmarks" | "split" } → { cuts[], framesScored, seconds, applied } (scene changes in a video clip)
+- audio.reduceNoise { elementId, trackId?, reductionDb? } → { assetId, assetName, elementId, trackId, seconds, channels } (denoised copy the clip plays)
 - audio.detectBeats { elementId, trackId?, every?, apply?: "none" | "bookmarks" } → { bpm, confidence, beats[], applied } (beat bookmarks snap)
 - audio.measureLoudness { elementId, trackId? } → { integratedLufs, loudnessRangeLu, truePeakDbtp, maxMomentaryLufs, maxShortTermLufs, seconds } (EBU R128)
 - audio.normalizeLoudness { elementId, trackId?, targetLufs?, truePeakDbtp?, target? } → { element, report, gainDb, volumeDb, peakLimited } / audio.loudnessTargets {} → presets

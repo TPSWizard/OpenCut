@@ -84,6 +84,13 @@ pub enum Command {
     },
     /// Adds a text track at the top and puts these elements on it, in one
     /// step: what transcription produces.
+    /// Several commands as one step: all apply, or none when one fails.
+    Batch(Vec<Command>),
+    /// Points a video or audio element at another media item.
+    ReplaceMedia {
+        element_id: String,
+        media_id: String,
+    },
     /// Splits one element at several times in one step (the first piece
     /// keeps the id); times outside the element are skipped.
     SplitElementAtTimes {
@@ -501,6 +508,27 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             track.sort_elements();
             project.tracks.insert(0, track);
             Outcome::Track(id)
+        }
+        Command::Batch(commands) => {
+            let mut draft = project.clone();
+            let mut last = Outcome::None;
+            for command in commands {
+                last = apply(&mut draft, command)?;
+            }
+            *project = draft;
+            last
+        }
+        Command::ReplaceMedia { element_id, media_id } => {
+            if project.media_item(media_id).is_none() {
+                return Err(EditorError::InvalidParams(format!("no media item {media_id}")));
+            }
+            let (track_index, element_index) = locate(project, element_id)?;
+            let element = &mut project.tracks[track_index].elements[element_index];
+            match &mut element.kind {
+                ElementKind::Video { media_id: id } | ElementKind::Audio { media_id: id } => *id = media_id.clone(),
+                _ => return Err(EditorError::InvalidParams("only video and audio elements play media".to_owned())),
+            }
+            Outcome::None
         }
         Command::SplitElementAtTimes { element_id, times } => {
             let mut sorted = times.clone();
@@ -1661,6 +1689,53 @@ mod tests {
             .collect();
         assert_eq!(spans, vec![(0.0, 1.0), (1.0, 1.0)]);
         assert!(apply(&mut project, &Command::DeleteRange { from: seconds(2.0), to: seconds(1.0) }).is_err());
+    }
+
+    #[test]
+    fn batch_applies_all_or_nothing_and_replace_media_swaps_the_source() {
+        use crate::document::{Element, MediaItem, MediaKind};
+        let audio = |id: &str| MediaItem {
+            id: id.to_owned(),
+            name: format!("{id}.wav"),
+            kind: MediaKind::Audio,
+            path: format!("{id}.wav").into(),
+            duration: MediaTime::from_seconds_f64(5.0),
+            width: None,
+            height: None,
+            fps: None,
+            has_audio: true,
+        };
+        let mut project = Project::new("Batch");
+        apply(&mut project, &Command::AddMedia(audio("raw"))).unwrap();
+        let clip = Element::from_media(project.media_item("raw").unwrap(), MediaTime::ZERO);
+        let clip_id = clip.id.clone();
+        apply(&mut project, &Command::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+
+        // The second command fails (no such media), so the first must not stick either.
+        let failed = apply(
+            &mut project,
+            &Command::Batch(vec![
+                Command::AddMedia(audio("clean")),
+                Command::ReplaceMedia { element_id: clip_id.clone(), media_id: "missing".to_owned() },
+            ]),
+        );
+        assert!(failed.is_err());
+        assert!(project.media_item("clean").is_none(), "a failed batch leaves nothing behind");
+
+        apply(
+            &mut project,
+            &Command::Batch(vec![
+                Command::AddMedia(audio("clean")),
+                Command::ReplaceMedia { element_id: clip_id.clone(), media_id: "clean".to_owned() },
+            ]),
+        )
+        .unwrap();
+        let (_, element) = project.element(&clip_id).unwrap();
+        assert_eq!(element.media_id(), Some("clean"));
+        let text = Element::text("t", MediaTime::ZERO);
+        let text_id = text.id.clone();
+        apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+        assert!(apply(&mut project, &Command::ReplaceMedia { element_id: text_id, media_id: "clean".to_owned() }).is_err());
     }
 
     #[test]

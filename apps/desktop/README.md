@@ -251,6 +251,26 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
+## Noise reduction
+
+The inspector's **Noise** section (audio and video clips) runs FFmpeg's
+`afftdn` denoiser over the clip's media at the chosen reduction (6, 12, 20
+or 30 dB), with the filter's noise floor set 8 dB above the level of the
+clip's quietest windows (its own noise tracking is left off; it gave up on
+clips with pauses), and writes the result as a WAV under `~/.opencut/processed/`,
+added to the project as a new media item. An audio clip is pointed at it;
+a video clip keeps its picture, gets a new audio clip with the denoised
+file at the same place and trims, and has its own audio muted. All of that
+is one undo step. The web editor does the same with its own spectral
+subtraction (`src/denoise/spectral.ts`: a 1024-point STFT, the steady
+background taken as the 30th percentile of each bin over the clip,
+subtracted from the time-smoothed power with a floor set by the
+reduction), separating a video clip's audio first. Both need pauses in
+the clip to measure the background; a clip that never goes quiet is
+reduced less, never damaged. Neither side
+uses RNNoise: `afftdn` ships with FFmpeg and needs no model file, and the
+web pass keeps the app free of a WASM dependency.
+
 ## Beat markers
 
 The inspector's **Beats** section (audio and video clips) finds the tempo

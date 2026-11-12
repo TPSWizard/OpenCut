@@ -393,6 +393,83 @@ impl EditorState {
         self.execute(Command::DeleteElements(ids), cx);
     }
 
+    /// Writes a denoised copy of the selected clip's audio (FFmpeg afftdn)
+    /// under ~/.opencut/processed on a background thread, then points the
+    /// clip at it: an audio clip swaps its media; a video clip gets a new
+    /// audio clip with the denoised file and its own audio muted. One
+    /// undo step.
+    pub(crate) fn reduce_noise_selected(&mut self, reduction_db: f64, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
+        if !(is_video || matches!(element.kind, editor::ElementKind::Audio { .. })) {
+            self.set_status("Noise reduction needs an audio or video clip.", cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        if !media.has_audio {
+            self.set_status("This clip's media has no audio.", cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to reduce noise.", cx);
+            return;
+        };
+        let element = element.clone();
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-denoised-{}db.wav", media.id, reduction_db.round() as i64));
+        let source_name = media.name.clone();
+        self.set_status("Reducing noise…", cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    media::denoise_to_wav(&ffmpeg, &media.path, &output, reduction_db).map_err(|error| error.to_string())?;
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    item.name = format!("{source_name} (denoised {} dB)", reduction_db.round() as i64);
+                    let media_id = item.id.clone();
+                    let mut commands = vec![Command::AddMedia(item.clone())];
+                    if is_video {
+                        let mut audio = editor::Element::from_media(&item, element.start_time);
+                        audio.name = element.name.clone();
+                        audio.duration = element.duration;
+                        audio.trim_start = element.trim_start;
+                        audio.trim_end = element.trim_end;
+                        audio.params.set("volume", element.params.number("volume", 0.0));
+                        commands.push(Command::InsertElement { element: audio, placement: editor::TrackPlacement::Auto });
+                        let mut params = editor::Params::new();
+                        params.set("muted", true);
+                        commands.push(Command::UpdateElement {
+                            element_id: element.id.clone(),
+                            patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+                        });
+                    } else {
+                        commands.push(Command::ReplaceMedia { element_id: element.id.clone(), media_id });
+                    }
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(
+                            if is_video {
+                                "Denoised audio added on its own track; the clip's own audio is muted.".to_owned()
+                            } else {
+                                "The clip now plays its denoised audio.".to_owned()
+                            },
+                            cx,
+                        );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Beat-tracks the selected clip on a background thread and puts a
     /// marker on every `every`-th beat; clips snap to markers while dragged.
     pub(crate) fn detect_beats_selected(&mut self, every: usize, cx: &mut Context<Self>) {

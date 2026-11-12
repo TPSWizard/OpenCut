@@ -75,6 +75,7 @@ import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/mea
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
+import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -1217,6 +1218,17 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
+			}
+		},
+		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (reductionDb !== undefined && (typeof reductionDb !== "number" || !Number.isFinite(reductionDb) || reductionDb < 0 || reductionDb > 60)) {
+				throw new EditorApiError({ code: "invalid_params", message: "reductionDb must be between 0 and 60" });
+			}
+			try {
+				return await reduceNoiseOnElement({ editor, trackId: track.id, elementId: element.id, options: { reductionDb } });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Noise reduction failed" });
 			}
 		},
 		"audio.detectBeats": async ({ elementId, trackId, every, apply }) => {
