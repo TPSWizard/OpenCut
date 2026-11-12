@@ -909,6 +909,141 @@ impl EditorState {
         .detach();
     }
 
+    /// Auto-reframe of the selected video clip: scaled to cover the canvas
+    /// and panned to keep movement and skin tone in view, shot by shot.
+    pub(crate) fn reframe_selected(&mut self, camera: editor::ReframeCamera, reset_at_shots: bool, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Video { .. }) {
+            self.set_status(t("Auto reframe needs a video clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element) else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to reframe a clip."), cx);
+            return;
+        };
+        let (Some(width), Some(height)) = (media.width, media.height) else {
+            self.set_status(t("The clip's frame size is unknown."), cx);
+            return;
+        };
+        let canvas = self.project().settings.canvas;
+        let geometry = editor::ReframeGeometry::new(width as f64, height as f64, canvas.width as f64, canvas.height as f64);
+        if geometry.is_noop() {
+            self.set_status(t("The canvas already shows the whole clip. Change the canvas shape first (9:16 for Shorts, Reels and TikTok)."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let path = media.path.clone();
+        let trim_start = element.trim_start.to_seconds_f64();
+        let clip_duration = element.duration.to_seconds_f64();
+        let retime = element.retime.clone();
+        self.set_status(t("Reframing…"), cx);
+        cx.spawn(async move |this, cx| {
+            let analysed = cx
+                .background_executor()
+                .spawn(async move {
+                    let source = crate::reframe::ReframeSource {
+                        path: &path,
+                        size: (width, height),
+                        trim_start,
+                        clip_duration,
+                        retime: retime.as_ref(),
+                    };
+                    crate::reframe::analyse(&ffmpeg, &source, reset_at_shots)
+                })
+                .await;
+            this.update(cx, |state, cx| match analysed {
+                Ok(analysis) => {
+                    let plan = editor::plan_reframe(&analysis.samples, &analysis.cuts, &geometry, camera);
+                    let keys = plan.keys_x.len() + plan.keys_y.len();
+                    state.apply_reframe(&element_id, &plan, cx);
+                    let mut status = tf(
+                        "Reframed: {shots} shot(s), {keys} keyframes; the subject was found in {found} of {samples} samples.",
+                        &[
+                            ("shots", &plan.shots),
+                            ("keys", &keys),
+                            ("found", &plan.samples_with_subject),
+                            ("samples", &analysis.samples.len()),
+                        ],
+                    );
+                    status.push(' ');
+                    status.push_str(t("Framed by movement and skin tone; the web editor also finds faces."));
+                    state.set_status(status, cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Writes a reframe: cover scale, start position and position keys, in one undo step.
+    fn apply_reframe(&mut self, element_id: &str, plan: &editor::ReframePlan, cx: &mut Context<Self>) {
+        let mut params = editor::Params::new();
+        params
+            .set("transform.scaleX", plan.scale)
+            .set("transform.scaleY", plan.scale)
+            .set("transform.positionX", plan.position_x)
+            .set("transform.positionY", plan.position_y);
+        let to_keys = |keys: &[(f64, f64)]| -> Vec<(MediaTime, f64)> {
+            let mut out: Vec<(MediaTime, f64)> = Vec::new();
+            for (seconds, value) in keys {
+                let Some(time) = MediaTime::from_seconds_f64(seconds.max(0.0)) else { continue };
+                if out.last().is_some_and(|(last, _)| *last == time) {
+                    out.pop();
+                }
+                out.push((time, *value));
+            }
+            out
+        };
+        let element_id = element_id.to_owned();
+        self.execute(
+            Command::Batch(vec![
+                Command::UpdateElement {
+                    element_id: element_id.clone(),
+                    patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+                },
+                Command::ClearAnimation { element_id: element_id.clone(), path: "transform.scaleX".to_owned() },
+                Command::ClearAnimation { element_id: element_id.clone(), path: "transform.scaleY".to_owned() },
+                Command::SetKeyframes {
+                    element_id: element_id.clone(),
+                    path: "transform.positionX".to_owned(),
+                    keys: to_keys(&plan.keys_x),
+                },
+                Command::SetKeyframes { element_id, path: "transform.positionY".to_owned(), keys: to_keys(&plan.keys_y) },
+            ]),
+            cx,
+        );
+    }
+
+    /// Puts the selected clip back to fit the canvas: scale 1, centred, no position or scale keys.
+    pub(crate) fn clear_reframe_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let plan = editor::ReframePlan {
+            scale: 1.0,
+            position_x: 0.0,
+            position_y: 0.0,
+            keys_x: Vec::new(),
+            keys_y: Vec::new(),
+            shots: 0,
+            samples_with_subject: 0,
+        };
+        self.apply_reframe(&element_id, &plan, cx);
+        self.set_status(t("The clip fits the canvas again."), cx);
+    }
+
+    /// Sets a 9:16 canvas (1080x1920) for Shorts, Reels and TikTok.
+    pub(crate) fn set_portrait_canvas(&mut self, cx: &mut Context<Self>) {
+        self.execute(
+            Command::UpdateSettings(editor::SettingsPatch {
+                canvas: Some(editor::CanvasSize { width: 1080, height: 1920 }),
+                ..Default::default()
+            }),
+            cx,
+        );
+    }
+
     /// Deletes the selection and closes the gaps it leaves, in one undo step.
     pub(crate) fn ripple_delete_selection(&mut self, cx: &mut Context<Self>) {
         if self.selection.is_empty() {

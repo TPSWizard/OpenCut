@@ -778,6 +778,41 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Auto-reframe: scales a video clip to cover the canvas and pans it to
+	 * keep faces (MediaPipe BlazeFace, on this device) or, in shots without
+	 * any, movement and skin tone in view. `camera` steady holds one crop
+	 * per shot, smooth (default) and follow pan; with `resetAtShots`
+	 * (default) each shot is framed on its own. Writes the scale and
+	 * `transform.positionX` / `positionY` keys in one undo step; key times
+	 * are clip seconds, values canvas pixels from the centre.
+	 */
+	"reframe.apply": {
+		params: ApiElementLocator & {
+			camera?: "steady" | "smooth" | "follow";
+			resetAtShots?: boolean;
+			faces?: boolean;
+			sampleFps?: number;
+		};
+		result: {
+			scale: number;
+			positionX: number;
+			positionY: number;
+			keysX: { time: number; value: number }[];
+			keysY: { time: number; value: number }[];
+			shots: number;
+			cuts: number[];
+			samples: number;
+			faceSamples: number;
+			fallbackShots: number;
+			keyframes: number;
+		};
+	};
+	/** Puts a reframed clip back: scale 1, centred, no position or scale keys. */
+	"reframe.clear": {
+		params: ApiElementLocator;
+		result: ApiElementInfo;
+	};
+	/**
 	 * Tempo and beats of a clip's audio (onset energy, 60–200 BPM); with
 	 * `apply: "bookmarks"` every `every`-th beat (default 1) is bookmarked,
 	 * and the timeline snaps to bookmarks.

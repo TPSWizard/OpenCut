@@ -9,6 +9,8 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import wasm from "vite-plugin-wasm";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import type { Plugin } from "vite";
 
 /**
@@ -32,8 +34,11 @@ function serviceWorker(): Plugin {
 	};
 }
 
+/** MediaPipe's wasm files, served from this site (the package exports no subpaths). */
+const mediapipeWasm = join(dirname(createRequire(import.meta.url).resolve("@mediapipe/tasks-vision")), "wasm");
+
 const config = defineConfig({
-	resolve: { tsconfigPaths: true },
+	resolve: { tsconfigPaths: true, alias: { "@mediapipe-wasm": mediapipeWasm } },
 	plugins: [
 		devtools(),
 		// `opencut-wasm` is a wasm-pack "bundler" build: it imports its .wasm as an ES module.

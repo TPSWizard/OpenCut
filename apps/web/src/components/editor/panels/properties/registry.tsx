@@ -2,6 +2,7 @@ import { DuckingSection } from "@/ducking/components/ducking-section";
 import { LoudnessSection } from "@/loudness/components/loudness-section";
 import { SilenceSection } from "@/silence/components/silence-section";
 import { ShotsSection } from "@/shots/components/shots-section";
+import { ReframeSection } from "@/reframe/components/reframe-section";
 import { BeatsSection } from "@/beats/components/beats-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
 import { FillersSection } from "@/fillers/components/fillers-section";
@@ -136,6 +137,7 @@ function buildTransformTab({
 					sectionKey="transform"
 				/>
 				{element.type === "video" && <ShotsSection element={element} trackId={trackId} />}
+				{element.type === "video" && <ReframeSection element={element} trackId={trackId} />}
 			</>
 		),
 	};

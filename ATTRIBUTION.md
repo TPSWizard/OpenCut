@@ -169,3 +169,26 @@ its pack.
   are fetched by the desktop into `~/.opencut/models/` when first used; the
   file size is checked on download and the SHA-256 and source URL are
   written beside each model. None are kept in this repository.
+
+## Auto-reframe face detection (added 2026-11-12)
+
+- **MediaPipe Tasks Vision** (`@mediapipe/tasks-vision` 0.10.21 from npm,
+  Apache-2.0, Google). The JavaScript is bundled and the SIMD wasm
+  (`vision_wasm_internal.js` / `.wasm`, about 9.6 MB) is emitted by Vite
+  from `node_modules` into the site's assets, loaded only when a clip is
+  reframed. Nothing from the package is kept in this repository.
+- **BlazeFace short-range face detection model**
+  (`apps/web/src/reframe/models/blaze_face_short_range.tflite`, float16,
+  229,746 bytes, SHA-256
+  `b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f`),
+  downloaded 2026-11-12 from
+  https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite.
+  Its model card ("MediaPipe BlazeFace Model Card (Short Range)",
+  storage.googleapis.com/mediapipe-assets) states it is licensed under the
+  Apache License, Version 2.0. The card also reports Google's evaluation
+  across perceived gender and five skin-tone groups. The model runs on the
+  viewer's device; no frames leave the browser.
+- The desktop editor has no face model: it frames by what stands out from
+  each shot's background and by skin colour (own code).
+- Test fixtures for this feature are drawn faces made with Pillow
+  (`.cache/reframe-face.mp4`, not committed), not real people.

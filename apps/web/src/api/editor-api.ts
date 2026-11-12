@@ -95,6 +95,8 @@ import { clearDucking, duckElement } from "@/ducking/duck";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
+import { clearReframe, reframeClip } from "@/reframe/scan";
+import { REFRAME_CAMERAS } from "@/reframe/path";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
@@ -1570,6 +1572,51 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
 			}
+		},
+		"reframe.apply": async ({ elementId, trackId, camera, resetAtShots, faces, sampleFps }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Auto-reframe needs a video clip" });
+			}
+			if (camera !== undefined && !REFRAME_CAMERAS.includes(camera)) {
+				throw new EditorApiError({ code: "invalid_params", message: "camera must be steady, smooth or follow" });
+			}
+			if (sampleFps !== undefined && (typeof sampleFps !== "number" || !Number.isFinite(sampleFps) || sampleFps <= 0 || sampleFps > 30)) {
+				throw new EditorApiError({ code: "invalid_params", message: "sampleFps must be a number from 0 to 30" });
+			}
+			const options = {
+				...(camera !== undefined && { camera }),
+				...(resetAtShots !== undefined && { resetAtShots: Boolean(resetAtShots) }),
+				...(faces !== undefined && { faces: Boolean(faces) }),
+				...(sampleFps !== undefined && { sampleFps }),
+			};
+			try {
+				const result = await reframeClip({ editor, trackId: track.id, elementId: element.id, options });
+				return {
+					scale: result.plan.scale,
+					positionX: result.plan.positionX,
+					positionY: result.plan.positionY,
+					keysX: result.plan.keysX.map(([time, value]) => ({ time, value })),
+					keysY: result.plan.keysY.map(([time, value]) => ({ time, value })),
+					shots: result.plan.shots,
+					cuts: result.cuts,
+					samples: result.samples.length,
+					faceSamples: result.faceSamples,
+					fallbackShots: result.fallbackShots,
+					keyframes: result.keyframes,
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
+			}
+		},
+		"reframe.clear": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Auto-reframe needs a video clip" });
+			}
+			clearReframe({ editor, trackId: track.id, elementId: element.id });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
 		},
 		"timeline.setRetime": ({ elementId, trackId, rate, maintainPitch, reverse, ramp, clear }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

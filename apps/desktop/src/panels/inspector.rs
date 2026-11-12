@@ -34,6 +34,8 @@ pub(crate) struct InspectorPanel {
     silence_min_seconds: f64,
     loudness_target: usize,
     shot_threshold: f64,
+    reframe_camera: editor::ReframeCamera,
+    reframe_reset_at_shots: bool,
     beats_every: usize,
     denoise_db: f64,
     filler_language: &'static str,
@@ -108,6 +110,8 @@ impl InspectorPanel {
             silence_min_seconds: 0.5,
             loudness_target: 0,
             shot_threshold: 20.0,
+            reframe_camera: editor::ReframeCamera::Smooth,
+            reframe_reset_at_shots: true,
             beats_every: 1,
             denoise_db: 12.0,
             filler_language: "auto",
@@ -1505,6 +1509,94 @@ impl Render for InspectorPanel {
                                     state.update(cx, |state, cx| state.split_at_shots_selected(threshold, cx));
                                 }),
                         );
+                }
+
+                if matches!(element.kind, ElementKind::Video { .. }) {
+                    // Auto-reframe: cover the canvas and pan with the subject.
+                    let same_shape = self.state.read(cx).project().media_for(&element).is_some_and(|media| match (media.width, media.height) {
+                        (Some(w), Some(h)) => editor::ReframeGeometry::new(w as f64, h as f64, canvas.width as f64, canvas.height as f64).is_noop(),
+                        _ => false,
+                    });
+                    let mut camera_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Camera"), window));
+                    for camera in editor::ReframeCamera::ALL {
+                        let label = match camera {
+                            editor::ReframeCamera::Steady => t("Steady"),
+                            editor::ReframeCamera::Smooth => t("Smooth"),
+                            editor::ReframeCamera::Follow => t("Follow"),
+                        };
+                        let active = self.reframe_camera == camera;
+                        camera_row = camera_row.child(
+                            Button::new(eid("reframe-camera", camera.id()), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.reframe_camera = camera;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let reset_at_shots = self.reframe_reset_at_shots;
+                    let shots_row = div().flex().items_center().gap(px(8.)).child(
+                        Button::new(
+                            "reframe-shots",
+                            if reset_at_shots { t("New framing at each shot change: on") } else { t("New framing at each shot change: off") },
+                        )
+                        .variant(if reset_at_shots { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::XSmall)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.reframe_reset_at_shots = !reset_at_shots;
+                            cx.notify();
+                        })),
+                    );
+                    let camera = self.reframe_camera;
+                    let run_state = self.state.clone();
+                    let reset_state = self.state.clone();
+                    let mut actions = div().flex().flex_wrap().gap(px(4.)).child(
+                        Button::new("reframe-run", t("Reframe"))
+                            .size(ButtonSize::XSmall)
+                            .disabled(!has_ffmpeg || same_shape)
+                            .on_click(move |_, _, cx| {
+                                run_state.update(cx, |state, cx| state.reframe_selected(camera, reset_at_shots, cx));
+                            }),
+                    );
+                    actions = actions.child(
+                        Button::new("reframe-reset", t("Reset framing"))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                reset_state.update(cx, |state, cx| state.clear_reframe_selected(cx));
+                            }),
+                    );
+                    content = content
+                        .child(self.heading(t("Auto reframe"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Scales the clip to cover the canvas and pans to keep the subject in view, found by movement and skin tone.")),
+                        );
+                    if same_shape {
+                        let state = self.state.clone();
+                        content = content
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(colors.muted_foreground)
+                                    .child(t("The canvas has the clip's shape, so there is nothing to reframe. Change the canvas first.")),
+                            )
+                            .child(
+                                Button::new("reframe-portrait", t("Set canvas to 9:16 (1080×1920)"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.set_portrait_canvas(cx))),
+                            );
+                    }
+                    content = content.child(camera_row).child(shots_row).child(actions);
                 }
 
                 if has_picture {

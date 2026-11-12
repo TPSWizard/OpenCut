@@ -19,6 +19,7 @@ mod images;
 mod loudness;
 mod luts;
 mod panels;
+mod reframe;
 mod render_thread;
 mod settings;
 mod shell;

@@ -50,6 +50,34 @@ pub fn pick_cuts(scores: &[FrameScore], options: &ShotOptions) -> Vec<FrameScore
     cuts
 }
 
+/// A normalised RGB histogram (8 bins per channel) of tightly packed RGB
+/// pixels: the web app's `histogram` in `src/shots/detect.ts`.
+pub fn colour_histogram(rgb: &[u8]) -> Vec<f32> {
+    let mut counts = vec![0f32; 512];
+    let pixels = rgb.len() / 3;
+    if pixels == 0 {
+        return counts;
+    }
+    for p in rgb.chunks_exact(3) {
+        let (r, g, b) = ((p[0] >> 5) as usize, (p[1] >> 5) as usize, (p[2] >> 5) as usize);
+        counts[(r * 8 + g) * 8 + b] += 1.0;
+    }
+    for bin in &mut counts {
+        *bin /= pixels as f32;
+    }
+    counts
+}
+
+/// Half the L1 distance between two normalised histograms, 0 to 100 (the
+/// web app's shot score; 30 and up is a cut there).
+pub fn histogram_distance(a: &[f32], b: &[f32]) -> f64 {
+    let sum: f64 = a.iter().zip(b).map(|(x, y)| (x - y).abs() as f64).sum();
+    (sum / 2.0 * 100.0).min(100.0)
+}
+
+/// The web app's cut threshold on [`histogram_distance`].
+pub const HISTOGRAM_CUT_THRESHOLD: f64 = 30.0;
+
 /// Where a source time of the clip lands on the timeline, or none when it
 /// is trimmed away or sits at the clip's edges. Speed changes are not
 /// followed.
@@ -67,6 +95,16 @@ mod tests {
 
     fn score(seconds: f64, score: f64) -> FrameScore {
         FrameScore { seconds, score }
+    }
+
+    #[test]
+    fn colour_histograms_tell_shots_apart() {
+        let blue = [96u8, 110, 128].repeat(100);
+        let green = [60u8, 120, 70].repeat(100);
+        let a = colour_histogram(&blue);
+        assert!((a.iter().sum::<f32>() - 1.0).abs() < 1e-6);
+        assert_eq!(histogram_distance(&a, &a), 0.0);
+        assert_eq!(histogram_distance(&a, &colour_histogram(&green)), 100.0);
     }
 
     #[test]
