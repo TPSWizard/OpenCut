@@ -31,6 +31,7 @@ pub(crate) struct InspectorPanel {
     /// Silence auto-cut choices: the shortest pause that goes, and how the
     /// gaps close.
     silence_min_seconds: f64,
+    loudness_target: usize,
     silence_ripple: editor::RippleScope,
 }
 
@@ -100,6 +101,7 @@ impl InspectorPanel {
             duck_amount_db: -12.0,
             transcribe_model: "base",
             silence_min_seconds: 0.5,
+            loudness_target: 0,
             silence_ripple: editor::RippleScope::All,
         }
     }
@@ -459,6 +461,7 @@ impl Render for InspectorPanel {
         };
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
+        let loudness = state.loudness.clone();
         // Voice choices for auto-ducking: every other clip with audio.
         let duck_others: Vec<(String, String)> = selected
             .as_ref()
@@ -1084,6 +1087,74 @@ impl Render for InspectorPanel {
                         .child(min_row)
                         .child(ripple_row)
                         .child(silence_row);
+
+                    // Loudness (EBU R128): measure the clip's source, or set
+                    // its volume so the integrated loudness meets a target.
+                    let report = loudness.as_ref().filter(|(id, _)| *id == element.id).map(|(_, report)| *report);
+                    let mut target_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Target", window));
+                    for (index, target) in editor::LOUDNESS_TARGETS.iter().enumerate() {
+                        let active = self.loudness_target == index;
+                        target_row = target_row.child(
+                            Button::new(eid("loudness-target", target.id), target.label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.loudness_target = index;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let target_index = self.loudness_target;
+                    let loudness_actions = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("loudness-measure", "Measure")
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.measure_loudness_selected(cx));
+                                })
+                        })
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("loudness-normalize", "Normalise")
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.normalize_loudness_selected(target_index, cx));
+                                })
+                        });
+                    content = content
+                        .child(self.heading("Loudness", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("EBU R128 on the clip's source after trims, before its volume. Normalise sets the volume to meet the target under a −1 dBTP ceiling."),
+                        );
+                    if let Some(report) = report {
+                        let fmt = |value: f64, unit: &str| {
+                            if value.is_finite() { format!("{value:.1} {unit}") } else { "silent".to_owned() }
+                        };
+                        content = content.child(div().text_xs().child(format!(
+                            "Integrated {} · Range {:.1} LU · True peak {} · Max momentary {} · Max short-term {}",
+                            fmt(report.integrated_lufs, "LUFS"),
+                            report.loudness_range_lu,
+                            fmt(report.true_peak_dbtp, "dBTP"),
+                            fmt(report.max_momentary_lufs, "LUFS"),
+                            fmt(report.max_short_term_lufs, "LUFS")
+                        )));
+                    }
+                    content = content.child(target_row).child(loudness_actions);
                 }
 
                 if is_visual {

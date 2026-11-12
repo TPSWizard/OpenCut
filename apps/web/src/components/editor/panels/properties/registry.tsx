@@ -1,4 +1,5 @@
 import { DuckingSection } from "@/ducking/components/ducking-section";
+import { LoudnessSection } from "@/loudness/components/loudness-section";
 import { SilenceSection } from "@/silence/components/silence-section";
 import type { ReactNode } from "react";
 import type {
@@ -138,6 +139,7 @@ function buildAudioTab({
 					paramKeys={AUDIO_PARAM_KEYS}
 					sectionKey="audio"
 				/>
+				<LoudnessSection element={element} trackId={trackId} />
 				<DuckingSection element={element} trackId={trackId} />
 				<SilenceSection element={element} trackId={trackId} />
 			</>

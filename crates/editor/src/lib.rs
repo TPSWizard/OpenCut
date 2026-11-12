@@ -20,6 +20,7 @@ mod effect_catalogue;
 mod error;
 mod frame;
 mod freeform;
+mod loudness;
 mod params;
 mod platforms;
 mod silence;
@@ -73,6 +74,10 @@ pub use platforms::{
     recommended_video_bitrate,
 };
 pub use silence::{RippleScope, SilenceOptions, silence_intervals};
+pub use loudness::{
+    ABSOLUTE_GATE_LUFS, LOUDNESS_TARGETS, LoudnessReport, LoudnessTarget, deinterleave, gated_loudness, loudness_range,
+    measure_loudness, normalization_gain, oversampling_phases, true_peak,
+};
 pub use store::{ProjectStore, ProjectSummary};
 pub use subtitles::{
     ExportCue, ExportCueStyle, ExportWord, SubtitleFormat, ass_colour, ass_placement, collect_caption_cues,

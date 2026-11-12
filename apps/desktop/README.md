@@ -222,6 +222,21 @@ resolution and pipes BGRA frames into `media::Encoder`.
 - **Linux**: renders via Vulkan (Blade), windows via Wayland or X11 (both enabled by default). System packages (Debian/Ubuntu names): `libvulkan1` + working Vulkan drivers, `libwayland-dev`, `libx11-xcb-dev`, `libxkbcommon-x11-dev`, `libfontconfig-dev`, `libasound2-dev` (audio), plus a C toolchain and `cmake`.
 - **WSL2/WSLg**: uses XWayland automatically when available. GPUI 0.2.2 requires `xdg_wm_base` v2–5, while WSLg advertises v1.
 
+## Loudness
+
+The inspector's **Loudness** section (audio and video clips) measures the
+selected clip after EBU R128 / ITU-R BS.1770-4: integrated loudness
+(K-weighted, gated), loudness range, true peak (4× oversampled) and the
+loudest momentary and short-term windows, on the clip's source after
+trims and before its own volume. **Normalise** sets the clip's volume so
+the integrated loudness meets the chosen target (streaming −14, podcast
+−16, broadcast −23 or loud −11 LUFS) without the true peak passing −1
+dBTP, in one undo step. The arithmetic is `crates/editor/src/loudness.rs`,
+written from the standard (the same code as the web app's
+`src/loudness/r128.ts`); channels are weighted equally, so surround
+material is measured as if every channel were a front channel. A live
+meter during playback is not there yet.
+
 ## Exporting captions
 
 **Captions…** in the header writes the timeline's captions (the text elements

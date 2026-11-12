@@ -268,6 +268,18 @@ export interface ApiKeyframeInfo {
 	interpolation?: "linear" | "hold" | "bezier";
 }
 
+export interface ApiLoudnessReport {
+	/** `null` when nothing passed the gate (silence). */
+	integratedLufs: number | null;
+	loudnessRangeLu: number;
+	truePeakDbtp: number | null;
+	maxMomentaryLufs: number | null;
+	maxShortTermLufs: number | null;
+	seconds: number;
+	sampleRate: number;
+	channels: number;
+}
+
 export interface ApiEffectInfo {
 	id: string;
 	type: string;
@@ -575,6 +587,35 @@ export interface EditorApiMethods {
 	 * speech plays, replacing the clip's volume keys in one undo step.
 	 */
 	"audio.duck": { params: ApiDuckOptions; result: ApiDuckResult };
+	/**
+	 * EBU R128 loudness of a clip's audio (its trimmed source, before its
+	 * volume): integrated LUFS, range, true peak and the loudest windows.
+	 */
+	"audio.measureLoudness": {
+		params: ApiElementLocator;
+		result: ApiLoudnessReport;
+	};
+	/**
+	 * Measures the clip and sets its volume so the integrated loudness meets
+	 * `targetLufs` (default -14) without the true peak passing
+	 * `truePeakDbtp` (default -1); `target` names a preset instead.
+	 */
+	"audio.normalizeLoudness": {
+		params: ApiElementLocator & { targetLufs?: number; truePeakDbtp?: number; target?: string };
+		result: {
+			element: ApiElementInfo;
+			report: ApiLoudnessReport;
+			gainDb: number;
+			volumeDb: number;
+			peakLimited: boolean;
+			animatedVolume: boolean;
+		};
+	};
+	/** The named loudness targets `audio.normalizeLoudness` accepts. */
+	"audio.loudnessTargets": {
+		params: Record<string, never>;
+		result: { id: string; label: string; lufs: number; truePeakDbtp: number }[];
+	};
 	/** Drops the clip's volume keys; its own volume applies again. */
 	"audio.clearDucking": { params: { element: ApiElementRef }; result: ApiElementInfo };
 	/** Open-licence fonts from Fontsource, each with its SPDX licence. */

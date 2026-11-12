@@ -71,6 +71,8 @@ import {
 	platformEncodeSettings,
 } from "@/platforms";
 import { clearDucking, duckElement } from "@/ducking/duck";
+import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
+import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -94,6 +96,20 @@ export interface EditorApi {
 		params: EditorApiParams<M>,
 	) => Promise<EditorApiResult<M>>;
 	methods: readonly EditorApiMethodName[];
+}
+
+function loudnessInfo(report: LoudnessReport) {
+	const finite = (value: number) => (Number.isFinite(value) ? value : null);
+	return {
+		integratedLufs: finite(report.integratedLufs),
+		loudnessRangeLu: report.loudnessRangeLu,
+		truePeakDbtp: finite(report.truePeakDbtp),
+		maxMomentaryLufs: finite(report.maxMomentaryLufs),
+		maxShortTermLufs: finite(report.maxShortTermLufs),
+		seconds: report.seconds,
+		sampleRate: report.sampleRate,
+		channels: report.channels,
+	};
 }
 
 function seconds(time: MediaTime): number {
@@ -1171,6 +1187,52 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		"history.state": () => historyState(),
 
 		"export.render": (options) => renderExport(options),
+		"audio.loudnessTargets": () => LOUDNESS_TARGETS.map((target) => ({ ...target })),
+		"audio.measureLoudness": async ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			try {
+				return loudnessInfo(await measureElementLoudness({ editor, trackId: track.id, elementId: element.id }));
+			} catch (error) {
+				throw new EditorApiError({
+					code: "failed",
+					message: error instanceof Error ? error.message : "Measurement failed",
+				});
+			}
+		},
+		"audio.normalizeLoudness": async ({ elementId, trackId, targetLufs, truePeakDbtp, target }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const preset = target !== undefined ? LOUDNESS_TARGETS.find((candidate) => candidate.id === target) : undefined;
+			if (target !== undefined && !preset) {
+				throw new EditorApiError({ code: "invalid_params", message: `Unknown loudness target ${target}; see audio.loudnessTargets` });
+			}
+			for (const [key, value] of [["targetLufs", targetLufs], ["truePeakDbtp", truePeakDbtp]] as const) {
+				if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+					throw new EditorApiError({ code: "invalid_params", message: `${key} must be a number` });
+				}
+			}
+			try {
+				const result = await normalizeElementLoudness({
+					editor,
+					trackId: track.id,
+					elementId: element.id,
+					targetLufs: targetLufs ?? preset?.lufs,
+					truePeakDbtp: truePeakDbtp ?? preset?.truePeakDbtp,
+				});
+				return {
+					element: elementInfoById({ trackId: track.id, elementId: element.id }),
+					report: loudnessInfo(result.report),
+					gainDb: result.gainDb,
+					volumeDb: result.volumeDb,
+					peakLimited: result.peakLimited,
+					animatedVolume: result.animatedVolume,
+				};
+			} catch (error) {
+				throw new EditorApiError({
+					code: "failed",
+					message: error instanceof Error ? error.message : "Normalising failed",
+				});
+			}
+		},
 		"audio.duck": async (params) => {
 			const { track, element: music } = resolveElement(params.element);
 			const voice = params.voice?.map((ref) => resolveElement(ref).element.id);

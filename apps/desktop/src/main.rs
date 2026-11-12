@@ -14,6 +14,7 @@ mod fonts;
 mod components;
 mod format;
 mod images;
+mod loudness;
 mod panels;
 mod render_thread;
 mod shell;

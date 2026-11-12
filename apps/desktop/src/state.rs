@@ -113,6 +113,8 @@ pub(crate) struct EditorState {
     pub selected_mask_points: Vec<String>,
     /// Platform preset whose safe area the preview shades.
     pub guide: Option<&'static editor::PlatformPreset>,
+    /// The last loudness measurement: the clip's id and its report.
+    pub loudness: Option<(String, editor::LoudnessReport)>,
     pub export: Option<ExportState>,
     /// Where fetched font files live (`~/.opencut/fonts`).
     pub fonts_dir: PathBuf,
@@ -188,6 +190,7 @@ impl EditorState {
             pen: None,
             selected_mask_points: Vec::new(),
             guide: None,
+            loudness: None,
             peaks: HashMap::new(),
             peaks_pending: HashSet::new(),
             fonts_dir,
@@ -626,6 +629,80 @@ impl EditorState {
                         format!("Removed {removed:.1} s of silence in {} cut(s); {pieces} piece(s) remain.", cuts.len()),
                         cx,
                     );
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Measures the selected clip's loudness (EBU R128) on a background
+    /// thread and keeps the report for the inspector.
+    pub(crate) fn measure_loudness_selected(&mut self, cx: &mut Context<Self>) {
+        self.run_loudness(None, cx);
+    }
+
+    /// Measures the selected clip and sets its volume so the integrated
+    /// loudness meets the target (held under its true-peak ceiling).
+    pub(crate) fn normalize_loudness_selected(&mut self, target_index: usize, cx: &mut Context<Self>) {
+        let target = editor::LOUDNESS_TARGETS[target_index.min(editor::LOUDNESS_TARGETS.len() - 1)];
+        self.run_loudness(Some(target), cx);
+    }
+
+    fn run_loudness(&mut self, target: Option<editor::LoudnessTarget>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to measure loudness.", cx);
+            return;
+        };
+        let project = self.project().clone();
+        self.set_status("Measuring loudness…", cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx
+                .background_executor()
+                .spawn(async move { crate::loudness::measure_clip(&ffmpeg, &project, &element_id).map(|report| (element_id, report)) })
+                .await;
+            this.update(cx, |state, cx| match measured {
+                Ok((id, report)) => {
+                    let fmt = |value: f64, unit: &str| {
+                        if value.is_finite() { format!("{value:.1} {unit}") } else { "silent".to_owned() }
+                    };
+                    let summary = format!(
+                        "Integrated {} · range {:.1} LU · true peak {}",
+                        fmt(report.integrated_lufs, "LUFS"),
+                        report.loudness_range_lu,
+                        fmt(report.true_peak_dbtp, "dBTP")
+                    );
+                    match target {
+                        None => state.set_status(summary, cx),
+                        Some(target) => match editor::normalization_gain(&report, target.lufs, target.true_peak_dbtp) {
+                            None => state.set_status("The clip is silent; nothing to normalise.", cx),
+                            Some((gain, limited)) => {
+                                let volume = gain.clamp(-60.0, 20.0);
+                                let mut params = editor::Params::new();
+                                params.set("volume", volume);
+                                state.execute(
+                                    Command::UpdateElement {
+                                        element_id: id.clone(),
+                                        patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+                                    },
+                                    cx,
+                                );
+                                state.set_status(
+                                    format!(
+                                        "{summary}; volume set to {volume:+.1} dB for {} LUFS{}.",
+                                        target.lufs,
+                                        if limited { " (held back by the true-peak ceiling)" } else { "" }
+                                    ),
+                                    cx,
+                                );
+                            }
+                        },
+                    }
+                    state.loudness = Some((id, report));
+                    cx.notify();
                 }
                 Err(message) => state.set_status(message, cx),
             })
