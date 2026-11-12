@@ -13,6 +13,12 @@ interface TimelineStore {
 	toggleRippleEditing: () => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
+	/** In and out marks in ticks; a range for ripple-deleting. Not saved. */
+	markIn: number | null;
+	markOut: number | null;
+	setMarkIn: (time: number | null) => void;
+	setMarkOut: (time: number | null) => void;
+	clearMarks: () => void;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
@@ -32,6 +38,19 @@ export const useTimelineStore = create<TimelineStore>()(
 				}));
 			},
 
+			markIn: null,
+			markOut: null,
+			setMarkIn: (time) =>
+				set((state) => ({
+					markIn: time,
+					markOut: time !== null && state.markOut !== null && state.markOut <= time ? null : state.markOut,
+				})),
+			setMarkOut: (time) =>
+				set((state) => ({
+					markOut: time,
+					markIn: time !== null && state.markIn !== null && state.markIn >= time ? null : state.markIn,
+				})),
+			clearMarks: () => set({ markIn: null, markOut: null }),
 			expandedElementIds: new Set<string>(),
 
 			toggleElementExpanded: (elementId) => {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useActionHandler } from "@/actions/use-action-handler";
+import { allTracks, collectEditPoints, nextEditPoint, previousEditPoint } from "@/timeline/edits";
+import { DeleteRangeCommand, RippleDeleteCommand } from "@/commands/timeline/element/ripple-delete";
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import {
@@ -330,6 +332,96 @@ export function useEditorActions() {
 				default:
 					return;
 			}
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"mark-in",
+		() => {
+			useTimelineStore.getState().setMarkIn(editor.playback.getCurrentTime());
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"mark-out",
+		() => {
+			useTimelineStore.getState().setMarkOut(editor.playback.getCurrentTime());
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"clear-marks",
+		() => {
+			useTimelineStore.getState().clearMarks();
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"goto-mark-in",
+		() => {
+			const { markIn } = useTimelineStore.getState();
+			if (markIn !== null) editor.playback.seek({ time: mediaTime({ ticks: markIn }) });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"goto-mark-out",
+		() => {
+			const { markOut } = useTimelineStore.getState();
+			if (markOut !== null) editor.playback.seek({ time: mediaTime({ ticks: markOut }) });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"next-edit",
+		() => {
+			const points = collectEditPoints({ tracks: allTracks({ tracks: editor.scenes.getActiveScene().tracks }) });
+			const next = nextEditPoint({ points, time: editor.playback.getCurrentTime() });
+			if (next !== null) editor.playback.seek({ time: mediaTime({ ticks: next }) });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"previous-edit",
+		() => {
+			const points = collectEditPoints({ tracks: allTracks({ tracks: editor.scenes.getActiveScene().tracks }) });
+			const previous = previousEditPoint({ points, time: editor.playback.getCurrentTime() });
+			if (previous !== null) editor.playback.seek({ time: mediaTime({ ticks: previous }) });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"ripple-delete",
+		() => {
+			if (editor.selection.getActiveSelectionKind() !== "elements" || selectedElements.length === 0) {
+				invokeAction("delete-selected");
+				return;
+			}
+			const command = new RippleDeleteCommand({ elements: selectedElements });
+			editor.command.execute({ command });
+			const first = command.getPlan()?.remove[0];
+			if (first) setElementSelection({ elements: [] });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"delete-marked-range",
+		() => {
+			const { markIn, markOut, clearMarks } = useTimelineStore.getState();
+			if (markIn === null || markOut === null || markOut <= markIn) return;
+			editor.command.execute({ command: new DeleteRangeCommand({ from: markIn, to: markOut }) });
+			clearMarks();
+			setElementSelection({ elements: [] });
+			editor.playback.seek({ time: mediaTime({ ticks: markIn }) });
 		},
 		undefined,
 	);

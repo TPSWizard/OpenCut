@@ -8,6 +8,7 @@ import { useEditor } from "@/editor/use-editor";
 import { getRulerConfig, shouldShowLabel } from "@/timeline/ruler-utils";
 import { useScrollPosition } from "@/timeline/hooks/use-scroll-position";
 import { TimelineTick } from "./timeline-tick";
+import { useTimelineStore } from "@/timeline/timeline-store";
 
 interface TimelineRulerProps {
 	zoomLevel: number;
@@ -46,6 +47,12 @@ export function TimelineRuler({
 	});
 	const tickCount =
 		Math.ceil(effectiveDurationSeconds / tickIntervalSeconds) + 1;
+
+	const markIn = useTimelineStore((state) => state.markIn);
+	const markOut = useTimelineStore((state) => state.markOut);
+	const marksLeftPx = ((markIn ?? 0) / TICKS_PER_SECOND) * pixelsPerSecond;
+	const marksRightPx =
+		((markOut ?? effectiveDurationSeconds * TICKS_PER_SECOND) / TICKS_PER_SECOND) * pixelsPerSecond;
 
 	const { scrollLeft, viewportWidth } = useScrollPosition({
 		scrollRef: tracksScrollRef,
@@ -129,6 +136,20 @@ export function TimelineRuler({
 				onMouseDown={handleRulerMouseDown}
 			>
 				{timelineTicks}
+				{(markIn !== null || markOut !== null) && (
+					<div
+						role="img"
+						aria-label="In and out marks"
+						data-testid="timeline-marks"
+						className="bg-primary/15 border-primary pointer-events-none absolute top-0 h-full"
+						style={{
+							left: `${marksLeftPx}px`,
+							width: `${Math.max(0, marksRightPx - marksLeftPx)}px`,
+							borderLeftWidth: markIn !== null ? 2 : 0,
+							borderRightWidth: markOut !== null ? 2 : 0,
+						}}
+					/>
+				)}
 			</div>
 		</div>
 	);

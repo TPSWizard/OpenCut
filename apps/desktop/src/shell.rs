@@ -423,6 +423,15 @@ impl Render for Shell {
                     .detach();
                 }
             }))
+            .on_action(cx.listener(|this, _: &MarkIn, _, cx| this.with_state(cx, |s, cx| s.set_mark_in(cx))))
+            .on_action(cx.listener(|this, _: &MarkOut, _, cx| this.with_state(cx, |s, cx| s.set_mark_out(cx))))
+            .on_action(cx.listener(|this, _: &ClearMarks, _, cx| this.with_state(cx, |s, cx| s.clear_marks(cx))))
+            .on_action(cx.listener(|this, _: &GoToMarkIn, _, cx| this.with_state(cx, |s, cx| s.goto_mark(false, cx))))
+            .on_action(cx.listener(|this, _: &GoToMarkOut, _, cx| this.with_state(cx, |s, cx| s.goto_mark(true, cx))))
+            .on_action(cx.listener(|this, _: &NextEdit, _, cx| this.with_state(cx, |s, cx| s.jump_to_edit(true, cx))))
+            .on_action(cx.listener(|this, _: &PreviousEdit, _, cx| this.with_state(cx, |s, cx| s.jump_to_edit(false, cx))))
+            .on_action(cx.listener(|this, _: &RippleDelete, _, cx| this.with_state(cx, |s, cx| s.ripple_delete_selection(cx))))
+            .on_action(cx.listener(|this, _: &DeleteMarkedRange, _, cx| this.with_state(cx, |s, cx| s.delete_marked_range(cx))))
             .on_action(cx.listener(|this, _: &ExportProject, _, cx| this.open_export(cx)))
             .on_action(cx.listener(|this, _: &CloseProject, _, cx| this.close_project(cx)))
             .child(header)

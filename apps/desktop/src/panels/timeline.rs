@@ -226,6 +226,7 @@ impl Render for TimelinePanel {
         let scroll = state.scroll_seconds;
         let playhead = state.playhead();
         let duration = state.duration();
+        let marks = (state.mark_in, state.mark_out);
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
@@ -300,7 +301,24 @@ impl Render for TimelinePanel {
                         },
                         |_, _, _, cx| cx.new(|_| gpui::Empty),
                     )
-                    .children(ticks),
+                    .children(ticks)
+                    .when(marks.0.is_some() || marks.1.is_some(), |this| {
+                        let start = marks.0.map(|t| t.to_seconds_f64()).unwrap_or(0.0);
+                        let end = marks.1.map(|t| t.to_seconds_f64()).unwrap_or(duration.to_seconds_f64().max(start));
+                        let left = to_x(start);
+                        let width = (to_x(end) - left).max(0.0);
+                        this.child(
+                            div()
+                                .absolute()
+                                .top_0()
+                                .left(px(left))
+                                .w(px(width))
+                                .h_full()
+                                .bg(colors.primary.opacity(0.15))
+                                .when(marks.0.is_some(), |this| this.border_l_2().border_color(colors.primary))
+                                .when(marks.1.is_some(), |this| this.border_r_2().border_color(colors.primary)),
+                        )
+                    }),
             );
 
         // --- tracks ------------------------------------------------------

@@ -115,6 +115,9 @@ pub(crate) struct EditorState {
     pub guide: Option<&'static editor::PlatformPreset>,
     /// The last loudness measurement: the clip's id and its report.
     pub loudness: Option<(String, editor::LoudnessReport)>,
+    /// In and out marks: a stretch of the timeline to ripple-delete.
+    pub mark_in: Option<MediaTime>,
+    pub mark_out: Option<MediaTime>,
     pub export: Option<ExportState>,
     /// Where fetched font files live (`~/.opencut/fonts`).
     pub fonts_dir: PathBuf,
@@ -191,6 +194,8 @@ impl EditorState {
             selected_mask_points: Vec::new(),
             guide: None,
             loudness: None,
+            mark_in: None,
+            mark_out: None,
             peaks: HashMap::new(),
             peaks_pending: HashSet::new(),
             fonts_dir,
@@ -380,6 +385,80 @@ impl EditorState {
         }
         let ids = std::mem::take(&mut self.selection);
         self.execute(Command::DeleteElements(ids), cx);
+    }
+
+    /// Deletes the selection and closes the gaps it leaves, in one undo step.
+    pub(crate) fn ripple_delete_selection(&mut self, cx: &mut Context<Self>) {
+        if self.selection.is_empty() {
+            self.delete_selection(cx);
+            return;
+        }
+        let ids = std::mem::take(&mut self.selection);
+        self.execute(Command::RippleDelete { element_ids: ids }, cx);
+    }
+
+    // ---- marks and edit points ------------------------------------------
+
+    pub(crate) fn set_mark_in(&mut self, cx: &mut Context<Self>) {
+        let time = self.playhead();
+        self.mark_in = Some(time);
+        if self.mark_out.is_some_and(|out| out <= time) {
+            self.mark_out = None;
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn set_mark_out(&mut self, cx: &mut Context<Self>) {
+        let time = self.playhead();
+        self.mark_out = Some(time);
+        if self.mark_in.is_some_and(|start| start >= time) {
+            self.mark_in = None;
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn clear_marks(&mut self, cx: &mut Context<Self>) {
+        self.mark_in = None;
+        self.mark_out = None;
+        cx.notify();
+    }
+
+    pub(crate) fn goto_mark(&mut self, out: bool, cx: &mut Context<Self>) {
+        if let Some(time) = if out { self.mark_out } else { self.mark_in } {
+            self.seek(time, cx);
+        }
+    }
+
+    /// Moves the playhead to the next (or previous) element start or end.
+    pub(crate) fn jump_to_edit(&mut self, forward: bool, cx: &mut Context<Self>) {
+        let playhead = self.playhead();
+        let target = if forward {
+            editor::next_edit_point(self.project(), playhead)
+        } else {
+            editor::previous_edit_point(self.project(), playhead)
+        };
+        if let Some(time) = target {
+            self.seek(time, cx);
+        }
+    }
+
+    /// Ripple-deletes the stretch between the in and out marks on every
+    /// track, in one undo step, and clears the marks.
+    pub(crate) fn delete_marked_range(&mut self, cx: &mut Context<Self>) {
+        let (Some(from), Some(to)) = (self.mark_in, self.mark_out) else {
+            self.set_status("Set an in and an out mark first (I and O).", cx);
+            return;
+        };
+        if to <= from {
+            return;
+        }
+        self.selection.clear();
+        if self.execute(Command::DeleteRange { from, to }, cx).is_some() {
+            self.mark_in = None;
+            self.mark_out = None;
+            self.seek(from, cx);
+            self.set_status(format!("Removed {:.2} s between the marks.", (to - from).to_seconds_f64()), cx);
+        }
     }
 
     pub(crate) fn duplicate_selection(&mut self, cx: &mut Context<Self>) {

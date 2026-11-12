@@ -84,6 +84,17 @@ pub enum Command {
     },
     /// Adds a text track at the top and puts these elements on it, in one
     /// step: what transcription produces.
+    /// Deletes elements and closes the gaps they leave on every track.
+    RippleDelete {
+        element_ids: Vec<String>,
+    },
+    /// Removes the stretch `[from, to)` of the timeline on every track:
+    /// elements crossing either end are split there, the pieces inside go,
+    /// and everything from `to` on moves left.
+    DeleteRange {
+        from: MediaTime,
+        to: MediaTime,
+    },
     InsertCaptions {
         elements: Vec<Element>,
     },
@@ -201,6 +212,19 @@ impl Outcome {
 }
 
 const MIN_ELEMENT_DURATION: MediaTime = MediaTime::from_ticks(1200); // 10 ms
+
+/// Removes a plan's elements and moves the rest as it says.
+fn apply_ripple_plan(project: &mut Project, plan: &crate::edits::RipplePlan) -> Result<(), EditorError> {
+    for id in &plan.remove {
+        let (track_index, element_index) = locate(project, id)?;
+        project.tracks[track_index].elements.remove(element_index);
+    }
+    for (id, start_time) in &plan.moves {
+        let (track_index, element_index) = locate(project, id)?;
+        project.tracks[track_index].elements[element_index].start_time = *start_time;
+    }
+    Ok(())
+}
 
 pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, EditorError> {
     let outcome = match command {
@@ -471,6 +495,25 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             track.sort_elements();
             project.tracks.insert(0, track);
             Outcome::Track(id)
+        }
+        Command::RippleDelete { element_ids } => {
+            let plan = crate::edits::ripple_delete_plan(project, element_ids);
+            apply_ripple_plan(project, &plan)?;
+            Outcome::None
+        }
+        Command::DeleteRange { from, to } => {
+            if *to <= *from {
+                return Err(EditorError::InvalidParams("the range is empty".to_owned()));
+            }
+            // Later cut first, so the earlier one keeps its timeline position.
+            for time in [*to, *from] {
+                for element_id in crate::edits::elements_crossing(project, time, MIN_ELEMENT_DURATION) {
+                    apply(project, &Command::SplitElement { element_id, time })?;
+                }
+            }
+            let plan = crate::edits::delete_range_plan(project, *from, *to);
+            apply_ripple_plan(project, &plan)?;
+            Outcome::None
         }
         Command::DeleteElements(ids) => {
             for id in ids {
@@ -1566,6 +1609,35 @@ mod tests {
         assert_eq!(spans, vec![(0.0, 2.0, 0.0), (2.0, 3.0, 3.0), (5.0, 1.5, 8.0)]);
         let (_, title) = project.element(&title_id).unwrap();
         assert_eq!(title.start_time.to_seconds_f64(), 6.0);
+    }
+
+    #[test]
+    fn ripple_delete_and_delete_range_close_the_timeline_up() {
+        use crate::document::{Element, Lane, Track, TrackKind};
+        let seconds = |value: f64| MediaTime::from_seconds_f64(value).unwrap();
+        let mut project = Project::new("Ripple");
+        let mut track = Track::new(TrackKind::Text, Lane::Overlay, "t");
+        let mut ids = Vec::new();
+        for (start, duration) in [(0.0, 4.0), (4.0, 2.0), (8.0, 2.0)] {
+            let mut element = Element::text("x", seconds(start));
+            element.duration = seconds(duration);
+            ids.push(element.id.clone());
+            track.elements.push(element);
+        }
+        project.tracks.push(track);
+
+        apply(&mut project, &Command::RippleDelete { element_ids: vec![ids[1].clone()] }).unwrap();
+        let starts: Vec<f64> = project.elements().map(|(_, e)| e.start_time.to_seconds_f64()).collect();
+        assert_eq!(starts, vec![0.0, 6.0], "the third clip closes up by the second's length");
+
+        // Remove 1 s to 7 s: the first clip is cut at 1, the last at 7, the inside goes, the tail moves left by 6.
+        apply(&mut project, &Command::DeleteRange { from: seconds(1.0), to: seconds(7.0) }).unwrap();
+        let spans: Vec<(f64, f64)> = project
+            .elements()
+            .map(|(_, e)| (e.start_time.to_seconds_f64(), e.duration.to_seconds_f64()))
+            .collect();
+        assert_eq!(spans, vec![(0.0, 1.0), (1.0, 1.0)]);
+        assert!(apply(&mut project, &Command::DeleteRange { from: seconds(2.0), to: seconds(1.0) }).is_err());
     }
 
     #[test]

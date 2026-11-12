@@ -14,6 +14,7 @@ import type {
 } from "@/actions/keybinding";
 import { isKey } from "@/actions/keybinding";
 import { runMigrations, CURRENT_VERSION } from "./keybindings/migrations";
+import { DEFAULT_PRESET_ID, findPreset, presetShortcuts } from "./keybindings/presets";
 
 export interface KeybindingConflict {
 	key: ShortcutKey;
@@ -24,6 +25,8 @@ export interface KeybindingConflict {
 interface KeybindingsState {
 	keybindings: Map<ShortcutKey, TActionWithOptionalArgs>;
 	isCustomized: boolean;
+	/** The preset the map started from; see `keybindings/presets.ts`. */
+	presetId: string;
 	overlayDepth: number;
 	openOverlayIds: string[];
 	isLoadingProject: boolean;
@@ -35,6 +38,8 @@ interface KeybindingsState {
 	}) => void;
 	removeKeybinding: (key: ShortcutKey) => void;
 	resetToDefaults: () => void;
+	/** Replaces the whole map with a preset's keys. */
+	applyPreset: (presetId: string) => void;
 	importKeybindings: (config: KeybindingConfig) => void;
 	exportKeybindings: () => Record<string, TActionWithOptionalArgs>;
 	openOverlay: (overlayId: string) => void;
@@ -52,6 +57,7 @@ interface KeybindingsState {
 type PersistedState = {
 	keybindings: Record<string, TActionWithOptionalArgs>;
 	isCustomized: boolean;
+	presetId?: string;
 };
 
 function isDOMElement(element: EventTarget | null): element is HTMLElement {
@@ -74,6 +80,7 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 		(set, get) => ({
 			keybindings: getDefaultShortcuts(),
 			isCustomized: false,
+			presetId: DEFAULT_PRESET_ID,
 			overlayDepth: 0,
 			openOverlayIds: [],
 			isLoadingProject: false,
@@ -129,6 +136,17 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 				set({
 					keybindings: getDefaultShortcuts(),
 					isCustomized: false,
+					presetId: DEFAULT_PRESET_ID,
+				});
+			},
+
+			applyPreset: (presetId) => {
+				const preset = findPreset({ id: presetId });
+				if (!preset) return;
+				set({
+					keybindings: presetShortcuts({ preset }),
+					isCustomized: false,
+					presetId,
 				});
 			},
 
@@ -185,6 +203,7 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 			partialize: (state): PersistedState => ({
 				keybindings: Object.fromEntries(state.keybindings),
 				isCustomized: state.isCustomized,
+				presetId: state.presetId,
 			}),
 			migrate: (persisted, version) =>
 				runMigrations({ state: persisted, fromVersion: version }),

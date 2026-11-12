@@ -9,6 +9,14 @@ import {
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { Button } from "@/components/ui/button";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { KEYBINDING_PRESETS } from "@/actions/keybindings/presets";
+import {
 	Dialog,
 	DialogBody,
 	DialogContent,
@@ -36,7 +44,10 @@ export function ShortcutsDialog({
 		setIsRecording,
 		resetToDefaults,
 		isRecording,
+		presetId,
+		applyPreset,
 	} = useKeybindingsStore();
+	const preset = KEYBINDING_PRESETS.find((candidate) => candidate.id === presetId);
 
 	const { shortcuts } = useKeyboardShortcutsHelp();
 
@@ -138,7 +149,24 @@ export function ShortcutsDialog({
 						))}
 					</div>
 				</DialogBody>
-				<DialogFooter>
+				<DialogFooter className="flex items-center gap-3">
+					<div className="flex flex-1 items-center gap-2">
+						<Select value={presetId} onValueChange={applyPreset}>
+							<SelectTrigger aria-label="Shortcut preset" className="w-48">
+								<SelectValue placeholder="Preset" />
+							</SelectTrigger>
+							<SelectContent>
+								{KEYBINDING_PRESETS.map((candidate) => (
+									<SelectItem key={candidate.id} value={candidate.id}>
+										{candidate.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						{preset && (
+							<span className="text-muted-foreground text-xs">{preset.description}</span>
+						)}
+					</div>
 					<Button variant="destructive" onClick={resetToDefaults}>
 						Reset to default
 					</Button>

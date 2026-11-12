@@ -15,6 +15,7 @@ mod captions;
 mod commands;
 mod document;
 mod ducking;
+mod edits;
 mod editor;
 mod effect_catalogue;
 mod error;
@@ -57,6 +58,10 @@ pub use ducking::{
     speech_intervals, total_seconds,
 };
 pub use editor::Editor;
+pub use edits::{
+    RipplePlan, collect_edit_points, delete_range_plan, elements_crossing, merge_spans, next_edit_point,
+    previous_edit_point, ripple_delete_plan,
+};
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect_spec};
 pub use error::EditorError;
 pub use frame::{

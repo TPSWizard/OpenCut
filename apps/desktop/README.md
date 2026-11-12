@@ -167,6 +167,22 @@ multi-track timeline, text, transforms, audio) and renders through the shared
 | `T` | Add a text element at the playhead |
 | `P`, `Enter` | Draw a freeform mask path on the selected clip, close the path |
 | `Ctrl/Cmd-I`, `Ctrl/Cmd-E`, `Ctrl/Cmd-S`, `Ctrl/Cmd-W` | Import, export, save, close project |
+| `Ctrl/Cmd-B` | Split (alias of `S`) |
+| `I` / `O`, `Shift-I` / `Shift-O`, `Ctrl/Cmd-Shift-X` | Set the in / out mark at the playhead, go to a mark, clear the marks |
+| `↑` / `↓` | Previous / next edit point (any clip's start or end) |
+| `Shift-Delete` | Ripple delete: the selection goes and the gaps close on every track |
+| `Alt-Delete` | Ripple delete the stretch between the in and out marks |
+
+#### Keymap presets
+
+The split, delete, ripple-delete and clear-marks keys follow a preset:
+`opencut` (the table above), `premiere` (`Ctrl-K` adds an edit), `final-cut`
+(`Delete` ripple-deletes and `Shift-Delete` leaves the gap, `Alt-X` clears
+the marks) or `resolve` (`Ctrl-B` splits, `Alt-X` clears the marks). Pick one
+with `OPENCUT_KEYMAP=premiere` or by writing `{"preset": "premiere"}` to
+`~/.opencut/keymap.json`; the web editor offers the same presets in its
+shortcuts dialog. The other editors' keys come from their published
+shortcut lists and cover only the actions both editors share.
 
 ## Requirements
 
