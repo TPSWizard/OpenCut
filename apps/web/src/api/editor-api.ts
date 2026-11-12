@@ -77,6 +77,7 @@ import { applyShotCuts, scanShots } from "@/shots/scan";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
+import { encodeLutParam, parseLutFile } from "@/luts/parse";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -1219,6 +1220,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
+			}
+		},
+		"luts.parse": async ({ file }) => {
+			if (!(file instanceof File)) {
+				throw new EditorApiError({ code: "invalid_params", message: "file must be a File" });
+			}
+			try {
+				const { name, table } = await parseLutFile({ file });
+				const lut = encodeLutParam({ name, table });
+				return { name, size: Math.min(table.size, 33), lut };
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : "Not a LUT file" });
 			}
 		},
 		"audio.removeFillers": async ({ elementId, trackId, language, source, ripple, apply, modelId }) => {

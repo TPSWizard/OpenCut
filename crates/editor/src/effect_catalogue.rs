@@ -186,6 +186,23 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
         ],
     },
     EffectSpec {
+        kind: "lut",
+        label: "LUT",
+        description: "A colour look-up table from a .cube or .3dl file or a HALD image, with an intensity.",
+        params: &[
+            number("intensity", "Intensity", 1.0, 0.0, 1.0, 0.01),
+            EffectParamSpec {
+                key: "interpolation",
+                label: "Interpolation",
+                default: 0.0,
+                min: 0.0,
+                max: 1.0,
+                step: 1.0,
+                options: &[("trilinear", "Trilinear"), ("tetrahedral", "Tetrahedral")],
+            },
+        ],
+    },
+    EffectSpec {
         kind: "shadows-highlights",
         label: "Shadows and highlights",
         description: "Brightens or darkens the dark and the bright parts separately.",

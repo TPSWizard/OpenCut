@@ -1028,6 +1028,38 @@ impl EditorState {
         self.execute(Command::AddEffect { element_id, effect }, cx);
     }
 
+    /// Picks a .cube, .3dl or HALD image and loads it into the LUT effect
+    /// `effect_id` of the selected element.
+    pub(crate) fn load_lut_for_effect(&mut self, effect_id: &str, cx: &mut Context<Self>) {
+        let effect_id = effect_id.to_owned();
+        let receiver = cx.prompt_for_paths(gpui::PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some("Load LUT".into()),
+        });
+        cx.spawn(async move |this, cx| {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
+            let parsed = cx.background_executor().spawn(async move { crate::luts::load_lut_file(&path) }).await;
+            this.update(cx, |state, cx| match parsed {
+                Ok(encoded) => {
+                    let mut params = Params::new();
+                    params.set("lut", encoded);
+                    state.update_effect(&effect_id, Some(params), None, cx);
+                    state.set_status("LUT loaded.", cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn update_effect(
         &mut self,
         effect_id: &str,

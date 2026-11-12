@@ -166,6 +166,30 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
                 ("u_out_white", param("outputWhite")),
             ],
         )],
+        "lut" => {
+            let param = effect.params.text("lut", "");
+            if param.is_empty() {
+                return Vec::new();
+            }
+            let size = param
+                .splitn(3, '|')
+                .nth(1)
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0);
+            if size < 2.0 {
+                return Vec::new();
+            }
+            let tetrahedral = spec
+                .and_then(|spec| spec.params.iter().find(|param| param.key == "interpolation"))
+                .map(|choice| choice.choice_index(&effect.params.text("interpolation", "trilinear")))
+                .unwrap_or(0);
+            let mut pass = numbers_pass(
+                "lut",
+                &[("u_size", size), ("u_intensity", param_number(&effect, spec, "intensity")), ("u_tetrahedral", tetrahedral as f64)],
+            );
+            pass.lut = Some(editor::lut_key(&param));
+            vec![pass]
+        }
         "shadows-highlights" => vec![numbers_pass(
             "shadows-highlights",
             &[
@@ -178,8 +202,18 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
     }
 }
 
+/// A parameter the plan lacks falls back to the catalogue default.
+fn param_number(effect: &EffectPlan, spec: Option<&editor::EffectSpec>, key: &str) -> f64 {
+    let default = spec
+        .and_then(|spec| spec.params.iter().find(|param| param.key == key))
+        .map(|param| param.default)
+        .unwrap_or(0.0);
+    effect.params.number(key, default)
+}
+
 fn numbers_pass(shader: &str, numbers: &[(&str, f64)]) -> EffectPassDescriptor {
     EffectPassDescriptor {
+        lut: None,
         shader: shader.to_owned(),
         uniforms: numbers
             .iter()
@@ -228,6 +262,7 @@ pub fn gaussian_blur_passes(sigma_x: f64, sigma_y: f64) -> Vec<EffectPassDescrip
 
 fn blur_pass(sigma: f64, step: f64, direction: [f32; 2]) -> EffectPassDescriptor {
     EffectPassDescriptor {
+        lut: None,
         shader: GAUSSIAN_BLUR_SHADER.to_owned(),
         uniforms: HashMap::from([
             (
@@ -334,7 +369,11 @@ mod tests {
             if spec.kind == Effect::BLUR {
                 continue;
             }
-            let effect = Effect::from_catalogue(spec.kind).unwrap();
+            let mut effect = Effect::from_catalogue(spec.kind).unwrap();
+            if spec.kind == "lut" {
+                // A LUT without a table draws nothing; give it a tiny identity table.
+                effect.params.set("lut", editor::encode_lut_param("t", &editor::LutTable::identity(2)));
+            }
             let plan = EffectPlan { id: effect.id.clone(), kind: effect.kind.clone(), params: effect.params.clone() };
             let groups = effect_pass_groups(&[plan], 1920, 1080, 0.0);
             assert_eq!(groups.len(), 1, "{} builds one pass group", spec.kind);
@@ -345,6 +384,7 @@ mod tests {
                 let mut declared: Vec<&str> = shader.numbers.to_vec();
                 declared.sort_unstable();
                 assert_eq!(names, declared, "{} sets exactly the uniforms {} declares", spec.kind, pass.shader);
+                assert_eq!(pass.lut.is_some(), spec.kind == "lut", "{} names a table only for the LUT shader", spec.kind);
             }
         }
     }

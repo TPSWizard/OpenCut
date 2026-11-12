@@ -23,6 +23,8 @@ struct ApplyEffectPassesOptions {
 struct EffectPassInput {
     shader: String,
     uniforms: Vec<EffectUniformInput>,
+    #[serde(default)]
+    lut: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -70,6 +72,7 @@ fn map_effect_passes(effect_passes: Vec<EffectPassInput>) -> Vec<EffectPass> {
     effect_passes
         .into_iter()
         .map(|pass| EffectPass {
+            lut: pass.lut,
             shader: pass.shader,
             uniforms: pass
                 .uniforms
@@ -85,6 +88,31 @@ fn map_effect_passes(effect_passes: Vec<EffectPassInput>) -> Vec<EffectPass> {
                 .collect(),
         })
         .collect()
+}
+
+/// Uploads a look-up table for the `lut` effect: `{ key, size, data }`
+/// with `data` a Uint8Array of `size³` RGBA pixels laid out `size²` wide
+/// (x = r + size·b) and `size` high (y = g). Passes then name the `key`.
+#[wasm_bindgen(js_name = registerEffectLut)]
+pub fn register_effect_lut(options: JsValue) -> Result<(), JsValue> {
+    let object: Object = options
+        .dyn_into()
+        .map_err(|_| JsValue::from_str("registerEffectLut expects an options object"))?;
+    let key = js_sys::Reflect::get(&object, &JsValue::from_str("key"))?
+        .as_string()
+        .ok_or_else(|| JsValue::from_str("Property 'key' must be a string"))?;
+    let size = read_u32_property(&object, "size")?;
+    let data: js_sys::Uint8Array = js_sys::Reflect::get(&object, &JsValue::from_str("data"))?
+        .dyn_into()
+        .map_err(|_| JsValue::from_str("Property 'data' must be a Uint8Array"))?;
+    let pixels = data.to_vec();
+    if size < 2 || pixels.len() != (size * size * size * 4) as usize {
+        return Err(JsValue::from_str("LUT data must hold size³ RGBA pixels"));
+    }
+    with_gpu_runtime(|runtime| {
+        runtime.effects.register_lut(&runtime.context, &key, size, &pixels);
+        Ok(())
+    })
 }
 
 fn parse_apply_effect_passes_options(value: JsValue) -> Result<ApplyEffectPassesOptions, JsValue> {

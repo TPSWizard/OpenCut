@@ -677,6 +677,14 @@ export interface EditorApiMethods {
 			pieces: ApiElementRef[];
 		};
 	};
+	/**
+	 * Parses a LUT file (.cube, .3dl or a HALD CLUT image) into the `lut`
+	 * parameter of the LUT effect (`name|size|base64`, at most 33 a side).
+	 */
+	"luts.parse": {
+		params: { file: File };
+		result: { name: string; size: number; lut: string };
+	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {
 		params: Record<string, never>;

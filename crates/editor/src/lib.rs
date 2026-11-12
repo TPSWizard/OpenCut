@@ -24,6 +24,7 @@ mod frame;
 mod fillers;
 mod freeform;
 mod loudness;
+mod luts;
 mod params;
 mod platforms;
 mod shots;
@@ -91,6 +92,10 @@ pub use silence::{RippleScope, SilenceOptions, silence_intervals};
 pub use loudness::{
     ABSOLUTE_GATE_LUFS, LOUDNESS_TARGETS, LoudnessReport, LoudnessTarget, deinterleave, gated_loudness, loudness_range,
     measure_loudness, normalization_gain, oversampling_phases, true_peak,
+};
+pub use luts::{
+    LutTable, MAX_LUT_SIZE, base64_decode, base64_encode, decode_lut_param, encode_lut_param, from_hald, lut_key, parse_3dl,
+    parse_cube,
 };
 pub use store::{ProjectStore, ProjectSummary};
 pub use subtitles::{

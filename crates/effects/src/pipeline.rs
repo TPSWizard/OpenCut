@@ -131,6 +131,11 @@ pub const SHADERS: &[ShaderSpec] = &[
         source: include_str!("shaders/shadows_highlights.wgsl"),
         numbers: &["u_shadows", "u_highlights", "u_range"],
     },
+    ShaderSpec {
+        id: "lut",
+        source: include_str!("shaders/lut.wgsl"),
+        numbers: &["u_size", "u_intensity", "u_tetrahedral"],
+    },
 ];
 
 const DIRECTION_UNIFORM: &str = "u_direction";
@@ -150,6 +155,10 @@ pub struct ApplyEffectsOptions<'a> {
 pub struct EffectPipeline {
     uniform_bind_group_layout: wgpu::BindGroupLayout,
     pipelines: HashMap<String, wgpu::RenderPipeline>,
+    /// Look-up tables uploaded with `register_lut`, by key.
+    luts: std::sync::Mutex<HashMap<String, wgpu::Texture>>,
+    /// Bound as the table for passes that read none.
+    dummy_lut: wgpu::Texture,
 }
 
 #[derive(Debug, Error)]
@@ -172,6 +181,8 @@ pub enum EffectsError {
     },
     #[error("Shader '{shader}' does not support uniform '{uniform}'")]
     UnsupportedUniform { shader: String, uniform: String },
+    #[error("Look-up table '{key}' was not registered with the effect pipeline")]
+    MissingLut { key: String },
 }
 
 /// The uniform block every effect shader reads; see `common.wgsl`.
@@ -216,6 +227,7 @@ impl EffectPipeline {
                     bind_group_layouts: &[
                         Some(context.texture_sampler_bind_group_layout()),
                         Some(&uniform_bind_group_layout),
+                        Some(context.texture_sampler_bind_group_layout()),
                     ],
                     immediate_size: 0,
                 });
@@ -268,10 +280,32 @@ impl EffectPipeline {
             pipelines.insert(spec.id.to_string(), pipeline);
         }
 
+        let dummy_lut = context.upload_texture(1, 1, &[0, 0, 0, 255], "effects-lut-dummy");
         Self {
             uniform_bind_group_layout,
             pipelines,
+            luts: std::sync::Mutex::new(HashMap::new()),
+            dummy_lut,
         }
+    }
+
+    /// Uploads a look-up table as the `lut` shader's texture: `rgba` holds
+    /// `size³` pixels laid out `size²` wide (x = r + size·b) and `size`
+    /// high (y = g), red/green/blue/alpha. Registering a key again replaces it.
+    pub fn register_lut(&self, context: &GpuContext, key: &str, size: u32, rgba: &[u8]) {
+        let width = size * size;
+        let mut pixels = rgba.to_vec();
+        if context.pixels_are_bgra() {
+            for pixel in pixels.chunks_mut(4) {
+                pixel.swap(0, 2);
+            }
+        }
+        let texture = context.upload_texture(width, size, &pixels, "effects-lut");
+        self.luts.lock().expect("lut registry").insert(key.to_owned(), texture);
+    }
+
+    pub fn has_lut(&self, key: &str) -> bool {
+        self.luts.lock().expect("lut registry").contains_key(key)
     }
 
     pub fn apply(
@@ -364,6 +398,20 @@ impl EffectPipeline {
                     shader: pass.shader.clone(),
                 }
             })?;
+            let luts = self.luts.lock().expect("lut registry");
+            let lut_texture = match &pass.lut {
+                Some(key) => luts.get(key).ok_or_else(|| EffectsError::MissingLut { key: key.clone() })?,
+                None => &self.dummy_lut,
+            };
+            let lut_view = lut_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let lut_bind_group = context.device().create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("effects-lut-bind-group"),
+                layout: context.texture_sampler_bind_group_layout(),
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&lut_view) },
+                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(context.linear_sampler()) },
+                ],
+            });
 
             {
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -386,8 +434,10 @@ impl EffectPipeline {
                 render_pass.set_vertex_buffer(0, context.fullscreen_quad().slice(..));
                 render_pass.set_bind_group(0, &texture_bind_group, &[]);
                 render_pass.set_bind_group(1, &uniform_bind_group, &[]);
+                render_pass.set_bind_group(2, &lut_bind_group, &[]);
                 render_pass.draw(0..6, 0..1);
             }
+            drop(luts);
 
             current_texture = Some(output_texture);
         }
@@ -482,6 +532,7 @@ mod tests {
                 .iter()
                 .map(|(name, value)| ((*name).to_owned(), UniformValue::Number(*value)))
                 .collect(),
+            lut: None,
         }
     }
 

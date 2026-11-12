@@ -141,8 +141,14 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   lift/gamma/gain (three-way colour with red, green and blue offsets),
   curves (a five-point master curve and three-point red, green and blue
   curves), levels (input and output black and white points, gamma),
-  shadows and highlights, vignette, film grain, RGB split, pixelate,
-  sharpen, mirror, glitch and kaleidoscope. The colour formulas are the
+  shadows and highlights, LUT, vignette, film grain, RGB split, pixelate,
+  sharpen, mirror, glitch and kaleidoscope. The LUT effect's **Load…**
+  button reads a `.cube` or `.3dl` file or a HALD CLUT image
+  (`crates/editor/src/luts.rs`, the same parser as the web app's
+  `src/luts/parse.ts`), keeps at most 33 points a side, and stores the
+  table in the effect itself (`name|size|base64`), so it travels in the
+  project and in bundles; the shader samples a 2D texture of the table
+  with trilinear or tetrahedral interpolation and an intensity slider. The colour formulas are the
   textbook ones (lift/gamma/gain as `(in × gain + lift × (1 − in))^(1/γ)`,
   Catmull-Rom curves), written here, not copied from any editor. The
   inspector's Effects section adds any of them and draws

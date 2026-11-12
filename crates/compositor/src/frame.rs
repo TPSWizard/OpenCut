@@ -95,6 +95,9 @@ pub struct LayerMaskDescriptor {
 pub struct EffectPassDescriptor {
     pub shader: String,
     pub uniforms: HashMap<String, EffectUniformValueDescriptor>,
+    /// A look-up table registered with the compositor, for the `lut` shader.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lut: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -8,6 +8,7 @@
 
 import type { ParamDefinition, ParamValues } from "@/params";
 import type { EffectDefinition, EffectPass } from "@/effects/types";
+import { decodeLutParam, lutKey, lutTextureRgba } from "@/luts/parse";
 
 const REFERENCE_HEIGHT = 1080;
 
@@ -390,6 +391,65 @@ export const shadowsHighlightsEffectDefinition = singlePass({
 	}),
 });
 
+/** Decoded tables by parameter key; a handful stay cached across frames. */
+const lutCache = new Map<string, { size: number; data: Uint8Array }>();
+
+function lutPayload({ param }: { param: string }): { key: string; size: number; data: Uint8Array } | null {
+	if (!param) return null;
+	const key = lutKey({ param });
+	const cached = lutCache.get(key);
+	if (cached) return { key, ...cached };
+	const decoded = decodeLutParam({ param });
+	if (!decoded) return null;
+	const entry = { size: decoded.table.size, data: lutTextureRgba({ table: decoded.table }) };
+	if (lutCache.size >= 8) {
+		const oldest = lutCache.keys().next().value;
+		if (oldest !== undefined) lutCache.delete(oldest);
+	}
+	lutCache.set(key, entry);
+	return { key, ...entry };
+}
+
+const LUT_INTERPOLATIONS = ["trilinear", "tetrahedral"] as const;
+
+function buildLutPasses({ effectParams }: { effectParams: ParamValues }): EffectPass[] {
+	const payload = lutPayload({ param: typeof effectParams.lut === "string" ? effectParams.lut : "" });
+	if (!payload) return [];
+	const intensity = readNumber({ params: effectParams, key: "intensity", fallback: 1 });
+	return [
+		{
+			shader: "lut",
+			uniforms: {
+				u_size: payload.size,
+				u_intensity: Math.min(1, Math.max(0, intensity)),
+				u_tetrahedral: effectParams.interpolation === "tetrahedral" ? 1 : 0,
+			},
+			lut: payload,
+		},
+	];
+}
+
+export const lutEffectDefinition: EffectDefinition = {
+	type: "lut",
+	name: "LUT",
+	keywords: ["lut", "cube", "3dl", "hald", "look", "grade", "color", "colour", "film"],
+	params: [
+		number({ key: "intensity", label: "Intensity", default: 1, min: 0, max: 1, step: 0.01 }),
+		{
+			key: "interpolation",
+			label: "Interpolation",
+			type: "select",
+			default: "trilinear",
+			options: LUT_INTERPOLATIONS.map((value) => ({ value, label: value === "trilinear" ? "Trilinear" : "Tetrahedral" })),
+		},
+		{ key: "lut", label: "Table", type: "text", default: "" },
+	],
+	renderer: {
+		passes: [{ shader: "lut", uniforms: (context) => buildLutPasses(context)[0]?.uniforms ?? { u_size: 2, u_intensity: 0, u_tetrahedral: 0 } }],
+		buildPasses: buildLutPasses,
+	},
+};
+
 export const libraryEffectDefinitions: EffectDefinition[] = [
 	colorEffectDefinition,
 	vignetteEffectDefinition,
@@ -404,4 +464,5 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	curvesEffectDefinition,
 	levelsEffectDefinition,
 	shadowsHighlightsEffectDefinition,
+	lutEffectDefinition,
 ];

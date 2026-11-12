@@ -1427,6 +1427,46 @@ impl Render for InspectorPanel {
                                     })
                             });
                         content = content.child(header);
+                        if effect.kind == "lut" {
+                            // The table itself: loaded from a file, not typed.
+                            let param = effect.params.text("lut", "").into_owned();
+                            let label = match editor::decode_lut_param(&param) {
+                                Ok((name, table)) => format!("{name} ({}³)", table.size),
+                                Err(_) if param.is_empty() => "No table loaded".to_owned(),
+                                Err(_) => "Unreadable table".to_owned(),
+                            };
+                            let mut lut_row = div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(Self::label_cell("Table", window))
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(label))
+                                .child({
+                                    let state = self.state.clone();
+                                    let effect_id = effect_id.clone();
+                                    Button::new(eid("lut-load", &effect_id), "Load…")
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            state.update(cx, |state, cx| state.load_lut_for_effect(&effect_id, cx))
+                                        })
+                                });
+                            if !param.is_empty() {
+                                let state = self.state.clone();
+                                let effect_id = effect_id.clone();
+                                lut_row = lut_row.child(
+                                    Button::new(eid("lut-clear", &effect_id), "Clear")
+                                        .variant(ButtonVariant::Ghost)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            let mut params = Params::new();
+                                            params.set("lut", "");
+                                            state.update(cx, |state, cx| state.update_effect(&effect_id, Some(params), None, cx))
+                                        }),
+                                );
+                            }
+                            content = content.child(lut_row);
+                        }
                         let Some(spec) = editor::effect_spec(&effect.kind) else { continue };
                         for param in spec.params {
                             if param.is_choice() {

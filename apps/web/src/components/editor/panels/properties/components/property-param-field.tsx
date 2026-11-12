@@ -25,6 +25,7 @@ import { usePropertyDraft } from "../hooks/use-property-draft";
 import { KeyframeToggle } from "./keyframe-toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { FontPicker } from "@/components/ui/font-picker";
+import { LutPicker } from "@/luts/components/lut-picker";
 
 export function PropertyParamField({
 	param,
@@ -131,6 +132,18 @@ function ParamInput({
 				onChange={(color) => onPreview(`#${color}`)}
 				onChangeEnd={(color) => {
 					onPreview(`#${color}`);
+					onCommit();
+				}}
+			/>
+		);
+	}
+
+	if (param.type === "text" && param.key === "lut") {
+		return (
+			<LutPicker
+				value={String(value)}
+				onChange={(encoded) => {
+					onPreview(encoded);
 					onCommit();
 				}}
 			/>

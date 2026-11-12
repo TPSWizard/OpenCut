@@ -213,6 +213,30 @@ impl Renderer {
     /// A planned layer as frame items: the layer itself and, for a mask
     /// with a stroke, the stroke drawn over it. Empty when the source
     /// cannot be shown.
+    /// Uploads the look-up tables of `lut` effects the compositor does not
+    /// hold yet, keyed by the parameter's content.
+    fn register_luts(&self, effects: &[editor::EffectPlan]) {
+        for effect in effects {
+            if effect.kind != "lut" {
+                continue;
+            }
+            let param = effect.params.text("lut", "");
+            if param.is_empty() {
+                continue;
+            }
+            let key = editor::lut_key(&param);
+            if self.compositor.has_effect_lut(&key) {
+                continue;
+            }
+            match editor::decode_lut_param(&param) {
+                Ok((_, table)) => {
+                    self.compositor.register_effect_lut(&self.context, &key, table.size as u32, &table.to_texture_rgba())
+                }
+                Err(error) => eprintln!("lut effect {}: {error}", effect.id),
+            }
+        }
+    }
+
     fn layer_items(
         &mut self,
         project: &Project,
@@ -266,7 +290,10 @@ impl Renderer {
             transform: quad,
             opacity: layer.opacity,
             blend_mode: parse_blend_mode(&layer.blend_mode),
-            effect_pass_groups: effect_pass_groups(&layer.effects, width, height, layer.local_time.to_seconds_f64()),
+            effect_pass_groups: {
+                self.register_luts(&layer.effects);
+                effect_pass_groups(&layer.effects, width, height, layer.local_time.to_seconds_f64())
+            },
             mask,
         }];
         items.extend(stroke);

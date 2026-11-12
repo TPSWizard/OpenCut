@@ -2,6 +2,7 @@ import {
 	applyEffectPasses,
 	applyMaskFeather as applyMaskFeatherWasm,
 	initializeGpu,
+	registerEffectLut,
 } from "opencut-wasm";
 import type { EffectPass, EffectUniformValue } from "@/effects/types";
 
@@ -43,6 +44,12 @@ export const gpuRenderer = {
 			return source;
 		}
 
+		for (const pass of passes) {
+			if (pass.lut && !registeredLuts.has(pass.lut.key)) {
+				registerEffectLut({ key: pass.lut.key, size: pass.lut.size, data: pass.lut.data });
+				registeredLuts.add(pass.lut.key);
+			}
+		}
 		return applyEffectPasses({
 			source,
 			width,
@@ -75,8 +82,12 @@ export const gpuRenderer = {
 	},
 };
 
+/** Keys of the look-up tables already uploaded to the GPU runtime. */
+const registeredLuts = new Set<string>();
+
 function serializeEffectPasses(passes: EffectPass[]) {
 	return passes.map((pass) => ({
+		lut: pass.lut?.key,
 		shader: pass.shader,
 		uniforms: Object.entries(pass.uniforms).map(([name, value]) => ({
 			name,

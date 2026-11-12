@@ -12,6 +12,8 @@ export type EffectUniformValue = number | number[];
 export interface EffectPass {
 	shader: string;
 	uniforms: Record<string, EffectUniformValue>;
+	/** A look-up table the pass reads (the `lut` shader): registered once by key, then named. */
+	lut?: { key: string; size: number; data: Uint8Array };
 }
 
 /** What a pass builder gets: the effect's params, the frame size and the

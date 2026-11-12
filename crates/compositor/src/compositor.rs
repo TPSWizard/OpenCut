@@ -288,6 +288,15 @@ impl Compositor {
         self.textures.upsert(id, texture);
     }
 
+    /// Uploads a look-up table for the `lut` effect; see `EffectPipeline::register_lut`.
+    pub fn register_effect_lut(&self, context: &GpuContext, key: &str, size: u32, rgba: &[u8]) {
+        self.effects.register_lut(context, key, size, rgba);
+    }
+
+    pub fn has_effect_lut(&self, key: &str) -> bool {
+        self.effects.has_lut(key)
+    }
+
     pub fn release_texture(&mut self, id: &str) {
         self.textures.remove(id);
     }
@@ -935,6 +944,7 @@ fn map_effect_passes(passes: &[EffectPassDescriptor]) -> Vec<EffectPass> {
     passes
         .iter()
         .map(|pass| EffectPass {
+            lut: pass.lut.clone(),
             shader: pass.shader.clone(),
             uniforms: pass
                 .uniforms
