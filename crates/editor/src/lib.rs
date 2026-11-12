@@ -54,6 +54,7 @@ pub use commands::{
     nearest_free_start,
 };
 pub use document::{
+    Cutout,
     Background, CanvasSize, CaptionWord, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
@@ -79,7 +80,7 @@ pub use edits::{
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect_spec};
 pub use error::EditorError;
 pub use frame::{
-    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, TextAlign,
+    BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, CutoutPlan, TextAlign,
     TextBackground, TextDecoration, TextHighlight, TextStyle, TransitionPlan, active_word, caption_highlight, fit_contain, parse_hex_color, plan_frame,
 };
 pub use transition::{

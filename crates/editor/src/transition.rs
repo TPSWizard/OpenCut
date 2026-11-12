@@ -141,6 +141,7 @@ mod tests {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            cutout: None,
             words: Vec::new(),
             retime: None,
             group_id: None,

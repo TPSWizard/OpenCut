@@ -7,7 +7,7 @@ use compositor::{
     TransitionParamDescriptor,
 };
 use editor::{
-    FrameItemPlan, LayerPlan, LayerSource, Mask, MaskPlan, MediaItem, ParamValue, Params, Project, TextStyle,
+    CutoutPlan, FrameItemPlan, LayerPlan, LayerSource, Mask, MaskPlan, MediaItem, ParamValue, Params, Project, TextStyle,
     fit_contain, plan_frame,
 };
 use gpu::{GpuContext, wgpu};
@@ -16,7 +16,10 @@ use time::MediaTime;
 
 use crate::effects::{backdrop_blur_passes, effect_pass_groups};
 use crate::error::RenderError;
-use crate::mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask, rasterize_text_mask_stroke};
+use crate::mask::{
+    coverage_to_rgba, matte_coverage, rasterize_mask, rasterize_mask_stroke, rasterize_text_mask,
+    rasterize_text_mask_stroke,
+};
 use crate::text::TextRasterizer;
 
 #[derive(Clone, Debug, Default)]
@@ -314,6 +317,12 @@ impl Renderer {
             }
             None => (None, None),
         };
+        let mask = match layer.cutout.as_ref() {
+            Some(cutout) => self
+                .prepare_cutout(project, &layer.element_id, cutout, layer.mask.as_ref(), &quad, width, height, scale_x)
+                .or(mask),
+            None => mask,
+        };
         let mut items = vec![LayerDescriptor {
             texture_id,
             transform: quad,
@@ -478,6 +487,68 @@ impl Renderer {
                 Ok(Some((texture_id, raster.width, raster.height)))
             }
         }
+    }
+
+    /// A cut-out's matte frame stretched over the element, times the
+    /// element's own mask (with that mask's inversion baked in), as the
+    /// layer's mask. `None` when the matte cannot be read: the clip then
+    /// shows whole rather than vanishing.
+    #[allow(clippy::too_many_arguments)]
+    fn prepare_cutout(
+        &mut self,
+        project: &Project,
+        element_id: &str,
+        cutout: &CutoutPlan,
+        mask: Option<&MaskPlan>,
+        quad: &QuadTransformDescriptor,
+        width: u32,
+        height: u32,
+        scale: f32,
+    ) -> Option<LayerMaskDescriptor> {
+        let media = media_item(project, &cutout.matte_id).ok()?;
+        let ffmpeg = self.ffmpeg.clone()?;
+        let size = (media.width.unwrap_or(320).max(1), media.height.unwrap_or(180).max(1));
+        let key = format!("matte:{}", cutout.matte_id);
+        if self.videos.get(&key).is_none_or(|source| source.path() != media.path.as_path()) {
+            let fps = media.fps.filter(|fps| *fps > 0.0).unwrap_or(15.0);
+            self.videos.insert(key.clone(), VideoSource::new(ffmpeg, &media.path, size, size.0, fps));
+        }
+        let frame = match self.videos.get_mut(&key)?.frame_at(cutout.time) {
+            Ok(Some(frame)) => frame,
+            Ok(None) => return None,
+            Err(error) => {
+                eprintln!("render: cut-out matte: {error}");
+                self.videos.remove(&key);
+                return None;
+            }
+        };
+        let luma: Vec<u8> = frame
+            .bgra
+            .chunks_exact(4)
+            .map(|p| ((p[0] as u16 + p[1] as u16 + p[2] as u16) / 3) as u8)
+            .collect();
+        let mut coverage = matte_coverage(quad, width, height, &luma, frame.width, frame.height, cutout.inverted);
+        if let Some(mask) = mask {
+            let shape = if mask.kind == Mask::TEXT {
+                let style = TextStyle::from_params(&mask.params, quad.height.max(1.0));
+                let glyphs = self.text.rasterize(&style);
+                rasterize_text_mask(&mask.params, quad, width, height, &glyphs)
+            } else {
+                rasterize_mask(&mask.kind, &mask.params, quad, width, height)
+            };
+            let inverted = mask.params.bool("inverted", false);
+            for (value, pixel) in coverage.iter_mut().zip(shape.chunks_exact(4)) {
+                let shape = pixel[3] as f64 / 255.0;
+                *value *= if inverted { 1.0 - shape } else { shape };
+            }
+        }
+        let texture_id = format!("cutout:{element_id}");
+        self.upload(&texture_id, width, height, &coverage_to_rgba(&coverage));
+        Some(LayerMaskDescriptor {
+            texture_id,
+            feather: mask.map_or(0.0, |mask| (mask.params.number("feather", 0.0).max(0.0) as f32 * scale).max(0.0)),
+            inverted: false,
+        })
     }
 
     /// Makes sure the element's mask texture matches the mask and the
@@ -646,8 +717,10 @@ impl Renderer {
         }
         let media_ids: Vec<String> = self.videos.keys().chain(self.images.keys()).cloned().collect();
         for id in media_ids {
-            if project.media_item(&id).is_none() {
+            // Cut-out mattes decode under `matte:<media id>`.
+            if project.media_item(id.strip_prefix("matte:").unwrap_or(&id)).is_none() {
                 self.forget_media(&id);
+                self.videos.remove(&id);
             }
         }
     }

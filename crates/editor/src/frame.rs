@@ -77,6 +77,7 @@ pub struct LayerPlan {
     pub local_time: MediaTime,
     /// The element's first mask, if any.
     pub mask: Option<MaskPlan>,
+    pub cutout: Option<CutoutPlan>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -84,6 +85,15 @@ pub struct EffectPlan {
     pub id: String,
     pub kind: String,
     pub params: Params,
+}
+
+/// A cut-out to apply to a video layer: the matte's frame at `time`
+/// (matte seconds) is the layer's coverage, multiplied into its mask.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CutoutPlan {
+    pub matte_id: String,
+    pub time: f64,
+    pub inverted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -490,6 +500,14 @@ fn layer_plan(
             kind: mask.kind.clone(),
             params: element.mask_params_at(mask, param_time),
         });
+    let cutout = match (&source, &element.cutout) {
+        (LayerSource::Video { time, .. }, Some(cutout)) => Some(CutoutPlan {
+            matte_id: cutout.matte_id.clone(),
+            time: (time.to_seconds_f64() - cutout.offset).max(0.0),
+            inverted: cutout.inverted,
+        }),
+        _ => None,
+    };
     Some(LayerPlan {
         element_id: element.id.clone(),
         track_id: track.id.clone(),
@@ -500,6 +518,7 @@ fn layer_plan(
         effects,
         local_time: element.local_time(param_time),
         mask,
+        cutout,
     })
 }
 

@@ -422,16 +422,16 @@ function buildMaskArtifacts({
 	mask: LayerMaskDescriptor | null;
 	strokeLayer: FrameItemDescriptor | null;
 } {
-	const mask = node.params.masks?.[0];
+	const matte = node instanceof VideoNode ? node.resolved?.matte : undefined;
+	const firstMask = node.params.masks?.[0];
+	const mask =
+		firstMask && getMaskDefinition(firstMask.type).isActive?.(firstMask.params) !== false ? firstMask : undefined;
 	if (!mask) {
-		return { mask: null, strokeLayer: null };
+		if (!matte) return { mask: null, strokeLayer: null };
+		return { mask: buildMatteOnlyMask({ matte, renderer, path, transform, textures }), strokeLayer: null };
 	}
 
 	const definition = getMaskDefinition(mask.type);
-
-	if (definition.isActive?.(mask.params) === false) {
-		return { mask: null, strokeLayer: null };
-	}
 
 	const { body } = definition.renderer;
 	const usesOpaqueFastPath =
@@ -446,7 +446,7 @@ function buildMaskArtifacts({
 
 	const maskTextureId = `${path}:mask`;
 	const { width: canvasWidth, height: canvasHeight } = renderer;
-	const maskContentHash = `mask:${mask.type}:${JSON.stringify(mask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:body=${body.kind}:fastPath=${usesOpaqueFastPath}`;
+	const maskContentHash = `mask:${mask.type}:${JSON.stringify(mask.params)}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}:body=${body.kind}:fastPath=${usesOpaqueFastPath}:matte=${matte?.key ?? "none"}`;
 	const drawMask: TextureCanvasDrawFn = (ctx) => {
 		const { canvas: elementMaskCanvas, context: elementMaskCtx } =
 			createCanvasSurface({
@@ -494,7 +494,18 @@ function buildMaskArtifacts({
 				break;
 		}
 
-		drawTransformedCanvas({ ctx, source: elementMaskCanvas, transform });
+		// With a cut-out, the shape (its inversion baked in) is multiplied by
+		// the matte, and the layer's mask is not inverted again.
+		const finalMask = matte
+			? combineWithMatte({
+					shape: elementMaskCanvas,
+					inverted: mask.params.inverted,
+					matte: matte.canvas,
+					width: Math.round(transform.width),
+					height: Math.round(transform.height),
+				})
+			: elementMaskCanvas;
+		drawTransformedCanvas({ ctx, source: finalMask, transform });
 	};
 	textures.set(maskTextureId, {
 		kind: "rendered",
@@ -564,10 +575,71 @@ function buildMaskArtifacts({
 		mask: {
 			textureId: maskTextureId,
 			feather,
-			inverted: mask.params.inverted,
+			inverted: matte ? false : mask.params.inverted,
 		},
 		strokeLayer,
 	};
+}
+
+/** A shape mask (white on transparent) times a matte's alpha, at element size. */
+function combineWithMatte({
+	shape,
+	inverted,
+	matte,
+	width,
+	height,
+}: {
+	shape: OffscreenCanvas | HTMLCanvasElement;
+	inverted: boolean;
+	matte: OffscreenCanvas | HTMLCanvasElement;
+	width: number;
+	height: number;
+}): OffscreenCanvas | HTMLCanvasElement {
+	const { canvas, context } = createCanvasSurface({ width, height });
+	if (inverted) {
+		context.fillStyle = "white";
+		context.fillRect(0, 0, width, height);
+		context.globalCompositeOperation = "destination-out";
+	}
+	context.drawImage(shape, 0, 0);
+	context.globalCompositeOperation = "destination-in";
+	context.drawImage(matte, 0, 0, width, height);
+	context.globalCompositeOperation = "source-over";
+	return canvas;
+}
+
+/** The layer mask for a cut-out on a clip without a shape mask: the matte alone. */
+function buildMatteOnlyMask({
+	matte,
+	renderer,
+	path,
+	transform,
+	textures,
+}: {
+	matte: { canvas: OffscreenCanvas | HTMLCanvasElement; key: string };
+	renderer: CanvasRenderer;
+	path: string;
+	transform: QuadTransformDescriptor;
+	textures: Map<string, TextureUploadDescriptor>;
+}): LayerMaskDescriptor {
+	const maskTextureId = `${path}:mask`;
+	const { width: canvasWidth, height: canvasHeight } = renderer;
+	textures.set(maskTextureId, {
+		kind: "rendered",
+		id: maskTextureId,
+		contentHash: `matte:${matte.key}:${transformHash(transform)}:${canvasWidth}x${canvasHeight}`,
+		width: canvasWidth,
+		height: canvasHeight,
+		draw: (ctx) => {
+			const { canvas, context } = createCanvasSurface({
+				width: Math.max(1, Math.round(transform.width)),
+				height: Math.max(1, Math.round(transform.height)),
+			});
+			context.drawImage(matte.canvas, 0, 0, canvas.width, canvas.height);
+			drawTransformedCanvas({ ctx, source: canvas, transform });
+		},
+	});
+	return { textureId: maskTextureId, feather: 0, inverted: false };
 }
 
 function drawTransformedCanvas({

@@ -486,3 +486,68 @@ fn preview_decodes_proxies_and_export_reads_originals() {
     let p = pixel(&frame, 96, 54);
     assert!(p[2] > 200 && p[0] < 40, "a renderer without a proxy folder reads the original: {p:?}");
 }
+
+/// A cut-out shows the clip only where its matte is white: a red clip with
+/// a matte whose left half is white keeps the left half; inverted, the right.
+#[test]
+fn cutout_mattes_hide_the_background() {
+    let Ok(ffmpeg) = Ffmpeg::locate() else {
+        eprintln!("ffmpeg not installed; skipping");
+        return;
+    };
+    let Some(mut renderer) = renderer(Some(ffmpeg.clone())) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let clip = dir.path().join("red.mp4");
+    lavfi_clip(&ffmpeg, &clip, "color=c=red:size=128x72:rate=30:duration=2");
+    let matte = dir.path().join("matte.mp4");
+    lavfi_clip(
+        &ffmpeg,
+        &matte,
+        "color=c=black:size=128x72:rate=15:duration=2,drawbox=x=0:y=0:w=64:h=72:color=white:t=fill",
+    );
+    let mut project = Project::new("Cut-out");
+    for (id, path) in [("red", &clip), ("matte", &matte)] {
+        let info = probe(&ffmpeg, path).unwrap();
+        apply(
+            &mut project,
+            &EditorCommand::AddMedia(MediaItem {
+                id: id.to_owned(),
+                name: format!("{id}.mp4"),
+                kind: MediaKind::Video,
+                path: path.clone(),
+                duration: info.duration,
+                width: info.width,
+                height: info.height,
+                fps: info.fps,
+                has_audio: false,
+            }),
+        )
+        .unwrap();
+    }
+    let mut element = Element::from_media(project.media_item("red").unwrap(), seconds(0.0));
+    element.cutout = Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: false });
+    let element_id = element.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+    // The canvas is 16:9 like the clip, so it fills the frame.
+    let frame = renderer.render(&project, seconds(1.0), 192, 108).unwrap();
+    let left = pixel(&frame, 40, 54);
+    let right = pixel(&frame, 150, 54);
+    assert!(left[2] > 200 && left[1] < 40, "left half kept: {left:?}");
+    assert!(right[2] < 30 && right[1] < 30 && right[0] < 30, "right half hidden: {right:?}");
+
+    apply(
+        &mut project,
+        &EditorCommand::UpdateElement {
+            element_id,
+            patch: editor::ElementPatch {
+                cutout: Some(Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: true })),
+                ..Default::default()
+            },
+        },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(1.0), 192, 108).unwrap();
+    let (left, right) = (pixel(&frame, 40, 54), pixel(&frame, 150, 54));
+    assert!(left[2] < 30, "inverted hides the left: {left:?}");
+    assert!(right[2] > 200, "inverted keeps the right: {right:?}");
+}

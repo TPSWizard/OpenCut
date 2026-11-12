@@ -1033,6 +1033,19 @@ impl EditorState {
         self.set_status(t("The clip fits the canvas again."), cx);
     }
 
+    /// Replaces the selected clip's cut-out (`None` shows the whole clip; the matte stays in the media).
+    pub(crate) fn set_cutout_selected(&mut self, cutout: Option<editor::Cutout>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::UpdateElement {
+                element_id,
+                patch: editor::ElementPatch { cutout: Some(cutout), ..Default::default() },
+            },
+            cx,
+        );
+    }
+
     /// Sets a 9:16 canvas (1080x1920) for Shorts, Reels and TikTok.
     pub(crate) fn set_portrait_canvas(&mut self, cx: &mut Context<Self>) {
         self.execute(

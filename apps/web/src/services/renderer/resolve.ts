@@ -43,7 +43,7 @@ import type { TextElement } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
 import type { TextWordHighlight } from "@/text/primitives";
 import { getActiveWordState, readCaptionStyle } from "@/captions";
-import { VideoNode } from "./nodes/video-node";
+import { VideoNode, type ResolvedVideoNodeState } from "./nodes/video-node";
 import {
 	TransitionNode,
 	type ResolvedTransitionNodeState,
@@ -269,13 +269,67 @@ function resolveVisualState({
 	};
 }
 
+/** Matte frames turned into alpha, by matte, time and inversion (a few, for scrubbing back and forth). */
+const matteAlphaCache = new Map<string, OffscreenCanvas | HTMLCanvasElement>();
+const MATTE_CACHE_SIZE = 24;
+
+function matteToAlpha({
+	source,
+	inverted,
+}: {
+	source: CanvasImageSource & { width: number; height: number };
+	inverted: boolean;
+}): OffscreenCanvas | HTMLCanvasElement {
+	const { width, height } = source;
+	const canvas: OffscreenCanvas | HTMLCanvasElement =
+		typeof OffscreenCanvas !== "undefined"
+			? new OffscreenCanvas(width, height)
+			: Object.assign(document.createElement("canvas"), { width, height });
+	const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+	ctx.drawImage(source, 0, 0);
+	const image = ctx.getImageData(0, 0, width, height);
+	const data = image.data;
+	for (let i = 0; i < data.length; i += 4) {
+		const luma = (data[i] + data[i + 1] + data[i + 2]) / 3;
+		data[i] = 255;
+		data[i + 1] = 255;
+		data[i + 2] = 255;
+		data[i + 3] = inverted ? 255 - luma : luma;
+	}
+	ctx.putImageData(image, 0, 0);
+	return canvas;
+}
+
+async function resolveMatte({
+	cutout,
+	sourceSeconds,
+}: {
+	cutout: NonNullable<VideoNode["params"]["cutout"]>;
+	sourceSeconds: number;
+}): Promise<{ canvas: OffscreenCanvas | HTMLCanvasElement; key: string } | undefined> {
+	const time = Math.max(0, sourceSeconds - cutout.offset);
+	const frame = await videoCache.getFrameAt({ mediaId: cutout.matteId, file: cutout.file, time });
+	if (!frame) return undefined;
+	const key = `${cutout.matteId}@${frame.timestamp}:${cutout.inverted ? "inv" : "keep"}`;
+	let canvas = matteAlphaCache.get(key);
+	if (!canvas) {
+		canvas = matteToAlpha({ source: frame.canvas as CanvasImageSource & { width: number; height: number }, inverted: cutout.inverted });
+		matteAlphaCache.set(key, canvas);
+		if (matteAlphaCache.size > MATTE_CACHE_SIZE) {
+			const oldest = matteAlphaCache.keys().next().value;
+			if (oldest !== undefined) matteAlphaCache.delete(oldest);
+		}
+	}
+	return { canvas, key };
+}
+
 async function resolveVideoNode({
 	node,
 	context,
 }: {
 	node: VideoNode;
 	context: ResolveContext;
-}): Promise<ResolvedVisualSourceNodeState | null> {
+}): Promise<ResolvedVideoNodeState | null> {
 	if (!isClipVisible({ params: node.params, time: context.time })) {
 		return null;
 	}
@@ -305,11 +359,19 @@ async function resolveVideoNode({
 		return null;
 	}
 
+	const matte = node.params.cutout
+		? await resolveMatte({
+				cutout: node.params.cutout,
+				sourceSeconds: mediaTimeToSeconds({ time: roundMediaTime({ time: sourceTimeTicks }) }),
+			})
+		: undefined;
+
 	return {
 		...visualState,
 		source: frame.canvas,
 		sourceWidth: frame.canvas.width,
 		sourceHeight: frame.canvas.height,
+		...(matte && { matte }),
 	};
 }
 

@@ -97,6 +97,7 @@ import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
 import { REFRAME_CAMERAS } from "@/reframe/path";
+import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
@@ -1608,6 +1609,38 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
 			}
+		},
+		"cutout.removeBackground": async ({ elementId, trackId, sampleFps }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Background removal needs a video clip" });
+			}
+			if (sampleFps !== undefined && (typeof sampleFps !== "number" || !Number.isFinite(sampleFps) || sampleFps <= 0 || sampleFps > 60)) {
+				throw new EditorApiError({ code: "invalid_params", message: "sampleFps must be a number from 0 to 60" });
+			}
+			try {
+				return await removeBackground({ editor, trackId: track.id, elementId: element.id, sampleFps });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Background removal failed" });
+			}
+		},
+		"cutout.setInverted": ({ elementId, trackId, inverted }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video" || !element.cutout) {
+				throw new EditorApiError({ code: "invalid_params", message: "The clip has no cut-out" });
+			}
+			setCutoutInverted({ editor, trackId: track.id, elementId: element.id, inverted: Boolean(inverted) });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
+		},
+		"cutout.clear": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Background removal needs a video clip" });
+			}
+			clearCutout({ editor, trackId: track.id, elementId: element.id });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
 		},
 		"reframe.clear": ({ elementId, trackId }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

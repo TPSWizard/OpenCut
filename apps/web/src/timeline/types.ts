@@ -140,6 +140,21 @@ export interface VideoElement extends BaseTimelineElement {
 	transition?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
+	/** Background removal; see `@/cutout`. */
+	cutout?: Cutout;
+}
+
+/**
+ * A cut-out: the clip shows only where its matte (a greyscale video in the
+ * project made by background removal; white keeps, black hides) is light.
+ * The matte's first frame belongs to `offset` seconds of the clip's source.
+ * The desktop editor's `editor::Cutout` is the same.
+ */
+export interface Cutout {
+	matteId: string;
+	offset: number;
+	/** Keeps the background and hides the person instead. */
+	inverted?: boolean;
 }
 
 export interface ImageElement extends BaseTimelineElement {

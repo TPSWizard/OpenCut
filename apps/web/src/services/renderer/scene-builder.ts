@@ -1,7 +1,7 @@
-import type { SceneTracks, TimelineElement, TimelineTrack } from "@/timeline";
+import type { SceneTracks, TimelineElement, TimelineTrack, VideoElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { RootNode } from "./nodes/root-node";
-import { VideoNode } from "./nodes/video-node";
+import { VideoNode, type VideoNodeParams } from "./nodes/video-node";
 import { ImageNode } from "./nodes/image-node";
 import { TextNode } from "./nodes/text-node";
 import { StickerNode } from "./nodes/sticker-node";
@@ -43,6 +43,20 @@ type ElementNodeOptions = {
 	suppressedWindows?: { start: number; end: number }[];
 };
 
+/** A cut-out whose matte is in the project (a missing matte shows the clip whole). */
+function cutoutParams({
+	cutout,
+	mediaMap,
+}: {
+	cutout: VideoElement["cutout"];
+	mediaMap: Map<string, MediaAsset>;
+}): VideoNodeParams["cutout"] {
+	if (!cutout) return undefined;
+	const matte = mediaMap.get(cutout.matteId);
+	if (!matte?.file) return undefined;
+	return { matteId: matte.id, file: matte.file, offset: cutout.offset, inverted: Boolean(cutout.inverted) };
+}
+
 /** The render node for one visual element, or null when it cannot be drawn. */
 function buildElementNode({
 	element,
@@ -80,6 +94,7 @@ function buildElementNode({
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
 				masks: element.masks ?? [],
+				cutout: cutoutParams({ cutout: element.cutout, mediaMap }),
 				...extra,
 			});
 		}

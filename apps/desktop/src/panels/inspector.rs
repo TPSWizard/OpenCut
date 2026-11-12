@@ -1512,6 +1512,66 @@ impl Render for InspectorPanel {
                 }
 
                 if matches!(element.kind, ElementKind::Video { .. }) {
+                    // Background removal: the web editor makes the matte;
+                    // here it renders and can be inverted or dropped.
+                    content = content.child(self.heading(t("Background removal"), window));
+                    match element.cutout.clone() {
+                        Some(cutout) => {
+                            let matte_name = self
+                                .state
+                                .read(cx)
+                                .project()
+                                .media_item(&cutout.matte_id)
+                                .map(|media| media.name.clone());
+                            let note = match &matte_name {
+                                Some(name) => tf("Matte: {name}", &[("name", name)]),
+                                None => t("The matte is missing from the project, so the whole clip shows.").to_owned(),
+                            };
+                            let invert_state = self.state.clone();
+                            let clear_state = self.state.clone();
+                            let inverted = cutout.inverted;
+                            let next = editor::Cutout { inverted: !inverted, ..cutout.clone() };
+                            content = content
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(note))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_wrap()
+                                        .gap(px(4.))
+                                        .child(
+                                            Button::new(
+                                                "cutout-invert",
+                                                if inverted { t("Keeping the background") } else { t("Keeping the person") },
+                                            )
+                                            .variant(if inverted { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                            .size(ButtonSize::XSmall)
+                                            .on_click(move |_, _, cx| {
+                                                let next = next.clone();
+                                                invert_state.update(cx, |state, cx| state.set_cutout_selected(Some(next), cx));
+                                            }),
+                                        )
+                                        .child(
+                                            Button::new("cutout-clear", t("Show whole clip"))
+                                                .variant(ButtonVariant::Outline)
+                                                .size(ButtonSize::XSmall)
+                                                .on_click(move |_, _, cx| {
+                                                    clear_state.update(cx, |state, cx| state.set_cutout_selected(None, cx));
+                                                }),
+                                        ),
+                                );
+                        }
+                        None => {
+                            content = content.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(colors.muted_foreground)
+                                    .child(t("Background removal runs in the web editor (it needs the person segmentation model). Open the project bundle there, remove the background, and bring the bundle back: the cut-out renders here.")),
+                            );
+                        }
+                    }
+                }
+
+                if matches!(element.kind, ElementKind::Video { .. }) {
                     // Auto-reframe: cover the canvas and pan with the subject.
                     let same_shape = self.state.read(cx).project().media_for(&element).is_some_and(|media| match (media.width, media.height) {
                         (Some(w), Some(h)) => editor::ReframeGeometry::new(w as f64, h as f64, canvas.width as f64, canvas.height as f64).is_noop(),

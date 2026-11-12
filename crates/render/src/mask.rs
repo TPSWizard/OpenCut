@@ -43,6 +43,63 @@ pub fn rasterize_mask(
     pixels
 }
 
+/// Coverage from a cut-out matte (greyscale, white keeps; `luma` is one
+/// byte per pixel, `matte_width` x `matte_height`), stretched over the
+/// element's quad and sampled bilinearly into a `width` x `height` frame,
+/// 0 to 1 per pixel. Outside the element it is 0.
+pub fn matte_coverage(
+    quad: &QuadTransformDescriptor,
+    width: u32,
+    height: u32,
+    luma: &[u8],
+    matte_width: u32,
+    matte_height: u32,
+    inverted: bool,
+) -> Vec<f64> {
+    let geometry = Geometry::new(Mask::RECTANGLE, &Params::new(), quad);
+    let (element_width, element_height) = (quad.width.max(1.0) as f64, quad.height.max(1.0) as f64);
+    let (mw, mh) = (matte_width as i64, matte_height as i64);
+    let sample = |x: i64, y: i64| -> f64 {
+        let (x, y) = (x.clamp(0, mw - 1), y.clamp(0, mh - 1));
+        luma[(y * mw + x) as usize] as f64 / 255.0
+    };
+    let mut coverage = vec![0.0f64; (width * height) as usize];
+    if mw == 0 || mh == 0 || luma.len() < (mw * mh) as usize {
+        return coverage;
+    }
+    for y in 0..height {
+        for x in 0..width {
+            let (lx, ly) = geometry.local(x as f64 + 0.5, y as f64 + 0.5);
+            let (u, v) = (lx / element_width + 0.5, ly / element_height + 0.5);
+            if !(0.0..=1.0).contains(&u) || !(0.0..=1.0).contains(&v) {
+                continue;
+            }
+            let (gx, gy) = (u * mw as f64 - 0.5, v * mh as f64 - 0.5);
+            let (x0, y0) = (gx.floor(), gy.floor());
+            let (fx, fy) = (gx - x0, gy - y0);
+            let (x0, y0) = (x0 as i64, y0 as i64);
+            let value = sample(x0, y0) * (1.0 - fx) * (1.0 - fy)
+                + sample(x0 + 1, y0) * fx * (1.0 - fy)
+                + sample(x0, y0 + 1) * (1.0 - fx) * fy
+                + sample(x0 + 1, y0 + 1) * fx * fy;
+            let value = value.clamp(0.0, 1.0);
+            coverage[(y * width + x) as usize] = if inverted { 1.0 - value } else { value };
+        }
+    }
+    coverage
+}
+
+/// Coverage values as the RGBA the compositor reads (every channel equal).
+pub fn coverage_to_rgba(coverage: &[f64]) -> Vec<u8> {
+    coverage
+        .iter()
+        .flat_map(|c| {
+            let value = (c.clamp(0.0, 1.0) * 255.0).round() as u8;
+            [value; 4]
+        })
+        .collect()
+}
+
 /// Coverage of a text mask: `glyphs` (the mask's text rasterised white
 /// against the element's height) centred on the mask's centre, scaled by
 /// `scale` and rotated, sampled bilinearly. Blank text is an inactive mask
@@ -546,6 +603,31 @@ impl Geometry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_matte_maps_onto_the_element() {
+        // A 4x2 matte: left half white, right half black.
+        let luma = [255, 255, 0, 0, 255, 255, 0, 0];
+        let quad = QuadTransformDescriptor {
+            center_x: 50.0,
+            center_y: 25.0,
+            width: 80.0,
+            height: 40.0,
+            rotation_degrees: 0.0,
+            flip_x: false,
+            flip_y: false,
+        };
+        let coverage = matte_coverage(&quad, 100, 50, &luma, 4, 2, false);
+        let at = |x: u32, y: u32| coverage[(y * 100 + x) as usize];
+        assert!(at(20, 25) > 0.99, "left of the element is kept");
+        assert!(at(80, 25) < 0.01, "right is hidden");
+        assert_eq!(at(5, 25), 0.0, "outside the element");
+        let inverted = matte_coverage(&quad, 100, 50, &luma, 4, 2, true);
+        assert!(inverted[25 * 100 + 80] > 0.99);
+        let mirrored = matte_coverage(&QuadTransformDescriptor { flip_x: true, ..quad }, 100, 50, &luma, 4, 2, false);
+        assert!(mirrored[25 * 100 + 80] > 0.99, "a flipped element flips its matte");
+        assert_eq!(coverage_to_rgba(&[0.5])[..], [128, 128, 128, 128]);
+    }
 
     fn quad(center_x: f32, center_y: f32, width: f32, height: f32, rotation: f32) -> QuadTransformDescriptor {
         QuadTransformDescriptor {

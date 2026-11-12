@@ -192,3 +192,22 @@ its pack.
   each shot's background and by skin colour (own code).
 - Test fixtures for this feature are drawn faces made with Pillow
   (`.cache/reframe-face.mp4`, not committed), not real people.
+
+## Background removal (added 2026-11-12)
+
+- **MediaPipe Selfie Segmenter models**, downloaded 2026-11-12 from
+  storage.googleapis.com/mediapipe-models/image_segmenter/ (float16, latest):
+  `apps/web/src/cutout/models/selfie_segmenter_landscape.tflite`
+  (250,177 bytes, SHA-256
+  `490e9ea734313e0de10fa0cd9e3c6133e36ea4db2b7a49bde9ef019f72796b8e`) and
+  `apps/web/src/cutout/models/selfie_segmenter.tflite` (249,537 bytes,
+  SHA-256 `191ac9529ae506ee0beefa6b2c945a172dab9d07d1e802a290a4e4038226658b`).
+  The model card ("Model Card MediaPipe Selfie Segmentation",
+  storage.googleapis.com/mediapipe-assets) states they are licensed under the
+  Apache License, Version 2.0, and reports Google's fairness evaluation
+  across Fitzpatrick skin types. They run with the MediaPipe Tasks Vision wasm
+  listed under auto-reframe; frames stay on the viewer's device.
+- The higher-quality offline path the research suggested (ISNet or BiRefNet)
+  is not included: those weight files have no stated licence.
+- Mattes are made from the user's own clips and stored in their project; the
+  desktop editor renders them but cannot make them (no model there).

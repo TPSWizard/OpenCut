@@ -807,6 +807,20 @@ export interface EditorApiMethods {
 			keyframes: number;
 		};
 	};
+	/**
+	 * Background removal: segments the people in a video clip on this device
+	 * (MediaPipe Selfie Segmenter, `sampleFps` default 15), stores the matte
+	 * as a small greyscale video in the project and gives the clip a
+	 * `cutout` (white keeps). The desktop editor renders it too.
+	 */
+	"cutout.removeBackground": {
+		params: ApiElementLocator & { sampleFps?: number };
+		result: { matteId: string; matteName: string; frames: number; seconds: number; keptShare: number };
+	};
+	/** Keeps the background and hides the person instead (or back). */
+	"cutout.setInverted": { params: ApiElementLocator & { inverted: boolean }; result: ApiElementInfo };
+	/** Shows the whole clip again; the matte stays in the media. */
+	"cutout.clear": { params: ApiElementLocator; result: ApiElementInfo };
 	/** Puts a reframed clip back: scale 1, centred, no position or scale keys. */
 	"reframe.clear": {
 		params: ApiElementLocator;

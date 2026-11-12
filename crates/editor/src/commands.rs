@@ -31,6 +31,8 @@ pub struct ElementPatch {
     /// Replaces the speed change (`Some(None)` removes it); the duration is
     /// recomputed so the same source span still plays.
     pub retime: Option<Option<crate::Retime>>,
+    /// Replaces the cut-out (`Some(None)` removes it).
+    pub cutout: Option<Option<crate::Cutout>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -752,6 +754,9 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if let Some(params) = &patch.params {
                 element.params.merge(params);
+            }
+            if let Some(cutout) = &patch.cutout {
+                element.cutout = cutout.clone();
             }
             project.tracks[track_index].sort_elements();
             Outcome::Elements(vec![reference])

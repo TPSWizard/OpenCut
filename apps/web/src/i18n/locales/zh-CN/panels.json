@@ -195,5 +195,16 @@
   "Analysing {percent}%": "正在分析 {percent}%",
   "Reframe": "重新取景",
   "Reset framing": "重置取景",
-  "The clip fits the canvas again.": "片段已重新适应画布。"
+  "The clip fits the canvas again.": "片段已重新适应画布。",
+  "Background removed: {frames} frames; the person covers {share}% of the picture on average.": "背景已移除：{frames} 帧；人物平均占画面的 {share}%。",
+  "Background removal failed": "背景移除失败",
+  "Remove background": "移除背景",
+  "Keeps the people in the clip and hides the rest. Runs on this device (MediaPipe Selfie Segmenter, about 10 MB the first time) and works best with one or two people facing the camera.": "保留片段中的人物并隐藏其余部分。在本设备上运行（MediaPipe Selfie Segmenter，首次约 10 MB），一到两人面向镜头时效果最佳。",
+  "Matte: {name}": "遮罩：{name}",
+  "The matte is missing from the project, so the whole clip shows.": "项目中缺少遮罩，因此显示整个片段。",
+  "Keep the background instead": "改为保留背景",
+  "Removing {percent}%": "正在移除 {percent}%",
+  "Redo background removal": "重新移除背景",
+  "Show whole clip": "显示整个片段",
+  "The whole clip shows again; the matte stays in the media.": "已重新显示整个片段；遮罩仍保留在素材中。"
 }

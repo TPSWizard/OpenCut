@@ -442,6 +442,21 @@ pub struct Transition {
     pub params: Params,
 }
 
+/// A cut-out (background removal): the clip shows only where its matte,
+/// a greyscale video in the project made by the web editor's background
+/// removal (white keeps, black hides), is light. The matte's first frame
+/// belongs to `offset` seconds of the clip's source.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cutout {
+    pub matte_id: String,
+    #[serde(default)]
+    pub offset: f64,
+    /// Keeps the background and hides the person instead.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub inverted: bool,
+}
+
 /// One spoken word of a caption: `start` and `end` are relative to the
 /// element's start. The words are the whitespace-separated tokens of the
 /// element's `content`, in order, as the web app stores them.
@@ -485,6 +500,9 @@ pub struct Element {
     /// The transition this clip leads out of, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transition: Option<Transition>,
+    /// Background removal; see [`Cutout`]. Video clips only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cutout: Option<Cutout>,
     /// A caption's timed words (text elements); see [`CaptionWord`]. The
     /// `caption.*` params say how the spoken word is highlighted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -523,6 +541,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            cutout: None,
             words: Vec::new(),
             retime: None,
             group_id: None,
@@ -547,6 +566,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            cutout: None,
             words: Vec::new(),
             retime: None,
             group_id: None,
@@ -607,6 +627,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            cutout: None,
             words: Vec::new(),
             retime: None,
             group_id: None,
@@ -631,6 +652,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            cutout: None,
             words: Vec::new(),
             retime: None,
             group_id: None,
