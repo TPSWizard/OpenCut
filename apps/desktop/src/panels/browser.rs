@@ -16,6 +16,19 @@ pub(crate) struct MediaPanel {
     state: Entity<EditorState>,
     /// Showing the saved markers instead of the media.
     show_markers: bool,
+    /// Showing the sticker packs instead of the media.
+    show_stickers: bool,
+    /// 0 = Twemoji, 1 = Noto Emoji, 2 = Brands.
+    sticker_pack: usize,
+    sticker_query: String,
+    skin_tone: usize,
+    /// 0 = the brand's colour, 1 = white, 2 = black.
+    brand_color: usize,
+    emoji_category: usize,
+    /// Emoji category lists by set, once fetched.
+    emoji: HashMap<String, std::sync::Arc<crate::stickers::EmojiCollection>>,
+    emoji_loading: Option<String>,
+    sticker_search: Option<Entity<TextInput>>,
     /// Note fields by marker time (ticks).
     notes: HashMap<i64, Entity<TextInput>>,
 }
@@ -23,7 +36,212 @@ pub(crate) struct MediaPanel {
 impl MediaPanel {
     pub(crate) fn new(state: Entity<EditorState>, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        Self { state, show_markers: false, notes: HashMap::new() }
+        Self {
+            state,
+            show_markers: false,
+            show_stickers: false,
+            sticker_pack: 0,
+            sticker_query: String::new(),
+            skin_tone: 0,
+            brand_color: 0,
+            emoji_category: 0,
+            emoji: HashMap::new(),
+            emoji_loading: None,
+            sticker_search: None,
+            notes: HashMap::new(),
+        }
+    }
+
+    /// Fetches an emoji set's category lists in the background.
+    fn load_emoji(&mut self, set: &'static str, cx: &mut Context<Self>) {
+        if self.emoji.contains_key(set) || self.emoji_loading.as_deref() == Some(set) {
+            return;
+        }
+        self.emoji_loading = Some(set.to_owned());
+        let dir = self.state.read(cx).stickers_dir.clone();
+        cx.spawn(async move |this, cx| {
+            let loaded = cx
+                .background_executor()
+                .spawn(async move { crate::stickers::load_emoji_collection(&dir, set) })
+                .await;
+            this.update(cx, |panel, cx| {
+                panel.emoji_loading = None;
+                match loaded {
+                    Ok(collection) => {
+                        panel.emoji.insert(set.to_owned(), std::sync::Arc::new(collection));
+                    }
+                    Err(message) => {
+                        panel.state.update(cx, |state, cx| state.set_status(format!("Emoji list: {message}"), cx));
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// The sticker packs: pick a pack, search (Enter), click a name to put
+    /// it on the timeline at the playhead.
+    fn sticker_rows(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
+        use crate::stickers::{EMOJI_SETS, SKIN_TONES, TRADEMARK_NOTICE};
+        let colors = window.theme().colors;
+        let mut rows: Vec<gpui::AnyElement> = Vec::new();
+        let editor_focus = self.state.read(cx).focus_handle.clone();
+        let search = match &self.sticker_search {
+            Some(search) => search.clone(),
+            None => {
+                let this = cx.entity().clone();
+                let search = cx.new(|cx| {
+                    TextInput::new(window, cx, "Search, then Enter")
+                        .focus_after(editor_focus)
+                        .on_commit(move |text, _, cx| {
+                            let text = text.to_owned();
+                            this.update(cx, |panel, cx| {
+                                panel.sticker_query = text;
+                                cx.notify();
+                            });
+                        })
+                });
+                self.sticker_search = Some(search.clone());
+                search
+            }
+        };
+        let packs = ["Twemoji", "Noto Emoji", "Brands"];
+        let mut pack_row = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+        for (index, label) in packs.iter().enumerate() {
+            pack_row = pack_row.child(
+                Button::new(eid("sticker-pack", label), *label)
+                    .variant(if index == self.sticker_pack { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                    .size(ButtonSize::XSmall)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.sticker_pack = index;
+                        this.emoji_category = 0;
+                        cx.notify();
+                    })),
+            );
+        }
+        rows.push(pack_row.into_any_element());
+        rows.push(div().px(px(4.)).child(search).into_any_element());
+
+        let query = self.sticker_query.trim().to_owned();
+        if self.sticker_pack < 2 {
+            let (set, _, credit) = EMOJI_SETS[self.sticker_pack];
+            let mut tones = div().flex().items_center().gap(px(4.)).p(px(4.)).child(
+                div().text_xs().text_color(colors.muted_foreground).child("Skin tone"),
+            );
+            for (index, (label, _)) in SKIN_TONES.iter().enumerate() {
+                tones = tones.child(
+                    Button::new(eid("skin-tone", label), *label)
+                        .variant(if index == self.skin_tone { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::XSmall)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.skin_tone = index;
+                            cx.notify();
+                        })),
+                );
+            }
+            rows.push(tones.into_any_element());
+            rows.push(div().px(px(6.)).text_xs().text_color(colors.muted_foreground).child(credit).into_any_element());
+            let Some(collection) = self.emoji.get(set).cloned() else {
+                self.load_emoji(set, cx);
+                rows.push(div().p(px(8.)).text_xs().text_color(colors.muted_foreground).child("Loading the emoji list…").into_any_element());
+                return rows;
+            };
+            let names: Vec<String> = if query.is_empty() {
+                let mut categories = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+                for (index, (category, _)) in collection.categories.iter().enumerate() {
+                    categories = categories.child(
+                        Button::new(eid("emoji-category", category), category.clone())
+                            .variant(if index == self.emoji_category { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.emoji_category = index;
+                                cx.notify();
+                            })),
+                    );
+                }
+                rows.push(categories.into_any_element());
+                collection.categories.get(self.emoji_category).map(|(_, names)| names.iter().take(120).cloned().collect()).unwrap_or_default()
+            } else {
+                crate::stickers::search_emoji(&collection, &query, 120)
+            };
+            let suffix = SKIN_TONES[self.skin_tone].1;
+            let mut grid = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+            for name in names {
+                let toned = crate::stickers::with_skin_tone(&name, suffix, &collection.names);
+                let label = name.replace('-', " ");
+                let sticker_id = format!("icons:{set}:{toned}");
+                let state = self.state.clone();
+                let add_label = label.clone();
+                grid = grid.child(
+                    Button::new(eid("emoji", &sticker_id), label)
+                        .variant(ButtonVariant::Outline)
+                        .size(ButtonSize::XSmall)
+                        .on_click(move |_, _, cx| {
+                            let (id, name) = (sticker_id.clone(), add_label.clone());
+                            state.update(cx, |state, cx| state.add_sticker(id, name, cx));
+                        }),
+                );
+            }
+            rows.push(grid.into_any_element());
+        } else {
+            let mut colours = div().flex().items_center().gap(px(4.)).p(px(4.));
+            for (index, label) in ["Brand colour", "White", "Black"].iter().enumerate() {
+                colours = colours.child(
+                    Button::new(eid("brand-colour", label), *label)
+                        .variant(if index == self.brand_color { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::XSmall)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.brand_color = index;
+                            cx.notify();
+                        })),
+                );
+            }
+            rows.push(colours.into_any_element());
+            rows.push(
+                div()
+                    .mx(px(4.))
+                    .p(px(6.))
+                    .rounded(px(4.))
+                    .border_1()
+                    .border_color(colors.border)
+                    .text_xs()
+                    .text_color(colors.muted_foreground)
+                    .child(TRADEMARK_NOTICE)
+                    .into_any_element(),
+            );
+            let mut grid = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+            for brand in crate::stickers::search_brands(&query, 120) {
+                let hex = match self.brand_color {
+                    1 => "FFFFFF".to_owned(),
+                    2 => "000000".to_owned(),
+                    _ => brand.hex.clone(),
+                };
+                let swatch = u32::from_str_radix(&brand.hex, 16).unwrap_or(0x888888);
+                let sticker_id = crate::stickers::brand_sticker_id(&brand.slug, &hex);
+                let state = self.state.clone();
+                let title = brand.title.clone();
+                grid = grid.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(3.))
+                        .child(div().size(px(8.)).rounded_full().bg(gpui::rgb(swatch)))
+                        .child(
+                            Button::new(eid("brand", &sticker_id), brand.title.clone())
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let (id, name) = (sticker_id.clone(), title.clone());
+                                    state.update(cx, |state, cx| state.add_sticker(id, name, cx));
+                                }),
+                        ),
+                );
+            }
+            rows.push(grid.into_any_element());
+        }
+        rows
     }
 
     /// The saved markers: colour (click to change), time (click to go
@@ -192,6 +410,8 @@ impl Render for MediaPanel {
         let focus_handle = state.focus_handle.clone();
         let marker_count = project.markers.len();
         let show_markers = self.show_markers;
+        let show_stickers = self.show_stickers;
+        let show_media = !show_markers && !show_stickers;
 
         let rows: Vec<_> = project
             .media
@@ -354,6 +574,7 @@ impl Render for MediaPanel {
         let state_for_chapters = self.state.clone();
         let missing_count = state.missing_media.len();
         let marker_rows = if show_markers { self.marker_rows(window, cx) } else { Vec::new() };
+        let sticker_rows = if show_stickers { self.sticker_rows(window, cx) } else { Vec::new() };
         div()
             .flex()
             .flex_col()
@@ -371,10 +592,11 @@ impl Render for MediaPanel {
                     .border_color(colors.sidebar_border)
                     .child(
                         Button::new("tab-media", "Media")
-                            .variant(if show_markers { ButtonVariant::Ghost } else { ButtonVariant::Secondary })
+                            .variant(if show_media { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_markers = false;
+                                this.show_stickers = false;
                                 cx.notify();
                             })),
                     )
@@ -384,6 +606,17 @@ impl Render for MediaPanel {
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_markers = true;
+                                this.show_stickers = false;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("tab-stickers", "Stickers")
+                            .variant(if show_stickers { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_stickers = true;
+                                this.show_markers = false;
                                 cx.notify();
                             })),
                     )
@@ -403,7 +636,7 @@ impl Render for MediaPanel {
                                 }),
                         )
                     })
-                    .when(missing_count > 0 && !show_markers, |row| {
+                    .when(missing_count > 0 && show_media, |row| {
                         row.child(
                             Button::new("find-missing", format!("Find {missing_count} missing…"))
                                 .variant(ButtonVariant::Secondary)
@@ -411,7 +644,7 @@ impl Render for MediaPanel {
                                 .on_click(move |_, _, cx| Self::find_missing(&state_for_find, cx)),
                         )
                     })
-                    .when(!show_markers, |row| row.child(
+                    .when(show_media, |row| row.child(
                         Button::new("add-text", "Text")
                             .variant(ButtonVariant::Outline)
                             .size(ButtonSize::Small)
@@ -419,7 +652,7 @@ impl Render for MediaPanel {
                                 state_for_text.update(cx, |state, cx| state.add_text(cx));
                             }),
                     ))
-                    .when(!show_markers, |row| row.child(
+                    .when(show_media, |row| row.child(
                         Button::new("import", "Import…")
                             .size(ButtonSize::Small)
                             .on_click(move |_, _, cx| Self::import(&state_for_import, cx)),
@@ -444,7 +677,8 @@ impl Render for MediaPanel {
                         )
                     })
                     .when(show_markers, |this| this.children(marker_rows))
-                    .when(!show_markers && rows.is_empty(), |this| {
+                    .when(show_stickers, |this| this.children(sticker_rows))
+                    .when(show_media && rows.is_empty(), |this| {
                         this.child(
                             div()
                                 .p(px(12.))
@@ -457,7 +691,7 @@ impl Render for MediaPanel {
                                 }),
                         )
                     })
-                    .when(!show_markers, |this| this.children(rows)),
+                    .when(show_media, |this| this.children(rows)),
             )
     }
 }

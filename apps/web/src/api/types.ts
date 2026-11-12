@@ -559,6 +559,20 @@ export interface EditorApiMethods {
 		};
 		result: ApiElementInfo;
 	};
+	/**
+	 * Searches the sticker packs: `emoji` (Twemoji or Noto Emoji, in the set
+	 * and skin tone chosen in the panel), `brands` (Simple Icons logos; they
+	 * are trademarks), `icons` (open-licence icon sets), `flags`, or `all`.
+	 */
+	"stickers.search": {
+		params: { query: string; pack?: "all" | "emoji" | "brands" | "icons" | "flags"; limit?: number };
+		result: { id: string; name: string; pack: string; license?: string; requiresCredit?: boolean; credit?: string }[];
+	};
+	/** Puts a sticker (an id from `stickers.search`) on the timeline. */
+	"timeline.addSticker": {
+		params: { stickerId: string; at?: number; duration?: number; name?: string };
+		result: ApiElementInfo;
+	};
 	"timeline.addText": {
 		params: {
 			text: string;

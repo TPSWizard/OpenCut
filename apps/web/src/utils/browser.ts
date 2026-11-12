@@ -46,3 +46,28 @@ export function isTypableDOMElement({
 
 	return false;
 }
+
+/**
+ * Asks for CORS access when an image comes from another origin, so the GPU
+ * may read it (a "tainted" image makes `copyExternalImageToTexture` fail
+ * inside the WASM compositor). Blob and data URLs need nothing.
+ */
+export function prepareImageForGpu({ image, url }: { image: HTMLImageElement; url: string }): void {
+	if (/^https?:/i.test(url)) image.crossOrigin = "anonymous";
+}
+
+/** Whether the GPU may read this loaded image (false when it is tainted). */
+export function isImageReadable({ image }: { image: HTMLImageElement }): boolean {
+	try {
+		const canvas = document.createElement("canvas");
+		canvas.width = 1;
+		canvas.height = 1;
+		const context = canvas.getContext("2d");
+		if (!context) return true;
+		context.drawImage(image, 0, 0, 1, 1);
+		context.getImageData(0, 0, 1, 1);
+		return true;
+	} catch {
+		return false;
+	}
+}

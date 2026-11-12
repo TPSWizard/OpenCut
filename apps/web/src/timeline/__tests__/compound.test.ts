@@ -41,7 +41,7 @@ function track(id: string, type: TimelineTrack["type"], elements: TimelineElemen
 
 function scene(): SceneTracks {
 	return {
-		overlay: [track("titles", "text", [text("title", 3, 2)])],
+		overlay: [track("titles", "text", [text("title", 3, 2)])] as SceneTracks["overlay"],
 		main: track("main", "video", [video("clip", 2, 4)]) as SceneTracks["main"],
 		audio: [track("music", "audio", [{ ...video("song", 2, 4), type: "audio" } as unknown as TimelineElement])] as SceneTracks["audio"],
 	};

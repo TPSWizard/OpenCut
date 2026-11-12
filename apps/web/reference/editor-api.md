@@ -60,6 +60,8 @@ methods answer with the error code `no_project` before that.
 | `timeline.get` | – | `ApiTimelineInfo` |
 | `timeline.addClip` | `{ mediaId, at?, duration?, trackId?, trackType?, name? }` | `ApiElementInfo` |
 | `timeline.addText` | `{ text, at?, duration?, name?, params?, trackId? }` | `ApiElementInfo` |
+| `timeline.addSticker` | `{ stickerId, at?, duration?, name? }` | `ApiElementInfo` — puts a sticker on the timeline (ids from `stickers.search`) |
+| `stickers.search` | `{ query, pack?: "all" \| "emoji" \| "brands" \| "icons" \| "flags", limit? }` | `[{ id, name, pack, license?, requiresCredit?, credit? }]` — emoji come from the set and skin tone chosen in the Stickers panel (Twemoji needs credit); brand logos are Simple Icons (CC0) and remain trademarks of their owners |
 | `timeline.updateElement` | `{ elementId, trackId?, patch }` | `ApiElementInfo` |
 | `timeline.moveElement` | `{ elementId, trackId?, startTime }` | `ApiElementInfo` |
 | `timeline.setTransition` | `{ elementId, trackId?, transition: { type, duration?, params? } \| null }` | `ApiElementInfo` |

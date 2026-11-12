@@ -1,3 +1,4 @@
+import { prepareImageForGpu } from "@/utils/browser";
 import {
 	STICKER_CATEGORIES,
 } from "@/stickers/categories";
@@ -293,6 +294,7 @@ export async function resolveStickerIntrinsicSize({
 	const url = resolveStickerId({ stickerId });
 	return new Promise((resolve) => {
 		const img = new Image();
+		prepareImageForGpu({ image: img, url });
 		img.onload = () =>
 			resolve({ width: img.naturalWidth, height: img.naturalHeight });
 		img.onerror = () =>

@@ -1,3 +1,4 @@
+import { isImageReadable, prepareImageForGpu } from "@/utils/browser";
 import { resolveStickerId } from "@/stickers";
 import {
 	VisualNode,
@@ -34,6 +35,7 @@ export function loadStickerSource({
 		});
 
 		const image = new Image();
+		prepareImageForGpu({ image, url });
 
 		await new Promise<void>((resolve, reject) => {
 			image.onload = () => resolve();
@@ -41,6 +43,11 @@ export function loadStickerSource({
 				reject(new Error(`Failed to load sticker: ${stickerId}`));
 			image.src = url;
 		});
+		if (!isImageReadable({ image })) {
+			// A tainted image would make the GPU upload fail for every frame after.
+			stickerSourceCache.delete(stickerId);
+			throw new Error(`Sticker ${stickerId} cannot be drawn (its server does not allow cross-origin use)`);
+		}
 
 		return {
 			source: image,

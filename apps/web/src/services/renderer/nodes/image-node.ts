@@ -1,3 +1,4 @@
+import { isImageReadable, prepareImageForGpu } from "@/utils/browser";
 import {
 	VisualNode,
 	type ResolvedVisualSourceNodeState,
@@ -31,12 +32,17 @@ export function loadImageSource({
 
 	const promise = (async (): Promise<CachedImageSource> => {
 		const image = new Image();
+		prepareImageForGpu({ image, url });
 
 		await new Promise<void>((resolve, reject) => {
 			image.onload = () => resolve();
 			image.onerror = () => reject(new Error("Image load failed"));
 			image.src = url;
 		});
+		if (!isImageReadable({ image })) {
+			imageSourceCache.delete(cacheKey);
+			throw new Error("The image cannot be drawn (its server does not allow cross-origin use)");
+		}
 
 		const naturalWidth = image.naturalWidth;
 		const naturalHeight = image.naturalHeight;

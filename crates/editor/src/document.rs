@@ -505,6 +505,30 @@ fn zero() -> MediaTime {
 pub const DEFAULT_STILL_DURATION_SECONDS: f64 = 5.0;
 
 impl Element {
+    /// A sticker (`provider:value`, as the web app names them) at
+    /// `start_time`, drawn at its SVG's own proportions.
+    pub fn sticker(sticker_id: impl Into<String>, name: impl Into<String>, start_time: MediaTime) -> Self {
+        Self {
+            id: crate::new_id(),
+            name: name.into(),
+            kind: ElementKind::Sticker { sticker_id: sticker_id.into(), intrinsic_width: None, intrinsic_height: None },
+            start_time,
+            duration: MediaTime::from_seconds_f64(DEFAULT_STILL_DURATION_SECONDS).unwrap(),
+            trim_start: MediaTime::ZERO,
+            trim_end: MediaTime::ZERO,
+            source_duration: None,
+            hidden: false,
+            params: crate::visual_defaults(),
+            animations: Animations::new(),
+            effects: Vec::new(),
+            masks: Vec::new(),
+            transition: None,
+            words: Vec::new(),
+            retime: None,
+            group_id: None,
+        }
+    }
+
     /// A compound clip holding `tracks` (children in its own time), as long
     /// as its content.
     pub fn compound(id: impl Into<String>, tracks: Vec<crate::CompoundTrack>, start_time: MediaTime, duration: MediaTime) -> Self {

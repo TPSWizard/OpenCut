@@ -2659,6 +2659,17 @@ impl EditorState {
 
     /// Fetches the SVG of every sticker in the project that is not on disk
     /// yet, on a background thread, then renders again. Cheap to call often.
+    /// Puts a sticker on the timeline at the playhead and selects it; its
+    /// SVG is fetched in the background.
+    pub(crate) fn add_sticker(&mut self, sticker_id: String, name: String, cx: &mut Context<Self>) {
+        let element = Element::sticker(sticker_id, name, self.playhead());
+        if let Some(outcome) = self.execute(Command::InsertElement { element, placement: editor::TrackPlacement::Auto }, cx) {
+            let created: Vec<String> = outcome.element_refs().iter().map(|r| r.element_id.clone()).collect();
+            self.select_only(created, cx);
+            self.ensure_stickers(cx);
+        }
+    }
+
     pub(crate) fn ensure_stickers(&mut self, cx: &mut Context<Self>) {
         let missing = crate::stickers::missing_stickers(self.project(), &self.stickers_dir, &self.stickers_tried);
         if missing.is_empty() {

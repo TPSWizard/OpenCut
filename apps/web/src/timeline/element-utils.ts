@@ -157,8 +157,10 @@ export function buildStickerElement({
 	intrinsicWidth?: number;
 	intrinsicHeight?: number;
 }): CreateStickerElement {
+	// Brand ids end in a colour code; name those after the brand.
+	const idParts = stickerId.split(":");
 	const stickerNameFromId =
-		stickerId.split(":").slice(1).pop()?.replaceAll("-", " ") ?? stickerId;
+		(idParts[0] === "logos" ? idParts[1] : idParts.slice(1).pop())?.replaceAll("-", " ") ?? stickerId;
 	return {
 		type: "sticker",
 		name: name ?? stickerNameFromId,

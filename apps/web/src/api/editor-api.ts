@@ -39,6 +39,8 @@ import {
 } from "@/wasm";
 import { useProxyJobs } from "@/media/proxy-store";
 import { chaptersText } from "@/timeline/bookmarks/chapters";
+import { resolveStickerId, resolveStickerIntrinsicSize, searchStickers as searchStickerPacks } from "@/stickers";
+import { buildStickerElement } from "@/timeline/element-utils";
 import { breakApartCompound, compoundChildCount, createCompound, groupElements, ungroupElements } from "@/timeline/compound";
 import { TracksEditCommand } from "@/commands/timeline/tracks-edit";
 import { generateUUID } from "@/utils/id";
@@ -1177,6 +1179,45 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 								trackType ?? (asset.type === "audio" ? "audio" : "video"),
 						},
 			});
+			return findInsertedElement({ before, after: tracksOf() });
+		},
+		"stickers.search": async ({ query, pack = "all", limit = 40 }) => {
+			const category = ({ all: "all", emoji: "emoji", brands: "logos", icons: "icons", flags: "flags" } as const)[pack];
+			if (!category) {
+				throw new EditorApiError({ code: "invalid_params", message: "pack is all, emoji, brands, icons or flags" });
+			}
+			const result = await searchStickerPacks({ query: requireString(query, "query"), category, limit: Math.max(1, Math.min(200, Number(limit) || 40)) });
+			return result.items.map((item) => {
+				const license = item.metadata.license as { spdx?: string | null; title?: string } | null | undefined;
+				return {
+					id: item.id,
+					name: item.name,
+					pack: item.provider === "logos" ? "brands" : item.provider,
+					...(license ? { license: license.spdx ?? license.title ?? undefined } : {}),
+					...(item.metadata.requiresCredit ? { requiresCredit: true } : {}),
+					...(typeof item.metadata.credit === "string" ? { credit: item.metadata.credit } : {}),
+				};
+			});
+		},
+		"timeline.addSticker": async ({ stickerId, at, duration, name }) => {
+			requireProject();
+			const id = requireString(stickerId, "stickerId");
+			try {
+				resolveStickerId({ stickerId: id });
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+			const { width, height } = await resolveStickerIntrinsicSize({ stickerId: id });
+			const element = buildStickerElement({
+				stickerId: id,
+				name,
+				startTime: at === undefined ? editor.playback.getCurrentTime() : ticks(at, "at"),
+				intrinsicWidth: width,
+				intrinsicHeight: height,
+			});
+			if (duration !== undefined) element.duration = ticks(duration, "duration");
+			const before = elementIds(tracksOf());
+			editor.timeline.insertElement({ element, placement: { mode: "auto" } });
 			return findInsertedElement({ before, after: tracksOf() });
 		},
 		"timeline.addText": ({ text, at, duration, name, params, trackId }) => {

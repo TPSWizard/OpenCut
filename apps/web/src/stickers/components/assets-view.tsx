@@ -16,6 +16,7 @@ import {
 	buildStickerElement,
 } from "@/timeline/element-utils";
 import { STICKER_CATEGORIES } from "@/stickers/categories";
+import { BrandPackOptions, EmojiPackOptions } from "./pack-options";
 import { getRegionLabel, resolveQueryToRegions } from "@/stickers";
 import { parseShapeStickerId } from "@/stickers/providers/shapes";
 import type { TimelineDragData } from "@/timeline/drag";
@@ -87,6 +88,8 @@ export function StickersView() {
 					))}
 				</TabsList>
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
+					{selectedCategory === "emoji" ? <EmojiPackOptions /> : null}
+					{selectedCategory === "logos" ? <BrandPackOptions /> : null}
 					<StickersContentView />
 				</div>
 			</Tabs>
