@@ -118,6 +118,10 @@ pub(crate) struct EditorState {
     /// In and out marks: a stretch of the timeline to ripple-delete.
     pub mark_in: Option<MediaTime>,
     pub mark_out: Option<MediaTime>,
+    /// Beat markers: timeline times clips snap to while dragged. Not saved.
+    pub markers: Vec<MediaTime>,
+    /// The last beat analysis: tempo and confidence, for the inspector.
+    pub beats: Option<(f64, f64)>,
     pub export: Option<ExportState>,
     /// Where fetched font files live (`~/.opencut/fonts`).
     pub fonts_dir: PathBuf,
@@ -196,6 +200,8 @@ impl EditorState {
             loudness: None,
             mark_in: None,
             mark_out: None,
+            markers: Vec::new(),
+            beats: None,
             peaks: HashMap::new(),
             peaks_pending: HashSet::new(),
             fonts_dir,
@@ -385,6 +391,61 @@ impl EditorState {
         }
         let ids = std::mem::take(&mut self.selection);
         self.execute(Command::DeleteElements(ids), cx);
+    }
+
+    /// Beat-tracks the selected clip on a background thread and puts a
+    /// marker on every `every`-th beat; clips snap to markers while dragged.
+    pub(crate) fn detect_beats_selected(&mut self, every: usize, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to listen for beats.", cx);
+            return;
+        };
+        let project = self.project().clone();
+        self.set_status("Listening for beats…", cx);
+        cx.spawn(async move |this, cx| {
+            let tracked = cx
+                .background_executor()
+                .spawn(async move { crate::beats::clip_beats(&ffmpeg, &project, &element_id).map(|result| (element_id, result)) })
+                .await;
+            this.update(cx, |state, cx| match tracked {
+                Ok((element_id, (analysis, source_from))) => {
+                    let Some(bpm) = analysis.bpm else {
+                        state.set_status("No steady beat found in this clip.", cx);
+                        return;
+                    };
+                    let Some(element) = state.project().element(&element_id).map(|(_, element)| element.clone()) else {
+                        return;
+                    };
+                    let step = every.max(1);
+                    let markers: Vec<MediaTime> = analysis
+                        .beats
+                        .iter()
+                        .enumerate()
+                        .filter(|(index, _)| index % step == 0)
+                        .filter_map(|(_, beat)| editor::source_to_timeline(&element, source_from + beat))
+                        .collect();
+                    let count = markers.len();
+                    state.markers = markers;
+                    state.beats = Some((bpm, analysis.confidence));
+                    state.set_status(
+                        format!("{bpm:.1} BPM (confidence {:.0}%): {count} beat marker(s); clips snap to them.", analysis.confidence * 100.0),
+                        cx,
+                    );
+                    cx.notify();
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    pub(crate) fn clear_markers(&mut self, cx: &mut Context<Self>) {
+        self.markers.clear();
+        self.beats = None;
+        cx.notify();
     }
 
     /// Scans the selected video clip for shot changes with FFmpeg's scdet

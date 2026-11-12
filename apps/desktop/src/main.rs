@@ -9,6 +9,7 @@ use media::Ffmpeg;
 
 mod actions;
 mod audio;
+mod beats;
 mod ducking;
 mod fonts;
 mod components;

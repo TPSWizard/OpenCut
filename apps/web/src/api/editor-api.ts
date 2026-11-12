@@ -74,6 +74,7 @@ import { clearDucking, duckElement } from "@/ducking/duck";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
+import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -1216,6 +1217,31 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
+			}
+		},
+		"audio.detectBeats": async ({ elementId, trackId, every, apply }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (every !== undefined && (typeof every !== "number" || !Number.isInteger(every) || every < 1)) {
+				throw new EditorApiError({ code: "invalid_params", message: "every must be a positive integer" });
+			}
+			if (apply !== undefined && apply !== "none" && apply !== "bookmarks") {
+				throw new EditorApiError({ code: "invalid_params", message: "apply must be none or bookmarks" });
+			}
+			try {
+				const analysis = await analyzeClipBeats({ editor, trackId: track.id, elementId: element.id });
+				const times = beatTimes({ markers: analysis.markers, every: every ?? 1 });
+				const applied = apply === "bookmarks" ? bookmarkBeats({ editor, times }) : 0;
+				return {
+					bpm: analysis.bpm,
+					confidence: analysis.confidence,
+					beats: analysis.markers.map((marker) => ({
+						sourceSeconds: marker.sourceSeconds,
+						timelineSeconds: marker.timelineTicks === null ? null : seconds(marker.timelineTicks as MediaTime),
+					})),
+					applied,
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Beat detection failed" });
 			}
 		},
 		"audio.loudnessTargets": () => LOUDNESS_TARGETS.map((target) => ({ ...target })),

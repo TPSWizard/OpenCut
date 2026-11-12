@@ -114,7 +114,20 @@ impl TimelinePanel {
             }
             DragMode::Move => {
                 let pointer_seconds = self.seconds_at(position.x, cx);
-                let start = (pointer_seconds - drag.grab_offset).max(0.0);
+                let mut start = (pointer_seconds - drag.grab_offset).max(0.0);
+                // Snap the clip's start or end to a beat marker within 8 px.
+                {
+                    let state = self.state.read(cx);
+                    if !state.markers.is_empty() {
+                        let tolerance = 8.0 / state.zoom.max(1.0) as f64;
+                        let duration = state
+                            .project()
+                            .element(&drag.element_id)
+                            .map(|(_, element)| element.duration.to_seconds_f64())
+                            .unwrap_or(0.0);
+                        start = snap_to_markers(start, duration, &state.markers, tolerance);
+                    }
+                }
                 let track_index = self.track_index_at(position.y);
                 let moved = self
                     .preview
@@ -227,6 +240,7 @@ impl Render for TimelinePanel {
         let playhead = state.playhead();
         let duration = state.duration();
         let marks = (state.mark_in, state.mark_out);
+        let markers: Vec<f64> = state.markers.iter().map(|time| time.to_seconds_f64()).collect();
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
@@ -302,6 +316,15 @@ impl Render for TimelinePanel {
                         |_, _, _, cx| cx.new(|_| gpui::Empty),
                     )
                     .children(ticks)
+                    .children(markers.iter().filter(|seconds| **seconds >= scroll && **seconds <= scroll + visible_seconds).map(|seconds| {
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .left(px(to_x(*seconds) - 1.0))
+                            .w(px(2.))
+                            .h(px(8.))
+                            .bg(colors.primary)
+                    }))
                     .when(marks.0.is_some() || marks.1.is_some(), |this| {
                         let start = marks.0.map(|t| t.to_seconds_f64()).unwrap_or(0.0);
                         let end = marks.1.map(|t| t.to_seconds_f64()).unwrap_or(duration.to_seconds_f64().max(start));
@@ -935,6 +958,25 @@ impl Waveform {
 
 /// Peaks as a centred bar per pixel column, scaled by the gain at that
 /// point, with the gain curve drawn over them (mid-height is 0 dB).
+/// The start (or the end, for the clip's end) nearest a marker within
+/// `tolerance` seconds, else `start` unchanged.
+fn snap_to_markers(start: f64, duration: f64, markers: &[time::MediaTime], tolerance: f64) -> f64 {
+    let mut best: Option<(f64, f64)> = None;
+    for marker in markers {
+        let marker = marker.to_seconds_f64();
+        for candidate in [marker, marker - duration] {
+            if candidate < 0.0 {
+                continue;
+            }
+            let distance = (candidate - start).abs();
+            if distance <= tolerance && best.is_none_or(|(_, d)| distance < d) {
+                best = Some((candidate, distance));
+            }
+        }
+    }
+    best.map(|(candidate, _)| candidate).unwrap_or(start)
+}
+
 fn paint_waveform(bounds: Bounds<Pixels>, waveform: &Waveform, window: &mut Window) {
     let width = f32::from(bounds.size.width);
     let height = f32::from(bounds.size.height);
@@ -998,5 +1040,21 @@ mod tests {
         assert!((keyed.gain_at(0.0) - 1.0).abs() < 1e-6);
         assert!((keyed.gain_at(1.0) - 0.1).abs() < 1e-6);
         assert!(keyed.gain_at(0.5) < 1.0 && keyed.gain_at(0.5) > 0.1);
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::snap_to_markers;
+    use time::MediaTime;
+
+    #[test]
+    fn snap_to_markers_prefers_the_nearest_edge() {
+        let markers: Vec<MediaTime> = [2.0, 5.0].iter().map(|s| MediaTime::from_seconds_f64(*s).unwrap()).collect();
+        // The start lands on the 2 s marker; the end (start + 1 s) would land on 5 s from 4.03.
+        assert_eq!(snap_to_markers(1.95, 1.0, &markers, 0.1), 2.0);
+        assert_eq!(snap_to_markers(4.03, 1.0, &markers, 0.1), 4.0);
+        assert_eq!(snap_to_markers(3.0, 1.0, &markers, 0.1), 3.0, "nothing within reach stays put");
+        assert_eq!(snap_to_markers(0.0, 3.0, &markers, 0.1), 0.0, "a negative candidate is skipped");
     }
 }

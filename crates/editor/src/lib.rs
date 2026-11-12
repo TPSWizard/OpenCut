@@ -10,6 +10,7 @@
 
 mod animation;
 mod audio;
+mod beats;
 mod bundle;
 mod captions;
 mod commands;
@@ -35,6 +36,7 @@ pub use animation::{
     parse_color_to_linear_rgba, resolve_object_params, resolve_params, split_animations,
 };
 pub use audio::{AudioClipPlan, plan_audio};
+pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
 pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, import_bundle};
 pub use captions::{
     CaptionChunk, DEFAULT_WORDS_PER_CAPTION, GENERATED_CAPTION_HIGHLIGHT, MAX_CAPTION_WORD_GAP_SECONDS,

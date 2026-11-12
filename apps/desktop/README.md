@@ -251,6 +251,17 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
+## Beat markers
+
+The inspector's **Beats** section (audio and video clips) finds the tempo
+of the selected clip from its onsets (log-energy flux, 60–200 BPM with a
+preference for 120, written here; `crates/editor/src/beats.rs` is the same
+code as the web app's `src/beats/track.ts`) and puts a marker on every
+beat, every second beat or every bar on the ruler. Clips snap their start
+or end to a marker within 8 px while dragged. Markers are not saved with
+the project; **Clear markers** removes them. The web editor places beats
+as bookmarks instead, which its timeline already snaps to.
+
 ## Loudness
 
 The inspector's **Loudness** section (audio and video clips) measures the

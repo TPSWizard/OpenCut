@@ -33,6 +33,7 @@ pub(crate) struct InspectorPanel {
     silence_min_seconds: f64,
     loudness_target: usize,
     shot_threshold: f64,
+    beats_every: usize,
     silence_ripple: editor::RippleScope,
 }
 
@@ -104,6 +105,7 @@ impl InspectorPanel {
             silence_min_seconds: 0.5,
             loudness_target: 0,
             shot_threshold: 20.0,
+            beats_every: 1,
             silence_ripple: editor::RippleScope::All,
         }
     }
@@ -464,6 +466,8 @@ impl Render for InspectorPanel {
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
         let loudness = state.loudness.clone();
+        let beats = state.beats;
+        let marker_count = state.markers.len();
         // Voice choices for auto-ducking: every other clip with audio.
         let duck_others: Vec<(String, String)> = selected
             .as_ref()
@@ -1089,6 +1093,67 @@ impl Render for InspectorPanel {
                         .child(min_row)
                         .child(ripple_row)
                         .child(silence_row);
+
+                    // Beat markers: tempo from the clip's onsets; markers the
+                    // timeline snaps to while clips are dragged.
+                    let mut every_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Mark", window));
+                    for (label, value) in [("Every beat", 1usize), ("Every 2nd", 2), ("Bars (4)", 4)] {
+                        let active = self.beats_every == value;
+                        every_row = every_row.child(
+                            Button::new(eid("beats-every", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.beats_every = value;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let every = self.beats_every;
+                    let beats_actions = div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("beats-find", "Find beats")
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.detect_beats_selected(every, cx));
+                                })
+                        })
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("beats-clear", "Clear markers")
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(marker_count == 0)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.clear_markers(cx));
+                                })
+                        });
+                    content = content
+                        .child(self.heading("Beats", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(match beats {
+                                    Some((bpm, confidence)) => format!(
+                                        "{bpm:.1} BPM, confidence {:.0}%, {marker_count} marker(s) on the ruler; clips snap to them.",
+                                        confidence * 100.0
+                                    ),
+                                    None => "Finds the tempo (60–200 BPM) and puts markers on the beats; clips snap to markers while dragged.".to_owned(),
+                                }),
+                        )
+                        .child(every_row)
+                        .child(beats_actions);
 
                     // Loudness (EBU R128): measure the clip's source, or set
                     // its volume so the integrated loudness meets a target.

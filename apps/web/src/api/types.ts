@@ -630,6 +630,20 @@ export interface EditorApiMethods {
 			applied: number;
 		};
 	};
+	/**
+	 * Tempo and beats of a clip's audio (onset energy, 60–200 BPM); with
+	 * `apply: "bookmarks"` every `every`-th beat (default 1) is bookmarked,
+	 * and the timeline snaps to bookmarks.
+	 */
+	"audio.detectBeats": {
+		params: ApiElementLocator & { every?: number; apply?: "none" | "bookmarks" };
+		result: {
+			bpm: number | null;
+			confidence: number;
+			beats: { sourceSeconds: number; timelineSeconds: number | null }[];
+			applied: number;
+		};
+	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {
 		params: Record<string, never>;
