@@ -473,6 +473,35 @@ impl Render for PreviewPanel {
             );
         }
 
+        // Preview quality: how many pixels are rendered, and proxies on/off.
+        let quality = state.settings.preview_quality;
+        let use_proxies = state.settings.use_proxies;
+        let (pixels_w, pixels_h) = state.preview_pixels();
+        let mut quality_row = div().flex().items_center().gap(px(2.)).ml(px(8.)).child(
+            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Quality"),
+        );
+        for choice in crate::settings::PreviewQuality::ALL {
+            let state = self.state.clone();
+            quality_row = quality_row.child(
+                Button::new(crate::components::eid("quality", choice.label()), choice.label())
+                    .variant(if choice == quality { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                    .size(ButtonSize::XSmall)
+                    .on_click(move |_, _, cx| {
+                        state.update(cx, |state, cx| state.set_preview_quality(choice, cx));
+                    }),
+            );
+        }
+        quality_row = quality_row.child({
+            let state = self.state.clone();
+            Button::new("use-proxies", "Proxies")
+                .variant(if use_proxies { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                .size(ButtonSize::XSmall)
+                .on_click(move |_, _, cx| {
+                    state.update(cx, |state, cx| state.set_use_proxies(!use_proxies, cx));
+                })
+        });
+        let canvas_label = format!("{canvas_label} · preview {pixels_w}×{pixels_h}");
+
         let transport = |id: &'static str, label: &'static str, action: fn(&mut EditorState, &mut Context<EditorState>)| {
             let state = self.state.clone();
             let focus_handle = focus_handle.clone();
@@ -528,6 +557,7 @@ impl Render for PreviewPanel {
                     )
                     .child(div().flex_1())
                     .child(guide_row)
+                    .child(quality_row)
                     .child(div().flex_1())
                     .child(
                         div()

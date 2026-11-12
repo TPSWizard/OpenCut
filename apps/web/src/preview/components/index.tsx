@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useDeepCompareEffect from "use-deep-compare-effect";
 import { useEditor } from "@/editor/use-editor";
+import { usePreviewStore } from "@/preview/preview-store";
 import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
@@ -99,6 +100,8 @@ function RenderTreeController() {
 	);
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const activeProject = useEditor((e) => e.project.getActive());
+	const previewQuality = usePreviewStore((state) => state.previewQuality);
+	const useProxies = usePreviewStore((state) => state.useProxies);
 
 	const { width, height } = usePreviewSize();
 
@@ -113,10 +116,20 @@ function RenderTreeController() {
 			canvasSize: { width, height },
 			background: activeProject.settings.background,
 			isPreview: true,
+			previewSource: { quality: previewQuality, useProxies },
 		});
 
 		editor.renderer.setRenderTree({ renderTree });
-	}, [tracks, mediaAssets, activeProject?.settings.background, width, height]);
+	}, [
+		tracks,
+		mediaAssets.map((asset) => `${asset.id}:${asset.proxyWidth ?? 0}`),
+		mediaAssets,
+		activeProject?.settings.background,
+		width,
+		height,
+		previewQuality,
+		useProxies,
+	]);
 
 	return null;
 }

@@ -23,16 +23,26 @@ export class VideoCache {
 	private frameChain = new Map<string, Promise<unknown>>();
 	private seekGenerations = new Map<string, number>();
 
+	/**
+	 * The frame at `time` seconds. `key` names the decoder (default: the
+	 * media id) so the preview's proxy or scaled decoders never serve
+	 * export; `size` decodes at that size instead of the file's own.
+	 */
 	async getFrameAt({
-		mediaId,
+		mediaId: baseId,
 		file,
 		time,
+		key,
+		size,
 	}: {
 		mediaId: string;
 		file: File;
 		time: number;
+		key?: string;
+		size?: { width: number; height: number };
 	}): Promise<WrappedCanvas | null> {
-		await this.ensureSink({ mediaId, file });
+		const mediaId = key ?? baseId;
+		await this.ensureSink({ mediaId, file, size });
 
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
@@ -235,9 +245,11 @@ export class VideoCache {
 	private async ensureSink({
 		mediaId,
 		file,
+		size,
 	}: {
 		mediaId: string;
 		file: File;
+		size?: { width: number; height: number };
 	}): Promise<void> {
 		if (this.sinks.has(mediaId)) return;
 
@@ -246,7 +258,7 @@ export class VideoCache {
 			return;
 		}
 
-		const initPromise = this.initializeSink({ mediaId, file });
+		const initPromise = this.initializeSink({ mediaId, file, size });
 		this.initPromises.set(mediaId, initPromise);
 
 		try {
@@ -258,9 +270,11 @@ export class VideoCache {
 	private async initializeSink({
 		mediaId,
 		file,
+		size,
 	}: {
 		mediaId: string;
 		file: File;
+		size?: { width: number; height: number };
 	}): Promise<void> {
 		const input = new Input({
 			source: new BlobSource(file),
@@ -281,6 +295,7 @@ export class VideoCache {
 			const sink = new CanvasSink(videoTrack, {
 				poolSize: 3,
 				fit: "contain",
+				...(size ? { width: size.width, height: size.height } : {}),
 			});
 
 			this.sinks.set(mediaId, {
@@ -300,7 +315,15 @@ export class VideoCache {
 		}
 	}
 
+	/** Drops every decoder of a media item (its own and the preview's variants). */
 	clearVideo({ mediaId }: { mediaId: string }): void {
+		for (const key of [...this.sinks.keys(), ...this.initPromises.keys()]) {
+			if (key.startsWith(`${mediaId}|`)) this.clearKey({ key });
+		}
+		this.clearKey({ key: mediaId });
+	}
+
+	private clearKey({ key: mediaId }: { key: string }): void {
 		const sinkData = this.sinks.get(mediaId);
 		if (sinkData) {
 			if (sinkData.iterator) {
@@ -320,6 +343,15 @@ export class VideoCache {
 		for (const [mediaId] of this.sinks) {
 			this.clearVideo({ mediaId });
 		}
+	}
+
+	/** The decoders open now: their key and the size frames come out at. */
+	describeSinks(): { key: string; width: number | null; height: number | null }[] {
+		return [...this.sinks.entries()].map(([key, data]) => ({
+			key,
+			width: data.currentFrame?.canvas.width ?? null,
+			height: data.currentFrame?.canvas.height ?? null,
+		}));
 	}
 
 	getStats() {

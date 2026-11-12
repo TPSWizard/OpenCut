@@ -30,6 +30,10 @@ pub struct RendererOptions {
     /// Where sticker SVG files live, named by [`sticker_file_name`]; a
     /// sticker without a file there is not drawn.
     pub stickers_dir: Option<std::path::PathBuf>,
+    /// Decode videos from their proxies in this folder when one exists
+    /// (see `media::proxy_path`); `None` always reads the originals, which
+    /// is what export wants.
+    pub proxy_dir: Option<std::path::PathBuf>,
 }
 
 /// The file a sticker id's SVG is kept under in the stickers directory.
@@ -75,6 +79,9 @@ pub struct Renderer {
     stickers_dir: Option<std::path::PathBuf>,
     /// Rasterised stickers by texture id: the pixel size uploaded.
     stickers: HashMap<String, (u32, u32)>,
+    proxy_dir: Option<std::path::PathBuf>,
+    /// Media id → its proxy file and that file's frame size, once looked up.
+    proxies: HashMap<String, Option<(std::path::PathBuf, (u32, u32))>>,
 }
 
 impl Renderer {
@@ -100,7 +107,29 @@ impl Renderer {
             fonts_dir: options.fonts_dir,
             stickers_dir: options.stickers_dir,
             stickers: HashMap::new(),
+            proxy_dir: options.proxy_dir,
+            proxies: HashMap::new(),
         })
+    }
+
+    /// Starts or stops decoding from proxies (`None` reads the originals).
+    pub fn set_proxy_dir(&mut self, proxy_dir: Option<std::path::PathBuf>) {
+        if self.proxy_dir != proxy_dir {
+            self.proxy_dir = proxy_dir;
+            self.proxies.clear();
+            self.videos.clear();
+        }
+    }
+
+    /// The proxy a video is decoded from, when proxies are on and one exists.
+    fn proxy_for(&mut self, media: &editor::MediaItem, natural: (u32, u32)) -> Option<(std::path::PathBuf, (u32, u32))> {
+        let dir = self.proxy_dir.as_ref()?;
+        if let Some(found) = self.proxies.get(&media.id) {
+            return found.clone();
+        }
+        let found = media::existing_proxy(dir, &media.path).map(|path| (path, media::proxy_size(natural)));
+        self.proxies.insert(media.id.clone(), found.clone());
+        found
     }
 
     /// Picks up font files added to the fonts directory since start and
@@ -395,18 +424,26 @@ impl Renderer {
                     canvas.width as f32,
                     canvas.height as f32,
                 );
-                let wanted_width = decode_width(fit_width * output_scale, natural.0);
+                // Preview decodes from the proxy when there is one; the
+                // layout still uses the original's size.
+                let (decode_path, decode_size) = match self.proxy_for(media, natural) {
+                    Some((path, size)) => (path, size),
+                    None => (media.path.clone(), natural),
+                };
+                let wanted_width = decode_width(fit_width * output_scale, decode_size.0);
                 let needs_new = match self.videos.get(media_id) {
                     Some(source) => {
                         let current = source.output_width() as f32;
-                        wanted_width as f32 > current * 1.3 || (wanted_width as f32) < current * 0.6
+                        source.path() != decode_path.as_path()
+                            || wanted_width as f32 > current * 1.3
+                            || (wanted_width as f32) < current * 0.6
                     }
                     None => true,
                 };
                 if needs_new {
                     self.videos.insert(
                         media_id.clone(),
-                        VideoSource::new(ffmpeg, &media.path, natural, wanted_width, fps),
+                        VideoSource::new(ffmpeg, &decode_path, decode_size, wanted_width, fps),
                     );
                 }
                 let source = self.videos.get_mut(media_id).expect("inserted above");
@@ -569,6 +606,7 @@ impl Renderer {
     /// its file changed).
     pub fn forget_media(&mut self, media_id: &str) {
         self.videos.remove(media_id);
+        self.proxies.remove(media_id);
         self.images.remove(media_id);
         let texture_id = format!("media:{media_id}");
         if self.slots.remove(&texture_id).is_some() {

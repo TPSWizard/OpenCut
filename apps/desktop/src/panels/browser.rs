@@ -93,6 +93,10 @@ impl Render for MediaPanel {
                         .map(|d| short_duration(d.to_seconds_f64()))
                         .unwrap_or_default(),
                 };
+                let proxy_media_id = id.clone();
+                let is_video = media.kind == MediaKind::Video;
+                let proxy_ready = state.proxies_ready.contains(&media.id);
+                let proxy_making = state.proxies_making.contains(&media.id);
                 let state_for_click = self.state.clone();
                 let focus_for_click = focus_handle.clone();
                 div()
@@ -154,6 +158,8 @@ impl Render for MediaPanel {
                                     .items_center()
                                     .gap(px(6.))
                                     .child(Badge::new(kind).variant(BadgeVariant::Outline))
+                                    .when(proxy_ready, |row| row.child(Badge::new("proxy").variant(BadgeVariant::Secondary)))
+                                    .when(proxy_making, |row| row.child(Badge::new("proxy…").variant(BadgeVariant::Outline)))
                                     .child(
                                         div()
                                             .text_xs()
@@ -173,6 +179,24 @@ impl Render for MediaPanel {
                                 let media_id = id.clone();
                                 state.update(cx, |state, cx| state.add_media_to_timeline(&media_id, cx));
                             })
+                    })
+                    .when(is_video && has_ffmpeg && !proxy_making, |row| {
+                        let state = self.state.clone();
+                        let proxy_id = proxy_media_id.clone();
+                        row.child(
+                            Button::new(eid("proxy", &proxy_media_id), if proxy_ready { "Drop proxy" } else { "Proxy" })
+                                .variant(ButtonVariant::Ghost)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| {
+                                        if proxy_ready {
+                                            state.remove_proxy(&proxy_id, cx);
+                                        } else {
+                                            state.make_proxy(&proxy_id, cx);
+                                        }
+                                    });
+                                }),
+                        )
                     })
                     .child(
                         Button::new(eid("remove", &remove_id), "×")

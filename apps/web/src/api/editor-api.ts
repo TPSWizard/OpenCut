@@ -34,8 +34,15 @@ import type { TProject, TProjectSettings } from "@/project/types";
 import {
 	mediaTimeFromSeconds,
 	mediaTimeToSeconds,
+	TICKS_PER_SECOND,
 	type MediaTime,
 } from "@/wasm";
+import { useProxyJobs } from "@/media/proxy-store";
+import { isPreviewQuality } from "@/media/proxy";
+import { usePreviewStore } from "@/preview/preview-store";
+import { buildScene } from "@/services/renderer/scene-builder";
+import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
+import { videoCache } from "@/services/video-cache/service";
 import {
 	EDITOR_API_VERSION,
 	EditorApiError,
@@ -52,6 +59,7 @@ import {
 	type ApiPlatformCheck,
 	type ApiPlatformPreset,
 	type ApiMediaInfo,
+	type ApiPreviewSettings,
 	type ApiPlaybackState,
 	type ApiProjectInfo,
 	type ApiProjectSummary,
@@ -327,7 +335,16 @@ function toMediaInfo(asset: MediaAsset): ApiMediaInfo {
 		height: asset.height,
 		fps: asset.fps,
 		hasAudio: asset.hasAudio,
+		...(asset.proxyFile && asset.proxyWidth && asset.proxyHeight
+			? { proxy: { width: asset.proxyWidth, height: asset.proxyHeight } }
+			: {}),
+		...(asset.id in useProxyJobs.getState().making ? { proxyPending: true } : {}),
 	};
+}
+
+function previewSettings(): ApiPreviewSettings {
+	const state = usePreviewStore.getState();
+	return { quality: state.previewQuality, useProxies: state.useProxies, autoProxies: state.autoProxies };
 }
 
 function fileNameFromUrl(url: string): string {
@@ -817,6 +834,80 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				});
 			}
 			return importFiles(files);
+		},
+		"media.makeProxy": async ({ mediaId }) => {
+			const project = requireProject();
+			const asset = editor.media.getAssets().find((item) => item.id === mediaId);
+			if (!asset) throw new EditorApiError({ code: "not_found", message: `No media ${mediaId}` });
+			if (asset.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Only videos get proxies" });
+			}
+			try {
+				return toMediaInfo(await editor.media.makeProxy({ projectId: project.metadata.id, mediaId }));
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"media.removeProxy": async ({ mediaId }) => {
+			const project = requireProject();
+			const updated = await editor.media.removeProxy({ projectId: project.metadata.id, mediaId });
+			if (!updated) throw new EditorApiError({ code: "not_found", message: `No media ${mediaId}` });
+			return toMediaInfo(updated);
+		},
+		"preview.getSettings": () => previewSettings(),
+		"preview.setSettings": ({ quality, useProxies, autoProxies }) => {
+			const store = usePreviewStore.getState();
+			if (quality !== undefined) {
+				if (!isPreviewQuality(quality)) {
+					throw new EditorApiError({ code: "invalid_params", message: "quality is auto, full, half or quarter" });
+				}
+				store.setPreviewQuality(quality);
+			}
+			if (useProxies !== undefined) store.setUseProxies(Boolean(useProxies));
+			if (autoProxies !== undefined) store.setAutoProxies(Boolean(autoProxies));
+			return previewSettings();
+		},
+		"preview.capture": async ({ time }) => {
+			const project = requireProject();
+			const { canvasSize, fps, background } = project.settings;
+			const tree = buildScene({
+				tracks: editor.scenes.getActiveScene().tracks,
+				mediaAssets: editor.media.getAssets(),
+				duration: editor.timeline.getTotalDuration(),
+				canvasSize,
+				background,
+				isPreview: true,
+				previewSource: { quality: usePreviewStore.getState().previewQuality, useProxies: usePreviewStore.getState().useProxies },
+			});
+			const at =
+				time === undefined
+					? editor.playback.getCurrentTime()
+					: Math.round(Number(time) * TICKS_PER_SECOND);
+			const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps });
+			const canvas = document.createElement("canvas");
+			canvas.width = canvasSize.width;
+			canvas.height = canvasSize.height;
+			await renderer.renderToCanvas({ node: tree, time: at, targetCanvas: canvas });
+			const context = canvas.getContext("2d");
+			let centre: [number, number, number] = [0, 0, 0];
+			if (context) {
+				const box = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) / 8));
+				const data = context.getImageData(
+					Math.round(canvas.width / 2 - box / 2),
+					Math.round(canvas.height / 2 - box / 2),
+					box,
+					box,
+				).data;
+				const sum = [0, 0, 0];
+				for (let index = 0; index < data.length; index += 4) {
+					sum[0] += data[index];
+					sum[1] += data[index + 1];
+					sum[2] += data[index + 2];
+				}
+				const count = data.length / 4;
+				centre = [Math.round(sum[0] / count), Math.round(sum[1] / count), Math.round(sum[2] / count)];
+			}
+			return { width: canvas.width, height: canvas.height, centre, decoders: videoCache.describeSinks() };
 		},
 		"media.remove": ({ mediaId }) => {
 			const project = requireProject();

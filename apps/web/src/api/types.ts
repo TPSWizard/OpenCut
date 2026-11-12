@@ -73,6 +73,19 @@ export interface ApiMediaInfo {
 	height?: number;
 	fps?: number;
 	hasAudio?: boolean;
+	/** The proxy the preview decodes instead of the original, when there is one. */
+	proxy?: { width: number; height: number };
+	/** True while a proxy is being made. */
+	proxyPending?: boolean;
+}
+
+export type ApiPreviewQuality = "auto" | "full" | "half" | "quarter";
+
+export interface ApiPreviewSettings {
+	/** How finely the preview decodes video: auto fits the canvas, half and quarter go lower, full decodes every pixel. */
+	quality: ApiPreviewQuality;
+	useProxies: boolean;
+	autoProxies: boolean;
 }
 
 export interface ApiRetime {
@@ -446,6 +459,30 @@ export interface EditorApiMethods {
 	};
 	"media.importFiles": { params: { files: File[] }; result: ApiMediaInfo[] };
 	"media.remove": { params: { mediaId: string }; result: { removed: true } };
+	/**
+	 * Makes a small proxy of a video (longer side 960 px, H.264 or VP9, no
+	 * audio) that the preview decodes instead of the original; export always
+	 * reads the original. Resolves when the proxy is stored.
+	 */
+	"media.makeProxy": { params: { mediaId: string }; result: ApiMediaInfo };
+	"media.removeProxy": { params: { mediaId: string }; result: ApiMediaInfo };
+	/** Preview quality and proxy settings (kept per browser). */
+	"preview.getSettings": { params: Record<string, never>; result: ApiPreviewSettings };
+	"preview.setSettings": { params: Partial<ApiPreviewSettings>; result: ApiPreviewSettings };
+	/**
+	 * Renders the preview's own scene (proxies and quality applied) at
+	 * `time` seconds (default: the playhead) and reports which decoders it
+	 * used; `sample` returns the average colour of a centred box.
+	 */
+	"preview.capture": {
+		params: { time?: number };
+		result: {
+			width: number;
+			height: number;
+			centre: [number, number, number];
+			decoders: { key: string; width: number | null; height: number | null }[];
+		};
+	};
 
 	"timeline.get": { params: Record<string, never>; result: ApiTimelineInfo };
 	"timeline.addClip": {

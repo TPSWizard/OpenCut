@@ -47,6 +47,7 @@ import {
 } from "@/components/editor/panels/assets/assets-panel-store";
 import { MASKABLE_ELEMENT_TYPES } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
+import { useProxyJobs } from "@/media/proxy-store";
 import { cn } from "@/utils/ui";
 import {
 	CloudUploadIcon,
@@ -316,14 +317,38 @@ function MediaItemWithContextMenu({
 	}) => void;
 }) {
 	const { isSelected, selectedIds } = useSelection();
+	const editor = useEditor();
+	const making = useProxyJobs((state) => item.id in state.making);
 	const idsToDelete = isSelected(item.id) ? selectedIds : [item.id];
 	const deleteLabel =
 		idsToDelete.length > 1 ? `Delete ${idsToDelete.length} items` : "Delete";
+
+	const onProxy = () => {
+		const projectId = editor.project.getActive()?.metadata.id;
+		if (!projectId) return;
+		if (item.proxyFile) {
+			void editor.media
+				.removeProxy({ projectId, mediaId: item.id })
+				.then(() => toast.success(`Proxy of ${item.name} removed`))
+				.catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
+			return;
+		}
+		toast.promise(editor.media.makeProxy({ projectId, mediaId: item.id }), {
+			loading: `Making a proxy of ${item.name}…`,
+			success: (asset) => `Proxy ready (${asset.proxyWidth}×${asset.proxyHeight})`,
+			error: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+		});
+	};
 
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
+				{item.type === "video" ? (
+					<ContextMenuItem disabled={making} onClick={onProxy}>
+						{making ? "Making proxy…" : item.proxyFile ? "Remove proxy" : "Make proxy"}
+					</ContextMenuItem>
+				) : null}
 				<ContextMenuItem>Export clips</ContextMenuItem>
 				<ContextMenuItem
 					variant="destructive"
@@ -395,6 +420,23 @@ function MediaDurationBadge({ duration }: { duration?: number }) {
 	return (
 		<div className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-xs text-white">
 			{formatDuration({ duration })}
+		</div>
+	);
+}
+
+/** "Proxy" when the preview decodes a proxy of this video, its progress while one is made. */
+function MediaProxyBadge({ item }: { item: MediaAsset }) {
+	const progress = useProxyJobs((state) => state.making[item.id]);
+	const failed = useProxyJobs((state) => state.failed[item.id]);
+	if (progress === undefined && !item.proxyFile && !failed) return null;
+	const label = progress !== undefined ? `Proxy ${Math.round(progress * 100)}%` : item.proxyFile ? "Proxy" : "Proxy failed";
+	return (
+		<div
+			className="absolute left-1 bottom-1 rounded bg-black/70 px-1 text-xs text-white"
+			title={failed ?? (item.proxyFile ? `Preview plays a ${item.proxyWidth}×${item.proxyHeight} proxy` : undefined)}
+			data-testid="media-proxy-badge"
+		>
+			{label}
 		</div>
 	);
 }
@@ -475,6 +517,7 @@ function MediaPreview({
 					{shouldShowDurationBadge ? (
 						<MediaDurationBadge duration={item.duration} />
 					) : null}
+					<MediaProxyBadge item={item} />
 				</div>
 			);
 		}

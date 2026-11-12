@@ -55,6 +55,8 @@ pub(crate) enum RenderRequest {
     Release,
     /// Font files were added to the fonts directory; lay text out again.
     ReloadFonts,
+    /// Decode the preview from proxies (true) or from the originals.
+    SetProxies(bool),
     Export {
         project: Arc<Project>,
         settings: ExportSettings,
@@ -125,6 +127,8 @@ fn render_loop(
         ffmpeg: ffmpeg.clone(),
         fonts_dir: Some(fonts_dir.clone()),
         stickers_dir: Some(stickers_dir.clone()),
+        // The preview prefers proxies; `SetProxies` turns that off.
+        proxy_dir: crate::settings::load().use_proxies.then(render::default_cache_dir),
     }) {
         Ok(renderer) => Some(renderer),
         Err(error) => {
@@ -232,6 +236,11 @@ fn handle(
                 renderer.prune(&project);
             }
         }
+        RenderRequest::SetProxies(on) => {
+            if let Some(renderer) = renderer.as_mut() {
+                renderer.set_proxy_dir(on.then(render::default_cache_dir));
+            }
+        }
         RenderRequest::Release => {
             if let Some(renderer) = renderer.as_mut() {
                 renderer.release_decoders();
@@ -330,6 +339,8 @@ fn export(
         ffmpeg: Some(ffmpeg.clone()),
         fonts_dir: Some(crate::fonts::fonts_dir(&editor::ProjectStore::default_root())),
         stickers_dir: Some(crate::stickers::stickers_dir(&editor::ProjectStore::default_root())),
+        // Export always reads the original media.
+        proxy_dir: None,
     })
     .map_err(|error| error.to_string())?;
 

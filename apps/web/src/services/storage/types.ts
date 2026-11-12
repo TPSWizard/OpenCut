@@ -27,6 +27,9 @@ export interface MediaAssetData {
 	hasAudio?: boolean;
 	ephemeral?: boolean;
 	thumbnailUrl?: string;
+	/** Frame size of the stored proxy, when the video has one. */
+	proxyWidth?: number;
+	proxyHeight?: number;
 }
 
 export type SerializedScene = Omit<TScene, "createdAt" | "updatedAt"> & {

@@ -13,6 +13,9 @@ export type BlurBackgroundNodeParams = {
 	trimEnd: number;
 	retime?: RetimeConfig;
 	blurIntensity: number;
+	/** The preview's decoder for this source; see `applyPreviewSources`. */
+	decodeKey?: string;
+	decodeSize?: { width: number; height: number };
 };
 
 export type BackdropSource = {

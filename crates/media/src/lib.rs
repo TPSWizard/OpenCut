@@ -18,6 +18,7 @@ mod ffmpeg;
 mod image_decode;
 mod scenes;
 mod probe;
+mod proxy;
 mod video;
 
 pub use audio::{AudioReader, AudioSettings};
@@ -27,5 +28,6 @@ pub use error::MediaError;
 pub use ffmpeg::Ffmpeg;
 pub use image_decode::{decode_image, is_image_path};
 pub use probe::{MediaInfo, MediaKind, probe};
+pub use proxy::{AUTO_PROXY_PIXELS, PROXY_LONG_EDGE, existing_proxy, make_proxy, proxy_path, proxy_size, wants_proxy};
 pub use scenes::{SceneScore, parse_scdet, scene_scores};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

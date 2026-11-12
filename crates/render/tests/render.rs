@@ -14,7 +14,7 @@ fn seconds(value: f64) -> MediaTime {
 }
 
 fn renderer(ffmpeg: Option<std::sync::Arc<Ffmpeg>>) -> Option<Renderer> {
-    match Renderer::new(RendererOptions { ffmpeg, fonts_dir: None, stickers_dir: None }) {
+    match Renderer::new(RendererOptions { ffmpeg, fonts_dir: None, stickers_dir: None, proxy_dir: None }) {
         Ok(renderer) => Some(renderer),
         Err(RenderError::Gpu(error)) => {
             eprintln!("no GPU adapter ({error}); skipping");
@@ -406,4 +406,83 @@ fn renders_video_frames_through_ffmpeg() {
     assert!(p[2] > 200 && p[1] < 40 && p[0] < 40, "video frame is red: {p:?}");
     let edge = pixel(&frame, 2, 54);
     assert_eq!(edge, [0, 0, 0, 255], "letterboxed sides show the black background");
+}
+
+fn lavfi_clip(ffmpeg: &Ffmpeg, path: &Path, source: &str) {
+    let status = Command::new(ffmpeg.ffmpeg_path())
+        .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", source, "-c:v", "libx264", "-pix_fmt", "yuv420p"])
+        .arg(path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
+#[test]
+fn preview_decodes_proxies_and_export_reads_originals() {
+    let Ok(ffmpeg) = Ffmpeg::locate() else {
+        eprintln!("ffmpeg not installed; skipping");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let proxies = dir.path().join("proxies");
+    let clip = dir.path().join("big.mp4");
+    lavfi_clip(&ffmpeg, &clip, "color=c=red:size=2560x1440:rate=30:duration=1");
+    let info = probe(&ffmpeg, &clip).unwrap();
+
+    // A real proxy has the right size and the source's length.
+    let made = proxies.join("made.mp4");
+    let size = media::make_proxy(&ffmpeg, &clip, &made, (2560, 1440)).unwrap();
+    assert_eq!(size, (960, 540));
+    let made_info = probe(&ffmpeg, &made).unwrap();
+    assert_eq!((made_info.width, made_info.height), (Some(960), Some(540)));
+    assert!(!made_info.has_audio);
+    let lengths = (made_info.duration.unwrap().to_seconds_f64(), info.duration.unwrap().to_seconds_f64());
+    assert!((lengths.0 - lengths.1).abs() < 0.1, "{lengths:?}");
+
+    // Stand a blue clip in as the proxy so the frame tells which file was read.
+    let proxy = media::proxy_path(&proxies, &clip).unwrap();
+    lavfi_clip(&ffmpeg, &proxy, "color=c=blue:size=960x540:rate=30:duration=1");
+
+    let mut project = Project::new("Proxy");
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "big".to_owned(),
+            name: "big.mp4".to_owned(),
+            kind: MediaKind::Video,
+            path: clip,
+            duration: info.duration,
+            width: info.width,
+            height: info.height,
+            fps: info.fps,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let element = Element::from_media(project.media_item("big").unwrap(), seconds(0.0));
+    apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+
+    let Ok(mut preview) = Renderer::new(RendererOptions {
+        ffmpeg: Some(ffmpeg.clone()),
+        fonts_dir: None,
+        stickers_dir: None,
+        proxy_dir: Some(proxies.clone()),
+    }) else {
+        eprintln!("no GPU adapter; skipping");
+        return;
+    };
+    let frame = preview.render(&project, seconds(0.5), 192, 108).unwrap();
+    let p = pixel(&frame, 96, 54);
+    assert!(p[0] > 200 && p[2] < 40, "preview reads the proxy (blue): {p:?}");
+
+    // Turning proxies off goes back to the original.
+    preview.set_proxy_dir(None);
+    let frame = preview.render(&project, seconds(0.5), 192, 108).unwrap();
+    let p = pixel(&frame, 96, 54);
+    assert!(p[2] > 200 && p[0] < 40, "without proxies the original (red) is read: {p:?}");
+
+    let Some(mut export) = renderer(Some(ffmpeg.clone())) else { return };
+    let frame = export.render(&project, seconds(0.5), 192, 108).unwrap();
+    let p = pixel(&frame, 96, 54);
+    assert!(p[2] > 200 && p[0] < 40, "a renderer without a proxy folder reads the original: {p:?}");
 }

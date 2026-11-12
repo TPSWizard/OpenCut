@@ -19,6 +19,7 @@ mod loudness;
 mod luts;
 mod panels;
 mod render_thread;
+mod settings;
 mod shell;
 mod state;
 mod stickers;

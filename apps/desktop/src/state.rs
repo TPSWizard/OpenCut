@@ -101,6 +101,14 @@ pub(crate) struct EditorState {
     pub preview: Option<Arc<RenderImage>>,
     pub preview_time: Option<MediaTime>,
     preview_size: (u32, u32),
+    /// The frame's size on screen, before the quality setting.
+    shown_size: (u32, u32),
+    /// Preview quality and proxy preferences (`~/.opencut/settings.json`).
+    pub settings: crate::settings::Settings,
+    /// Media ids whose proxy exists on disk.
+    pub proxies_ready: HashSet<String>,
+    /// Media ids whose proxy is being made.
+    pub proxies_making: HashSet<String>,
     pub status: Option<String>,
     pub thumbnails: HashMap<String, Arc<RenderImage>>,
     /// Waveform peaks by media id, once the render thread has read them.
@@ -192,6 +200,10 @@ impl EditorState {
             preview: None,
             preview_time: None,
             preview_size: (640, 360),
+            shown_size: (640, 360),
+            settings: crate::settings::load(),
+            proxies_ready: HashSet::new(),
+            proxies_making: HashSet::new(),
             status,
             thumbnails: HashMap::new(),
             pen: None,
@@ -220,6 +232,7 @@ impl EditorState {
         for media in state.editor.project().media.clone() {
             state.render.send(RenderRequest::Thumbnail { media });
         }
+        state.refresh_proxies();
         state.sync_audio_clips();
         state.request_render(cx);
         state
@@ -1649,9 +1662,16 @@ impl EditorState {
                             let request = RenderRequest::Thumbnail {
                                 media: media.clone(),
                             };
+                            let wants_proxy = state.settings.auto_proxies
+                                && media.kind == MediaKind::Video
+                                && media::wants_proxy(media.width.unwrap_or(0), media.height.unwrap_or(0));
+                            let media_id = media.id.clone();
                             if state.execute(Command::AddMedia(media), cx).is_some() {
                                 added += 1;
                                 state.render.send(request);
+                                if wants_proxy {
+                                    state.make_proxy(&media_id, cx);
+                                }
                             }
                         }
                         Err(message) => failures.push(message),
@@ -1895,13 +1915,118 @@ impl EditorState {
 
     /// Called by the preview panel with the pixels it has to show the frame in.
     pub(crate) fn set_preview_size(&mut self, width: u32, height: u32, cx: &mut Context<Self>) {
+        self.shown_size = (width, height);
         let canvas = self.project().settings.canvas;
-        // Render at the shown size, never larger than the canvas.
-        let (width, height) = fit_size(width, height, canvas.width, canvas.height);
+        // Render at the shown size (never larger than the canvas), scaled by
+        // the quality setting.
+        let fitted = fit_size(width, height, canvas.width, canvas.height);
+        let (width, height) = self.settings.preview_quality.target(fitted, (canvas.width, canvas.height));
         if (width, height) != self.preview_size && width >= 2 && height >= 2 {
             self.preview_size = (width, height);
             self.request_render(cx);
         }
+    }
+
+    /// The pixel size the preview renders at.
+    pub(crate) fn preview_pixels(&self) -> (u32, u32) {
+        self.preview_size
+    }
+
+    pub(crate) fn set_preview_quality(&mut self, quality: crate::settings::PreviewQuality, cx: &mut Context<Self>) {
+        if self.settings.preview_quality == quality {
+            return;
+        }
+        self.settings.preview_quality = quality;
+        self.save_settings(cx);
+        let (width, height) = self.shown_size;
+        self.set_preview_size(width, height, cx);
+        cx.notify();
+    }
+
+    pub(crate) fn set_use_proxies(&mut self, on: bool, cx: &mut Context<Self>) {
+        if self.settings.use_proxies == on {
+            return;
+        }
+        self.settings.use_proxies = on;
+        self.save_settings(cx);
+        self.render.send(RenderRequest::SetProxies(on));
+        self.request_render(cx);
+        cx.notify();
+    }
+
+    fn save_settings(&mut self, cx: &mut Context<Self>) {
+        if let Err(message) = crate::settings::save(&self.settings) {
+            self.set_status(format!("Settings were not saved: {message}"), cx);
+        }
+    }
+
+    /// Notes which videos already have a proxy on disk.
+    fn refresh_proxies(&mut self) {
+        let dir = render::default_cache_dir();
+        self.proxies_ready = self
+            .project()
+            .media
+            .iter()
+            .filter(|media| media.kind == MediaKind::Video && media::existing_proxy(&dir, &media.path).is_some())
+            .map(|media| media.id.clone())
+            .collect();
+    }
+
+    /// Makes a small proxy of a video in the background; the preview then
+    /// decodes it instead of the original. Export always reads the original.
+    pub(crate) fn make_proxy(&mut self, media_id: &str, cx: &mut Context<Self>) {
+        let Some(media) = self.project().media_item(media_id).cloned() else { return };
+        if media.kind != MediaKind::Video || self.proxies_making.contains(media_id) {
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("Proxies need FFmpeg", cx);
+            return;
+        };
+        let dir = render::default_cache_dir();
+        let Some(output) = media::proxy_path(&dir, &media.path) else {
+            self.set_status(format!("{} cannot be read", media.name), cx);
+            return;
+        };
+        self.proxies_making.insert(media.id.clone());
+        self.set_status(format!("Making a proxy of {}…", media.name), cx);
+        let natural = (media.width.unwrap_or(1920), media.height.unwrap_or(1080));
+        cx.spawn(async move |this, cx| {
+            let source = media.path.clone();
+            let made = cx
+                .background_executor()
+                .spawn(async move { media::make_proxy(&ffmpeg, &source, &output, natural).map_err(|error| error.to_string()) })
+                .await;
+            this.update(cx, |state, cx| {
+                state.proxies_making.remove(&media.id);
+                match made {
+                    Ok((width, height)) => {
+                        state.proxies_ready.insert(media.id.clone());
+                        state.render.send(RenderRequest::Forget { media_id: media.id.clone() });
+                        state.request_render(cx);
+                        state.set_status(format!("Proxy of {} ready ({width}×{height})", media.name), cx);
+                    }
+                    Err(message) => state.set_status(format!("Proxy of {} failed: {message}", media.name), cx),
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Deletes a video's proxy; the preview goes back to the original.
+    pub(crate) fn remove_proxy(&mut self, media_id: &str, cx: &mut Context<Self>) {
+        let Some(media) = self.project().media_item(media_id).cloned() else { return };
+        if let Some(path) = media::existing_proxy(&render::default_cache_dir(), &media.path) {
+            if let Err(error) = std::fs::remove_file(&path) {
+                self.set_status(format!("The proxy was not removed: {error}"), cx);
+                return;
+            }
+        }
+        self.proxies_ready.remove(media_id);
+        self.render.send(RenderRequest::Forget { media_id: media_id.to_owned() });
+        self.request_render(cx);
+        self.set_status(format!("Proxy of {} removed", media.name), cx);
     }
 
     pub(crate) fn request_render(&mut self, _cx: &mut Context<Self>) {

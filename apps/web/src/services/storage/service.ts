@@ -98,8 +98,9 @@ class StorageService {
 		});
 
 		const mediaAssetsAdapter = new OPFSAdapter(`media-files-${projectId}`);
+		const mediaProxiesAdapter = new OPFSAdapter(`media-proxies-${projectId}`);
 
-		return { mediaMetadataAdapter, mediaAssetsAdapter };
+		return { mediaMetadataAdapter, mediaAssetsAdapter, mediaProxiesAdapter };
 	}
 
 	async canStoreFile({
@@ -303,8 +304,13 @@ class StorageService {
 			width: mediaAsset.width,
 			height: mediaAsset.height,
 			duration: mediaAsset.duration,
+			fps: mediaAsset.fps,
+			hasAudio: mediaAsset.hasAudio,
 			thumbnailUrl: mediaAsset.thumbnailUrl,
 			ephemeral: mediaAsset.ephemeral,
+			...(mediaAsset.proxyFile
+				? { proxyWidth: mediaAsset.proxyWidth, proxyHeight: mediaAsset.proxyHeight }
+				: {}),
 		};
 
 		try {
@@ -312,6 +318,13 @@ class StorageService {
 				key: mediaAsset.id,
 				value: mediaAsset.file,
 			});
+			if (mediaAsset.proxyFile) {
+				// Undoing a delete puts the proxy back too.
+				await this.getProjectMediaAdapters({ projectId }).mediaProxiesAdapter.set({
+					key: mediaAsset.id,
+					value: mediaAsset.proxyFile,
+				});
+			}
 			await mediaMetadataAdapter.set({
 				key: mediaAsset.id,
 				value: metadata,
@@ -340,7 +353,7 @@ class StorageService {
 		projectId: string;
 		id: string;
 	}): Promise<MediaAsset | null> {
-		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+		const { mediaMetadataAdapter, mediaAssetsAdapter, mediaProxiesAdapter } =
 			this.getProjectMediaAdapters({ projectId });
 
 		const [file, metadata] = await Promise.all([
@@ -349,6 +362,10 @@ class StorageService {
 		]);
 
 		if (!file || !metadata) return null;
+
+		const proxyFile = metadata.proxyWidth
+			? await mediaProxiesAdapter.get(id).catch(() => null)
+			: null;
 
 		let url: string;
 		if (metadata.type === "image" && (!file.type || file.type === "")) {
@@ -376,9 +393,65 @@ class StorageService {
 			width: metadata.width,
 			height: metadata.height,
 			duration: metadata.duration,
+			fps: metadata.fps,
+			hasAudio: metadata.hasAudio,
 			thumbnailUrl: metadata.thumbnailUrl,
 			ephemeral: metadata.ephemeral,
+			...(proxyFile
+				? { proxyFile, proxyWidth: metadata.proxyWidth, proxyHeight: metadata.proxyHeight }
+				: {}),
 		};
+	}
+
+	/** Stores a video's proxy file and notes its size in the metadata. */
+	async saveMediaProxy({
+		projectId,
+		mediaId,
+		file,
+		width,
+		height,
+	}: {
+		projectId: string;
+		mediaId: string;
+		file: File;
+		width: number;
+		height: number;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaProxiesAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		const metadata = await mediaMetadataAdapter.get(mediaId);
+		if (!metadata) throw new Error("The media item is not stored");
+		try {
+			await mediaProxiesAdapter.set({ key: mediaId, value: file });
+			await mediaMetadataAdapter.set({
+				key: mediaId,
+				value: { ...metadata, proxyWidth: width, proxyHeight: height },
+			});
+		} catch (error) {
+			await mediaProxiesAdapter.remove(mediaId).catch(() => {});
+			if (this.isQuotaExceededError({ error })) {
+				throw new StorageQuotaExceededError({ requiredBytes: file.size });
+			}
+			throw error;
+		}
+	}
+
+	/** Deletes a video's proxy; the preview goes back to the original. */
+	async deleteMediaProxy({
+		projectId,
+		mediaId,
+	}: {
+		projectId: string;
+		mediaId: string;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaProxiesAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		await mediaProxiesAdapter.remove(mediaId).catch(() => {});
+		const metadata = await mediaMetadataAdapter.get(mediaId);
+		if (metadata) {
+			const { proxyWidth: _width, proxyHeight: _height, ...rest } = metadata;
+			await mediaMetadataAdapter.set({ key: mediaId, value: rest });
+		}
 	}
 
 	async loadAllMediaAssets({
@@ -410,12 +483,13 @@ class StorageService {
 		projectId: string;
 		id: string;
 	}): Promise<void> {
-		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+		const { mediaMetadataAdapter, mediaAssetsAdapter, mediaProxiesAdapter } =
 			this.getProjectMediaAdapters({ projectId });
 
 		await Promise.all([
 			mediaAssetsAdapter.remove(id),
 			mediaMetadataAdapter.remove(id),
+			mediaProxiesAdapter.remove(id).catch(() => {}),
 		]);
 	}
 
@@ -424,12 +498,13 @@ class StorageService {
 	}: {
 		projectId: string;
 	}): Promise<void> {
-		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+		const { mediaMetadataAdapter, mediaAssetsAdapter, mediaProxiesAdapter } =
 			this.getProjectMediaAdapters({ projectId });
 
 		await Promise.all([
 			mediaMetadataAdapter.clear(),
 			mediaAssetsAdapter.clear(),
+			mediaProxiesAdapter.clear().catch(() => {}),
 		]);
 	}
 

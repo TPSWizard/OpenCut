@@ -6,11 +6,15 @@ import { generateUUID } from "@/utils/id";
 import { videoCache } from "@/services/video-cache/service";
 import { waveformCache } from "@/services/waveform-cache/service";
 import { BatchCommand, RemoveMediaAssetCommand } from "@/commands";
+import { makeProxy, wantsProxy } from "@/media/proxy";
+import { useProxyJobs } from "@/media/proxy-store";
+import { usePreviewStore } from "@/preview/preview-store";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
 	private isLoading = false;
 	private listeners = new Set<() => void>();
+	private proxyJobs = new Map<string, Promise<MediaAsset>>();
 
 	constructor(private editor: EditorCore) {}
 
@@ -34,6 +38,14 @@ export class MediaManager {
 			this.editor.project.ratchetFpsForImportedMedia({
 				importedAssets: [newAsset],
 			});
+			if (
+				newAsset.type === "video" &&
+				!newAsset.proxyFile &&
+				usePreviewStore.getState().autoProxies &&
+				wantsProxy({ width: newAsset.width, height: newAsset.height })
+			) {
+				void this.makeProxy({ projectId, mediaId: newAsset.id }).catch(() => {});
+			}
 			return newAsset;
 		} catch (error) {
 			console.error("Failed to save media asset:", error);
@@ -148,6 +160,79 @@ export class MediaManager {
 
 	getAssets(): MediaAsset[] {
 		return this.assets;
+	}
+
+	/**
+	 * Makes and stores a small proxy of a video for the preview to decode
+	 * (export keeps reading the original). Concurrent calls share one job.
+	 */
+	makeProxy({ projectId, mediaId }: { projectId: string; mediaId: string }): Promise<MediaAsset> {
+		const running = this.proxyJobs.get(mediaId);
+		if (running) return running;
+		const asset = this.assets.find((item) => item.id === mediaId);
+		if (!asset) return Promise.reject(new Error("No such media item"));
+		if (asset.type !== "video") return Promise.reject(new Error("Only videos get proxies"));
+		const jobs = useProxyJobs.getState();
+		jobs.start(mediaId);
+		const job = (async () => {
+			try {
+				const made = await makeProxy({
+					file: asset.file,
+					width: asset.width ?? 1920,
+					height: asset.height ?? 1080,
+					onProgress: (progress) => useProxyJobs.getState().progress(mediaId, progress),
+				});
+				await storageService.saveMediaProxy({
+					projectId,
+					mediaId,
+					file: made.file,
+					width: made.width,
+					height: made.height,
+				});
+				const updated = this.updateAsset(mediaId, {
+					proxyFile: made.file,
+					proxyWidth: made.width,
+					proxyHeight: made.height,
+				});
+				useProxyJobs.getState().finish(mediaId);
+				if (!updated) throw new Error("The media item was removed");
+				return updated;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				useProxyJobs.getState().finish(mediaId, message);
+				throw error;
+			} finally {
+				this.proxyJobs.delete(mediaId);
+			}
+		})();
+		this.proxyJobs.set(mediaId, job);
+		return job;
+	}
+
+	/** Deletes a video's proxy; the preview decodes the original again. */
+	async removeProxy({ projectId, mediaId }: { projectId: string; mediaId: string }): Promise<MediaAsset | null> {
+		await storageService.deleteMediaProxy({ projectId, mediaId });
+		videoCache.clearVideo({ mediaId });
+		return this.updateAsset(mediaId, {
+			proxyFile: undefined,
+			proxyWidth: undefined,
+			proxyHeight: undefined,
+		});
+	}
+
+	private updateAsset(mediaId: string, patch: Partial<MediaAsset>): MediaAsset | null {
+		let updated: MediaAsset | null = null;
+		this.assets = this.assets.map((item) => {
+			if (item.id !== mediaId) return item;
+			const next: MediaAsset = { ...item, ...patch };
+			for (const key of Object.keys(patch) as (keyof MediaAsset)[]) {
+				if (patch[key] === undefined) delete next[key];
+			}
+			updated = next;
+			return next;
+		});
+		this.notify();
+		return updated;
 	}
 
 	setAssets({ assets }: { assets: MediaAsset[] }): void {

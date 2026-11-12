@@ -18,6 +18,7 @@ import {
 import type { AnyBaseNode } from "./nodes/base-node";
 import type { TBackground, TCanvasSize } from "@/project/types";
 import { DEFAULT_BACKGROUND_BLUR_INTENSITY } from "@/background/blur";
+import { previewDecodeSize, type PreviewQuality } from "@/media/proxy";
 import {
 	buildTransformFromParams,
 	readBlendModeFromParams,
@@ -296,7 +297,67 @@ export type BuildSceneParams = {
 	duration: number;
 	background: TBackground;
 	isPreview?: boolean;
+	/** How the preview decodes video; ignored unless `isPreview`. */
+	previewSource?: PreviewSourceOptions;
 };
+
+export interface PreviewSourceOptions {
+	quality: PreviewQuality;
+	useProxies: boolean;
+}
+
+/**
+ * Which file and decoder size the preview uses for a video: its proxy when
+ * proxies are on and it has one, at the size the quality setting asks
+ * for. The decoder key names the variant so export (which builds its own
+ * scene without these) never reads a preview decoder.
+ */
+export function previewVideoSource({
+	asset,
+	canvasSize,
+	options,
+}: {
+	asset: MediaAsset;
+	canvasSize: TCanvasSize;
+	options: PreviewSourceOptions;
+}): { file: File; decodeKey: string; decodeSize?: { width: number; height: number } } | null {
+	const useProxy = Boolean(options.useProxies && asset.proxyFile && asset.proxyWidth && asset.proxyHeight);
+	const file = useProxy ? (asset.proxyFile as File) : asset.file;
+	const sourceWidth = (useProxy ? asset.proxyWidth : asset.width) ?? 0;
+	const sourceHeight = (useProxy ? asset.proxyHeight : asset.height) ?? 0;
+	const size = previewDecodeSize({ sourceWidth, sourceHeight, canvas: canvasSize, quality: options.quality });
+	if (!useProxy && !size) return null;
+	const variant = `${useProxy ? "proxy" : "original"}@${size ? `${size.width}x${size.height}` : "native"}`;
+	return { file, decodeKey: `${asset.id}|${variant}`, ...(size ? { decodeSize: size } : {}) };
+}
+
+function applyPreviewSources({
+	node,
+	mediaMap,
+	canvasSize,
+	options,
+}: {
+	node: AnyBaseNode | null;
+	mediaMap: Map<string, MediaAsset>;
+	canvasSize: TCanvasSize;
+	options: PreviewSourceOptions;
+}): void {
+	if (!node) return;
+	if (node instanceof VideoNode || (node instanceof BlurBackgroundNode && node.params.mediaType === "video")) {
+		const asset = mediaMap.get(node.params.mediaId);
+		const source = asset ? previewVideoSource({ asset, canvasSize, options }) : null;
+		if (source) {
+			node.params = { ...node.params, ...source };
+		}
+	}
+	if (node instanceof TransitionNode) {
+		applyPreviewSources({ node: node.params.from, mediaMap, canvasSize, options });
+		applyPreviewSources({ node: node.params.to, mediaMap, canvasSize, options });
+	}
+	for (const child of node.children) {
+		applyPreviewSources({ node: child, mediaMap, canvasSize, options });
+	}
+}
 
 export function buildScene({
 	canvasSize,
@@ -305,6 +366,7 @@ export function buildScene({
 	duration,
 	background,
 	isPreview,
+	previewSource,
 }: BuildSceneParams) {
 	const rootNode = new RootNode({ duration });
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
@@ -342,6 +404,10 @@ export function buildScene({
 
 	for (const node of allNodes) {
 		rootNode.add(node);
+	}
+
+	if (isPreview && previewSource) {
+		applyPreviewSources({ node: rootNode, mediaMap, canvasSize, options: previewSource });
 	}
 
 	return rootNode;

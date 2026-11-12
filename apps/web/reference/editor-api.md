@@ -46,6 +46,11 @@ methods answer with the error code `no_project` before that.
 | `media.importUrl` | `{ url, name? }` | `ApiMediaInfo` |
 | `media.importFiles` | `{ files: File[] }` | `ApiMediaInfo[]` (in page / structured clone only) |
 | `media.remove` | `{ mediaId }` | `{ removed: true }` |
+| `media.makeProxy` | `{ mediaId }` | `ApiMediaInfo` — makes a small proxy of a video (longer side 960 px, H.264 in MP4 or VP9 in WebM, no audio) that the preview decodes instead of the original; export always reads the original. `ApiMediaInfo.proxy` reports its size, `proxyPending` is true while one is made. Videos above 1080p get one on import while auto proxies are on |
+| `media.removeProxy` | `{ mediaId }` | `ApiMediaInfo` — deletes the proxy; the preview decodes the original again |
+| `preview.getSettings` | – | `ApiPreviewSettings` `{ quality, useProxies, autoProxies }` (kept per browser) |
+| `preview.setSettings` | `{ quality?: "auto" \| "full" \| "half" \| "quarter", useProxies?, autoProxies? }` | `ApiPreviewSettings` — preview decode quality: auto fits each video to the canvas, half and quarter go lower, full decodes every pixel; export is unaffected |
+| `preview.capture` | `{ time? }` | `{ width, height, centre: [r, g, b], decoders: [{ key, width, height }] }` — renders the preview's own scene (proxies and quality applied) at `time` seconds and lists the open video decoders (`<mediaId>\|proxy@native`, `<mediaId>\|original@1920x1080`, or the bare media id for export) |
 | `timeline.get` | – | `ApiTimelineInfo` |
 | `timeline.addClip` | `{ mediaId, at?, duration?, trackId?, trackType?, name? }` | `ApiElementInfo` |
 | `timeline.addText` | `{ text, at?, duration?, name?, params?, trackId? }` | `ApiElementInfo` |

@@ -287,6 +287,8 @@ async function resolveVideoNode({
 	const frame = await videoCache.getFrameAt({
 		mediaId: node.params.mediaId,
 		file: node.params.file,
+		key: node.params.decodeKey,
+		size: node.params.decodeSize,
 		time: mediaTimeToSeconds({ time: roundMediaTime({ time: sourceTimeTicks }) }),
 	});
 	if (!frame) {
@@ -549,6 +551,8 @@ async function resolveBackdropSource({
 		const frame = await videoCache.getFrameAt({
 			mediaId: node.params.mediaId,
 			file: node.params.file,
+			key: node.params.decodeKey,
+			size: node.params.decodeSize,
 			time: mediaTimeToSeconds({ time: roundMediaTime({ time: sourceTimeTicks }) }),
 		});
 		if (!frame) {

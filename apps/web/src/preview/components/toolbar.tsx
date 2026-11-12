@@ -22,10 +22,11 @@ import {
 	SelectSeparator,
 } from "@/components/ui/select";
 import { PREVIEW_ZOOM_PRESETS } from "@/preview/zoom";
+import { usePreviewStore } from "@/preview/preview-store";
+import { PREVIEW_QUALITIES, isPreviewQuality } from "@/media/proxy";
 import { usePreviewViewport } from "./preview-viewport";
 import { GridPopover } from "./guide-popover";
 import { getGuideById } from "@/guides";
-import { usePreviewStore } from "@/preview/preview-store";
 import type { MediaTime } from "@/wasm";
 
 export function PreviewToolbar({
@@ -40,6 +41,7 @@ export function PreviewToolbar({
 			<TimecodeDisplay />
 			<PlayPauseButton />
 			<div className="justify-self-end flex items-center gap-2.5">
+				<QualitySelect />
 				<ZoomSelect />
 				<Separator orientation="vertical" className="h-4" />
 				<GridPopover>
@@ -100,6 +102,48 @@ function TimecodeDisplay() {
 				})}
 			</span>
 		</div>
+	);
+}
+
+/** Preview decode quality and proxies; export always uses full quality. */
+function QualitySelect() {
+	const quality = usePreviewStore((state) => state.previewQuality);
+	const useProxies = usePreviewStore((state) => state.useProxies);
+	const autoProxies = usePreviewStore((state) => state.autoProxies);
+	const label = PREVIEW_QUALITIES.find((item) => item.value === quality)?.label ?? "Auto";
+
+	const onValueChange = (value: string) => {
+		const store = usePreviewStore.getState();
+		if (value === "toggle-proxies") store.setUseProxies(!useProxies);
+		else if (value === "toggle-auto-proxies") store.setAutoProxies(!autoProxies);
+		else if (isPreviewQuality(value)) store.setPreviewQuality(value);
+	};
+
+	return (
+		<Select value={quality} onValueChange={onValueChange}>
+			<SelectTrigger
+				className="tabular-nums"
+				title="Preview quality (export always renders at full quality)"
+				data-testid="preview-quality"
+			>
+				{label}
+				{useProxies ? "" : " · originals"}
+			</SelectTrigger>
+			<SelectContent>
+				{PREVIEW_QUALITIES.map((item) => (
+					<SelectItem key={item.value} value={item.value}>
+						{item.label}
+					</SelectItem>
+				))}
+				<SelectSeparator />
+				<SelectItem value="toggle-proxies">
+					{useProxies ? "Proxies on (click to use originals)" : "Proxies off (click to use them)"}
+				</SelectItem>
+				<SelectItem value="toggle-auto-proxies">
+					{autoProxies ? "Auto proxies above 1080p: on" : "Auto proxies above 1080p: off"}
+				</SelectItem>
+			</SelectContent>
+		</Select>
 	);
 }
 

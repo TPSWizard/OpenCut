@@ -276,6 +276,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - project.updateSettings { fps?, canvas?: {width,height}, background? } / project.save
 - scenes.list / scenes.switch { sceneId }
 - media.list / media.importUrl { url, name? } / media.remove { mediaId }
+- media.makeProxy { mediaId } → ApiMediaInfo (960 px preview proxy; export reads the original) / media.removeProxy { mediaId }
+- preview.getSettings / preview.setSettings { quality?: auto|full|half|quarter, useProxies?, autoProxies? } / preview.capture { time? } → { width, height, centre, decoders }
 - timeline.get → { sceneId, duration, tracks[{ id, name, type, lane, muted?, hidden?, elements[] }] }
 - timeline.addClip { mediaId, at?, duration?, trackId?, trackType?, name? }
 - timeline.addText { text, at?, duration?, name?, params?, trackId? }

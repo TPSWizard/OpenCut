@@ -189,6 +189,11 @@ impl VideoSource {
         self.output_width
     }
 
+    /// The file this source decodes.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     /// The frame shown at `time_seconds` into the source. Returns the last
     /// frame past the end of the file.
     pub fn frame_at(&mut self, time_seconds: f64) -> Result<Option<&Frame>, MediaError> {

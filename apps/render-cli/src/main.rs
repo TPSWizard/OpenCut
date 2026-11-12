@@ -39,6 +39,11 @@ opencut-render: render a ConzaCut project from the command line
   --contact-sheet <png>    tile the stills (320 px wide each) into one image
   --captions <file>        write the captions as .srt, .vtt (inline word times) or
                            .ass (karaoke \\k tags); the extension picks the format
+  --make-proxies           make the missing proxies (960 px H.264, the desktop
+                           preview's) of the project's videos first
+  --use-proxies            decode videos from their proxies under ~/.opencut/processed
+                           when they exist (quick QA stills; exports normally read
+                           the originals)
   --quiet                  no progress on stderr
   --help                   this text
 
@@ -62,6 +67,8 @@ struct Args {
     stills_dir: Option<PathBuf>,
     contact_sheet: Option<PathBuf>,
     captions: Option<PathBuf>,
+    use_proxies: bool,
+    make_proxies: bool,
     quiet: bool,
 }
 
@@ -82,6 +89,8 @@ fn parse_args() -> Result<Args, String> {
         stills_dir: None,
         contact_sheet: None,
         captions: None,
+        use_proxies: false,
+        make_proxies: false,
         quiet: false,
     };
     let mut it = std::env::args().skip(1);
@@ -134,6 +143,8 @@ fn parse_args() -> Result<Args, String> {
             "--stills-dir" => args.stills_dir = Some(PathBuf::from(value()?)),
             "--contact-sheet" => args.contact_sheet = Some(PathBuf::from(value()?)),
             "--captions" => args.captions = Some(PathBuf::from(value()?)),
+            "--use-proxies" => args.use_proxies = true,
+            "--make-proxies" => args.make_proxies = true,
             "--quiet" => args.quiet = true,
             "--help" | "-h" => {
                 print!("{USAGE}");
@@ -182,12 +193,13 @@ fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)
 }
 
-fn renderer_options(ffmpeg: Option<Arc<Ffmpeg>>) -> RendererOptions {
+fn renderer_options(ffmpeg: Option<Arc<Ffmpeg>>, use_proxies: bool) -> RendererOptions {
     let opencut = home_dir().map(|home| home.join(".opencut"));
     RendererOptions {
         ffmpeg,
         fonts_dir: opencut.as_ref().map(|dir| dir.join("fonts")),
         stickers_dir: opencut.as_ref().map(|dir| dir.join("stickers")),
+        proxy_dir: if use_proxies { Some(render::default_cache_dir()) } else { None },
     }
 }
 
@@ -285,7 +297,31 @@ fn run() -> Result<(), String> {
             None
         }
     };
-    let mut renderer = Renderer::new(renderer_options(ffmpeg.clone())).map_err(|error| error.to_string())?;
+    if args.make_proxies {
+        let ffmpeg = ffmpeg.as_ref().ok_or_else(|| "--make-proxies needs FFmpeg".to_owned())?;
+        let dir = render::default_cache_dir();
+        for media in project.media.iter().filter(|media| media.kind == editor::MediaKind::Video) {
+            let Some(output) = media::proxy_path(&dir, &media.path) else {
+                eprintln!("opencut-render: {} cannot be read; no proxy", media.name);
+                continue;
+            };
+            if output.is_file() {
+                continue;
+            }
+            let natural = (media.width.unwrap_or(1920), media.height.unwrap_or(1080));
+            let started = std::time::Instant::now();
+            let (width, height) = media::make_proxy(ffmpeg, &media.path, &output, natural).map_err(|error| error.to_string())?;
+            if !args.quiet {
+                eprintln!(
+                    "opencut-render: proxy of {} at {width}x{height} in {:.1} s -> {}",
+                    media.name,
+                    started.elapsed().as_secs_f64(),
+                    output.display()
+                );
+            }
+        }
+    }
+    let mut renderer = Renderer::new(renderer_options(ffmpeg.clone(), args.use_proxies)).map_err(|error| error.to_string())?;
     let canvas = project.settings.canvas;
     let fps = project.settings.fps.as_f64().unwrap_or(30.0);
     let duration = project.duration().to_seconds_f64();
