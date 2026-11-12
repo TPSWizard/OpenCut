@@ -4980,6 +4980,7 @@ dependencies = [
  "compositor",
  "cosmic-text",
  "editor",
+ "effects",
  "gpu",
  "image",
  "media",

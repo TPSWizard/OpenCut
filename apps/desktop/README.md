@@ -135,11 +135,17 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   package's LICENSE and a `provenance.json`, and the renderer picks them up
   at once. Families chosen in the web app's *Open licence* font tab render
   the same here once fetched. The directory is loaded at start too.
-- **Effects** on visual clips, the same ten as the web app and rendered by
-  the same WGSL shaders in `crates/effects`: blur, colour correction
+- **Effects** on visual clips, the same fourteen as the web app and rendered
+  by the same WGSL shaders in `crates/effects`: blur, colour correction
   (brightness, contrast, saturation, hue, exposure, gamma, warmth, tint),
-  vignette, film grain, RGB split, pixelate, sharpen, mirror, glitch and
-  kaleidoscope. The inspector's Effects section adds any of them and draws
+  lift/gamma/gain (three-way colour with red, green and blue offsets),
+  curves (a five-point master curve and three-point red, green and blue
+  curves), levels (input and output black and white points, gamma),
+  shadows and highlights, vignette, film grain, RGB split, pixelate,
+  sharpen, mirror, glitch and kaleidoscope. The colour formulas are the
+  textbook ones (lift/gamma/gain as `(in × gain + lift × (1 − in))^(1/γ)`,
+  Catmull-Rom curves), written here, not copied from any editor. The
+  inspector's Effects section adds any of them and draws
   a row per setting from `crates/editor/src/effect_catalogue.rs`; number
   settings can be keyframed, grain and glitch move with the clip's time.
 - **Safe-area guides** under the preview (`Guide` row: TikTok, Reels, Shorts)

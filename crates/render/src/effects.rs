@@ -120,6 +120,60 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
                 ("u_angle", param("angle").to_radians()),
             ],
         )],
+        "lift-gamma-gain" => vec![numbers_pass(
+            "lift-gamma-gain",
+            &[
+                ("u_lift", param("lift")),
+                ("u_lift_r", param("liftRed")),
+                ("u_lift_g", param("liftGreen")),
+                ("u_lift_b", param("liftBlue")),
+                ("u_gamma", param("gamma")),
+                ("u_gamma_r", param("gammaRed")),
+                ("u_gamma_g", param("gammaGreen")),
+                ("u_gamma_b", param("gammaBlue")),
+                ("u_gain", param("gain")),
+                ("u_gain_r", param("gainRed")),
+                ("u_gain_g", param("gainGreen")),
+                ("u_gain_b", param("gainBlue")),
+            ],
+        )],
+        "curves" => vec![numbers_pass(
+            "curves",
+            &[
+                ("u_master_0", param("master0")),
+                ("u_master_25", param("master25")),
+                ("u_master_50", param("master50")),
+                ("u_master_75", param("master75")),
+                ("u_master_100", param("master100")),
+                ("u_red_25", param("red25")),
+                ("u_red_50", param("red50")),
+                ("u_red_75", param("red75")),
+                ("u_green_25", param("green25")),
+                ("u_green_50", param("green50")),
+                ("u_green_75", param("green75")),
+                ("u_blue_25", param("blue25")),
+                ("u_blue_50", param("blue50")),
+                ("u_blue_75", param("blue75")),
+            ],
+        )],
+        "levels" => vec![numbers_pass(
+            "levels",
+            &[
+                ("u_in_black", param("inputBlack")),
+                ("u_in_white", param("inputWhite")),
+                ("u_gamma", param("gamma")),
+                ("u_out_black", param("outputBlack")),
+                ("u_out_white", param("outputWhite")),
+            ],
+        )],
+        "shadows-highlights" => vec![numbers_pass(
+            "shadows-highlights",
+            &[
+                ("u_shadows", param("shadows")),
+                ("u_highlights", param("highlights")),
+                ("u_range", param("range")),
+            ],
+        )],
         _ => Vec::new(),
     }
 }
@@ -272,6 +326,27 @@ mod tests {
         let grain = &groups[3][0];
         assert_eq!(number(grain, "u_time"), 2.5);
         assert_eq!(number(grain, "u_size"), 1.0, "default grain of 2 px halves to 1 at 540");
+    }
+
+    #[test]
+    fn every_catalogue_effect_fills_its_shader_exactly() {
+        for spec in editor::EFFECT_CATALOGUE {
+            if spec.kind == Effect::BLUR {
+                continue;
+            }
+            let effect = Effect::from_catalogue(spec.kind).unwrap();
+            let plan = EffectPlan { id: effect.id.clone(), kind: effect.kind.clone(), params: effect.params.clone() };
+            let groups = effect_pass_groups(&[plan], 1920, 1080, 0.0);
+            assert_eq!(groups.len(), 1, "{} builds one pass group", spec.kind);
+            for pass in &groups[0] {
+                let shader = effects::shader_spec(&pass.shader).unwrap_or_else(|| panic!("{} names shader {}", spec.kind, pass.shader));
+                let mut names: Vec<&str> = pass.uniforms.keys().map(String::as_str).collect();
+                names.sort_unstable();
+                let mut declared: Vec<&str> = shader.numbers.to_vec();
+                declared.sort_unstable();
+                assert_eq!(names, declared, "{} sets exactly the uniforms {} declares", spec.kind, pass.shader);
+            }
+        }
     }
 
     #[test]
