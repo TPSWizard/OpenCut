@@ -111,8 +111,20 @@ pub fn register_effect_lut(options: JsValue) -> Result<(), JsValue> {
     }
     with_gpu_runtime(|runtime| {
         runtime.effects.register_lut(&runtime.context, &key, size, &pixels);
+        crate::compositor::register_lut_with_compositor(&runtime.context, &key, size, &pixels);
         Ok(())
-    })
+    })?;
+    // Kept so a compositor created later gets the table too.
+    LUT_STORE.with(|store| {
+        store.borrow_mut().insert(key, (size, pixels));
+    });
+    Ok(())
+}
+
+thread_local! {
+    /// Every table registered so far, replayed into a new compositor.
+    pub(crate) static LUT_STORE: std::cell::RefCell<std::collections::HashMap<String, (u32, Vec<u8>)>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 fn parse_apply_effect_passes_options(value: JsValue) -> Result<ApplyEffectPassesOptions, JsValue> {

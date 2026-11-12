@@ -46,6 +46,11 @@ pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
         canvas.set_height(height);
 
         let compositor = Compositor::new(&gpu_runtime.context);
+        crate::effects::LUT_STORE.with(|store| {
+            for (key, (size, pixels)) in store.borrow().iter() {
+                compositor.register_effect_lut(&gpu_runtime.context, key, *size, pixels);
+            }
+        });
         let surface = gpu_runtime
             .context
             .instance()
@@ -237,4 +242,13 @@ fn parse_upload_texture_options(value: JsValue) -> Result<UploadTextureOptions, 
         width: read_u32_property(&object, "width")?,
         height: read_u32_property(&object, "height")?,
     })
+}
+
+/// Registers a look-up table with the live compositor, if one exists.
+pub(crate) fn register_lut_with_compositor(context: &gpu::GpuContext, key: &str, size: u32, pixels: &[u8]) {
+    COMPOSITOR_RUNTIME.with(|runtime| {
+        if let Some(runtime) = runtime.borrow().as_ref() {
+            runtime.compositor.register_effect_lut(context, key, size, pixels);
+        }
+    });
 }

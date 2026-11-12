@@ -7,6 +7,7 @@ import {
 	resizeCompositor,
 	uploadTexture,
 } from "opencut-wasm";
+import { prepareFrameLuts } from "@/services/renderer/gpu-renderer";
 import {
 	incrementCounter,
 	isRenderPerfEnabled,
@@ -88,7 +89,7 @@ class WasmCompositor {
 	}
 
 	render(frame: FrameDescriptor) {
-		renderFrame(frame);
+		renderFrame(prepareFrameLuts(frame));
 		if (isRenderPerfEnabled()) {
 			recordWasmFrameProfile(
 				getLastFrameProfile() as Array<{ name: string; durationMs: number }>,
