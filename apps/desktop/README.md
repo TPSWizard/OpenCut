@@ -238,6 +238,19 @@ resolution and pipes BGRA frames into `media::Encoder`.
 - **Linux**: renders via Vulkan (Blade), windows via Wayland or X11 (both enabled by default). System packages (Debian/Ubuntu names): `libvulkan1` + working Vulkan drivers, `libwayland-dev`, `libx11-xcb-dev`, `libxkbcommon-x11-dev`, `libfontconfig-dev`, `libasound2-dev` (audio), plus a C toolchain and `cmake`.
 - **WSL2/WSLg**: uses XWayland automatically when available. GPUI 0.2.2 requires `xdg_wm_base` v2–5, while WSLg advertises v1.
 
+## Shot detection
+
+The inspector's **Shots** section (video clips) runs FFmpeg's `scdet`
+filter over the clip's source span at a small size, takes the frames whose
+difference from the previous one passes the chosen sensitivity (scores
+run 0–100; High 10, Normal 20, Low 35), merges cuts closer than half a
+second, and **Split at shot changes** splits the clip at every cut in one
+undo step. The web editor scores frames itself (colour-histogram
+difference, ten frames a second, threshold 30 on its own scale) and can
+also bookmark the cuts; the cut picking is the same code on both sides
+(`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
+changes are not followed when mapping cuts onto the timeline.
+
 ## Loudness
 
 The inspector's **Loudness** section (audio and video clips) measures the

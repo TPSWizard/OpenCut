@@ -32,6 +32,7 @@ pub(crate) struct InspectorPanel {
     /// gaps close.
     silence_min_seconds: f64,
     loudness_target: usize,
+    shot_threshold: f64,
     silence_ripple: editor::RippleScope,
 }
 
@@ -102,6 +103,7 @@ impl InspectorPanel {
             transcribe_model: "base",
             silence_min_seconds: 0.5,
             loudness_target: 0,
+            shot_threshold: 20.0,
             silence_ripple: editor::RippleScope::All,
         }
     }
@@ -1159,6 +1161,48 @@ impl Render for InspectorPanel {
 
                 if is_visual {
                     content = self.transition_section(content, &element, window, cx);
+                }
+
+                if matches!(element.kind, ElementKind::Video { .. }) {
+                    // Shot detection: FFmpeg's scdet scores every frame's
+                    // difference from the last; cuts split the clip.
+                    let mut threshold_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Sensitivity", window));
+                    for (label, value) in [("High", 10.0), ("Normal", 20.0), ("Low", 35.0)] {
+                        let active = (self.shot_threshold - value).abs() < 0.01;
+                        threshold_row = threshold_row.child(
+                            Button::new(eid("shot-threshold", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.shot_threshold = value;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let threshold = self.shot_threshold;
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading("Shots", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Finds scene changes in this clip and splits it there, in one undo step."),
+                        )
+                        .child(threshold_row)
+                        .child(
+                            Button::new("split-at-shots", "Split at shot changes")
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.split_at_shots_selected(threshold, cx));
+                                }),
+                        );
                 }
 
                 if is_visual {

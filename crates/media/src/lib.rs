@@ -15,6 +15,7 @@ mod encode;
 mod error;
 mod ffmpeg;
 mod image_decode;
+mod scenes;
 mod probe;
 mod video;
 
@@ -24,4 +25,5 @@ pub use error::MediaError;
 pub use ffmpeg::Ffmpeg;
 pub use image_decode::{decode_image, is_image_path};
 pub use probe::{MediaInfo, MediaKind, probe};
+pub use scenes::{SceneScore, parse_scdet, scene_scores};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

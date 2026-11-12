@@ -1,6 +1,7 @@
 import { DuckingSection } from "@/ducking/components/ducking-section";
 import { LoudnessSection } from "@/loudness/components/loudness-section";
 import { SilenceSection } from "@/silence/components/silence-section";
+import { ShotsSection } from "@/shots/components/shots-section";
 import type { ReactNode } from "react";
 import type {
 	EffectElement,
@@ -92,12 +93,15 @@ function buildTransformTab({
 		label: "Transform",
 		icon: <HugeiconsIcon icon={ArrowExpandIcon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TRANSFORM_PARAM_KEYS}
-				sectionKey="transform"
-			/>
+			<>
+				<ElementParamsTab
+					element={element}
+					trackId={trackId}
+					paramKeys={TRANSFORM_PARAM_KEYS}
+					sectionKey="transform"
+				/>
+				{element.type === "video" && <ShotsSection element={element} trackId={trackId} />}
+			</>
 		),
 	};
 }

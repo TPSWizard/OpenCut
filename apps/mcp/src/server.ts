@@ -305,6 +305,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.addEffect { elementId, trackId?, type, params? } → ApiElementInfo (effects: [{ id, type, params, enabled }])
 - timeline.updateEffect { elementId, trackId?, effectId, params?, enabled? } → ApiElementInfo
 - timeline.removeEffect { elementId, trackId?, effectId } → ApiElementInfo
+- shots.detect { elementId, trackId?, threshold?, minGapSeconds?, sampleFps?, apply?: "none" | "bookmarks" | "split" } → { cuts[], framesScored, seconds, applied } (scene changes in a video clip)
 - audio.measureLoudness { elementId, trackId? } → { integratedLufs, loudnessRangeLu, truePeakDbtp, maxMomentaryLufs, maxShortTermLufs, seconds } (EBU R128)
 - audio.normalizeLoudness { elementId, trackId?, targetLufs?, truePeakDbtp?, target? } → { element, report, gainDb, volumeDb, peakLimited } / audio.loudnessTargets {} → presets
 - audio.duck { element, voice?, amountDb?, thresholdDb?, attackSeconds?, releaseSeconds?, holdSeconds? } → { element, keyframes, intervals, speechSeconds, voiceElementIds } (music dips under speech; replaces the clip's volume keys)

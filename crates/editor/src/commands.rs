@@ -84,6 +84,12 @@ pub enum Command {
     },
     /// Adds a text track at the top and puts these elements on it, in one
     /// step: what transcription produces.
+    /// Splits one element at several times in one step (the first piece
+    /// keeps the id); times outside the element are skipped.
+    SplitElementAtTimes {
+        element_id: String,
+        times: Vec<MediaTime>,
+    },
     /// Deletes elements and closes the gaps they leave on every track.
     RippleDelete {
         element_ids: Vec<String>,
@@ -495,6 +501,23 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             track.sort_elements();
             project.tracks.insert(0, track);
             Outcome::Track(id)
+        }
+        Command::SplitElementAtTimes { element_id, times } => {
+            let mut sorted = times.clone();
+            sorted.sort();
+            sorted.dedup();
+            let mut created = Vec::new();
+            // Latest first, so each split leaves the first piece with the id.
+            for time in sorted.into_iter().rev() {
+                let (track_index, element_index) = locate(project, element_id)?;
+                let element = &project.tracks[track_index].elements[element_index];
+                if time <= element.start_time + MIN_ELEMENT_DURATION || time >= element.end_time() - MIN_ELEMENT_DURATION {
+                    continue;
+                }
+                let outcome = apply(project, &Command::SplitElement { element_id: element_id.clone(), time })?;
+                created.extend(outcome.element_refs().iter().cloned());
+            }
+            Outcome::Elements(created)
         }
         Command::RippleDelete { element_ids } => {
             let plan = crate::edits::ripple_delete_plan(project, element_ids);

@@ -73,6 +73,7 @@ import {
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
+import { applyShotCuts, scanShots } from "@/shots/scan";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -1187,6 +1188,36 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		"history.state": () => historyState(),
 
 		"export.render": (options) => renderExport(options),
+		"shots.detect": async ({ elementId, trackId, threshold, minGapSeconds, sampleFps, apply }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const options: Record<string, number> = {};
+			for (const [key, value] of [["threshold", threshold], ["minGapSeconds", minGapSeconds], ["sampleFps", sampleFps]] as const) {
+				if (value === undefined) continue;
+				if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+					throw new EditorApiError({ code: "invalid_params", message: `${key} must be a positive number` });
+				}
+				options[key] = value;
+			}
+			if (apply !== undefined && !["none", "bookmarks", "split"].includes(apply)) {
+				throw new EditorApiError({ code: "invalid_params", message: "apply must be none, bookmarks or split" });
+			}
+			try {
+				const scan = await scanShots({ editor, trackId: track.id, elementId: element.id, options });
+				const applied = applyShotCuts({ editor, trackId: track.id, elementId: element.id, cuts: scan.cuts, apply: apply ?? "none" });
+				return {
+					cuts: scan.cuts.map((cut) => ({
+						sourceSeconds: cut.seconds,
+						timelineSeconds: cut.timelineTicks === null ? null : seconds(cut.timelineTicks as MediaTime),
+						score: cut.score,
+					})),
+					framesScored: scan.framesScored,
+					seconds: scan.seconds,
+					applied,
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
+			}
+		},
 		"audio.loudnessTargets": () => LOUDNESS_TARGETS.map((target) => ({ ...target })),
 		"audio.measureLoudness": async ({ elementId, trackId }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

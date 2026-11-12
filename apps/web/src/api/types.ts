@@ -611,6 +611,25 @@ export interface EditorApiMethods {
 			animatedVolume: boolean;
 		};
 	};
+	/**
+	 * Scans a video clip for shot changes (colour-histogram difference
+	 * between frames, 10 a second) and, with `apply`, bookmarks the cuts or
+	 * splits the clip there in one undo step.
+	 */
+	"shots.detect": {
+		params: ApiElementLocator & {
+			threshold?: number;
+			minGapSeconds?: number;
+			sampleFps?: number;
+			apply?: "none" | "bookmarks" | "split";
+		};
+		result: {
+			cuts: { sourceSeconds: number; timelineSeconds: number | null; score: number }[];
+			framesScored: number;
+			seconds: number;
+			applied: number;
+		};
+	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {
 		params: Record<string, never>;

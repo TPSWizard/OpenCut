@@ -387,6 +387,62 @@ impl EditorState {
         self.execute(Command::DeleteElements(ids), cx);
     }
 
+    /// Scans the selected video clip for shot changes with FFmpeg's scdet
+    /// on a background thread and splits it at the cuts in one undo step.
+    pub(crate) fn split_at_shots_selected(&mut self, threshold: f64, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Video { .. }) {
+            self.set_status("Shot detection needs a video clip.", cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element) else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to look for shot changes.", cx);
+            return;
+        };
+        let element_id = element.id.clone();
+        let path = media.path.clone();
+        let from = element.trim_start.to_seconds_f64();
+        let to = from + element.duration.to_seconds_f64();
+        let options = editor::ShotOptions { threshold, ..Default::default() };
+        self.set_status("Looking for shot changes…", cx);
+        cx.spawn(async move |this, cx| {
+            let scored = cx
+                .background_executor()
+                .spawn(async move {
+                    media::scene_scores(&ffmpeg, &path, from, to, threshold)
+                        .map(|scores| {
+                            scores
+                                .into_iter()
+                                .map(|score| editor::FrameScore { seconds: score.seconds, score: score.score })
+                                .collect::<Vec<_>>()
+                        })
+                        .map_err(|error| error.to_string())
+                })
+                .await;
+            this.update(cx, |state, cx| match scored {
+                Ok(scores) => {
+                    let cuts = editor::pick_cuts(&scores, &options);
+                    let Some(element) = state.project().element(&element_id).map(|(_, element)| element.clone()) else {
+                        return;
+                    };
+                    let times: Vec<MediaTime> =
+                        cuts.iter().filter_map(|cut| editor::source_to_timeline(&element, cut.seconds)).collect();
+                    if times.is_empty() {
+                        state.set_status("No shot changes found; try a lower threshold.", cx);
+                        return;
+                    }
+                    let count = times.len();
+                    state.execute(Command::SplitElementAtTimes { element_id, times }, cx);
+                    state.set_status(format!("{count} shot change(s): split into {} clips.", count + 1), cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Deletes the selection and closes the gaps it leaves, in one undo step.
     pub(crate) fn ripple_delete_selection(&mut self, cx: &mut Context<Self>) {
         if self.selection.is_empty() {

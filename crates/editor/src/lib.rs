@@ -24,6 +24,7 @@ mod freeform;
 mod loudness;
 mod params;
 mod platforms;
+mod shots;
 mod silence;
 mod store;
 mod subtitles;
@@ -78,6 +79,7 @@ pub use platforms::{
     estimate_platform_file_bytes, format_bytes, format_duration, platform_encode_settings, platform_preset,
     recommended_video_bitrate,
 };
+pub use shots::{FrameScore, ShotOptions, pick_cuts, source_to_timeline};
 pub use silence::{RippleScope, SilenceOptions, silence_intervals};
 pub use loudness::{
     ABSOLUTE_GATE_LUFS, LOUDNESS_TARGETS, LoudnessReport, LoudnessTarget, deinterleave, gated_loudness, loudness_range,
