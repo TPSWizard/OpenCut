@@ -41,10 +41,12 @@ fn follows_volume_keyframes() {
         media_id: "tone".to_owned(),
         path: tone,
         timeline_start: seconds(0.0),
+        timeline_duration: seconds(2.0),
         source_start: seconds(0.0),
         source_end: seconds(2.0),
         volume_db: 0.0,
         volume,
+        retime: None,
     };
 
     let settings = AudioSettings::default();

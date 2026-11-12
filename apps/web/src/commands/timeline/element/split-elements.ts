@@ -8,7 +8,7 @@ import { generateUUID } from "@/utils/id";
 import { EditorCore } from "@/core";
 import { isRetimableElement } from "@/timeline";
 import { splitAnimationsAtTime } from "@/animation";
-import { getSourceSpanAtClipTime } from "@/retime";
+import { getSourceSpanAtClipTime, splitRetimeAtClipTime } from "@/retime";
 import {
 	addMediaTime,
 	type MediaTime,
@@ -91,6 +91,11 @@ export class SplitElementsCommand extends Command {
 				const retimeRef = isRetimableElement(element)
 					? element.retime
 					: undefined;
+				// A ramp's keys are clip-relative: the right piece's move with it.
+				const rightRetimeRef = splitRetimeAtClipTime({
+					retime: retimeRef,
+					splitClipTime: relativeTime,
+				}).right;
 				// Snap the source-side split point exactly once and derive the right
 				// half from it. Independently rounding both spans (left and total)
 				// would let a 1-tick rounding error desynchronise them, breaking the
@@ -154,7 +159,7 @@ export class SplitElementsCommand extends Command {
 							trimStart: rightTrimStart,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(rightRetimeRef !== undefined ? { retime: rightRetimeRef } : {}),
 						},
 					];
 				} else {
@@ -180,7 +185,7 @@ export class SplitElementsCommand extends Command {
 							trimStart: rightTrimStart,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(rightRetimeRef !== undefined ? { retime: rightRetimeRef } : {}),
 						},
 					];
 				}

@@ -1309,6 +1309,96 @@ impl Render for InspectorPanel {
                     content = content.child(target_row).child(loudness_actions);
                 }
 
+                if matches!(element.kind, ElementKind::Video { .. } | ElementKind::Audio { .. }) {
+                    // Speed: a constant rate, a ramp preset or reverse; the
+                    // clip's length follows so the same source still plays.
+                    let current = element.retime.clone().unwrap_or_default();
+                    let is_ramp = !current.ramp.is_empty();
+                    let mut rate_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Speed", window));
+                    for (label, rate) in [("0.25x", 0.25), ("0.5x", 0.5), ("1x", 1.0), ("2x", 2.0), ("4x", 4.0)] {
+                        let active = !is_ramp && (current.rate - rate).abs() < 1e-6;
+                        let state = self.state.clone();
+                        let base = current.clone();
+                        rate_row = rate_row.child(
+                            Button::new(eid("speed-rate", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let next = editor::Retime { rate, ramp: Vec::new(), ..base.clone() };
+                                    let next = if next.is_identity() { None } else { Some(next) };
+                                    state.update(cx, |state, cx| state.set_retime_selected(next, cx));
+                                }),
+                        );
+                    }
+                    let mut ramp_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Ramp", window));
+                    let duration = element.duration.to_seconds_f64().max(0.1);
+                    let presets: [(&str, Vec<(f64, f64)>); 5] = [
+                        ("Off", Vec::new()),
+                        ("Ease in", vec![(0.0, 0.25), (duration, 1.0)]),
+                        ("Ease out", vec![(0.0, 1.0), (duration, 0.25)]),
+                        ("Slow middle", vec![(0.0, 1.0), (duration / 2.0, 0.25), (duration, 1.0)]),
+                        ("Fast middle", vec![(0.0, 1.0), (duration / 2.0, 4.0), (duration, 1.0)]),
+                    ];
+                    for (label, keys) in presets {
+                        let active = if keys.is_empty() {
+                            !is_ramp
+                        } else {
+                            is_ramp
+                                && current.ramp.len() == keys.len()
+                                && current.ramp.iter().zip(keys.iter()).all(|(have, want)| (have.rate - want.1).abs() < 1e-6)
+                        };
+                        let state = self.state.clone();
+                        let base = current.clone();
+                        ramp_row = ramp_row.child(
+                            Button::new(eid("speed-ramp", label), label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let next = editor::Retime {
+                                        ramp: keys.iter().map(|(time, rate)| editor::RampKey { time: *time, rate: *rate }).collect(),
+                                        ..base.clone()
+                                    };
+                                    let next = if next.is_identity() { None } else { Some(next) };
+                                    state.update(cx, |state, cx| state.set_retime_selected(next, cx));
+                                }),
+                        );
+                    }
+                    let reverse_row = div().flex().items_center().gap(px(8.)).child({
+                        let state = self.state.clone();
+                        let base = current.clone();
+                        let reversed = current.reverse;
+                        Button::new("speed-reverse", if reversed { "Reversed" } else { "Reverse" })
+                            .variant(if reversed { ButtonVariant::Default } else { ButtonVariant::Outline })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                let next = editor::Retime { reverse: !reversed, ..base.clone() };
+                                let next = if next.is_identity() { None } else { Some(next) };
+                                state.update(cx, |state, cx| state.set_retime_selected(next, cx));
+                            })
+                    });
+                    content = content
+                        .child(self.heading("Speed", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("A rate, a ramp between rates or backwards; audio follows without pitch correction. The clip's length changes to play the same source."),
+                        )
+                        .child(rate_row)
+                        .child(ramp_row)
+                        .child(reverse_row);
+                }
+
                 if is_visual {
                     content = self.transition_section(content, &element, window, cx);
                 }

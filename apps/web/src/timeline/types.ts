@@ -81,9 +81,19 @@ export interface SceneTracks {
 	audio: AudioTrack[];
 }
 
+/** A point of a speed ramp: the rate at `time` seconds from the clip's start. */
+export interface RetimeRampKey {
+	time: number;
+	rate: number;
+}
+
 export interface RetimeConfig {
 	rate: number;
 	maintainPitch?: boolean;
+	/** Play the clip's source span backwards. */
+	reverse?: boolean;
+	/** Rate keys the rate ramps between (seconds from the clip's start); `rate` is ignored when present. */
+	ramp?: RetimeRampKey[];
 }
 
 interface BaseAudioElement extends BaseTimelineElement {

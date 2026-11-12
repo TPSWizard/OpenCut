@@ -20,6 +20,8 @@ pub struct ExportJob {
     /// Platform upload settings; replace `quality` for MP4.
     pub platform: Option<PlatformEncode>,
     pub include_audio: bool,
+    /// Where retimed audio is rendered to (`default_cache_dir()` when none).
+    pub cache_dir: Option<PathBuf>,
 }
 
 /// Renders every frame of the project at its canvas size and frame rate
@@ -46,8 +48,19 @@ pub fn export_project(
     let height = canvas.height & !1;
 
     let audio = if job.include_audio {
+        let cache_dir = job.cache_dir.clone().unwrap_or_else(crate::retime_audio::default_cache_dir);
         plan_audio(project)
             .into_iter()
+            .map(|clip| {
+                if crate::retime_audio::needs_render(&clip) {
+                    crate::retime_audio::rendered_clip(ffmpeg, &clip, &cache_dir).unwrap_or_else(|error| {
+                        eprintln!("retimed audio for {}: {error}", clip.element_id);
+                        clip
+                    })
+                } else {
+                    clip
+                }
+            })
             .map(|clip| AudioMixClip {
                 path: clip.path.clone(),
                 source_start_seconds: clip.source_start.to_seconds_f64(),

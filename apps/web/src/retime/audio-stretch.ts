@@ -56,7 +56,7 @@ function buildResampledBuffer({
 		for (let i = 0; i < outputLength; i++) {
 			const clipTime = i / targetSampleRate;
 			const sourceTime =
-				trimStart + getSourceTimeAtClipTime({ clipTime, retime });
+				trimStart + getSourceTimeAtClipTime({ clipTime, retime, duration: clipDuration });
 			outputData[i] = sampleLinear({
 				channelData: sourceData,
 				position: sourceTime * sourceBuffer.sampleRate,

@@ -28,6 +28,9 @@ pub struct ElementPatch {
     pub hidden: Option<bool>,
     /// Merged into the element's parameters.
     pub params: Option<Params>,
+    /// Replaces the speed change (`Some(None)` removes it); the duration is
+    /// recomputed so the same source span still plays.
+    pub retime: Option<Option<crate::Retime>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -610,7 +613,16 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             let track = &project.tracks[track_index];
             let current = &track.elements[element_index];
             let start_time = patch.start_time.unwrap_or(current.start_time);
-            let duration = patch.duration.unwrap_or(current.duration);
+            let mut duration = patch.duration.unwrap_or(current.duration);
+            if let Some(retime) = &patch.retime {
+                // Keep the source span: the new map decides how long that plays.
+                let span = current.source_span_seconds();
+                let seconds = match retime {
+                    Some(retime) => retime.duration_for_source_span(span),
+                    None => span,
+                };
+                duration = MediaTime::from_seconds_f64(seconds).unwrap_or(duration).max(MIN_ELEMENT_DURATION);
+            }
             if start_time < MediaTime::ZERO || duration < MIN_ELEMENT_DURATION {
                 return Err(EditorError::InvalidParams(
                     "start time must be positive and duration at least 10 ms".to_owned(),
@@ -634,6 +646,9 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if let Some(trim_end) = patch.trim_end {
                 element.trim_end = trim_end.max(MediaTime::ZERO);
+            }
+            if let Some(retime) = &patch.retime {
+                element.retime = retime.clone().filter(|retime| !retime.is_identity());
             }
             if let Some(hidden) = patch.hidden {
                 element.hidden = hidden;

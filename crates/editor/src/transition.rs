@@ -142,6 +142,7 @@ mod tests {
             masks: Vec::new(),
             transition: None,
             words: Vec::new(),
+            retime: None,
         }
     }
 

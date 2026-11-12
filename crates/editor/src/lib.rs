@@ -27,6 +27,7 @@ mod loudness;
 mod luts;
 mod params;
 mod platforms;
+mod retime;
 mod shots;
 mod silence;
 mod store;
@@ -81,6 +82,7 @@ pub use transition::{
     ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
+pub use retime::{MAX_RETIME_RATE, MIN_RETIME_RATE, RampKey, Retime, clamp_retime_rate};
 pub use platforms::{
     PLATFORM_AUDIO_BITRATE, PLATFORM_PRESETS, PlatformEncodeSettings, PlatformFix, PlatformIssue, PlatformIssueKind,
     PlatformPreset, PlatformSeverity, SafeArea, Verified, check_platform_export, describe_aspect,

@@ -357,6 +357,7 @@ fn run() -> Result<(), String> {
             quality: args.quality,
             platform: platform.filter(|_| format == EncodeFormat::Mp4),
             include_audio: args.include_audio,
+            cache_dir: None,
         };
         let quiet = args.quiet;
         let started = std::time::Instant::now();

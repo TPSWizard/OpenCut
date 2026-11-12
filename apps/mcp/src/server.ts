@@ -301,6 +301,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.removeKeyframe { elementId, trackId?, path, time? | keyframeId? } / timeline.clearKeyframes { elementId, trackId?, path } → ApiElementInfo
 - masks.list {} → [{ type, name, params }]
 - timeline.setMask { elementId, trackId?, type, params? } / timeline.updateMask { elementId, trackId?, params?, inverted? } / timeline.removeMask { elementId, trackId? } → ApiElementInfo (masks)
+- timeline.setRetime { elementId, trackId?, rate?, maintainPitch?, reverse?, ramp?: [{ time, rate }], clear? } → ApiElementInfo (speed, ramp or reverse; duration follows)
 - luts.parse { file } → { name, size, lut } (then timeline.addEffect { type: "lut", params: { lut } })
 - effects.list {} → [{ type, name, keywords, params: [{ key, label, type, default, min?, max?, step?, options? }] }]
 - timeline.addEffect { elementId, trackId?, type, params? } → ApiElementInfo (effects: [{ id, type, params, enabled }])

@@ -339,6 +339,7 @@ fn export(
         quality: settings.quality,
         platform: settings.platform,
         include_audio: settings.include_audio,
+        cache_dir: None,
     };
     render::export_project(
         &mut renderer,

@@ -53,8 +53,9 @@ export async function measureElementLoudness({
 		throw new Error("The clip has no audio to measure");
 	}
 	const { buffer } = clip;
-	const sourceFrom = clip.trimStart + getSourceTimeAtClipTime({ clipTime: 0, retime: clip.retime });
-	const sourceTo = clip.trimStart + getSourceTimeAtClipTime({ clipTime: clip.duration, retime: clip.retime });
+	const spanEnd = clip.trimStart + Math.max(getSourceTimeAtClipTime({ clipTime: 0, retime: clip.retime }), getSourceTimeAtClipTime({ clipTime: clip.duration, retime: clip.retime }));
+	const sourceFrom = clip.trimStart;
+	const sourceTo = spanEnd;
 	const first = Math.max(0, Math.floor(sourceFrom * buffer.sampleRate));
 	const last = Math.min(buffer.length, Math.ceil(sourceTo * buffer.sampleRate));
 	if (last <= first) {

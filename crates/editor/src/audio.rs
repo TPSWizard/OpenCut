@@ -14,11 +14,16 @@ pub struct AudioClipPlan {
     pub path: PathBuf,
     /// Where on the timeline the clip starts.
     pub timeline_start: MediaTime,
+    /// How long it plays on the timeline.
+    pub timeline_duration: MediaTime,
     /// The part of the source that plays.
     pub source_start: MediaTime,
     pub source_end: MediaTime,
     /// Gain in decibels; 0 is unchanged. The value when the volume has no keys.
     pub volume_db: f64,
+    /// Speed change, ramp or reverse to apply to the source span; none plays
+    /// it at 1x.
+    pub retime: Option<crate::Retime>,
     /// Keyframed volume in decibels, relative to the clip's start; empty when
     /// the volume is static.
     pub volume: Channel,
@@ -87,8 +92,11 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
                 media_id: media_id.clone(),
                 path: media.path.clone(),
                 timeline_start: element.start_time,
+                timeline_duration: element.duration,
                 source_start: element.trim_start,
-                source_end: element.trim_start + element.duration,
+                source_end: element.trim_start
+                    + MediaTime::from_seconds_f64(element.source_span_seconds()).unwrap_or(element.duration),
+                retime: element.retime.clone().filter(|retime| !retime.is_identity()),
                 volume_db: element.params.number("volume", 0.0),
                 volume: element.animations.get("volume").cloned().unwrap_or_default(),
             });

@@ -297,6 +297,7 @@ function getDurationForVisibleSourceSpan({
 		time: getTimelineDurationForSourceSpan({
 			sourceSpan,
 			retime: member.retime,
+			ticksPerSecond: TICKS_PER_SECOND,
 		}),
 	});
 }

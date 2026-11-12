@@ -178,7 +178,12 @@ function resolveSourceTimeTicks({
 	const inside = Math.min(Math.max(clipTime, 0), Math.max(params.duration - 1, 0));
 	let source =
 		params.trimStart +
-		getSourceTimeAtClipTime({ clipTime: inside, retime: params.retime });
+		getSourceTimeAtClipTime({
+			clipTime: inside,
+			retime: params.retime,
+			duration: params.duration,
+			ticksPerSecond: TICKS_PER_SECOND,
+		});
 	if (clipTime !== inside) {
 		source += clipTime - inside;
 	}

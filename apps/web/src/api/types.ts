@@ -75,6 +75,13 @@ export interface ApiMediaInfo {
 	hasAudio?: boolean;
 }
 
+export interface ApiRetime {
+	rate: number;
+	maintainPitch?: boolean;
+	reverse?: boolean;
+	ramp?: { time: number; rate: number }[];
+}
+
 export interface ApiElementInfo {
 	id: string;
 	trackId: string;
@@ -82,6 +89,8 @@ export interface ApiElementInfo {
 	name: string;
 	startTime: number;
 	duration: number;
+	/** Speed change of a video or audio clip, when it has one. */
+	retime?: ApiRetime;
 	trimStart: number;
 	trimEnd: number;
 	mediaId?: string;
@@ -684,6 +693,22 @@ export interface EditorApiMethods {
 	"luts.parse": {
 		params: { file: File };
 		result: { name: string; size: number; lut: string };
+	};
+	/**
+	 * Sets a video or audio clip's speed: a constant `rate` (0.01–5), a
+	 * `ramp` of rates at seconds from the clip's start, `reverse`, and
+	 * `maintainPitch` for constant rates; `clear` removes it. The clip's
+	 * duration changes so the same source span still plays.
+	 */
+	"timeline.setRetime": {
+		params: ApiElementLocator & {
+			rate?: number;
+			maintainPitch?: boolean;
+			reverse?: boolean;
+			ramp?: { time: number; rate: number }[];
+			clear?: boolean;
+		};
+		result: ApiElementInfo;
 	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {

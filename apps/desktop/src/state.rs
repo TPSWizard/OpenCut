@@ -1028,6 +1028,20 @@ impl EditorState {
         self.execute(Command::AddEffect { element_id, effect }, cx);
     }
 
+    /// Sets or clears the selected clip's speed change; its duration follows
+    /// so the same source span still plays.
+    pub(crate) fn set_retime_selected(&mut self, retime: Option<editor::Retime>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        self.execute(
+            Command::UpdateElement {
+                element_id,
+                patch: editor::ElementPatch { retime: Some(retime), ..Default::default() },
+            },
+            cx,
+        );
+    }
+
     /// Picks a .cube, .3dl or HALD image and loads it into the LUT effect
     /// `effect_id` of the selected element.
     pub(crate) fn load_lut_for_effect(&mut self, effect_id: &str, cx: &mut Context<Self>) {

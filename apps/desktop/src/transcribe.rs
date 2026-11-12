@@ -303,10 +303,12 @@ pub(crate) fn clip_plan(project: &Project, element_id: &str) -> Option<AudioClip
         media_id: media_id.to_owned(),
         path: media.path.clone(),
         timeline_start: element.start_time,
+        timeline_duration: element.duration,
         source_start: element.trim_start,
         source_end: element.trim_start + element.duration,
         volume_db: 0.0,
         volume: Default::default(),
+        retime: None,
     })
 }
 
@@ -382,10 +384,12 @@ mod tests {
             media_id: "m".into(),
             path: PathBuf::from(&path),
             timeline_start: time::MediaTime::from_seconds_f64(2.0).unwrap(),
+            timeline_duration: info.duration.unwrap(),
             source_start: time::MediaTime::ZERO,
             source_end: info.duration.unwrap(),
             volume_db: 0.0,
             volume: Default::default(),
+            retime: None,
         };
         let samples = clip_samples(&ffmpeg, &clip).expect("samples");
         let started = std::time::Instant::now();

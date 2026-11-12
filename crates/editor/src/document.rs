@@ -480,6 +480,9 @@ pub struct Element {
     /// `caption.*` params say how the spoken word is highlighted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub words: Vec<CaptionWord>,
+    /// Speed change, ramp or reverse; see [`crate::Retime`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retime: Option<crate::Retime>,
 }
 
 fn zero() -> MediaTime {
@@ -545,6 +548,7 @@ impl Element {
             masks: Vec::new(),
             transition: None,
             words: Vec::new(),
+            retime: None,
         }
     }
 
@@ -567,6 +571,7 @@ impl Element {
             masks: Vec::new(),
             transition: None,
             words: Vec::new(),
+            retime: None,
         }
     }
 
@@ -633,9 +638,25 @@ impl Element {
         time >= self.start_time && time < self.end_time()
     }
 
-    /// Where in the source a timeline time falls.
+    /// Where in the source a timeline time falls, following the speed
+    /// change, ramp or reverse when the element has one.
     pub fn source_time(&self, timeline_time: MediaTime) -> MediaTime {
-        self.trim_start + (timeline_time - self.start_time)
+        let local = timeline_time - self.start_time;
+        match &self.retime {
+            Some(retime) if !retime.is_identity() => {
+                let offset = retime.source_offset(local.to_seconds_f64(), self.duration.to_seconds_f64());
+                self.trim_start + MediaTime::from_seconds_f64(offset.max(0.0)).unwrap_or(MediaTime::ZERO)
+            }
+            _ => self.trim_start + local,
+        }
+    }
+
+    /// Source seconds the element plays, after its speed change.
+    pub fn source_span_seconds(&self) -> f64 {
+        match &self.retime {
+            Some(retime) => retime.forward(self.duration.to_seconds_f64()),
+            None => self.duration.to_seconds_f64(),
+        }
     }
 
     pub fn media_id(&self) -> Option<&str> {

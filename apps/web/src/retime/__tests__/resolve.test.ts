@@ -58,4 +58,25 @@ describe("retime resolve", () => {
 			getTimelineDurationForSourceSpan({ sourceSpan: 10, retime: { rate: 100 } }),
 		).toBe(2);
 	});
+
+	test("ramps integrate the rate, in seconds or ticks", () => {
+		// 1x for the first second, rising to 3x by the third, then flat.
+		const ramp: RetimeConfig = { rate: 1, ramp: [{ time: 1, rate: 1 }, { time: 3, rate: 3 }] };
+		expect(getEffectiveRateAt({ clipTime: 2, retime: ramp })).toBe(2);
+		expect(getSourceTimeAtClipTime({ clipTime: 1, retime: ramp })).toBeCloseTo(1, 9);
+		expect(getSourceTimeAtClipTime({ clipTime: 3, retime: ramp })).toBeCloseTo(5, 9);
+		expect(getSourceTimeAtClipTime({ clipTime: 4, retime: ramp })).toBeCloseTo(8, 9);
+		expect(getClipTimeAtSourceTime({ sourceTime: 8, retime: ramp })).toBeCloseTo(4, 6);
+		expect(getTimelineDurationForSourceSpan({ sourceSpan: 8, retime: ramp })).toBeCloseTo(4, 6);
+		expect(getSourceTimeAtClipTime({ clipTime: 4000, retime: ramp, ticksPerSecond: 1000 })).toBeCloseTo(8000, 6);
+	});
+
+	test("reverse plays the span backwards when the duration is known", () => {
+		const back: RetimeConfig = { rate: 2, reverse: true };
+		expect(getSourceTimeAtClipTime({ clipTime: 0, retime: back, duration: 5 })).toBe(10);
+		expect(getSourceTimeAtClipTime({ clipTime: 5, retime: back, duration: 5 })).toBe(0);
+		expect(getSourceTimeAtClipTime({ clipTime: 1, retime: back, duration: 5 })).toBe(8);
+		expect(getClipTimeAtSourceTime({ sourceTime: 8, retime: back, duration: 5 })).toBeCloseTo(1, 9);
+		expect(getSourceTimeAtClipTime({ clipTime: 1, retime: back })).toBe(2);
+	});
 });

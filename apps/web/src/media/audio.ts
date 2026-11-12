@@ -18,7 +18,7 @@ import { doesElementHaveEnabledAudio } from "@/timeline/audio-separation";
 import { canElementHaveAudio, hasMediaId } from "@/timeline/element-utils";
 import { canTrackHaveAudio } from "@/timeline";
 import { mediaSupportsAudio } from "@/media/media-utils";
-import { getSourceTimeAtClipTime, renderRetimedBuffer } from "@/retime";
+import { getSourceTimeAtClipTime, hasVariableRetime, renderRetimedBuffer } from "@/retime";
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { TICKS_PER_SECOND } from "@/wasm";
 import {
@@ -657,10 +657,11 @@ export async function createTimelineAudioBuffer({
 	for (const element of audioElements) {
 		if (element.muted) continue;
 
-		const renderedBuffer = shouldMaintainPitch({
-			rate: element.retime?.rate ?? 1,
-			maintainPitch: element.retime?.maintainPitch,
-		})
+		const renderedBuffer =
+			shouldMaintainPitch({
+				rate: element.retime?.rate ?? 1,
+				maintainPitch: element.retime?.maintainPitch,
+			}) || hasVariableRetime({ retime: element.retime })
 			? await renderRetimedBuffer({
 					audioContext: context,
 					sourceBuffer: element.buffer,
@@ -845,7 +846,7 @@ function mixAudioChannels({
 
 			const clipTime = i / sampleRate;
 			const sourceTime =
-				trimStart + getSourceTimeAtClipTime({ clipTime, retime });
+				trimStart + getSourceTimeAtClipTime({ clipTime, retime, duration: elementDuration });
 			const sourceIndex = sourceTime * buffer.sampleRate;
 			if (sourceIndex >= sourceData.length) break;
 

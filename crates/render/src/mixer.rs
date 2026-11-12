@@ -14,6 +14,8 @@ struct ActiveClip {
 pub struct Mixer {
     ffmpeg: Arc<Ffmpeg>,
     settings: AudioSettings,
+    /// Where retimed clips are rendered to before they are read.
+    cache_dir: std::path::PathBuf,
     clips: Vec<AudioClipPlan>,
     active: Vec<ActiveClip>,
     /// Timeline position of the next sample frame to produce.
@@ -33,6 +35,7 @@ impl Mixer {
         Self {
             ffmpeg,
             settings,
+            cache_dir: crate::retime_audio::default_cache_dir(),
             clips: Vec::new(),
             active: Vec::new(),
             position_frames: 0,
@@ -47,6 +50,20 @@ impl Mixer {
     /// Replaces the clips (after an edit). Readers for clips that did not
     /// change keep running.
     pub fn set_clips(&mut self, clips: Vec<AudioClipPlan>) {
+        // Clips with a speed change or reverse play from a rendered copy.
+        let clips: Vec<AudioClipPlan> = clips
+            .into_iter()
+            .map(|clip| {
+                if crate::retime_audio::needs_render(&clip) {
+                    crate::retime_audio::rendered_clip(&self.ffmpeg, &clip, &self.cache_dir).unwrap_or_else(|error| {
+                        eprintln!("mixer: retimed audio for {}: {error}", clip.element_id);
+                        clip
+                    })
+                } else {
+                    clip
+                }
+            })
+            .collect();
         let mut kept = Vec::new();
         for active in self.active.drain(..) {
             let old = &self.clips[active.clip_index];

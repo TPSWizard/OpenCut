@@ -12,7 +12,9 @@ import {
 	clampRetimeRate,
 	canMaintainPitch,
 } from "@/retime/rate";
-import type { AudioElement, VideoElement } from "@/timeline";
+import type { AudioElement, RetimeConfig, RetimeRampKey, VideoElement } from "@/timeline";
+import { TICKS_PER_SECOND } from "@/wasm";
+import { Button } from "@/components/ui/button";
 import {
 	Section,
 	SectionContent,
@@ -49,13 +51,26 @@ function parseSpeedInput({ input }: { input: string }): number | null {
 function buildRetime({
 	rate,
 	maintainPitch,
+	reverse = false,
+	ramp,
 }: {
 	rate: number;
 	maintainPitch: boolean;
-}) {
-	if (rate === DEFAULT_RETIME_RATE && !maintainPitch) return undefined;
-	return buildConstantRetime({ rate, maintainPitch });
+	reverse?: boolean;
+	ramp?: RetimeRampKey[];
+}): RetimeConfig | undefined {
+	const keys = ramp && ramp.length > 0 ? ramp : undefined;
+	if (rate === DEFAULT_RETIME_RATE && !maintainPitch && !reverse && !keys) return undefined;
+	return { ...buildConstantRetime({ rate, maintainPitch }), ...(reverse ? { reverse: true } : {}), ...(keys ? { ramp: keys } : {}) };
 }
+
+const RAMP_PRESETS: { id: string; label: string; keys: (duration: number) => RetimeRampKey[] }[] = [
+	{ id: "off", label: "Off", keys: () => [] },
+	{ id: "ease-in", label: "Ease in", keys: (d) => [{ time: 0, rate: 0.25 }, { time: d, rate: 1 }] },
+	{ id: "ease-out", label: "Ease out", keys: (d) => [{ time: 0, rate: 1 }, { time: d, rate: 0.25 }] },
+	{ id: "slow-middle", label: "Slow middle", keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 0.25 }, { time: d, rate: 1 }] },
+	{ id: "fast-middle", label: "Fast middle", keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 4 }, { time: d, rate: 1 }] },
+];
 
 export function SpeedTab({
 	element,
@@ -70,6 +85,9 @@ export function SpeedTab({
 	});
 	const isPitchPreserveAvailable = canMaintainPitch({ rate });
 	const maintainPitch = element.retime?.maintainPitch ?? false;
+	const reverse = element.retime?.reverse ?? false;
+	const ramp = element.retime?.ramp ?? [];
+	const durationSeconds = element.duration / TICKS_PER_SECOND;
 	const pendingRateRef = useRef(rate);
 
 	const commitRetime = ({
@@ -82,7 +100,15 @@ export function SpeedTab({
 		editor.timeline.updateElementRetime({
 			trackId,
 			elementId: element.id,
-			retime: buildRetime({ rate: nextRate, maintainPitch: nextMaintainPitch }),
+			retime: buildRetime({ rate: nextRate, maintainPitch: nextMaintainPitch, reverse, ramp }),
+		});
+	};
+
+	const commitShape = ({ nextReverse, nextRamp }: { nextReverse: boolean; nextRamp: RetimeRampKey[] }) => {
+		editor.timeline.updateElementRetime({
+			trackId,
+			elementId: element.id,
+			retime: buildRetime({ rate, maintainPitch, reverse: nextReverse, ramp: nextRamp }),
 		});
 	};
 
@@ -97,7 +123,7 @@ export function SpeedTab({
 						trackId,
 						elementId: element.id,
 						updates: {
-							retime: buildRetime({ rate: nextRate, maintainPitch }),
+							retime: buildRetime({ rate: nextRate, maintainPitch, reverse, ramp }),
 						},
 					},
 				],
@@ -139,6 +165,34 @@ export function SpeedTab({
 							isDefault={rate === DEFAULT_RETIME_RATE}
 						/>
 					</SectionField>
+					<SectionField label="Ramp">
+						<div className="flex flex-wrap gap-1" data-testid="speed-ramp">
+							{RAMP_PRESETS.map((preset) => {
+								const keys = preset.keys(durationSeconds);
+								const active =
+									keys.length === 0
+										? ramp.length === 0
+										: ramp.length === keys.length && ramp.every((key, index) => Math.abs(key.rate - keys[index].rate) < 1e-6);
+								return (
+									<Button
+										key={preset.id}
+										size="sm"
+										variant={active ? "default" : "outline"}
+										onClick={() => commitShape({ nextReverse: reverse, nextRamp: keys })}
+									>
+										{preset.label}
+									</Button>
+								);
+							})}
+						</div>
+					</SectionField>
+					<div className="flex items-center justify-between">
+						<span className="text-sm">Reverse</span>
+						<Switch
+							checked={reverse}
+							onCheckedChange={(checked) => commitShape({ nextReverse: checked, nextRamp: ramp })}
+						/>
+					</div>
 					<div className="flex items-center justify-between">
 						<span className="text-sm">Change pitch</span>
 						<Switch

@@ -189,6 +189,7 @@ function toElementInfo({
 						...(element.transition.params && { params: element.transition.params }),
 					}
 				: undefined,
+		retime: "retime" in element && element.retime ? { ...element.retime } : undefined,
 		masks:
 			maskable(element) && element.masks && element.masks.length > 0
 				? element.masks.map((mask) => ({
@@ -1221,6 +1222,31 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
 			}
+		},
+		"timeline.setRetime": ({ elementId, trackId, rate, maintainPitch, reverse, ramp, clear }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video" && element.type !== "audio") {
+				throw new EditorApiError({ code: "invalid_params", message: "Only video and audio clips can be retimed" });
+			}
+			if (clear) {
+				editor.timeline.updateElementRetime({ trackId: track.id, elementId: element.id, retime: undefined });
+				return elementInfoById({ trackId: track.id, elementId: element.id });
+			}
+			const current = element.retime ?? { rate: 1 };
+			if (rate !== undefined && (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "rate must be a positive number" });
+			}
+			if (ramp !== undefined && (!Array.isArray(ramp) || ramp.some((key) => typeof key?.time !== "number" || typeof key?.rate !== "number" || key.rate <= 0))) {
+				throw new EditorApiError({ code: "invalid_params", message: "ramp must be a list of { time, rate } with positive rates" });
+			}
+			const next = {
+				rate: rate ?? current.rate ?? 1,
+				...(maintainPitch !== undefined ? { maintainPitch: Boolean(maintainPitch) } : current.maintainPitch ? { maintainPitch: true } : {}),
+				...(reverse !== undefined ? { reverse: Boolean(reverse) } : current.reverse ? { reverse: true } : {}),
+				...(ramp !== undefined ? (ramp.length > 0 ? { ramp } : {}) : current.ramp?.length ? { ramp: current.ramp } : {}),
+			};
+			editor.timeline.updateElementRetime({ trackId: track.id, elementId: element.id, retime: next });
+			return elementInfoById({ trackId: track.id, elementId: element.id });
 		},
 		"luts.parse": async ({ file }) => {
 			if (!(file instanceof File)) {

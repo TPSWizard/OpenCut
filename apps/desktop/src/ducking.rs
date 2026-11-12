@@ -149,10 +149,12 @@ pub(crate) fn measure_clip(
         media_id: media_id.clone(),
         path: media.path.clone(),
         timeline_start: element.start_time,
+        timeline_duration: element.duration,
         source_start: element.trim_start,
         source_end: element.trim_start + element.duration,
         volume_db: 0.0,
         volume: Default::default(),
+        retime: None,
     };
     let clip_start = element.start_time.to_seconds_f64();
     let clip_duration = element.duration.to_seconds_f64();
