@@ -21,6 +21,7 @@ mod editor;
 mod effect_catalogue;
 mod error;
 mod frame;
+mod fillers;
 mod freeform;
 mod loudness;
 mod params;
@@ -50,6 +51,10 @@ pub use document::{
     Background, CanvasSize, CaptionWord, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
+};
+pub use fillers::{
+    FILLER_LANGUAGES, FILLER_PROMPT, FILLER_WORDS, FillerHit, FillerOptions, filler_intervals, filler_set, find_fillers,
+    normalize_word,
 };
 pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,

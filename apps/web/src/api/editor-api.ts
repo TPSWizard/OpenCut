@@ -76,6 +76,7 @@ import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
+import { cutIntervals, findClipFillers } from "@/fillers/remove";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
 import { buildDefaultMaskInstance, masksRegistry } from "@/masks";
@@ -1218,6 +1219,44 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Shot detection failed" });
+			}
+		},
+		"audio.removeFillers": async ({ elementId, trackId, language, source, ripple, apply, modelId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (source !== undefined && !["captions", "transcribe", "auto"].includes(source)) {
+				throw new EditorApiError({ code: "invalid_params", message: "source must be captions, transcribe or auto" });
+			}
+			if (ripple !== undefined && !isRippleScope(ripple)) {
+				throw new EditorApiError({ code: "invalid_params", message: "ripple must be all, track or none" });
+			}
+			if (modelId !== undefined && !isTranscriptionModelId(modelId)) {
+				throw new EditorApiError({ code: "invalid_params", message: "modelId is not a transcription model" });
+			}
+			try {
+				const report = await findClipFillers({
+					editor,
+					trackId: track.id,
+					elementId: element.id,
+					language: language ?? "auto",
+					source: source ?? "auto",
+					modelId,
+				});
+				const applied = apply !== false && report.intervals.length > 0;
+				const pieces = applied
+					? cutIntervals({ editor, trackId: track.id, elementId: element.id, intervals: report.intervals, ripple: ripple ?? "all" })
+					: [{ trackId: track.id, elementId: element.id }];
+				return {
+					source: report.source,
+					language: report.language,
+					words: report.words,
+					fillers: report.fillers.map((hit) => ({ text: hit.text, start: hit.start, end: hit.end })),
+					intervals: report.intervals,
+					seconds: report.seconds,
+					applied,
+					pieces,
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Filler removal failed" });
 			}
 		},
 		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {

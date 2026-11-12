@@ -35,6 +35,7 @@ pub(crate) struct InspectorPanel {
     shot_threshold: f64,
     beats_every: usize,
     denoise_db: f64,
+    filler_language: &'static str,
     silence_ripple: editor::RippleScope,
 }
 
@@ -108,6 +109,7 @@ impl InspectorPanel {
             shot_threshold: 20.0,
             beats_every: 1,
             denoise_db: 12.0,
+            filler_language: "auto",
             silence_ripple: editor::RippleScope::All,
         }
     }
@@ -1073,6 +1075,39 @@ impl Render for InspectorPanel {
                                 state.update(cx, |state, cx| state.transcribe_selected(model_id, cx));
                             })
                     });
+                    // Filler words: cut "um", "uh" and friends out of the clip
+                    // from the captions' word timings, or a prompted transcription.
+                    let mut language_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell("Fillers", window));
+                    for (code, label) in editor::FILLER_LANGUAGES {
+                        let active = self.filler_language == *code;
+                        language_row = language_row.child(
+                            Button::new(eid("filler-language", code), *label)
+                                .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.filler_language = code;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let filler_language = self.filler_language;
+                    let filler_ripple = self.silence_ripple;
+                    let fillers_row = div().flex().items_center().gap(px(8.)).child({
+                        let state = self.state.clone();
+                        Button::new("remove-fillers", "Remove filler words")
+                            .size(ButtonSize::XSmall)
+                            .disabled(!has_ffmpeg)
+                            .on_click(move |_, _, cx| {
+                                state.update(cx, |state, cx| {
+                                    state.remove_fillers_selected(model_id, filler_language.to_owned(), filler_ripple, cx)
+                                });
+                            })
+                    });
                     content = content
                         .child(self.heading("Captions", window))
                         .child(
@@ -1082,7 +1117,15 @@ impl Render for InspectorPanel {
                                 .child("Word-timed captions from this clip's speech, on a new text track; the model is fetched once into ~/.opencut/models."),
                         )
                         .child(model_row)
-                        .child(transcribe_row);
+                        .child(transcribe_row)
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("Filler words are cut with 40 ms of padding (gaps close as the Silence setting says), from captions over the clip or a transcription."),
+                        )
+                        .child(language_row)
+                        .child(fillers_row);
 
                     content = content
                         .child(self.heading("Silence", window))

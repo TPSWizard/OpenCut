@@ -653,6 +653,30 @@ export interface EditorApiMethods {
 		params: ApiElementLocator & { reductionDb?: number };
 		result: { assetId: string; assetName: string; elementId: string; trackId: string; seconds: number; channels: number };
 	};
+	/**
+	 * Finds the filler words ("um", "uh", …) of a clip from the captions
+	 * over it or a transcription, and with `apply` (default true) cuts them
+	 * out softly in one undo step.
+	 */
+	"audio.removeFillers": {
+		params: ApiElementLocator & {
+			language?: string;
+			source?: "captions" | "transcribe" | "auto";
+			ripple?: "all" | "track" | "none";
+			apply?: boolean;
+			modelId?: string;
+		};
+		result: {
+			source: "captions" | "transcribe";
+			language: string;
+			words: number;
+			fillers: { text: string; start: number; end: number }[];
+			intervals: { start: number; end: number }[];
+			seconds: number;
+			applied: boolean;
+			pieces: ApiElementRef[];
+		};
+	};
 	/** The named loudness targets `audio.normalizeLoudness` accepts. */
 	"audio.loudnessTargets": {
 		params: Record<string, never>;

@@ -4,6 +4,7 @@ import { SilenceSection } from "@/silence/components/silence-section";
 import { ShotsSection } from "@/shots/components/shots-section";
 import { BeatsSection } from "@/beats/components/beats-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
+import { FillersSection } from "@/fillers/components/fillers-section";
 import type { ReactNode } from "react";
 import type {
 	EffectElement,
@@ -150,6 +151,7 @@ function buildAudioTab({
 				<BeatsSection element={element} trackId={trackId} />
 				<DuckingSection element={element} trackId={trackId} />
 				<SilenceSection element={element} trackId={trackId} />
+				<FillersSection element={element} trackId={trackId} />
 			</>
 		),
 	};

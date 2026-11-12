@@ -251,6 +251,22 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
+## Filler words
+
+**Remove filler words** in the inspector's Captions section cuts "um",
+"uh" and their kin out of the selected clip. The word timings come from
+caption elements over the clip when there are any (the Transcribe button
+or an imported word-timed subtitle file); otherwise the clip is transcribed
+with whisper.cpp first, with a prompt full of hesitations so the model
+keeps them rather than tidying them away. The filler lists are per
+language (English, German, French, Spanish, Portuguese, Italian; "Any"
+uses only the fillers that are no real word in any of them) and live in
+`crates/editor/src/fillers.rs`, the same lists as the web app's
+`src/fillers/detect.ts`. Each filler is cut with 40 ms of padding, never
+into the neighbouring words, runs of fillers merge, and the gaps close as
+the Silence section's ripple setting says, in one undo step. Longer words
+"like" and "so" are left alone: they are words as often as fillers.
+
 ## Noise reduction
 
 The inspector's **Noise** section (audio and video clips) runs FFmpeg's

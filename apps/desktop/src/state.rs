@@ -2030,7 +2030,7 @@ impl EditorState {
                 .spawn(async move {
                     let path = crate::transcribe::ensure_model(&models, model, &|_, _| {})?;
                     let samples = crate::transcribe::clip_samples(&ffmpeg, &clip)?;
-                    let words = crate::transcribe::transcribe(&cli, model, &path, &samples, None, clip.timeline_start.to_seconds_f64())?;
+                    let words = crate::transcribe::transcribe(&cli, model, &path, &samples, None, clip.timeline_start.to_seconds_f64(), None)?;
                     let chunks = editor::build_caption_chunks(
                         &words,
                         editor::DEFAULT_WORDS_PER_CAPTION,
@@ -2059,6 +2059,120 @@ impl EditorState {
             .ok();
         })
         .detach();
+    }
+
+    /// Cuts the filler words out of the selected clip in one undo step. The
+    /// timed words come from caption elements over the clip when there are
+    /// any, else from a whisper.cpp transcription prompted to keep
+    /// hesitations; `language` picks the filler list (`auto` for the safe set).
+    pub(crate) fn remove_fillers_selected(
+        &mut self,
+        model_id: &str,
+        language: String,
+        ripple: editor::RippleScope,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let from = element.start_time.to_seconds_f64();
+        let to = element.end_time().to_seconds_f64();
+        // Words of the captions that overlap the clip, on the timeline clock.
+        let mut words: Vec<editor::TimedWord> = Vec::new();
+        for (track, caption) in self.project().elements() {
+            if track.hidden || caption.hidden || caption.words.is_empty() {
+                continue;
+            }
+            let base = caption.start_time.to_seconds_f64();
+            for word in &caption.words {
+                let (start, end) = (base + word.start.to_seconds_f64(), base + word.end.to_seconds_f64());
+                if end >= from && start <= to {
+                    words.push(editor::TimedWord { text: word.text.clone(), start, end });
+                }
+            }
+        }
+        words.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let options = editor::FillerOptions::default();
+        if !words.is_empty() {
+            let count = words.len();
+            self.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, "the captions", count, cx);
+            return;
+        }
+        let Some(clip) = crate::transcribe::clip_plan(self.project(), &element_id) else {
+            self.set_status("Select a clip with audio.", cx);
+            return;
+        };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status("FFmpeg is needed to read the clip's audio.", cx);
+            return;
+        };
+        let Some(model) = crate::transcribe::model_spec(model_id) else { return };
+        let tools = crate::transcribe::tools_dir(self.store.root());
+        let Some(cli) = crate::transcribe::whisper_cli(&tools) else {
+            self.set_status("whisper-cli was not found; see Captions above.", cx);
+            return;
+        };
+        let models = crate::transcribe::models_dir(self.store.root());
+        let whisper_language = if language == "auto" { None } else { Some(language.clone()) };
+        self.set_status(format!("Transcribing with the {} model to find fillers…", model.id), cx);
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let path = crate::transcribe::ensure_model(&models, model, &|_, _| {})?;
+                    let samples = crate::transcribe::clip_samples(&ffmpeg, &clip)?;
+                    crate::transcribe::transcribe(
+                        &cli,
+                        model,
+                        &path,
+                        &samples,
+                        whisper_language.as_deref(),
+                        clip.timeline_start.to_seconds_f64(),
+                        Some(editor::FILLER_PROMPT),
+                    )
+                })
+                .await;
+            this.update(cx, |state, cx| match result {
+                Ok(words) => {
+                    let count = words.len();
+                    state.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, "a transcription", count, cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn apply_filler_cuts(
+        &mut self,
+        element_id: &str,
+        from: f64,
+        to: f64,
+        words: &[editor::TimedWord],
+        language: &str,
+        options: editor::FillerOptions,
+        ripple: editor::RippleScope,
+        source: &str,
+        word_count: usize,
+        cx: &mut Context<Self>,
+    ) {
+        let fillers = editor::find_fillers(words, language, &options);
+        let ranges: Vec<(MediaTime, MediaTime)> = editor::filler_intervals(words, &fillers, &options)
+            .into_iter()
+            .map(|(start, end)| (start.max(from), end.min(to)))
+            .filter(|(start, end)| end > start)
+            .filter_map(|(start, end)| Some((MediaTime::from_seconds_f64(start)?, MediaTime::from_seconds_f64(end)?)))
+            .collect();
+        if ranges.is_empty() {
+            self.set_status(format!("No filler words among {word_count} words from {source}."), cx);
+            return;
+        }
+        let count = ranges.len();
+        let seconds: f64 = ranges.iter().map(|(s, e)| (*e - *s).to_seconds_f64()).sum();
+        if self.execute(Command::RemoveRanges { element_id: element_id.to_owned(), ranges, ripple }, cx).is_some() {
+            self.set_status(format!("{count} filler cut(s) ({seconds:.2} s) from {word_count} words from {source}."), cx);
+        }
     }
 
     /// Fetches the SVG of every sticker in the project that is not on disk

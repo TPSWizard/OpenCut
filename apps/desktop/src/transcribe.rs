@@ -190,6 +190,7 @@ pub(crate) fn transcribe(
     samples: &[f32],
     language: Option<&str>,
     offset_seconds: f64,
+    prompt: Option<&str>,
 ) -> Result<Vec<TimedWord>, String> {
     if samples.len() < WHISPER_SAMPLE_RATE as usize / 2 {
         return Ok(Vec::new());
@@ -199,13 +200,18 @@ pub(crate) fn transcribe(
     write_wav(&wav, samples)?;
     let out_base = dir.path().join("clip");
     // Full JSON carries per-token DTW times; DTW needs flash attention off.
-    let output = Command::new(cli)
+    let mut command = Command::new(cli);
+    command
         .arg("-m")
         .arg(model_file)
         .arg("-f")
         .arg(&wav)
         .args(["-l", language.unwrap_or("auto")])
-        .args(["-ojf", "-np", "-nt", "-nfa", "--dtw", model.id])
+        .args(["-ojf", "-np", "-nt", "-nfa", "--dtw", model.id]);
+    if let Some(prompt) = prompt {
+        command.args(["--prompt", prompt]);
+    }
+    let output = command
         .arg("-of")
         .arg(&out_base)
         .output()
@@ -383,7 +389,7 @@ mod tests {
         };
         let samples = clip_samples(&ffmpeg, &clip).expect("samples");
         let started = std::time::Instant::now();
-        let words = transcribe(&cli, model_spec("tiny").unwrap(), &model, &samples, None, 2.0).expect("transcribe");
+        let words = transcribe(&cli, model_spec("tiny").unwrap(), &model, &samples, None, 2.0, None).expect("transcribe");
         eprintln!("{} words in {:.1} s:", words.len(), started.elapsed().as_secs_f64());
         for word in &words {
             eprintln!("  {:6.2}-{:6.2} {}", word.start, word.end, word.text);
@@ -440,5 +446,36 @@ mod tests {
         assert_eq!(models_dir(Path::new("/home/x/.opencut/projects")), PathBuf::from("/home/x/.opencut/models"));
         assert_eq!(model_spec("tiny").unwrap().file, "ggml-tiny.bin");
         assert!(model_spec("huge").is_none());
+    }
+
+    /// `OPENCUT_FILLER_CHECK=<speech with "um" and "uh">` transcribes that
+    /// file with the hesitation prompt and expects filler words to be found.
+    #[test]
+    fn prompted_transcription_keeps_fillers() {
+        let Ok(path) = std::env::var("OPENCUT_FILLER_CHECK") else { return };
+        let Ok(ffmpeg) = Ffmpeg::locate() else { return };
+        let tools = tools_dir(&editor::ProjectStore::default_root());
+        let Some(cli) = whisper_cli(&tools) else { return };
+        let models = models_dir(&editor::ProjectStore::default_root());
+        let model = ensure_model(&models, model_spec("tiny").unwrap(), &|_, _| {}).expect("model");
+        let settings = media::AudioSettings { sample_rate: WHISPER_SAMPLE_RATE, channels: 1 };
+        let mut reader = media::AudioReader::open(&ffmpeg, Path::new(&path), 0.0, settings).expect("open");
+        let mut samples = Vec::new();
+        let mut buffer = vec![0.0f32; 16_000];
+        loop {
+            let got = reader.read(&mut buffer).expect("read");
+            if got == 0 {
+                break;
+            }
+            samples.extend_from_slice(&buffer[..got]);
+        }
+        let words = transcribe(&cli, model_spec("tiny").unwrap(), &model, &samples, Some("en"), 0.0, Some(editor::FILLER_PROMPT)).expect("transcribe");
+        let text: Vec<String> = words.iter().map(|w| w.text.clone()).collect();
+        let fillers = editor::find_fillers(&words, "en", &editor::FillerOptions::default());
+        let intervals = editor::filler_intervals(&words, &fillers, &editor::FillerOptions::default());
+        eprintln!("words: {}
+fillers: {:?}
+intervals: {intervals:?}", text.join(" "), fillers.iter().map(|h| (&h.word.text, h.word.start)).collect::<Vec<_>>());
+        assert!(!fillers.is_empty(), "no fillers among: {}", text.join(" "));
     }
 }
