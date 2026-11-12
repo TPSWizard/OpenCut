@@ -21,5 +21,22 @@
   "start_url": "/projects",
   "display": "standalone",
   "theme_color": "#0d0d0d",
-  "background_color": "#0d0d0d"
+  "background_color": "#0d0d0d",
+  "id": "/projects",
+  "scope": "/",
+  "description": "A video editor that runs in the browser and on the desktop.",
+  "file_handlers": [
+    {
+      "action": "/projects",
+      "accept": {
+        "application/zip": [
+          ".opencut.zip",
+          ".zip"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
 }

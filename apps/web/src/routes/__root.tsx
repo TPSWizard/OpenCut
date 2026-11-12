@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SITE_INFO } from "@/site/brand";
 import { EditorApiRoot } from "@/api/api-root";
+import { PwaRoot } from "@/pwa/components/pwa-root";
 
 import appCss from "../styles.css?url";
 
@@ -36,6 +37,7 @@ function RootComponent() {
 			<TooltipProvider>
 				<Toaster />
 				<EditorApiRoot />
+				<PwaRoot />
 				<Outlet />
 			</TooltipProvider>
 		</ThemeProvider>

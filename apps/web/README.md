@@ -76,6 +76,24 @@ Vitest runs the unit tests under `src/**/__tests__` in jsdom.
 `vitest.setup.ts` stubs the 2D canvas context so text measurement works
 without a native canvas.
 
+## Installing and working offline
+
+The site is a progressive web app. `src/pwa/sw.js` is emitted as `/sw.js`
+by a small plugin in `vite.config.ts` with the build stamped into its cache
+name: pages are fetched network-first and kept as the offline fallback
+(`/projects` as the last resort), and the hashed bundles plus the bundled
+assets (sounds, fonts, flags, shapes, icons, effects) are cached on first
+use. Opening the site again after a deploy installs the new worker and a
+toast offers **Reload**; the old cache goes when the new worker takes over.
+`src/pwa/register.ts` does the registering (production builds only) and
+keeps the browser's install prompt for the **Install app** button on the
+projects page. The manifest registers the app as a handler for
+`.opencut.zip` bundles, so an installed copy opens a bundle the OS hands it
+straight into the project list (Chromium only; elsewhere the Import button
+still works). Projects and media live in the browser's storage as before,
+so editing offline needs nothing else; fonts fetched from Fontsource and
+Iconify stickers still need the network the first time.
+
 ## Browser requirements
 
 Chromium-based browsers give the full experience (WebGPU compositor,

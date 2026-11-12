@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEditor } from "@/editor/use-editor";
 import { useProjectsStore } from "@/project/projects-store";
+import { InstallAppButton } from "@/pwa/components/install-app-button";
+import { consumeLaunchQueue } from "@/pwa/register";
 import type {
 	TProjectMetadata,
 	TProjectSortKey,
@@ -184,6 +186,7 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
+					<InstallAppButton />
 					<ImportProjectButton />
 					<NewProjectButton />
 				</div>
@@ -510,6 +513,25 @@ function ImportProjectButton() {
 	const router = useRouter();
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [isImporting, setIsImporting] = useState(false);
+
+	// Bundles the OS opened the installed app with (the manifest's file handler).
+	useEffect(() => {
+		consumeLaunchQueue({
+			onFiles: (files) => {
+				const list = {
+					0: files[0],
+					length: 1,
+					item: () => files[0],
+					[Symbol.iterator]: function* () {
+						yield files[0];
+					},
+				} as unknown as FileList;
+				void handleFiles(list);
+			},
+		});
+		// handleFiles is stable enough for a launch that happens once per open.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleFiles = async (files: FileList | null) => {
 		const file = files?.[0];
