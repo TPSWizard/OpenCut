@@ -250,13 +250,7 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     }
     // Elements whose media is not in the bundle cannot be shown.
     for track in &mut tracks {
-        track.elements.retain(|element| match element.kind.media_id() {
-            Some(media_id) if !media.iter().any(|item| item.id == media_id) => {
-                skipped.push(format!("\"{}\": its media is not in the bundle", element.name));
-                false
-            }
-            _ => true,
-        });
+        retain_with_media(&mut track.elements, &media, &mut skipped, 0);
     }
 
     let mut project = Project::new(web.metadata.name.clone());
@@ -324,25 +318,105 @@ fn convert_track(track: &Value, lane: Lane, skipped: &mut Vec<String>) -> Option
     for element in track.get("elements").and_then(Value::as_array).into_iter().flatten() {
         let name = element.get("name").and_then(Value::as_str).unwrap_or("").to_owned();
         let kind = element.get("type").and_then(Value::as_str).unwrap_or("");
-        let supported = match kind {
-            "video" | "image" | "text" => true,
-            "sticker" => element.get("stickerId").and_then(Value::as_str).is_some(),
-            "audio" => {
-                element.get("sourceType").and_then(Value::as_str) != Some("library")
-                    && element.get("mediaId").is_some()
-            }
-            _ => false,
-        };
-        if !supported {
+        if !web_element_supported(element) {
             skipped.push(format!("{kind} element \"{name}\""));
             continue;
         }
-        match serde_json::from_value::<Element>(element.clone()) {
+        let mut element = element.clone();
+        if kind == "compound" {
+            prune_compound(&mut element, skipped, 0);
+        }
+        match serde_json::from_value::<Element>(element) {
             Ok(element) => native.elements.push(element),
             Err(error) => skipped.push(format!("{kind} element \"{name}\": {error}")),
         }
     }
     Some(native)
+}
+
+/// Drops clips (also inside compounds) whose media is not in the bundle.
+fn retain_with_media(elements: &mut Vec<Element>, media: &[MediaItem], skipped: &mut Vec<String>, depth: usize) {
+    elements.retain(|element| match element.kind.media_id() {
+        Some(media_id) if !media.iter().any(|item| item.id == media_id) => {
+            skipped.push(format!("\"{}\": its media is not in the bundle", element.name));
+            false
+        }
+        _ => true,
+    });
+    if depth < 8 {
+        for element in elements.iter_mut() {
+            if let ElementKind::Compound { tracks } = &mut element.kind {
+                for track in tracks {
+                    retain_with_media(&mut track.elements, media, skipped, depth + 1);
+                }
+            }
+        }
+    }
+}
+
+/// Whether the desktop can play a web element of this shape.
+fn web_element_supported(element: &Value) -> bool {
+    match element.get("type").and_then(Value::as_str).unwrap_or("") {
+        "video" | "image" | "text" | "compound" => true,
+        "sticker" => element.get("stickerId").and_then(Value::as_str).is_some(),
+        "audio" => {
+            element.get("sourceType").and_then(Value::as_str) != Some("library") && element.get("mediaId").is_some()
+        }
+        _ => false,
+    }
+}
+
+/// Drops the children a compound holds that the desktop cannot play (and
+/// tracks of kinds it does not have), noting each in `skipped`.
+fn prune_compound(element: &mut Value, skipped: &mut Vec<String>, depth: usize) {
+    let Some(tracks) = element.get_mut("tracks").and_then(Value::as_array_mut) else { return };
+    tracks.retain(|track| {
+        let kind = track.get("type").and_then(Value::as_str).unwrap_or("");
+        let keep = matches!(kind, "video" | "text" | "audio");
+        if !keep {
+            skipped.push(format!("a {kind} track inside a compound clip"));
+        }
+        keep
+    });
+    for track in tracks.iter_mut() {
+        let Some(children) = track.get_mut("elements").and_then(Value::as_array_mut) else { continue };
+        children.retain(|child| {
+            let keep = web_element_supported(child);
+            if !keep {
+                let kind = child.get("type").and_then(Value::as_str).unwrap_or("");
+                let name = child.get("name").and_then(Value::as_str).unwrap_or("");
+                skipped.push(format!("{kind} element \"{name}\" inside a compound clip"));
+            }
+            keep
+        });
+        if depth < 8 {
+            for child in children.iter_mut() {
+                if child.get("type").and_then(Value::as_str) == Some("compound") {
+                    prune_compound(child, skipped, depth + 1);
+                }
+            }
+        }
+    }
+}
+
+/// The web marks uploaded audio with `sourceType`; compounds' audio too.
+fn mark_web_audio(value: &mut Value) {
+    let Some(object) = value.as_object_mut() else { return };
+    match object.get("type").and_then(Value::as_str) {
+        Some("audio") => {
+            object.insert("sourceType".to_owned(), json!("upload"));
+        }
+        Some("compound") => {
+            if let Some(tracks) = object.get_mut("tracks").and_then(Value::as_array_mut) {
+                for track in tracks {
+                    if let Some(children) = track.get_mut("elements").and_then(Value::as_array_mut) {
+                        children.iter_mut().for_each(mark_web_audio);
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Writes the project and copies of its media files as a bundle.
@@ -466,9 +540,7 @@ fn web_track(track: &Track) -> Value {
         .iter()
         .map(|element| {
             let mut value = serde_json::to_value(element).unwrap_or(Value::Null);
-            if let (ElementKind::Audio { .. }, Some(object)) = (&element.kind, value.as_object_mut()) {
-                object.insert("sourceType".to_owned(), json!("upload"));
-            }
+            mark_web_audio(&mut value);
             value
         })
         .collect();
@@ -755,5 +827,37 @@ mod tests {
         writer.finish().unwrap();
         let error = import_bundle(&other, &store).unwrap_err();
         assert!(error.to_string().contains("not an OpenCut project bundle"), "{error}");
+    }
+
+    #[test]
+    fn compound_clips_and_groups_survive_a_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut project = Project::new("Compound bundle");
+        let mut ids = Vec::new();
+        for (text, start) in [("One", 0.0), ("Two", 6.0), ("Three", 12.0)] {
+            let element = Element::text(text, seconds(start));
+            let outcome = apply(&mut project, &Command::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+            ids.push(outcome.element_refs()[0].element_id.clone());
+        }
+        apply(&mut project, &Command::CreateCompound { element_ids: ids[..2].to_vec(), compound_id: "comp".into() }).unwrap();
+        apply(&mut project, &Command::GroupElements { element_ids: vec!["comp".into(), ids[2].clone()], group_id: "grp".into() }).unwrap();
+        let bundle_path = dir.path().join("compound.opencut.zip");
+        export_bundle(&project, &bundle_path).unwrap();
+
+        let mut archive = zip::ZipArchive::new(File::open(&bundle_path).unwrap()).unwrap();
+        let mut json = String::new();
+        archive.by_name("project.json").unwrap().read_to_string(&mut json).unwrap();
+        let value: Value = serde_json::from_str(&json).unwrap();
+        let main = &value["project"]["scenes"][0]["tracks"]["main"]["elements"][0];
+        assert_eq!(main["type"], "compound");
+        assert_eq!(main["groupId"], "grp");
+        assert_eq!(main["tracks"][0]["elements"].as_array().unwrap().len(), 2);
+
+        let store = ProjectStore::new(dir.path().join("projects"));
+        let report = import_bundle(&bundle_path, &store).unwrap();
+        assert!(report.skipped.is_empty(), "{:?}", report.skipped);
+        let imported = store.load(&report.project.id).unwrap();
+        assert_eq!(imported.element("comp").map(|(_, element)| element.clone()), project.element("comp").map(|(_, element)| element.clone()));
+        assert_eq!(imported.element(&ids[2]).unwrap().1.group_id.as_deref(), Some("grp"));
     }
 }

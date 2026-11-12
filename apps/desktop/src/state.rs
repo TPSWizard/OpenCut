@@ -446,18 +446,124 @@ impl EditorState {
         if self.pen.is_some() && (extend || !self.is_selected(element_id)) {
             self.finish_pen(cx);
         }
+        // A grouped clip brings its whole group.
+        let members = editor::group_members(self.project(), element_id);
+        let members = if members.is_empty() { vec![element_id.to_owned()] } else { members };
         if extend {
-            if let Some(index) = self.selection.iter().position(|id| id == element_id) {
-                self.selection.remove(index);
+            if members.iter().all(|id| self.is_selected(id)) {
+                self.selection.retain(|id| !members.contains(id));
             } else {
-                self.selection.push(element_id.to_owned());
+                for id in members {
+                    if !self.is_selected(&id) {
+                        self.selection.push(id);
+                    }
+                }
             }
             self.selected_mask_points.clear();
         } else if !self.is_selected(element_id) {
-            self.selection = vec![element_id.to_owned()];
+            self.selection = members;
             self.selected_mask_points.clear();
         }
         cx.notify();
+    }
+
+    /// Selects just this clip, even when it is in a group (Alt-click).
+    pub(crate) fn select_one(&mut self, element_id: &str, cx: &mut Context<Self>) {
+        if let Some(track) = self.locked_track_of(element_id) {
+            self.set_status(format!("{track} is locked; unlock it to edit its clips"), cx);
+            return;
+        }
+        if self.pen.is_some() {
+            self.finish_pen(cx);
+        }
+        self.selection = vec![element_id.to_owned()];
+        self.selected_mask_points.clear();
+        cx.notify();
+    }
+
+    /// Moves every selected clip by how far `anchor_id` was dragged, in one
+    /// undo step; nothing moves when one of them would land on another clip.
+    pub(crate) fn move_selection_with(&mut self, anchor_id: &str, desired: MediaTime, cx: &mut Context<Self>) {
+        let Some((_, anchor)) = self.project().element(anchor_id) else { return };
+        let delta = desired - anchor.start_time;
+        if delta == MediaTime::ZERO {
+            return;
+        }
+        let mut members: Vec<(String, MediaTime)> = self
+            .selection
+            .iter()
+            .filter_map(|id| self.project().element(id).map(|(_, element)| (id.clone(), element.start_time)))
+            .collect();
+        // Clamp so nothing goes before zero.
+        let earliest = members.iter().map(|(_, start)| *start).min().unwrap_or(MediaTime::ZERO);
+        let delta = delta.max(MediaTime::ZERO - earliest);
+        // Move the far end first so members on one track never collide.
+        if delta > MediaTime::ZERO {
+            members.sort_by(|a, b| b.1.cmp(&a.1));
+        } else {
+            members.sort_by(|a, b| a.1.cmp(&b.1));
+        }
+        let commands = members
+            .into_iter()
+            .map(|(element_id, start)| Command::MoveElement { element_id, track_id: None, start_time: start + delta })
+            .collect();
+        self.execute(Command::Batch(commands), cx);
+    }
+
+    pub(crate) fn group_selection(&mut self, cx: &mut Context<Self>) {
+        if self.selection.len() < 2 {
+            self.set_status("Select two or more clips to group (Shift-click adds)", cx);
+            return;
+        }
+        let ids = self.selection.clone();
+        let count = ids.len();
+        if self.execute(Command::GroupElements { element_ids: ids, group_id: editor::new_id() }, cx).is_some() {
+            self.set_status(format!("Grouped {count} clips; Alt-click picks one"), cx);
+        }
+    }
+
+    pub(crate) fn ungroup_selection(&mut self, cx: &mut Context<Self>) {
+        if self.selection.is_empty() {
+            return;
+        }
+        let ids = self.selection.clone();
+        if self.execute(Command::UngroupElements(ids), cx).is_some() {
+            self.set_status("Ungrouped", cx);
+        }
+    }
+
+    /// Combines the selected clips into one compound clip.
+    pub(crate) fn create_compound(&mut self, cx: &mut Context<Self>) {
+        if self.selection.is_empty() {
+            self.set_status("Select the clips to combine", cx);
+            return;
+        }
+        let ids = self.selection.clone();
+        let count = ids.len();
+        let compound_id = editor::new_id();
+        if self.execute(Command::CreateCompound { element_ids: ids, compound_id: compound_id.clone() }, cx).is_some() {
+            self.select_only(vec![compound_id], cx);
+            self.set_status(format!("Combined {count} clips into a compound clip"), cx);
+        }
+    }
+
+    /// Puts the selected compound clip's content back on the timeline.
+    pub(crate) fn break_apart_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else {
+            self.set_status("Select one compound clip", cx);
+            return;
+        };
+        if !matches!(element.kind, editor::ElementKind::Compound { .. }) {
+            self.set_status("That is not a compound clip", cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        if let Some(outcome) = self.execute(Command::BreakApartCompound { element_id }, cx) {
+            let created: Vec<String> = outcome.element_refs().iter().map(|r| r.element_id.clone()).collect();
+            let count = created.len();
+            self.select_only(created, cx);
+            self.set_status(format!("Broke the compound clip into {count} clips (grouped)"), cx);
+        }
     }
 
     pub(crate) fn select_only(&mut self, element_ids: Vec<String>, cx: &mut Context<Self>) {

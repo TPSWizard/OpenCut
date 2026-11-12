@@ -144,6 +144,24 @@ pub enum Command {
     },
     /// Replaces the project's markers (sorted, one per time).
     SetMarkers(Vec<crate::Marker>),
+    /// Groups two or more clips: they are selected and moved together.
+    GroupElements {
+        element_ids: Vec<String>,
+        group_id: String,
+    },
+    /// Ungroups the groups these clips belong to.
+    UngroupElements(Vec<String>),
+    /// Takes the clips off the timeline into one compound clip (on a video
+    /// track) spanning them; see [`crate::compound`].
+    CreateCompound {
+        element_ids: Vec<String>,
+        compound_id: String,
+    },
+    /// Puts a compound clip's visible content back on the timeline as
+    /// clips (grouped) and removes the compound.
+    BreakApartCompound {
+        element_id: String,
+    },
     RenameProject(String),
     UpdateSettings(SettingsPatch),
     /// Sets a keyframe of `path` at a timeline time (relative times are
@@ -294,6 +312,8 @@ fn check_locks(project: &Project, command: &Command) -> Result<(), EditorError> 
         | Command::SetTransition { element_id, .. } => element(element_id),
         Command::RippleDelete { element_ids } => element_ids.iter().find_map(element),
         Command::DeleteElements(ids) | Command::DuplicateElements(ids) => ids.iter().find_map(element),
+        Command::CreateCompound { element_ids, .. } => element_ids.iter().find_map(element),
+        Command::BreakApartCompound { element_id } => element(element_id),
         Command::RemoveTrack { track_id } => locked_track_named(project, track_id).map(EditorError::TrackLocked),
         _ => None,
     };
@@ -650,11 +670,16 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
         }
         Command::DuplicateElements(ids) => {
             let mut created = Vec::new();
+            // Copies of a group form a group of their own.
+            let mut groups: std::collections::HashMap<String, String> = std::collections::HashMap::new();
             for id in ids {
                 let (track_index, element_index) = locate(project, id)?;
                 let original = project.tracks[track_index].elements[element_index].clone();
                 let mut copy = original.clone();
                 copy.id = crate::new_id();
+                if let Some(group) = &original.group_id {
+                    copy.group_id = Some(groups.entry(group.clone()).or_insert_with(crate::new_id).clone());
+                }
                 let kind = copy.kind.clone();
                 let duration = copy.duration;
                 // Right after the original on the same track when there is
@@ -772,6 +797,128 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
         Command::SetMarkers(markers) => {
             project.markers = crate::normalize_markers(markers);
             Outcome::None
+        }
+        Command::GroupElements { element_ids, group_id } => {
+            let mut unique: Vec<&String> = Vec::new();
+            for id in element_ids {
+                locate(project, id)?;
+                if !unique.contains(&id) {
+                    unique.push(id);
+                }
+            }
+            if unique.len() < 2 {
+                return Err(EditorError::InvalidParams("select two or more clips to group".to_owned()));
+            }
+            for id in unique {
+                let (track_index, element_index) = locate(project, id)?;
+                project.tracks[track_index].elements[element_index].group_id = Some(group_id.clone());
+            }
+            Outcome::None
+        }
+        Command::UngroupElements(ids) => {
+            let mut groups = Vec::new();
+            for id in ids {
+                let (track_index, element_index) = locate(project, id)?;
+                if let Some(group) = project.tracks[track_index].elements[element_index].group_id.clone() {
+                    groups.push(group);
+                }
+            }
+            if groups.is_empty() {
+                return Err(EditorError::NothingTo("ungroup"));
+            }
+            for track in &mut project.tracks {
+                for element in &mut track.elements {
+                    if element.group_id.as_ref().is_some_and(|group| groups.contains(group)) {
+                        element.group_id = None;
+                    }
+                }
+            }
+            Outcome::None
+        }
+        Command::CreateCompound { element_ids, compound_id } => {
+            if element_ids.is_empty() {
+                return Err(EditorError::InvalidParams("select the clips to combine".to_owned()));
+            }
+            if project.locate(compound_id).is_some() {
+                return Err(EditorError::InvalidParams(format!("an element {compound_id} already exists")));
+            }
+            let mut picked: Vec<(usize, Element)> = Vec::new();
+            for id in element_ids {
+                let (track_index, element_index) = locate(project, id)?;
+                if !picked.iter().any(|(_, element)| &element.id == id) {
+                    picked.push((track_index, project.tracks[track_index].elements[element_index].clone()));
+                }
+            }
+            let start = picked.iter().map(|(_, element)| element.start_time).min().unwrap_or(MediaTime::ZERO);
+            let end = picked.iter().map(|(_, element)| element.end_time()).max().unwrap_or(start);
+            if end <= start {
+                return Err(EditorError::InvalidParams("the clips have no length".to_owned()));
+            }
+            // One inner track per source track, in the timeline's order.
+            let mut track_indices: Vec<usize> = picked.iter().map(|(index, _)| *index).collect();
+            track_indices.sort_unstable();
+            track_indices.dedup();
+            let inner: Vec<crate::CompoundTrack> = track_indices
+                .iter()
+                .map(|&index| {
+                    let source = &project.tracks[index];
+                    let mut elements: Vec<Element> = picked
+                        .iter()
+                        .filter(|(track_index, _)| *track_index == index)
+                        .map(|(_, element)| Element { start_time: element.start_time - start, ..element.clone() })
+                        .collect();
+                    elements.sort_by_key(|element| element.start_time);
+                    crate::CompoundTrack {
+                        id: crate::new_id(),
+                        name: source.name.clone(),
+                        kind: source.kind,
+                        muted: source.muted,
+                        hidden: source.hidden,
+                        elements,
+                    }
+                })
+                .collect();
+            for (_, element) in &picked {
+                let (track_index, element_index) = locate(project, &element.id)?;
+                project.tracks[track_index].elements.remove(element_index);
+            }
+            let compound = Element::compound(compound_id.clone(), inner, start, end - start);
+            // On the topmost video track the clips came from when it is free,
+            // otherwise wherever a video clip fits.
+            let preferred = track_indices
+                .iter()
+                .copied()
+                .find(|&index| project.tracks[index].kind == TrackKind::Video && !project.tracks[index].locked && project.tracks[index].is_free(start, end, None));
+            let target = preferred.unwrap_or_else(|| fitting_track(project, &compound.kind, start, end));
+            let track = &mut project.tracks[target];
+            let reference = ElementRef { track_id: track.id.clone(), element_id: compound.id.clone() };
+            track.elements.push(compound);
+            track.sort_elements();
+            Outcome::Elements(vec![reference])
+        }
+        Command::BreakApartCompound { element_id } => {
+            let (track_index, element_index) = locate(project, element_id)?;
+            let compound = project.tracks[track_index].elements[element_index].clone();
+            if !matches!(compound.kind, ElementKind::Compound { .. }) {
+                return Err(EditorError::InvalidParams(format!("{} is not a compound clip", compound.name)));
+            }
+            project.tracks[track_index].elements.remove(element_index);
+            let prefix = format!("{}~", compound.id);
+            let pieces: Vec<Element> = crate::compound_children(&compound).into_iter().flat_map(|(_, elements)| elements).collect();
+            let group = (pieces.len() > 1).then(crate::new_id);
+            let mut created = Vec::new();
+            for mut piece in pieces {
+                let original = piece.id.strip_prefix(&prefix).unwrap_or(&piece.id).to_owned();
+                piece.id = if project.locate(&original).is_some() { crate::new_id() } else { original };
+                piece.group_id = group.clone();
+                let end = piece.end_time();
+                let target = fitting_track(project, &piece.kind, piece.start_time, end);
+                let track = &mut project.tracks[target];
+                created.push(ElementRef { track_id: track.id.clone(), element_id: piece.id.clone() });
+                track.elements.push(piece);
+                track.sort_elements();
+            }
+            Outcome::Elements(created)
         }
         Command::SetKeyframe {
             element_id,

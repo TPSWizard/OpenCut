@@ -74,6 +74,9 @@ pub struct ExportCue {
 /// The caption cues of the project (visible text elements on visible text
 /// tracks, in start order), optionally only those of one track.
 pub fn collect_caption_cues(project: &Project, track_id: Option<&str>) -> Vec<ExportCue> {
+    // Captions inside compound clips count too.
+    let expanded = crate::expand_compounds(project);
+    let project: &Project = &expanded;
     let mut cues = Vec::new();
     for track in &project.tracks {
         if track.kind != TrackKind::Text || track.hidden {

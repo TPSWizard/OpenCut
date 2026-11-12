@@ -7,7 +7,7 @@ describe("v7 to v8", () => {
 			state: { keybindings: { s: "split", i: "toggle-snapping", space: "toggle-play" }, isCustomized: true },
 			fromVersion: 7,
 		}) as { keybindings: Record<string, string>; isCustomized: boolean };
-		expect(CURRENT_VERSION).toBe(9);
+		expect(CURRENT_VERSION).toBe(10);
 		expect(migrated.keybindings.i).toBe("toggle-snapping");
 		expect(migrated.keybindings.o).toBe("mark-out");
 		expect(migrated.keybindings["ctrl+b"]).toBe("split");
@@ -29,5 +29,18 @@ describe("v8 to v9", () => {
 			fromVersion: 8,
 		}) as { keybindings: Record<string, string> };
 		expect(taken.keybindings["ctrl+shift+a"]).toBe("split");
+	});
+});
+
+describe("v9 to v10", () => {
+	it("adds the group and compound keys where they are free", () => {
+		const migrated = runMigrations({
+			state: { keybindings: { "alt+g": "split" }, isCustomized: true },
+			fromVersion: 9,
+		}) as { keybindings: Record<string, string> };
+		expect(migrated.keybindings["ctrl+g"]).toBe("group-selected");
+		expect(migrated.keybindings["ctrl+shift+g"]).toBe("ungroup-selected");
+		expect(migrated.keybindings["alt+g"]).toBe("split");
+		expect(migrated.keybindings["alt+shift+g"]).toBe("break-apart-compound");
 	});
 });

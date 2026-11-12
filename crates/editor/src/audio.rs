@@ -68,6 +68,9 @@ fn db_to_gain(db: f64) -> f64 {
 /// Every audible clip in the project, in timeline order. Muted tracks and
 /// elements are left out, as are video clips whose source has no audio.
 pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
+    // Compound clips play as their children.
+    let expanded = crate::expand_compounds(project);
+    let project: &Project = &expanded;
     let mut clips = Vec::new();
     for track in &project.tracks {
         if track.muted {
@@ -79,7 +82,7 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
             }
             let media_id = match &element.kind {
                 ElementKind::Video { media_id } | ElementKind::Audio { media_id } => media_id,
-                ElementKind::Image { .. } | ElementKind::Text | ElementKind::Sticker { .. } => continue,
+                ElementKind::Image { .. } | ElementKind::Text | ElementKind::Sticker { .. } | ElementKind::Compound { .. } => continue,
             };
             let Some(media) = project.media_item(media_id) else {
                 continue;

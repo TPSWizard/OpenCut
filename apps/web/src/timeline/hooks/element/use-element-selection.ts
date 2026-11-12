@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useEditor } from "@/editor/use-editor";
 import type { ElementRef } from "@/timeline/types";
+import { groupRefs } from "@/timeline/compound";
 
 export function useElementSelection() {
 	const editor = useEditor();
@@ -15,11 +16,29 @@ export function useElementSelection() {
 		[selectedElements],
 	);
 
+	/** The clips grouped with `ref` (itself included). */
+	const groupOf = useCallback(
+		(ref: ElementRef): ElementRef[] => {
+			const tracks = editor.scenes.getActiveSceneOrNull()?.tracks;
+			return tracks ? groupRefs({ tracks, ref }) : [ref];
+		},
+		[editor],
+	);
+
+	/** Selects the clip and the rest of its group. */
 	const selectElement = useCallback(
 		({ trackId, elementId }: ElementRef) => {
 			editor.selection.setSelectedElements({
-				elements: [{ trackId, elementId }],
+				elements: groupOf({ trackId, elementId }),
 			});
+		},
+		[editor, groupOf],
+	);
+
+	/** Selects just this clip, even inside a group (Alt-click). */
+	const selectOneElement = useCallback(
+		({ trackId, elementId }: ElementRef) => {
+			editor.selection.setSelectedElements({ elements: [{ trackId, elementId }] });
 		},
 		[editor],
 	);
@@ -53,18 +72,23 @@ export function useElementSelection() {
 
 	const toggleElementSelection = useCallback(
 		({ trackId, elementId }: ElementRef) => {
-			const alreadySelected = selectedElements.some(
-				(element) =>
-					element.trackId === trackId && element.elementId === elementId,
-			);
-
-			if (alreadySelected) {
-				removeElementFromSelection({ trackId, elementId });
+			// A grouped clip toggles its whole group.
+			const members = groupOf({ trackId, elementId });
+			const isIn = (ref: ElementRef) =>
+				selectedElements.some((element) => element.trackId === ref.trackId && element.elementId === ref.elementId);
+			if (members.every(isIn)) {
+				editor.selection.setSelectedElements({
+					elements: selectedElements.filter(
+						(element) => !members.some((member) => member.trackId === element.trackId && member.elementId === element.elementId),
+					),
+				});
 			} else {
-				addElementToSelection({ trackId, elementId });
+				editor.selection.setSelectedElements({
+					elements: [...selectedElements, ...members.filter((member) => !isIn(member))],
+				});
 			}
 		},
-		[selectedElements, addElementToSelection, removeElementFromSelection],
+		[selectedElements, editor, groupOf],
 	);
 
 	const clearElementSelection = useCallback(() => {
@@ -123,6 +147,8 @@ export function useElementSelection() {
 	);
 
 	return {
+		groupOf,
+		selectOneElement,
 		selectedElements,
 		isElementSelected,
 		selectElement,

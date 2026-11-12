@@ -38,6 +38,7 @@ import { TransitionTab } from "@/transitions/components/transition-tab";
 import { CaptionsTab } from "@/captions/components/captions-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
+import { CompoundTab } from "@/timeline/components/compound-tab";
 import { OcShapesIcon } from "@/components/icons";
 
 const TRANSFORM_PARAM_KEYS = [
@@ -404,5 +405,17 @@ export function getPropertiesConfig({
 			return getAudioConfig({ element });
 		case "effect":
 			return getEffectConfig({ element });
+		case "compound":
+			return {
+				defaultTab: "compound",
+				tabs: [
+					{
+						id: "compound",
+						label: "Compound",
+						icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
+						content: () => <CompoundTab element={element} />,
+					},
+				],
+			};
 	}
 }

@@ -5,6 +5,9 @@ import { useTimelineStore } from "@/timeline/timeline-store";
 import { useActionHandler } from "@/actions/use-action-handler";
 import { allTracks, collectEditPoints, elementsInRange, nextEditPoint, previousEditPoint } from "@/timeline/edits";
 import { toast } from "sonner";
+import { TracksEditCommand } from "@/commands/timeline/tracks-edit";
+import { breakApartCompound, createCompound, groupElements, ungroupElements } from "@/timeline/compound";
+import { generateUUID } from "@/utils/id";
 import { DeleteRangeCommand, RippleDeleteCommand } from "@/commands/timeline/element/ripple-delete";
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
@@ -411,6 +414,60 @@ export function useEditorActions() {
 			const first = command.getPlan()?.remove[0];
 			if (first) setElementSelection({ elements: [] });
 		},
+		undefined,
+	);
+
+	const editTracks = (label: string, edit: () => { tracks: import("@/timeline").SceneTracks; selection?: { trackId: string; elementId: string }[] }) => {
+		try {
+			const { tracks, selection } = edit();
+			editor.command.execute({ command: new TracksEditCommand(tracks, selection) });
+		} catch (error) {
+			toast.error(label, { description: error instanceof Error ? error.message : String(error) });
+		}
+	};
+
+	useActionHandler(
+		"group-selected",
+		() =>
+			editTracks("Could not group", () => {
+				const refs = editor.selection.getSelectedElements();
+				return { tracks: groupElements({ tracks: editor.scenes.getActiveScene().tracks, refs, groupId: generateUUID() }), selection: refs };
+			}),
+		undefined,
+	);
+
+	useActionHandler(
+		"ungroup-selected",
+		() =>
+			editTracks("Could not ungroup", () => {
+				const refs = editor.selection.getSelectedElements();
+				return { tracks: ungroupElements({ tracks: editor.scenes.getActiveScene().tracks, refs }), selection: refs };
+			}),
+		undefined,
+	);
+
+	useActionHandler(
+		"create-compound",
+		() =>
+			editTracks("Could not make a compound clip", () => {
+				const result = createCompound({
+					tracks: editor.scenes.getActiveScene().tracks,
+					refs: editor.selection.getSelectedElements(),
+				});
+				return { tracks: result.tracks, selection: [result.ref] };
+			}),
+		undefined,
+	);
+
+	useActionHandler(
+		"break-apart-compound",
+		() =>
+			editTracks("Could not break the compound clip apart", () => {
+				const [ref] = editor.selection.getSelectedElements();
+				if (!ref) throw new Error("Select one compound clip");
+				const result = breakApartCompound({ tracks: editor.scenes.getActiveScene().tracks, ref });
+				return { tracks: result.tracks, selection: result.refs };
+			}),
 		undefined,
 	);
 

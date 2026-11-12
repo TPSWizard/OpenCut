@@ -38,6 +38,10 @@ actions!(
         DeleteMarkedRange,
         SelectRange,
         AddMarker,
+        GroupSelection,
+        UngroupSelection,
+        CreateCompound,
+        BreakApartCompound,
     ]
 );
 
@@ -150,6 +154,10 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new(&format!("{primary}-a"), SelectAll, editor),
         KeyBinding::new(&format!("{primary}-shift-a"), SelectRange, editor),
         KeyBinding::new("m", AddMarker, editor),
+        KeyBinding::new(&format!("{primary}-g"), GroupSelection, editor),
+        KeyBinding::new(&format!("{primary}-shift-g"), UngroupSelection, editor),
+        KeyBinding::new("alt-g", CreateCompound, editor),
+        KeyBinding::new("alt-shift-g", BreakApartCompound, editor),
         KeyBinding::new("escape", ClearSelection, anywhere),
         KeyBinding::new("p", DrawMaskPath, editor),
         KeyBinding::new("enter", FinishPenPath, editor),

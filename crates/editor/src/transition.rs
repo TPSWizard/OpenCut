@@ -143,6 +143,7 @@ mod tests {
             transition: None,
             words: Vec::new(),
             retime: None,
+            group_id: None,
         }
     }
 

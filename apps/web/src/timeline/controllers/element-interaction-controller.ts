@@ -55,6 +55,10 @@ export interface ElementSelectionApi {
 	getSelected: () => readonly ElementRef[];
 	isSelected: (ref: ElementRef) => boolean;
 	select: (ref: ElementRef) => void;
+	/** Selects just this clip, even inside a group (Alt-click). */
+	selectOne: (ref: ElementRef) => void;
+	/** The clips grouped with `ref` (itself included). */
+	groupOf: (ref: ElementRef) => ElementRef[];
 	handleClick: (args: ElementRef & { isMultiKey: boolean }) => void;
 	clearKeyframeSelection: () => void;
 }
@@ -374,13 +378,18 @@ export class ElementInteractionController {
 
 		const ref = { trackId: track.id, elementId: element.id };
 
-		if (event.metaKey || event.ctrlKey || event.shiftKey) {
+		if (event.altKey) {
+			this.deps.selection.selectOne(ref);
+		} else if (event.metaKey || event.ctrlKey || event.shiftKey) {
 			this.deps.selection.handleClick({ ...ref, isMultiKey: true });
 		}
 
-		const selectedElements = this.deps.selection.isSelected(ref)
-			? this.deps.selection.getSelected()
-			: [ref];
+		// An unselected grouped clip drags its whole group; Alt drags it alone.
+		const selectedElements = event.altKey
+			? [ref]
+			: this.deps.selection.isSelected(ref)
+				? this.deps.selection.getSelected()
+				: this.deps.selection.groupOf(ref);
 
 		this.session = {
 			kind: "pending",
@@ -420,9 +429,13 @@ export class ElementInteractionController {
 		if (event.metaKey || event.ctrlKey || event.shiftKey) return;
 
 		const ref = { trackId: track.id, elementId: element.id };
+		if (event.altKey) {
+			this.deps.selection.selectOne(ref);
+			return;
+		}
 		if (
 			!this.deps.selection.isSelected(ref) ||
-			this.deps.selection.getSelected().length > 1
+			this.deps.selection.getSelected().length > this.deps.selection.groupOf(ref).length
 		) {
 			this.deps.selection.select(ref);
 			return;

@@ -106,6 +106,22 @@ export const ACTIONS = {
 		description: "Select all elements",
 		category: "selection",
 	},
+	"group-selected": {
+		description: "Group the selected clips (they select and move together)",
+		category: "editing",
+	},
+	"ungroup-selected": {
+		description: "Ungroup the selected clips",
+		category: "editing",
+	},
+	"create-compound": {
+		description: "Combine the selected clips into a compound clip",
+		category: "editing",
+	},
+	"break-apart-compound": {
+		description: "Break the selected compound clip apart",
+		category: "editing",
+	},
 	"select-range": {
 		description: "Select the clips between the in and out marks (unlocked tracks)",
 		category: "selection",
@@ -221,6 +237,10 @@ const ACTION_DEFAULT_SHORTCUTS = [
 	["delete-marked-range", ["alt+delete"]],
 	["select-all", ["ctrl+a"]],
 	["select-range", ["ctrl+shift+a"]],
+	["group-selected", ["ctrl+g"]],
+	["ungroup-selected", ["ctrl+shift+g"]],
+	["create-compound", ["alt+g"]],
+	["break-apart-compound", ["alt+shift+g"]],
 	["cancel-interaction", ["escape"]],
 	["duplicate-selected", ["ctrl+d"]],
 	["undo", ["ctrl+z"]],

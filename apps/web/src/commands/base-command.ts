@@ -19,6 +19,9 @@ export function createElementSelectionResult(
 }
 
 export abstract class Command {
+	/** Ripple editing leaves this command's result alone (it moves clips without deleting time). */
+	readonly skipsRipple?: boolean;
+
 	abstract execute(): CommandResult | undefined;
 
 	undo(): void {

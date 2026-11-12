@@ -189,8 +189,13 @@ function buildPastedElements({
 	time: MediaTime;
 }): TimelineElement[] {
 	const elementsToAdd: TimelineElement[] = [];
+	// Pasted copies of a group form a group of their own.
+	const groups = new Map<string, string>();
 
 	for (const item of items) {
+		const sourceGroup = item.element.groupId;
+		const groupId = sourceGroup ? (groups.get(sourceGroup) ?? generateUUID()) : undefined;
+		if (sourceGroup && groupId) groups.set(sourceGroup, groupId);
 		const relativeOffset = subMediaTime({
 			a: item.element.startTime,
 			b: minStart,
@@ -203,6 +208,7 @@ function buildPastedElements({
 
 		elementsToAdd.push({
 			...item.element,
+			...(groupId ? { groupId } : {}),
 			id: newElementId,
 			startTime,
 			animations: cloneAnimations({

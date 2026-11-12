@@ -1,3 +1,4 @@
+import { expandCompounds } from "@/timeline/compound";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/timeline/creation";
 import {
 	MASKABLE_ELEMENT_TYPES,
@@ -391,7 +392,8 @@ export function getElementFontFamilies({
 	tracks: SceneTracks;
 }): string[] {
 	const families = new Set<string>();
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	const expanded = expandCompounds(tracks);
+	for (const track of [...expanded.overlay, expanded.main, ...expanded.audio]) {
 		for (const element of track.elements) {
 			if (element.type === "text" && typeof element.params.fontFamily === "string") {
 				families.add(element.params.fontFamily);

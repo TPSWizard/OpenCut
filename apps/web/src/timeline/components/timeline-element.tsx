@@ -1,5 +1,8 @@
 "use client";
 
+import type { CompoundElement } from "@/timeline/types";
+import { compoundChildCount } from "@/timeline/compound";
+
 import { createContext, useContext } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
@@ -509,6 +512,12 @@ export function TimelineElement({
 							</ContextMenuItem>
 						</>
 					)}
+					<ActionMenuItem action="group-selected">Group</ActionMenuItem>
+					{element.groupId ? <ActionMenuItem action="ungroup-selected">Ungroup</ActionMenuItem> : null}
+					<ActionMenuItem action="create-compound">Make compound clip</ActionMenuItem>
+					{element.type === "compound" ? (
+						<ActionMenuItem action="break-apart-compound">Break apart compound clip</ActionMenuItem>
+					) : null}
 					<ContextMenuSeparator />
 					<DeleteMenuItem
 						isMultipleSelected={selectedElements.length > 1}
@@ -1174,8 +1183,46 @@ function MediaElementHeader({
 	);
 }
 
-function ElementContent({ element, track }: ElementContentProps) {
+function ElementContent(props: ElementContentProps) {
+	const { element } = props;
+	return (
+		<>
+			{element.groupId ? (
+				<div
+					className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px]"
+					style={{ backgroundColor: groupColor(element.groupId) }}
+					title="Grouped (Alt-click picks one clip)"
+					data-testid="group-strip"
+				/>
+			) : null}
+			<ElementBody {...props} />
+		</>
+	);
+}
+
+/** A steady colour per group id. */
+function groupColor(groupId: string): string {
+	let hash = 0x811c9dc5;
+	for (let index = 0; index < groupId.length; index++) {
+		hash = Math.imul(hash ^ groupId.charCodeAt(index), 0x01000193) >>> 0;
+	}
+	return `hsl(${hash % 360} 75% 60%)`;
+}
+
+function CompoundElementContent({ element }: { element: CompoundElement }) {
+	const clips = compoundChildCount(element);
+	return (
+		<div className="flex size-full items-center gap-1.5 bg-slate-600/80 pl-2 text-xs text-white" data-testid="compound-clip">
+			<span className="truncate font-medium">{element.name}</span>
+			<span className="shrink-0 rounded bg-black/40 px-1 text-[10px]">COMPOUND · {clips}</span>
+		</div>
+	);
+}
+
+function ElementBody({ element, track }: ElementContentProps) {
 	switch (element.type) {
+		case "compound":
+			return <CompoundElementContent element={element} />;
 		case "text":
 			return <TextElementContent element={element} />;
 		case "effect":

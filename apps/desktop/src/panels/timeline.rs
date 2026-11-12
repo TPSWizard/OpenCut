@@ -174,7 +174,13 @@ impl TimelinePanel {
                         .track_index
                         .and_then(|index| state.project().tracks.get(index))
                         .map(|track| track.id.clone());
-                    state.move_element(&element_id, track_id.as_deref(), time, cx);
+                    // Several clips (a group, or a Shift-built selection) move
+                    // together by the same amount and keep their tracks.
+                    if state.selection.len() > 1 && state.is_selected(&element_id) {
+                        state.move_selection_with(&element_id, time, cx);
+                    } else {
+                        state.move_element(&element_id, track_id.as_deref(), time, cx);
+                    }
                 }
                 DragMode::TrimStart => state.resize_element(&element_id, Edge::Start, time, cx),
                 DragMode::TrimEnd => state.resize_element(&element_id, Edge::End, time, cx),
@@ -209,6 +215,7 @@ impl TimelinePanel {
             ElementKind::Text => hsla(0.08, 0.70, 0.50, 1.0),
             ElementKind::Audio { .. } => hsla(0.75, 0.45, 0.50, 1.0),
             ElementKind::Sticker { .. } => hsla(0.48, 0.50, 0.42, 1.0),
+            ElementKind::Compound { .. } => hsla(0.66, 0.18, 0.36, 1.0),
         }
     }
 
@@ -566,6 +573,8 @@ impl Render for TimelinePanel {
                     })
                     .collect();
 
+                let group_strip = element.group_id.as_deref().map(group_color);
+                let compound_count = editor::compound_child_count(&element);
                 div()
                     .id(eid("clip", &id))
                     .absolute()
@@ -588,8 +597,15 @@ impl Render for TimelinePanel {
                             cx.stop_propagation();
                             window.focus(&focus_for_clip);
                             let extend = event.modifiers.shift;
+                            let single = event.modifiers.alt;
                             this.pending_grab = this.seconds_at(event.position.x, cx) - start_seconds;
-                            this.state.update(cx, |state, cx| state.select(&select_id, extend, cx));
+                            this.state.update(cx, |state, cx| {
+                                if single {
+                                    state.select_one(&select_id, cx)
+                                } else {
+                                    state.select(&select_id, extend, cx)
+                                }
+                            });
                         }),
                     )
                     .when(!locked, |this| this.on_drag(
@@ -625,6 +641,23 @@ impl Render for TimelinePanel {
                             )
                             .absolute()
                             .inset_0(),
+                        )
+                    })
+                    .when_some(group_strip, |this, color| {
+                        this.child(div().absolute().top_0().left_0().right_0().h(px(3.)).bg(color))
+                    })
+                    .when(compound_count > 0, |this| {
+                        this.child(
+                            div()
+                                .absolute()
+                                .bottom(px(3.))
+                                .right(px(HANDLE_WIDTH + 3.0))
+                                .px(px(4.))
+                                .rounded(px(3.))
+                                .bg(gpui::black().opacity(0.55))
+                                .text_size(px(9.))
+                                .text_color(gpui::white())
+                                .child(format!("COMPOUND · {compound_count}")),
                         )
                     })
                     .when(muted_badge, |this| {
@@ -927,6 +960,11 @@ impl Render for TimelinePanel {
             .child(tool("split", "Split", true, |s, cx| s.split_at_playhead(cx)))
             .child(tool("duplicate", "Duplicate", !selection.is_empty(), |s, cx| s.duplicate_selection(cx)))
             .child(tool("delete", "Delete", !selection.is_empty(), |s, cx| s.delete_selection(cx)))
+            .child(div().w(px(8.)))
+            .child(tool("group", "Group", selection.len() > 1, |s, cx| s.group_selection(cx)))
+            .child(tool("ungroup", "Ungroup", !selection.is_empty(), |s, cx| s.ungroup_selection(cx)))
+            .child(tool("compound", "Compound", !selection.is_empty(), |s, cx| s.create_compound(cx)))
+            .child(tool("break-apart", "Break apart", selection.len() == 1, |s, cx| s.break_apart_selected(cx)))
             .child(div().flex_1())
             .child(
                 div()
@@ -1108,4 +1146,10 @@ fn marker_color(color: Option<&str>) -> gpui::Hsla {
         .and_then(|text| u32::from_str_radix(text, 16).ok())
         .unwrap_or(0x009dff);
     gpui::rgb(value).into()
+}
+
+/// A steady colour per group id, for the strip on grouped clips.
+fn group_color(group: &str) -> Hsla {
+    let hash = group.bytes().fold(0x811c9dc5u32, |hash, byte| (hash ^ byte as u32).wrapping_mul(0x01000193));
+    hsla((hash % 360) as f32 / 360.0, 0.75, 0.6, 1.0)
 }

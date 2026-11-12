@@ -39,6 +39,9 @@ import {
 } from "@/wasm";
 import { useProxyJobs } from "@/media/proxy-store";
 import { chaptersText } from "@/timeline/bookmarks/chapters";
+import { breakApartCompound, compoundChildCount, createCompound, groupElements, ungroupElements } from "@/timeline/compound";
+import { TracksEditCommand } from "@/commands/timeline/tracks-edit";
+import { generateUUID } from "@/utils/id";
 import { elementsInRange } from "@/timeline/edits";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { needsBackup, readBackups, readDurability, requestPersistence } from "@/services/storage/durability";
@@ -190,6 +193,10 @@ function toElementInfo({
 		trackId,
 		type: element.type,
 		name: element.name,
+		...(element.groupId ? { groupId: element.groupId } : {}),
+		...(element.type === "compound"
+			? { compound: { clips: compoundChildCount(element), tracks: element.tracks.length } }
+			: {}),
 		startTime: seconds(element.startTime),
 		duration: seconds(element.duration),
 		trimStart: seconds(element.trimStart),
@@ -931,6 +938,43 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			const refs = elementsInRange({ tracks: allTracks(editor.scenes.getActiveScene().tracks), from: start, to: end });
 			editor.selection.setSelectedElements({ elements: refs });
 			return editor.selection.getSelectedElements().map((ref) => ({ trackId: ref.trackId, elementId: ref.elementId }));
+		},
+		"timeline.group": ({ elements }) => {
+			requireProject();
+			const refs = unlockedRefs(elements);
+			const tracks = groupElements({ tracks: tracksOf(), refs, groupId: generateUUID() });
+			editor.command.execute({ command: new TracksEditCommand(tracks, refs) });
+			return refs.map((ref) => elementInfoById(ref));
+		},
+		"timeline.ungroup": ({ elements }) => {
+			requireProject();
+			const refs = unlockedRefs(elements);
+			let tracks: SceneTracks;
+			try {
+				tracks = ungroupElements({ tracks: tracksOf(), refs });
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+			editor.command.execute({ command: new TracksEditCommand(tracks, refs) });
+			return refs.map((ref) => elementInfoById(ref));
+		},
+		"timeline.createCompound": ({ elements }) => {
+			requireProject();
+			const refs = unlockedRefs(elements);
+			const result = createCompound({ tracks: tracksOf(), refs });
+			editor.command.execute({ command: new TracksEditCommand(result.tracks, [result.ref]) });
+			return elementInfoById(result.ref);
+		},
+		"timeline.breakApart": ({ elementId, trackId }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
+			if (element.type !== "compound") {
+				throw new EditorApiError({ code: "invalid_params", message: `${element.name} is not a compound clip` });
+			}
+			const result = breakApartCompound({ tracks: tracksOf(), ref: { trackId: track.id, elementId: element.id } });
+			editor.command.execute({ command: new TracksEditCommand(result.tracks, result.refs) });
+			return result.refs.map((ref) => elementInfoById(ref));
 		},
 		"markers.list": () => listMarkers(),
 		"markers.add": async ({ time, note, color, duration }) => {

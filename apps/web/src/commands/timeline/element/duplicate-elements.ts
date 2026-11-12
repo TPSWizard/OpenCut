@@ -28,6 +28,7 @@ export class DuplicateElementsCommand extends Command {
 		const editor = EditorCore.getInstance();
 		this.savedState = editor.scenes.getActiveScene().tracks;
 		this.duplicatedElements = [];
+		duplicateGroups = new Map();
 
 		let updatedTracks = this.savedState;
 
@@ -113,6 +114,9 @@ export class DuplicateElementsCommand extends Command {
 	}
 }
 
+/** Copies of a group form a group of their own (one map per duplication). */
+let duplicateGroups = new Map<string, string>();
+
 function buildDuplicateElement({
 	element,
 	id,
@@ -122,8 +126,15 @@ function buildDuplicateElement({
 	id: string;
 	startTime: MediaTime;
 }): TimelineElement {
+	let groupId = element.groupId;
+	if (groupId) {
+		const mapped = duplicateGroups.get(groupId) ?? generateUUID();
+		duplicateGroups.set(groupId, mapped);
+		groupId = mapped;
+	}
 	return {
 		...element,
+		...(groupId ? { groupId } : {}),
 		id,
 		name: `${element.name} (copy)`,
 		startTime,

@@ -532,6 +532,18 @@ impl Render for InspectorPanel {
                 let has_audio = matches!(element.kind, ElementKind::Audio { .. })
                     || (matches!(element.kind, ElementKind::Video { .. }) && media_has_audio);
                 let is_visual = element.kind.is_visual();
+                let is_compound = matches!(element.kind, editor::ElementKind::Compound { .. });
+                // A compound has no picture of its own to transform or grade.
+                let has_picture = is_visual && !is_compound;
+                let group_size = element
+                    .group_id
+                    .as_ref()
+                    .map(|_| editor::group_members(state.project(), &element.id).len())
+                    .unwrap_or(0);
+                let compound_summary = match &element.kind {
+                    editor::ElementKind::Compound { tracks } => Some((editor::compound_child_count(&element), tracks.len())),
+                    _ => None,
+                };
                 let can_mask = element.can_be_masked();
                 let muted = element.params.bool("muted", false);
                 let hidden = element.hidden;
@@ -655,7 +667,46 @@ impl Render for InspectorPanel {
                             }),
                     );
 
-                if is_visual {
+                if let Some((clips, tracks)) = compound_summary {
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading("Compound clip", window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(format!("{clips} clip(s) on {tracks} track(s). Trim, split and move it like one clip; break it apart to edit what is inside.")),
+                        )
+                        .child(
+                            Button::new("break-apart", "Break apart")
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::Small)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.break_apart_selected(cx))),
+                        );
+                }
+                if group_size > 1 {
+                    let state = self.state.clone();
+                    content = content.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_xs()
+                                    .text_color(colors.muted_foreground)
+                                    .child(format!("In a group of {group_size}; Alt-click picks one clip")),
+                            )
+                            .child(
+                                Button::new("ungroup-one", "Ungroup")
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.ungroup_selection(cx))),
+                            ),
+                    );
+                }
+                if has_picture {
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading("Transform", window));
@@ -1399,7 +1450,7 @@ impl Render for InspectorPanel {
                         .child(reverse_row);
                 }
 
-                if is_visual {
+                if has_picture {
                     content = self.transition_section(content, &element, window, cx);
                 }
 
@@ -1445,7 +1496,7 @@ impl Render for InspectorPanel {
                         );
                 }
 
-                if is_visual {
+                if has_picture {
                     content = content
                         .child(Separator::horizontal())
                         .child(
@@ -1879,6 +1930,7 @@ impl Render for InspectorPanel {
                     .child(
                         div()
                             .flex()
+                            .flex_wrap()
                             .gap(px(6.))
                             .child({
                                 let state = self.state.clone();
@@ -1888,6 +1940,27 @@ impl Render for InspectorPanel {
                                     .on_click(move |_, _, cx| {
                                         state.update(cx, |state, cx| state.duplicate_selection(cx))
                                     })
+                            })
+                            .child({
+                                let state = self.state.clone();
+                                Button::new("group-many", "Group")
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.group_selection(cx)))
+                            })
+                            .child({
+                                let state = self.state.clone();
+                                Button::new("ungroup-many", "Ungroup")
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.ungroup_selection(cx)))
+                            })
+                            .child({
+                                let state = self.state.clone();
+                                Button::new("compound-many", "Compound")
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.create_compound(cx)))
                             })
                             .child({
                                 let state = self.state.clone();

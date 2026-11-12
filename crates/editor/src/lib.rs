@@ -14,6 +14,7 @@ mod beats;
 mod bundle;
 mod captions;
 mod commands;
+mod compound;
 mod document;
 mod ducking;
 mod edits;
@@ -84,6 +85,7 @@ pub use transition::{
     ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
+pub use compound::{CompoundTrack, clip_element, compound_child_count, compound_children, expand_compounds, group_members, has_compounds};
 pub use markers::{DEFAULT_MARKER_COLOR, Marker, chapters_text, elements_in_range, normalize_markers};
 pub use relink::{RELINK_SEARCH_DEPTH, find_relink_candidates, missing_media};
 pub use retime::{MAX_RETIME_RATE, MIN_RETIME_RATE, RampKey, Retime, clamp_retime_rate};

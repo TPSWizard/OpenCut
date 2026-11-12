@@ -171,6 +171,7 @@ impl Track {
             (TrackKind::Video, ElementKind::Video { .. })
                 | (TrackKind::Video, ElementKind::Image { .. })
                 | (TrackKind::Video, ElementKind::Sticker { .. })
+                | (TrackKind::Video, ElementKind::Compound { .. })
                 | (TrackKind::Text, ElementKind::Text)
                 | (TrackKind::Audio, ElementKind::Audio { .. })
         )
@@ -215,6 +216,8 @@ pub enum ElementKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         intrinsic_height: Option<f64>,
     },
+    /// A compound clip: other clips in its own time; see [`crate::compound`].
+    Compound { tracks: Vec<crate::CompoundTrack> },
 }
 
 impl ElementKind {
@@ -225,6 +228,7 @@ impl ElementKind {
             Self::Audio { .. } => "audio",
             Self::Text => "text",
             Self::Sticker { .. } => "sticker",
+            Self::Compound { .. } => "compound",
         }
     }
 
@@ -233,13 +237,13 @@ impl ElementKind {
             Self::Video { media_id } | Self::Image { media_id } | Self::Audio { media_id } => {
                 Some(media_id)
             }
-            Self::Text | Self::Sticker { .. } => None,
+            Self::Text | Self::Sticker { .. } | Self::Compound { .. } => None,
         }
     }
 
     pub fn track_kind(&self) -> TrackKind {
         match self {
-            Self::Video { .. } | Self::Image { .. } | Self::Sticker { .. } => TrackKind::Video,
+            Self::Video { .. } | Self::Image { .. } | Self::Sticker { .. } | Self::Compound { .. } => TrackKind::Video,
             Self::Text => TrackKind::Text,
             Self::Audio { .. } => TrackKind::Audio,
         }
@@ -488,6 +492,9 @@ pub struct Element {
     /// Speed change, ramp or reverse; see [`crate::Retime`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retime: Option<crate::Retime>,
+    /// Clips sharing a group id are selected and moved together.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_id: Option<String>,
 }
 
 fn zero() -> MediaTime {
@@ -498,6 +505,30 @@ fn zero() -> MediaTime {
 pub const DEFAULT_STILL_DURATION_SECONDS: f64 = 5.0;
 
 impl Element {
+    /// A compound clip holding `tracks` (children in its own time), as long
+    /// as its content.
+    pub fn compound(id: impl Into<String>, tracks: Vec<crate::CompoundTrack>, start_time: MediaTime, duration: MediaTime) -> Self {
+        Self {
+            id: id.into(),
+            name: "Compound clip".to_owned(),
+            kind: ElementKind::Compound { tracks },
+            start_time,
+            duration,
+            trim_start: MediaTime::ZERO,
+            trim_end: MediaTime::ZERO,
+            source_duration: Some(duration),
+            hidden: false,
+            params: crate::Params::default(),
+            animations: Animations::new(),
+            effects: Vec::new(),
+            masks: Vec::new(),
+            transition: None,
+            words: Vec::new(),
+            retime: None,
+            group_id: None,
+        }
+    }
+
     /// An element for a media item, covering the whole source.
     pub fn from_media(media: &MediaItem, start_time: MediaTime) -> Self {
         let still = MediaTime::from_seconds_f64(DEFAULT_STILL_DURATION_SECONDS).unwrap();
@@ -554,6 +585,7 @@ impl Element {
             transition: None,
             words: Vec::new(),
             retime: None,
+            group_id: None,
         }
     }
 
@@ -577,6 +609,7 @@ impl Element {
             transition: None,
             words: Vec::new(),
             retime: None,
+            group_id: None,
         }
     }
 

@@ -349,6 +349,9 @@ pub fn fit_contain(width: f32, height: f32, canvas_width: f32, canvas_height: f3
 }
 
 pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
+    // Compound clips are drawn as their children.
+    let expanded = crate::expand_compounds(project);
+    let project: &Project = &expanded;
     let canvas = project.settings.canvas;
     let background = match &project.settings.background {
         Background::Color { color } => parse_hex_color(color).unwrap_or([0.0, 0.0, 0.0, 1.0]),
@@ -465,7 +468,8 @@ fn layer_plan(
             style.highlight = caption_highlight(&params, &element.words, element.local_time(param_time));
             LayerSource::Text(style)
         }
-        ElementKind::Audio { .. } => return None,
+        // Compounds are expanded before planning; audio draws nothing.
+        ElementKind::Audio { .. } | ElementKind::Compound { .. } => return None,
     };
     let effects = element
         .effects

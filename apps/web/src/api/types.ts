@@ -18,7 +18,8 @@ export type ApiElementType =
 	| "text"
 	| "sticker"
 	| "graphic"
-	| "effect";
+	| "effect"
+	| "compound";
 
 export type ApiParamValue = number | string | boolean;
 export type ApiParamValues = Record<string, ApiParamValue>;
@@ -142,6 +143,10 @@ export interface ApiElementInfo {
 	trackId: string;
 	type: ApiElementType;
 	name: string;
+	/** Clips sharing a group id are selected and moved together. */
+	groupId?: string;
+	/** For compound clips: how many clips on how many tracks it holds. */
+	compound?: { clips: number; tracks: number };
 	startTime: number;
 	duration: number;
 	/** Speed change of a video or audio clip, when it has one. */
@@ -656,6 +661,14 @@ export interface EditorApiMethods {
 		params: { from?: number; to?: number };
 		result: { trackId: string; elementId: string }[];
 	};
+	/** Groups two or more clips: they are selected and moved together (Alt-click picks one). */
+	"timeline.group": { params: { elements: ApiElementLocator[] }; result: ApiElementInfo[] };
+	/** Ungroups the groups these clips belong to. */
+	"timeline.ungroup": { params: { elements: ApiElementLocator[] }; result: ApiElementInfo[] };
+	/** Combines the clips into one compound clip spanning them (on a video track); renderers and the mix play its children. */
+	"timeline.createCompound": { params: { elements: ApiElementLocator[] }; result: ApiElementInfo };
+	/** Puts a compound clip's visible content back on the timeline as grouped clips. */
+	"timeline.breakApart": { params: ApiElementLocator; result: ApiElementInfo[] };
 	/** The active scene's markers (the timeline's bookmarks), sorted by time. */
 	"markers.list": { params: Record<string, never>; result: ApiMarker[] };
 	/** Adds a marker at `time` seconds (default: the playhead); a marker already there is updated instead. */

@@ -10,6 +10,7 @@ import { ColorNode } from "./nodes/color-node";
 import { BlurBackgroundNode } from "./nodes/blur-background-node";
 import { EffectLayerNode } from "./nodes/effect-layer-node";
 import { TransitionNode } from "./nodes/transition-node";
+import { expandCompounds } from "@/timeline/compound";
 import {
 	getIncomingTransitionWindow,
 	getOutgoingTransitionWindow,
@@ -361,13 +362,15 @@ function applyPreviewSources({
 
 export function buildScene({
 	canvasSize,
-	tracks,
+	tracks: sceneTracks,
 	mediaAssets,
 	duration,
 	background,
 	isPreview,
 	previewSource,
 }: BuildSceneParams) {
+	// Compound clips are drawn as their children.
+	const tracks = expandCompounds(sceneTracks);
 	const rootNode = new RootNode({ duration });
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
 

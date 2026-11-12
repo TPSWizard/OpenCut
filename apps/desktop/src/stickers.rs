@@ -94,7 +94,9 @@ pub(crate) fn fetch_sticker(dir: &Path, sticker_id: &str) -> Result<PathBuf, Str
 /// the desktop cannot draw and ones already tried.
 pub(crate) fn missing_stickers(project: &editor::Project, dir: &Path, tried: &HashSet<String>) -> Vec<String> {
     let mut missing = Vec::new();
-    for (_, element) in project.elements() {
+    // Stickers inside compound clips are drawn too.
+    let expanded = editor::expand_compounds(project);
+    for (_, element) in expanded.elements() {
         if let editor::ElementKind::Sticker { sticker_id, .. } = &element.kind {
             if tried.contains(sticker_id) || missing.contains(sticker_id) {
                 continue;
