@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useEditor } from "@/editor/use-editor";
 import type { MediaAssetData } from "@/services/storage/types";
 import { formatStorageBytes } from "@/services/storage/quota";
+import { useT } from "@/i18n";
 
 /**
  * Media whose record is stored but whose file is gone (the browser cleared
@@ -13,6 +14,7 @@ import { formatStorageBytes } from "@/services/storage/quota";
  * under the same ids, so the clips that use them play again.
  */
 export function MissingMediaSection() {
+	const t = useT();
 	const editor = useEditor();
 	const missing = useEditor((e) => e.media.getMissingAssets());
 	const projectId = useEditor((e) => e.project.getActive()?.metadata.id);
@@ -24,11 +26,11 @@ export function MissingMediaSection() {
 
 	const relinkMany = async (files: File[]) => {
 		const { relinked, unmatched, failed } = await editor.media.relinkByFiles({ projectId, files });
-		if (relinked.length > 0) toast.success(`Relinked ${relinked.length} file(s)`);
-		if (failed.length > 0) toast.error("Some files could not be relinked", { description: failed.join("; ") });
+		if (relinked.length > 0) toast.success(t("Relinked {count} file(s)", { count: relinked.length }));
+		if (failed.length > 0) toast.error(t("Some files could not be relinked"), { description: failed.join("; ") });
 		if (relinked.length === 0 && failed.length === 0) {
-			toast.warning("No picked file matches a missing name", {
-				description: unmatched.length > 0 ? `Picked: ${unmatched.join(", ")}` : undefined,
+			toast.warning(t("No picked file matches a missing name"), {
+				description: unmatched.length > 0 ? t("Picked: {files}", { files: unmatched.join(", ") }) : undefined,
 			});
 		}
 	};
@@ -38,9 +40,9 @@ export function MissingMediaSection() {
 		if (!target) return;
 		try {
 			await editor.media.relinkMedia({ projectId, mediaId: target.id, file });
-			toast.success(`${target.name} relinked to ${file.name}`);
+			toast.success(t("{name} relinked to {file}", { name: target.name, file: file.name }));
 		} catch (error) {
-			toast.error(`Could not relink ${target.name}`, { description: error instanceof Error ? error.message : String(error) });
+			toast.error(t("Could not relink {name}", { name: target.name }), { description: error instanceof Error ? error.message : String(error) });
 		}
 	};
 
@@ -71,14 +73,16 @@ export function MissingMediaSection() {
 			/>
 			<div className="mb-1 flex items-center gap-2">
 				<span className="flex-1 font-medium">
-					{missing.length} missing file{missing.length === 1 ? "" : "s"}
+					{missing.length === 1
+						? t("{count} missing file", { count: missing.length })
+						: t("{count} missing files", { count: missing.length })}
 				</span>
 				<Button size="sm" variant="secondary" onClick={() => bulkInput.current?.click()}>
-					Relink files…
+					{t("Relink files…")}
 				</Button>
 			</div>
 			<p className="mb-1 text-muted-foreground">
-				The browser no longer has these files. Pick the originals (matched by name) to bring their clips back.
+				{t("The browser no longer has these files. Pick the originals (matched by name) to bring their clips back.")}
 			</p>
 			<ul className="flex flex-col gap-0.5">
 				{missing.map((item) => (
@@ -86,7 +90,12 @@ export function MissingMediaSection() {
 						<span className="flex-1 truncate" title={item.name}>
 							{item.name}
 							<span className="ml-1 text-muted-foreground">
-								{item.type} · {formatStorageBytes({ bytes: item.size })}
+								{item.type === "video"
+									? t("Video")
+									: item.type === "image"
+										? t("Image")
+										: t("Audio")}{" "}
+								· {formatStorageBytes({ bytes: item.size })}
 							</span>
 						</span>
 						<Button
@@ -97,15 +106,15 @@ export function MissingMediaSection() {
 								singleInput.current?.click();
 							}}
 						>
-							Relink
+							{t("Relink")}
 						</Button>
 						<Button
 							size="sm"
 							variant="ghost"
-							title="Forget this file; clips that used it stay empty"
+							title={t("Forget this file; clips that used it stay empty")}
 							onClick={() => void editor.media.forgetMissing({ projectId, mediaId: item.id })}
 						>
-							Forget
+							{t("Forget")}
 						</Button>
 					</li>
 				))}

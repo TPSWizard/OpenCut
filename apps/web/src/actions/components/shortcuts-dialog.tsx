@@ -15,7 +15,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { KEYBINDING_PRESETS } from "@/actions/keybindings/presets";
+import {
+	KEYBINDING_PRESETS,
+	type KeybindingPreset,
+} from "@/actions/keybindings/presets";
+import { describeActionCategory } from "@/actions/describe";
+import { t, useT } from "@/i18n";
 import {
 	Dialog,
 	DialogBody,
@@ -25,6 +30,28 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 
+/** A preset's description in the active language (labels are product names). */
+function describePreset(preset: KeybindingPreset): string {
+	switch (preset.id) {
+		case "opencut":
+			return t("The editor's own shortcuts.");
+		case "premiere":
+			return t(
+				"Ctrl+K adds an edit, Q and W ripple-trim, Shift+Delete ripple-deletes, Ctrl+Shift+X clears the marks.",
+			);
+		case "final-cut":
+			return t(
+				"Delete ripple-deletes (the storyline closes up), Shift+Delete leaves a gap, Ctrl+B blades at the playhead.",
+			);
+		case "resolve":
+			return t(
+				"Ctrl+B splits, Shift+Delete ripple-deletes, Alt+X clears the marks, N toggles snapping.",
+			);
+		default:
+			return preset.description;
+	}
+}
+
 export function ShortcutsDialog({
 	isOpen,
 	onOpenChange,
@@ -32,6 +59,7 @@ export function ShortcutsDialog({
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
+	const t = useT();
 	const [recordingShortcut, setRecordingShortcut] =
 		useState<KeyboardShortcut | null>(null);
 
@@ -68,7 +96,10 @@ export function ShortcutsDialog({
 				});
 				if (conflict) {
 					toast.error(
-						`Key "${keyString}" is already bound to "${conflict.existingAction}"`,
+						t("Key \"{key}\" is already bound to \"{action}\"", {
+							key: keyString,
+							action: conflict.existingAction,
+						}),
 					);
 					setRecordingShortcut(null);
 					return;
@@ -121,7 +152,7 @@ export function ShortcutsDialog({
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
 			<DialogContent className="flex max-h-[80vh] max-w-2xl flex-col p-0">
 				<DialogHeader>
-					<DialogTitle>Keyboard shortcuts</DialogTitle>
+					<DialogTitle>{t("Keyboard shortcuts")}</DialogTitle>
 				</DialogHeader>
 
 				<DialogBody className="scrollbar-thin grow overflow-y-auto">
@@ -129,7 +160,7 @@ export function ShortcutsDialog({
 						{categories.map((category) => (
 							<div key={category} className="flex flex-col gap-1">
 								<h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-									{category}
+									{describeActionCategory(category)}
 								</h3>
 								<div className="flex flex-col gap-1">
 									{shortcuts
@@ -152,8 +183,8 @@ export function ShortcutsDialog({
 				<DialogFooter className="flex items-center gap-3">
 					<div className="flex flex-1 items-center gap-2">
 						<Select value={presetId} onValueChange={applyPreset}>
-							<SelectTrigger aria-label="Shortcut preset" className="w-48">
-								<SelectValue placeholder="Preset" />
+							<SelectTrigger aria-label={t("Shortcut preset")} className="w-48">
+								<SelectValue placeholder={t("Preset")} />
 							</SelectTrigger>
 							<SelectContent>
 								{KEYBINDING_PRESETS.map((candidate) => (
@@ -164,11 +195,11 @@ export function ShortcutsDialog({
 							</SelectContent>
 						</Select>
 						{preset && (
-							<span className="text-muted-foreground text-xs">{preset.description}</span>
+							<span className="text-muted-foreground text-xs">{describePreset(preset)}</span>
 						)}
 					</div>
 					<Button variant="destructive" onClick={resetToDefaults}>
-						Reset to default
+						{t("Reset to default")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -185,6 +216,7 @@ function ShortcutItem({
 	isRecording: boolean;
 	onStartRecording: (params: { shortcut: KeyboardShortcut }) => void;
 }) {
+	const t = useT();
 	const displayKeys = shortcut.keys.filter((key: string) => {
 		if (
 			key.includes("Cmd") &&
@@ -221,7 +253,7 @@ function ShortcutItem({
 							})}
 						</div>
 						{index < displayKeys.length - 1 && (
-							<span className="text-muted-foreground text-xs">or</span>
+							<span className="text-muted-foreground text-xs">{t("or")}</span>
 						)}
 					</div>
 				))}
@@ -239,6 +271,7 @@ function EditableShortcutKey({
 	isRecording: boolean;
 	onStartRecording: () => void;
 }) {
+	const t = useT();
 	const handleClick = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -251,7 +284,7 @@ function EditableShortcutKey({
 			size="sm"
 			onClick={handleClick}
 			title={
-				isRecording ? "Press any key combination..." : "Click to edit shortcut"
+				isRecording ? t("Press any key combination...") : t("Click to edit shortcut")
 			}
 		>
 			{children}

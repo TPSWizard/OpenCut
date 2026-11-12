@@ -11,11 +11,13 @@ import {
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { usePropertiesStore } from "./stores/properties-store";
-import { getPropertiesConfig } from "./registry";
+import { getPropertiesConfig, propertiesTabLabel } from "./registry";
 import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
+import { useT } from "@/i18n";
 
 export function PropertiesPanel() {
+	const t = useT();
 	const editor = useEditor();
 	useEditor((e) => e.scenes.getActiveSceneOrNull());
 	useEditor((e) => e.media.getAssets());
@@ -34,7 +36,7 @@ export function PropertiesPanel() {
 		return (
 			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-sm border">
 				<p className="text-muted-foreground text-sm">
-					{selectedElements.length} elements selected.0
+					{t("{count} elements selected", { count: selectedElements.length })}
 				</p>
 			</div>
 		);
@@ -54,10 +56,10 @@ export function PropertiesPanel() {
 	const visibleTabs = config.tabs;
 
 	const storedTabId = activeTabPerType[element.type];
-	const isStoredTabVisible = visibleTabs.some((t) => t.id === storedTabId);
+	const isStoredTabVisible = visibleTabs.some((tab) => tab.id === storedTabId);
 	const activeTabId = isStoredTabVisible ? storedTabId : config.defaultTab;
 	const activeTab =
-		visibleTabs.find((t) => t.id === activeTabId) ?? visibleTabs[0];
+		visibleTabs.find((tab) => tab.id === activeTabId) ?? visibleTabs[0];
 
 	if (!activeTab) return null;
 
@@ -77,7 +79,7 @@ export function PropertiesPanel() {
 											tabId: tab.id,
 										})
 									}
-									aria-label={tab.label}
+									aria-label={propertiesTabLabel(tab)}
 									className={cn(
 										"shrink-0",
 										"h-8 w-8",
@@ -87,7 +89,7 @@ export function PropertiesPanel() {
 									{tab.icon}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent side="right">{tab.label}</TooltipContent>
+							<TooltipContent side="right">{propertiesTabLabel(tab)}</TooltipContent>
 						</Tooltip>
 					))}
 				</div>

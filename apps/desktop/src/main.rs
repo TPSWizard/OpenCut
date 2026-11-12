@@ -14,6 +14,7 @@ mod ducking;
 mod fonts;
 mod components;
 mod format;
+mod i18n;
 mod images;
 mod loudness;
 mod luts;
@@ -65,6 +66,7 @@ fn main() {
     };
 
     Application::new().run(move |cx: &mut App| {
+        i18n::init(&settings::load().locale);
         actions::bind_keys(cx);
         components::bind_text_input_keys(cx);
         cx.on_action(|_: &actions::Quit, cx| cx.quit());

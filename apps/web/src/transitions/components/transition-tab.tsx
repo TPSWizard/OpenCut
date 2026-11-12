@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import type { VisualElement } from "@/timeline/types";
 import { mediaTimeToSeconds, mediaTimeFromSeconds } from "@/wasm";
 import {
@@ -38,6 +39,7 @@ export function TransitionTab({
 	element: VisualElement;
 	trackId: string;
 }) {
+	const t = useT();
 	const editor = useEditor();
 	const catalogue = getTransitionCatalogue();
 	const transition = element.transition ?? null;
@@ -77,13 +79,13 @@ export function TransitionTab({
 
 	return (
 		<div className="flex flex-col gap-4 p-3.5">
-			<Field label="Transition">
+			<Field label={t("Transition")}>
 				<Select value={transition?.type ?? NONE} onValueChange={setType}>
 					<SelectTrigger className="w-full">
-						<SelectValue placeholder="None" />
+						<SelectValue placeholder={t("None")} />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value={NONE}>None</SelectItem>
+						<SelectItem value={NONE}>{t("None")}</SelectItem>
 						{catalogue.map((entry) => (
 							<SelectItem key={entry.name} value={entry.name}>
 								{spaced(entry.name)}
@@ -95,15 +97,16 @@ export function TransitionTab({
 			{!transition ? (
 				<div className="flex flex-col gap-2">
 					<p className="text-muted-foreground text-xs">
-						A transition plays out of this clip's end into the next clip on the
-						track, centred on the cut. With nothing after it, the clip fades out.
+						{t(
+							"A transition plays out of this clip's end into the next clip on the track, centred on the cut. With nothing after it, the clip fades out.",
+						)}
 					</p>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => setType(DEFAULT_TRANSITION_TYPE)}
 					>
-						Add {spaced(DEFAULT_TRANSITION_TYPE).toLowerCase()}
+						{t("Add {name}", { name: spaced(DEFAULT_TRANSITION_TYPE).toLowerCase() })}
 					</Button>
 				</div>
 			) : (
@@ -111,7 +114,7 @@ export function TransitionTab({
 					{info?.description && (
 						<p className="text-muted-foreground text-xs">{info.description}</p>
 					)}
-					<Field label="Duration (s)">
+					<Field label={t("Duration (s)")}>
 						<Input
 							type="number"
 							min={0.05}
@@ -136,7 +139,7 @@ export function TransitionTab({
 						/>
 					))}
 					<Button variant="ghost" size="sm" onClick={() => update(null)}>
-						Remove transition
+						{t("Remove transition")}
 					</Button>
 				</>
 			)}

@@ -35,7 +35,7 @@ pub(crate) fn measure_voice(
         .iter()
         .flat_map(|track| track.elements.iter())
         .find(|element| element.id == music_id)
-        .ok_or_else(|| "The clip to duck is gone".to_owned())?;
+        .ok_or_else(|| crate::i18n::t("The clip to duck is gone").to_owned())?;
     let clip_start = music.start_time.to_seconds_f64();
     let clip_duration = music.duration.to_seconds_f64();
     let clip_end = clip_start + clip_duration;
@@ -48,8 +48,8 @@ pub(crate) fn measure_voice(
         .collect();
     if voices.is_empty() {
         return Err(match voice_id {
-            Some(_) => "The chosen voice clip has no audio over this clip".to_owned(),
-            None => "There is no other audio clip playing over this one".to_owned(),
+            Some(_) => crate::i18n::t("The chosen voice clip has no audio over this clip").to_owned(),
+            None => crate::i18n::t("There is no other audio clip playing over this one").to_owned(),
         });
     }
 
@@ -135,14 +135,14 @@ pub(crate) fn measure_clip(
     element_id: &str,
     window_seconds: f64,
 ) -> Result<ClipLevels, String> {
-    let (_, element) = project.element(element_id).ok_or_else(|| "The clip is gone".to_owned())?;
+    let (_, element) = project.element(element_id).ok_or_else(|| crate::i18n::t("The clip is gone").to_owned())?;
     let media_id = match &element.kind {
         ElementKind::Video { media_id } | ElementKind::Audio { media_id } => media_id,
-        _ => return Err("Only audio and video clips can be measured".to_owned()),
+        _ => return Err(crate::i18n::t("Only audio and video clips can be measured").to_owned()),
     };
-    let media = project.media_item(media_id).ok_or_else(|| "The clip's media is missing".to_owned())?;
+    let media = project.media_item(media_id).ok_or_else(|| crate::i18n::t("The clip's media is missing").to_owned())?;
     if !media.has_audio {
-        return Err("The clip's media has no audio".to_owned());
+        return Err(crate::i18n::t("The clip's media has no audio").to_owned());
     }
     let plan = AudioClipPlan {
         element_id: element.id.clone(),

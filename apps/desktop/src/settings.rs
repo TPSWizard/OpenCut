@@ -58,11 +58,13 @@ pub(crate) struct Settings {
     pub use_proxies: bool,
     /// Make proxies on import for videos larger than 1080p.
     pub auto_proxies: bool,
+    /// Interface language: `auto`, `en` or `zh-CN`.
+    pub locale: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { preview_quality: PreviewQuality::Auto, use_proxies: true, auto_proxies: true }
+        Self { preview_quality: PreviewQuality::Auto, use_proxies: true, auto_proxies: true, locale: "auto".to_owned() }
     }
 }
 

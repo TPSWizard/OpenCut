@@ -24,6 +24,7 @@ use media::{Ffmpeg, is_image_path, probe};
 use time::MediaTime;
 
 use crate::audio::AudioOutput;
+use crate::i18n::{t, tf};
 use crate::render_thread::{
     ExportSettings, RenderEvent, RenderHandle, RenderRequest, spawn_render_thread,
 };
@@ -177,13 +178,13 @@ impl EditorState {
             Some(ffmpeg) => match AudioOutput::open(ffmpeg) {
                 Ok(audio) => Some(audio),
                 Err(error) => {
-                    status = Some(format!("No audio playback: {error}"));
+                    status = Some(tf("No audio playback: {error}", &[("error", &error)]));
                     None
                 }
             },
             None => {
                 status = Some(
-                    "FFmpeg was not found: video and audio files cannot be imported or exported. Install it and put ffmpeg and ffprobe on PATH (or set OPENCUT_FFMPEG_DIR)."
+                    t("FFmpeg was not found: video and audio files cannot be imported or exported. Install it and put ffmpeg and ffprobe on PATH (or set OPENCUT_FFMPEG_DIR).")
                         .to_owned(),
                 );
                 None
@@ -308,12 +309,12 @@ impl EditorState {
     pub(crate) fn relink_missing_in(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
         let missing: Vec<String> = self.missing_media.iter().cloned().collect();
         if missing.is_empty() {
-            self.set_status("No media is missing", cx);
+            self.set_status(t("No media is missing"), cx);
             return;
         }
         let found = editor::find_relink_candidates(self.project(), &missing, &dir);
         if found.is_empty() {
-            self.set_status(format!("None of the {} missing file(s) are in {}", missing.len(), dir.display()), cx);
+            self.set_status(tf("None of the {count} missing file(s) are in {folder}", &[("count", &missing.len()), ("folder", &dir.display())]), cx);
             return;
         }
         self.relink_many(found.into_iter().collect(), cx);
@@ -328,7 +329,7 @@ impl EditorState {
         if wanted.is_empty() {
             return;
         }
-        self.set_status(format!("Relinking {} file(s)…", wanted.len()), cx);
+        self.set_status(tf("Relinking {count} file(s)…", &[("count", &wanted.len())]), cx);
         cx.spawn(async move |this, cx| {
             let probed = cx
                 .background_executor()
@@ -370,12 +371,12 @@ impl EditorState {
                     state.refresh_proxies();
                     state.request_render(cx);
                 }
-                let mut message = format!("Relinked {} file(s)", relinked.len());
+                let mut message = tf("Relinked {count} file(s)", &[("count", &relinked.len())]);
                 if !failures.is_empty() {
                     message.push_str(&format!("; {}", failures.join("; ")));
                 }
                 if !state.missing_media.is_empty() {
-                    message.push_str(&format!("; {} still missing", state.missing_media.len()));
+                    message.push_str(&tf("; {count} still missing", &[("count", &state.missing_media.len())]));
                 }
                 state.set_status(message, cx);
             })
@@ -440,7 +441,7 @@ impl EditorState {
 
     pub(crate) fn select(&mut self, element_id: &str, extend: bool, cx: &mut Context<Self>) {
         if let Some(track) = self.locked_track_of(element_id) {
-            self.set_status(format!("{track} is locked; unlock it to edit its clips"), cx);
+            self.set_status(tf("{track} is locked; unlock it to edit its clips", &[("track", &track)]), cx);
             return;
         }
         if self.pen.is_some() && (extend || !self.is_selected(element_id)) {
@@ -470,7 +471,7 @@ impl EditorState {
     /// Selects just this clip, even when it is in a group (Alt-click).
     pub(crate) fn select_one(&mut self, element_id: &str, cx: &mut Context<Self>) {
         if let Some(track) = self.locked_track_of(element_id) {
-            self.set_status(format!("{track} is locked; unlock it to edit its clips"), cx);
+            self.set_status(tf("{track} is locked; unlock it to edit its clips", &[("track", &track)]), cx);
             return;
         }
         if self.pen.is_some() {
@@ -512,13 +513,13 @@ impl EditorState {
 
     pub(crate) fn group_selection(&mut self, cx: &mut Context<Self>) {
         if self.selection.len() < 2 {
-            self.set_status("Select two or more clips to group (Shift-click adds)", cx);
+            self.set_status(t("Select two or more clips to group (Shift-click adds)"), cx);
             return;
         }
         let ids = self.selection.clone();
         let count = ids.len();
         if self.execute(Command::GroupElements { element_ids: ids, group_id: editor::new_id() }, cx).is_some() {
-            self.set_status(format!("Grouped {count} clips; Alt-click picks one"), cx);
+            self.set_status(tf("Grouped {count} clips; Alt-click picks one", &[("count", &count)]), cx);
         }
     }
 
@@ -528,14 +529,14 @@ impl EditorState {
         }
         let ids = self.selection.clone();
         if self.execute(Command::UngroupElements(ids), cx).is_some() {
-            self.set_status("Ungrouped", cx);
+            self.set_status(t("Ungrouped"), cx);
         }
     }
 
     /// Combines the selected clips into one compound clip.
     pub(crate) fn create_compound(&mut self, cx: &mut Context<Self>) {
         if self.selection.is_empty() {
-            self.set_status("Select the clips to combine", cx);
+            self.set_status(t("Select the clips to combine"), cx);
             return;
         }
         let ids = self.selection.clone();
@@ -543,18 +544,18 @@ impl EditorState {
         let compound_id = editor::new_id();
         if self.execute(Command::CreateCompound { element_ids: ids, compound_id: compound_id.clone() }, cx).is_some() {
             self.select_only(vec![compound_id], cx);
-            self.set_status(format!("Combined {count} clips into a compound clip"), cx);
+            self.set_status(tf("Combined {count} clips into a compound clip", &[("count", &count)]), cx);
         }
     }
 
     /// Puts the selected compound clip's content back on the timeline.
     pub(crate) fn break_apart_selected(&mut self, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else {
-            self.set_status("Select one compound clip", cx);
+            self.set_status(t("Select one compound clip"), cx);
             return;
         };
         if !matches!(element.kind, editor::ElementKind::Compound { .. }) {
-            self.set_status("That is not a compound clip", cx);
+            self.set_status(t("That is not a compound clip"), cx);
             return;
         }
         let element_id = element.id.clone();
@@ -562,7 +563,7 @@ impl EditorState {
             let created: Vec<String> = outcome.element_refs().iter().map(|r| r.element_id.clone()).collect();
             let count = created.len();
             self.select_only(created, cx);
-            self.set_status(format!("Broke the compound clip into {count} clips (grouped)"), cx);
+            self.set_status(tf("Broke the compound clip into {count} clips (grouped)", &[("count", &count)]), cx);
         }
     }
 
@@ -612,7 +613,7 @@ impl EditorState {
     /// range (mark in to mark out; a missing mark is the start or the end).
     pub(crate) fn select_range(&mut self, cx: &mut Context<Self>) {
         if self.mark_in.is_none() && self.mark_out.is_none() {
-            self.set_status("Set a mark in (I) or out (O) first", cx);
+            self.set_status(t("Set a mark in (I) or out (O) first"), cx);
             return;
         }
         let from = self.mark_in.unwrap_or(MediaTime::ZERO);
@@ -620,7 +621,7 @@ impl EditorState {
         let ids = editor::elements_in_range(self.project(), from, to);
         let count = ids.len();
         self.select_only(ids, cx);
-        self.set_status(format!("Selected {count} clip(s) in the marked range"), cx);
+        self.set_status(tf("Selected {count} clip(s) in the marked range", &[("count", &count)]), cx);
     }
 
     /// Locks or unlocks a track; locking drops its clips from the selection.
@@ -647,11 +648,11 @@ impl EditorState {
         if let Some(index) = markers.iter().position(|marker| marker.time == time) {
             markers.remove(index);
             self.execute(Command::SetMarkers(markers), cx);
-            self.set_status("Marker removed", cx);
+            self.set_status(t("Marker removed"), cx);
         } else {
             markers.push(editor::Marker::at(time));
             self.execute(Command::SetMarkers(markers), cx);
-            self.set_status("Marker added", cx);
+            self.set_status(t("Marker added"), cx);
         }
     }
 
@@ -689,12 +690,12 @@ impl EditorState {
     /// Puts the markers on the clipboard as YouTube chapters.
     pub(crate) fn copy_chapters(&mut self, cx: &mut Context<Self>) {
         if self.project().markers.is_empty() {
-            self.set_status("Add markers (M) first", cx);
+            self.set_status(t("Add markers (M) first"), cx);
             return;
         }
         let text = editor::chapters_text(&self.project().markers);
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
-        self.set_status("Chapters copied", cx);
+        self.set_status(t("Chapters copied"), cx);
     }
 
     /// The single selected element, if exactly one is selected.
@@ -726,16 +727,16 @@ impl EditorState {
         let Some(element) = self.selected_element() else { return };
         let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
         if !(is_video || matches!(element.kind, editor::ElementKind::Audio { .. })) {
-            self.set_status("Noise reduction needs an audio or video clip.", cx);
+            self.set_status(t("Noise reduction needs an audio or video clip."), cx);
             return;
         }
         let Some(media) = self.project().media_for(element).cloned() else { return };
         if !media.has_audio {
-            self.set_status("This clip's media has no audio.", cx);
+            self.set_status(t("This clip's media has no audio."), cx);
             return;
         }
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to reduce noise.", cx);
+            self.set_status(t("FFmpeg is needed to reduce noise."), cx);
             return;
         };
         let element = element.clone();
@@ -745,7 +746,7 @@ impl EditorState {
             .unwrap_or_else(|| std::path::PathBuf::from("processed"))
             .join(format!("{}-denoised-{}db.wav", media.id, reduction_db.round() as i64));
         let source_name = media.name.clone();
-        self.set_status("Reducing noise…", cx);
+        self.set_status(t("Reducing noise…"), cx);
         cx.spawn(async move |this, cx| {
             let produced = cx
                 .background_executor()
@@ -779,9 +780,9 @@ impl EditorState {
                     if state.execute(Command::Batch(commands), cx).is_some() {
                         state.set_status(
                             if is_video {
-                                "Denoised audio added on its own track; the clip's own audio is muted.".to_owned()
+                                t("Denoised audio added on its own track; the clip's own audio is muted.").to_owned()
                             } else {
-                                "The clip now plays its denoised audio.".to_owned()
+                                t("The clip now plays its denoised audio.").to_owned()
                             },
                             cx,
                         );
@@ -800,11 +801,11 @@ impl EditorState {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to listen for beats.", cx);
+            self.set_status(t("FFmpeg is needed to listen for beats."), cx);
             return;
         };
         let project = self.project().clone();
-        self.set_status("Listening for beats…", cx);
+        self.set_status(t("Listening for beats…"), cx);
         cx.spawn(async move |this, cx| {
             let tracked = cx
                 .background_executor()
@@ -813,7 +814,7 @@ impl EditorState {
             this.update(cx, |state, cx| match tracked {
                 Ok((element_id, (analysis, source_from))) => {
                     let Some(bpm) = analysis.bpm else {
-                        state.set_status("No steady beat found in this clip.", cx);
+                        state.set_status(t("No steady beat found in this clip."), cx);
                         return;
                     };
                     let Some(element) = state.project().element(&element_id).map(|(_, element)| element.clone()) else {
@@ -831,7 +832,10 @@ impl EditorState {
                     state.markers = markers;
                     state.beats = Some((bpm, analysis.confidence));
                     state.set_status(
-                        format!("{bpm:.1} BPM (confidence {:.0}%): {count} beat marker(s); clips snap to them.", analysis.confidence * 100.0),
+                        tf(
+                            "{bpm} BPM (confidence {confidence}%): {count} beat marker(s); clips snap to them.",
+                            &[("bpm", &format!("{bpm:.1}")), ("confidence", &format!("{:.0}", analysis.confidence * 100.0)), ("count", &count)],
+                        ),
                         cx,
                     );
                     cx.notify();
@@ -854,12 +858,12 @@ impl EditorState {
     pub(crate) fn split_at_shots_selected(&mut self, threshold: f64, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         if !matches!(element.kind, editor::ElementKind::Video { .. }) {
-            self.set_status("Shot detection needs a video clip.", cx);
+            self.set_status(t("Shot detection needs a video clip."), cx);
             return;
         }
         let Some(media) = self.project().media_for(element) else { return };
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to look for shot changes.", cx);
+            self.set_status(t("FFmpeg is needed to look for shot changes."), cx);
             return;
         };
         let element_id = element.id.clone();
@@ -867,7 +871,7 @@ impl EditorState {
         let from = element.trim_start.to_seconds_f64();
         let to = from + element.duration.to_seconds_f64();
         let options = editor::ShotOptions { threshold, ..Default::default() };
-        self.set_status("Looking for shot changes…", cx);
+        self.set_status(t("Looking for shot changes…"), cx);
         cx.spawn(async move |this, cx| {
             let scored = cx
                 .background_executor()
@@ -891,12 +895,12 @@ impl EditorState {
                     let times: Vec<MediaTime> =
                         cuts.iter().filter_map(|cut| editor::source_to_timeline(&element, cut.seconds)).collect();
                     if times.is_empty() {
-                        state.set_status("No shot changes found; try a lower threshold.", cx);
+                        state.set_status(t("No shot changes found; try a lower threshold."), cx);
                         return;
                     }
                     let count = times.len();
                     state.execute(Command::SplitElementAtTimes { element_id, times }, cx);
-                    state.set_status(format!("{count} shot change(s): split into {} clips.", count + 1), cx);
+                    state.set_status(tf("{count} shot change(s): split into {pieces} clips.", &[("count", &count), ("pieces", &(count + 1))]), cx);
                 }
                 Err(message) => state.set_status(message, cx),
             })
@@ -964,7 +968,7 @@ impl EditorState {
     /// track, in one undo step, and clears the marks.
     pub(crate) fn delete_marked_range(&mut self, cx: &mut Context<Self>) {
         let (Some(from), Some(to)) = (self.mark_in, self.mark_out) else {
-            self.set_status("Set an in and an out mark first (I and O).", cx);
+            self.set_status(t("Set an in and an out mark first (I and O)."), cx);
             return;
         };
         if to <= from {
@@ -975,7 +979,7 @@ impl EditorState {
             self.mark_in = None;
             self.mark_out = None;
             self.seek(from, cx);
-            self.set_status(format!("Removed {:.2} s between the marks.", (to - from).to_seconds_f64()), cx);
+            self.set_status(tf("Removed {seconds} s between the marks.", &[("seconds", &format!("{:.2}", (to - from).to_seconds_f64()))]), cx);
         }
     }
 
@@ -1017,7 +1021,7 @@ impl EditorState {
                 .collect()
         };
         if targets.is_empty() {
-            self.set_status("Nothing under the playhead to split", cx);
+            self.set_status(t("Nothing under the playhead to split"), cx);
             return;
         }
         let mut new_selection = Vec::new();
@@ -1108,7 +1112,7 @@ impl EditorState {
             );
             return;
         }
-        self.set_status(format!("{path} has no value to key"), cx);
+        self.set_status(tf("{path} has no value to key", &[("path", &path)]), cx);
     }
 
     /// Ducks the selected clip under the voice: measures the other audio
@@ -1119,12 +1123,12 @@ impl EditorState {
         let music_id = element.id.clone();
         let base_db = element.params.number("volume", 0.0);
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to listen for speech.", cx);
+            self.set_status(t("FFmpeg is needed to listen for speech."), cx);
             return;
         };
         let project = self.project().clone();
         let options = editor::DuckingOptions { amount_db, ..Default::default() };
-        self.set_status("Listening for speech…", cx);
+        self.set_status(t("Listening for speech…"), cx);
         cx.spawn(async move |this, cx| {
             let measured = cx
                 .background_executor()
@@ -1144,7 +1148,7 @@ impl EditorState {
                         &options,
                     );
                     if keys.is_empty() {
-                        state.set_status("No speech found over this clip; nothing written.", cx);
+                        state.set_status(t("No speech found over this clip; nothing written."), cx);
                         return;
                     }
                     let count = keys.len();
@@ -1157,11 +1161,14 @@ impl EditorState {
                         cx,
                     );
                     state.set_status(
-                        format!(
-                            "{} speech passage(s) ({:.1} s) in {} clip(s): {count} volume keys written.",
-                            intervals.len(),
-                            editor::total_seconds(&intervals),
-                            voice.voice_ids.len()
+                        tf(
+                            "{passages} speech passage(s) ({seconds} s) in {clips} clip(s): {count} volume keys written.",
+                            &[
+                                ("passages", &intervals.len()),
+                                ("seconds", &format!("{:.1}", editor::total_seconds(&intervals))),
+                                ("clips", &voice.voice_ids.len()),
+                                ("count", &count),
+                            ],
                         ),
                         cx,
                     );
@@ -1185,11 +1192,11 @@ impl EditorState {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to listen for silence.", cx);
+            self.set_status(t("FFmpeg is needed to listen for silence."), cx);
             return;
         };
         let project = self.project().clone();
-        self.set_status("Listening for silence…", cx);
+        self.set_status(t("Listening for silence…"), cx);
         cx.spawn(async move |this, cx| {
             let measured = cx
                 .background_executor()
@@ -1207,7 +1214,7 @@ impl EditorState {
                         &options,
                     );
                     if cuts.is_empty() {
-                        state.set_status("No silence long enough to cut.", cx);
+                        state.set_status(t("No silence long enough to cut."), cx);
                         return;
                     }
                     let removed: f64 = cuts.iter().map(|cut| cut.end - cut.start).sum();
@@ -1223,7 +1230,10 @@ impl EditorState {
                     let outcome = state.execute(Command::RemoveRanges { element_id, ranges, ripple }, cx);
                     let pieces = outcome.map(|outcome| outcome.element_refs().len()).unwrap_or(0);
                     state.set_status(
-                        format!("Removed {removed:.1} s of silence in {} cut(s); {pieces} piece(s) remain.", cuts.len()),
+                        tf(
+                            "Removed {seconds} s of silence in {cuts} cut(s); {pieces} piece(s) remain.",
+                            &[("seconds", &format!("{removed:.1}")), ("cuts", &cuts.len()), ("pieces", &pieces)],
+                        ),
                         cx,
                     );
                 }
@@ -1251,11 +1261,11 @@ impl EditorState {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to measure loudness.", cx);
+            self.set_status(t("FFmpeg is needed to measure loudness."), cx);
             return;
         };
         let project = self.project().clone();
-        self.set_status("Measuring loudness…", cx);
+        self.set_status(t("Measuring loudness…"), cx);
         cx.spawn(async move |this, cx| {
             let measured = cx
                 .background_executor()
@@ -1264,18 +1274,20 @@ impl EditorState {
             this.update(cx, |state, cx| match measured {
                 Ok((id, report)) => {
                     let fmt = |value: f64, unit: &str| {
-                        if value.is_finite() { format!("{value:.1} {unit}") } else { "silent".to_owned() }
+                        if value.is_finite() { format!("{value:.1} {unit}") } else { t("silent").to_owned() }
                     };
-                    let summary = format!(
-                        "Integrated {} · range {:.1} LU · true peak {}",
-                        fmt(report.integrated_lufs, "LUFS"),
-                        report.loudness_range_lu,
-                        fmt(report.true_peak_dbtp, "dBTP")
+                    let summary = tf(
+                        "Integrated {integrated} · range {range} LU · true peak {peak}",
+                        &[
+                            ("integrated", &fmt(report.integrated_lufs, "LUFS")),
+                            ("range", &format!("{:.1}", report.loudness_range_lu)),
+                            ("peak", &fmt(report.true_peak_dbtp, "dBTP")),
+                        ],
                     );
                     match target {
                         None => state.set_status(summary, cx),
                         Some(target) => match editor::normalization_gain(&report, target.lufs, target.true_peak_dbtp) {
-                            None => state.set_status("The clip is silent; nothing to normalise.", cx),
+                            None => state.set_status(t("The clip is silent; nothing to normalise."), cx),
                             Some((gain, limited)) => {
                                 let volume = gain.clamp(-60.0, 20.0);
                                 let mut params = editor::Params::new();
@@ -1288,10 +1300,14 @@ impl EditorState {
                                     cx,
                                 );
                                 state.set_status(
-                                    format!(
-                                        "{summary}; volume set to {volume:+.1} dB for {} LUFS{}.",
-                                        target.lufs,
-                                        if limited { " (held back by the true-peak ceiling)" } else { "" }
+                                    tf(
+                                        "{summary}; volume set to {volume} dB for {target} LUFS{limit}.",
+                                        &[
+                                            ("summary", &summary),
+                                            ("volume", &format!("{volume:+.1}")),
+                                            ("target", &target.lufs),
+                                            ("limit", &if limited { t(" (held back by the true-peak ceiling)") } else { "" }),
+                                        ],
                                     ),
                                     cx,
                                 );
@@ -1324,7 +1340,7 @@ impl EditorState {
     /// keyframe, on any of its parameters.
     pub(crate) fn jump_to_keyframe(&mut self, forward: bool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else {
-            self.set_status("Select a clip to step through its keyframes", cx);
+            self.set_status(t("Select a clip to step through its keyframes"), cx);
             return;
         };
         let playhead = self.playhead();
@@ -1342,7 +1358,7 @@ impl EditorState {
         };
         match target {
             Some(time) => self.seek(time, cx),
-            None => self.set_status("No keyframe in that direction", cx),
+            None => self.set_status(t("No keyframe in that direction"), cx),
         }
     }
 
@@ -1374,7 +1390,7 @@ impl EditorState {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some("Load LUT".into()),
+            prompt: Some(t("Load LUT").into()),
         });
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(paths))) = receiver.await else {
@@ -1389,7 +1405,7 @@ impl EditorState {
                     let mut params = Params::new();
                     params.set("lut", encoded);
                     state.update_effect(&effect_id, Some(params), None, cx);
-                    state.set_status("LUT loaded.", cx);
+                    state.set_status(t("LUT loaded."), cx);
                 }
                 Err(message) => state.set_status(message, cx),
             })
@@ -1461,7 +1477,7 @@ impl EditorState {
         self.execute(Command::AddMask { element_id: element_id.clone(), mask }, cx);
         self.pen = Some(PenTool { element_id, mask_id });
         self.set_status(
-            "Pen: click on the picture to add points; double-click or Enter closes the path, Escape cancels",
+            t("Pen: click on the picture to add points; double-click or Enter closes the path, Escape cancels"),
             cx,
         );
     }
@@ -1508,7 +1524,7 @@ impl EditorState {
         let count = points.len();
         self.execute(Command::UpdateMask { element_id, mask_id, params }, cx);
         self.set_status(
-            format!("Pen: {count} point(s); double-click or Enter closes the path, Escape cancels"),
+            tf("Pen: {count} point(s); double-click or Enter closes the path, Escape cancels", &[("count", &count)]),
             cx,
         );
     }
@@ -1559,7 +1575,7 @@ impl EditorState {
                 },
                 cx,
             );
-            self.set_status(format!("Freeform mask closed with {count} points"), cx);
+            self.set_status(tf("Freeform mask closed with {count} points", &[("count", &count)]), cx);
         } else {
             self.execute(
                 Command::RemoveMask {
@@ -1568,7 +1584,7 @@ impl EditorState {
                 },
                 cx,
             );
-            self.set_status("Pen: a path needs at least three points; nothing was kept", cx);
+            self.set_status(t("Pen: a path needs at least three points; nothing was kept"), cx);
         }
         cx.notify();
     }
@@ -1587,7 +1603,7 @@ impl EditorState {
             },
             cx,
         );
-        self.set_status("Pen cancelled", cx);
+        self.set_status(t("Pen cancelled"), cx);
         cx.notify();
     }
 
@@ -1838,7 +1854,7 @@ impl EditorState {
         if let Some(id) = new_id {
             self.selected_mask_points = vec![id];
         }
-        self.set_status(format!("Point added: {} points", recentred.len()), cx);
+        self.set_status(tf("Point added: {count} points", &[("count", &recentred.len())]), cx);
     }
 
     /// Drops the selected points; a path left with fewer than three
@@ -1858,9 +1874,9 @@ impl EditorState {
         self.update_mask_plain(&mask_id, params, cx);
         self.set_status(
             if still_closed || !closed {
-                format!("{} point(s) removed", points.len() - kept.len())
+                tf("{count} point(s) removed", &[("count", &(points.len() - kept.len()))])
             } else {
-                "Point removed; a path needs three points to mask, so it is open now".to_owned()
+                t("Point removed; a path needs three points to mask, so it is open now").to_owned()
             },
             cx,
         );
@@ -1953,7 +1969,7 @@ impl EditorState {
             return;
         }
         let ffmpeg = self.ffmpeg.clone();
-        self.set_status(format!("Importing {} file(s)…", paths.len()), cx);
+        self.set_status(tf("Importing {count} file(s)…", &[("count", &paths.len())]), cx);
         cx.spawn(async move |this, cx| {
             let results = cx
                 .background_executor()
@@ -1989,7 +2005,7 @@ impl EditorState {
                     }
                 }
                 if failures.is_empty() {
-                    state.set_status(format!("Imported {added} file(s)"), cx);
+                    state.set_status(tf("Imported {count} file(s)", &[("count", &added)]), cx);
                 } else {
                     state.set_status(failures.join("; "), cx);
                 }
@@ -2023,7 +2039,7 @@ impl EditorState {
     }
 
     pub(crate) fn add_text(&mut self, cx: &mut Context<Self>) {
-        let element = Element::text("Your text", self.playhead());
+        let element = Element::text(t("Your text"), self.playhead());
         self.insert_element(element, cx);
     }
 
@@ -2267,7 +2283,7 @@ impl EditorState {
 
     fn save_settings(&mut self, cx: &mut Context<Self>) {
         if let Err(message) = crate::settings::save(&self.settings) {
-            self.set_status(format!("Settings were not saved: {message}"), cx);
+            self.set_status(tf("Settings were not saved: {error}", &[("error", &message)]), cx);
         }
     }
 
@@ -2291,16 +2307,16 @@ impl EditorState {
             return;
         }
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("Proxies need FFmpeg", cx);
+            self.set_status(t("Proxies need FFmpeg"), cx);
             return;
         };
         let dir = render::default_cache_dir();
         let Some(output) = media::proxy_path(&dir, &media.path) else {
-            self.set_status(format!("{} cannot be read", media.name), cx);
+            self.set_status(tf("{name} cannot be read", &[("name", &media.name)]), cx);
             return;
         };
         self.proxies_making.insert(media.id.clone());
-        self.set_status(format!("Making a proxy of {}…", media.name), cx);
+        self.set_status(tf("Making a proxy of {name}…", &[("name", &media.name)]), cx);
         let natural = (media.width.unwrap_or(1920), media.height.unwrap_or(1080));
         cx.spawn(async move |this, cx| {
             let source = media.path.clone();
@@ -2315,9 +2331,9 @@ impl EditorState {
                         state.proxies_ready.insert(media.id.clone());
                         state.render.send(RenderRequest::Forget { media_id: media.id.clone() });
                         state.request_render(cx);
-                        state.set_status(format!("Proxy of {} ready ({width}×{height})", media.name), cx);
+                        state.set_status(tf("Proxy of {name} ready ({width}×{height})", &[("name", &media.name), ("width", &width), ("height", &height)]), cx);
                     }
-                    Err(message) => state.set_status(format!("Proxy of {} failed: {message}", media.name), cx),
+                    Err(message) => state.set_status(tf("Proxy of {name} failed: {error}", &[("name", &media.name), ("error", &message)]), cx),
                 }
             })
             .ok();
@@ -2330,14 +2346,14 @@ impl EditorState {
         let Some(media) = self.project().media_item(media_id).cloned() else { return };
         if let Some(path) = media::existing_proxy(&render::default_cache_dir(), &media.path) {
             if let Err(error) = std::fs::remove_file(&path) {
-                self.set_status(format!("The proxy was not removed: {error}"), cx);
+                self.set_status(tf("The proxy was not removed: {error}", &[("error", &error)]), cx);
                 return;
             }
         }
         self.proxies_ready.remove(media_id);
         self.render.send(RenderRequest::Forget { media_id: media_id.to_owned() });
         self.request_render(cx);
-        self.set_status(format!("Proxy of {} removed", media.name), cx);
+        self.set_status(tf("Proxy of {name} removed", &[("name", &media.name)]), cx);
     }
 
     pub(crate) fn request_render(&mut self, _cx: &mut Context<Self>) {
@@ -2430,7 +2446,7 @@ impl EditorState {
             Ok(()) => {
                 self.dirty = false;
             }
-            Err(error) => self.set_status(format!("Could not save: {error}"), cx),
+            Err(error) => self.set_status(tf("Could not save: {error}", &[("error", &error)]), cx),
         }
         cx.notify();
     }
@@ -2484,20 +2500,20 @@ impl EditorState {
     pub(crate) fn transcribe_selected(&mut self, model_id: &str, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let Some(clip) = crate::transcribe::clip_plan(self.project(), &element.id) else {
-            self.set_status("Select a clip with audio to transcribe.", cx);
+            self.set_status(t("Select a clip with audio to transcribe."), cx);
             return;
         };
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to read the clip's audio.", cx);
+            self.set_status(t("FFmpeg is needed to read the clip's audio."), cx);
             return;
         };
         let Some(model) = crate::transcribe::model_spec(model_id) else { return };
         let tools = crate::transcribe::tools_dir(self.store.root());
         let Some(cli) = crate::transcribe::whisper_cli(&tools) else {
             self.set_status(
-                format!(
-                    "whisper-cli was not found. Build it with scripts/build-whisper-cli.sh (CMake and a C++ toolchain) or set OPENCUT_WHISPER_CLI; looked in {}",
-                    tools.display()
+                tf(
+                    "whisper-cli was not found. Build it with scripts/build-whisper-cli.sh (CMake and a C++ toolchain) or set OPENCUT_WHISPER_CLI; looked in {folder}",
+                    &[("folder", &tools.display())],
                 ),
                 cx,
             );
@@ -2505,7 +2521,7 @@ impl EditorState {
         };
         let models = crate::transcribe::models_dir(self.store.root());
         let canvas = self.project().settings.canvas;
-        self.set_status(format!("Transcribing with the {} model…", model.id), cx);
+        self.set_status(tf("Transcribing with the {model} model…", &[("model", &model.id)]), cx);
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -2529,12 +2545,12 @@ impl EditorState {
                 .await;
             this.update(cx, |state, cx| match result {
                 Ok((word_count, elements)) if elements.is_empty() => {
-                    state.set_status(format!("No speech found ({word_count} words)."), cx);
+                    state.set_status(tf("No speech found ({count} words).", &[("count", &word_count)]), cx);
                 }
                 Ok((word_count, elements)) => {
                     let count = elements.len();
                     state.execute(Command::InsertCaptions { elements }, cx);
-                    state.set_status(format!("{count} caption(s) from {word_count} words added on a Captions track."), cx);
+                    state.set_status(tf("{count} caption(s) from {words} words added on a Captions track.", &[("count", &count), ("words", &word_count)]), cx);
                 }
                 Err(message) => state.set_status(message, cx),
             })
@@ -2576,26 +2592,26 @@ impl EditorState {
         let options = editor::FillerOptions::default();
         if !words.is_empty() {
             let count = words.len();
-            self.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, "the captions", count, cx);
+            self.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, t("the captions"), count, cx);
             return;
         }
         let Some(clip) = crate::transcribe::clip_plan(self.project(), &element_id) else {
-            self.set_status("Select a clip with audio.", cx);
+            self.set_status(t("Select a clip with audio."), cx);
             return;
         };
         let Some(ffmpeg) = self.ffmpeg.clone() else {
-            self.set_status("FFmpeg is needed to read the clip's audio.", cx);
+            self.set_status(t("FFmpeg is needed to read the clip's audio."), cx);
             return;
         };
         let Some(model) = crate::transcribe::model_spec(model_id) else { return };
         let tools = crate::transcribe::tools_dir(self.store.root());
         let Some(cli) = crate::transcribe::whisper_cli(&tools) else {
-            self.set_status("whisper-cli was not found; see Captions above.", cx);
+            self.set_status(t("whisper-cli was not found; see Captions above."), cx);
             return;
         };
         let models = crate::transcribe::models_dir(self.store.root());
         let whisper_language = if language == "auto" { None } else { Some(language.clone()) };
-        self.set_status(format!("Transcribing with the {} model to find fillers…", model.id), cx);
+        self.set_status(tf("Transcribing with the {model} model to find fillers…", &[("model", &model.id)]), cx);
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -2616,7 +2632,7 @@ impl EditorState {
             this.update(cx, |state, cx| match result {
                 Ok(words) => {
                     let count = words.len();
-                    state.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, "a transcription", count, cx);
+                    state.apply_filler_cuts(&element_id, from, to, &words, &language, options, ripple, t("a transcription"), count, cx);
                 }
                 Err(message) => state.set_status(message, cx),
             })
@@ -2647,13 +2663,19 @@ impl EditorState {
             .filter_map(|(start, end)| Some((MediaTime::from_seconds_f64(start)?, MediaTime::from_seconds_f64(end)?)))
             .collect();
         if ranges.is_empty() {
-            self.set_status(format!("No filler words among {word_count} words from {source}."), cx);
+            self.set_status(tf("No filler words among {words} words from {source}.", &[("words", &word_count), ("source", &source)]), cx);
             return;
         }
         let count = ranges.len();
         let seconds: f64 = ranges.iter().map(|(s, e)| (*e - *s).to_seconds_f64()).sum();
         if self.execute(Command::RemoveRanges { element_id: element_id.to_owned(), ranges, ripple }, cx).is_some() {
-            self.set_status(format!("{count} filler cut(s) ({seconds:.2} s) from {word_count} words from {source}."), cx);
+            self.set_status(
+                tf(
+                    "{count} filler cut(s) ({seconds} s) from {words} words from {source}.",
+                    &[("count", &count), ("seconds", &format!("{seconds:.2}")), ("words", &word_count), ("source", &source)],
+                ),
+                cx,
+            );
         }
     }
 
@@ -2695,7 +2717,7 @@ impl EditorState {
                     .filter_map(|(id, result)| result.err().map(|message| format!("{id}: {message}")))
                     .collect();
                 if !failures.is_empty() {
-                    state.set_status(format!("Sticker(s) not fetched: {}", failures.join("; ")), cx);
+                    state.set_status(tf("Sticker(s) not fetched: {error}", &[("error", &failures.join("; "))]), cx);
                 }
                 state.request_render(cx);
             })
@@ -2708,7 +2730,7 @@ impl EditorState {
     /// on a background thread, then has the renderer lay text out again.
     pub(crate) fn fetch_font(&mut self, family: String, cx: &mut Context<Self>) {
         let fonts_dir = self.fonts_dir.clone();
-        self.set_status(format!("Fetching {family} from Fontsource…"), cx);
+        self.set_status(tf("Fetching {family} from Fontsource…", &[("family", &family)]), cx);
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -2718,12 +2740,14 @@ impl EditorState {
                 Ok(fetched) => {
                     state.render.send(RenderRequest::ReloadFonts);
                     state.set_status(
-                        format!(
-                            "{} ({}): {} file(s) in {}",
-                            fetched.family,
-                            fetched.license,
-                            fetched.files,
-                            fetched.dir.display()
+                        tf(
+                            "{family} ({license}): {count} file(s) in {folder}",
+                            &[
+                                ("family", &fetched.family),
+                                ("license", &fetched.license),
+                                ("count", &fetched.files),
+                                ("folder", &fetched.dir.display()),
+                            ],
                         ),
                         cx,
                     );

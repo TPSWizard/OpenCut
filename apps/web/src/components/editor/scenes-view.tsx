@@ -24,8 +24,10 @@ import {
 import { canDeleteScene, getMainScene } from "@/timeline/scenes";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 
 export function ScenesView({ children }: { children: React.ReactNode }) {
+	const t = useT();
 	const editor = useEditor();
 	const scenes = editor.scenes.getScenes();
 	const currentScene = editor.scenes.getActiveScene();
@@ -71,7 +73,7 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 
 			const { canDelete, reason } = canDeleteScene({ scene });
 			if (!canDelete) {
-				toast.error(reason || "Failed to delete scene");
+				toast.error(reason || t("Failed to delete scene"));
 				continue;
 			}
 
@@ -96,12 +98,12 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 			<SheetContent>
 				<SheetHeader>
 					<SheetTitle>
-						{isSelectMode ? `Select scenes (${selectedScenes.size})` : "Scenes"}
+						{isSelectMode ? t("Select scenes ({count})", { count: selectedScenes.size }) : t("Scenes")}
 					</SheetTitle>
 					<SheetDescription>
 						{isSelectMode
-							? "Select scenes to delete"
-							: "Switch between scenes in your project"}
+							? t("Select scenes to delete")
+							: t("Switch between scenes in your project")}
 					</SheetDescription>
 				</SheetHeader>
 				<div className="flex flex-col gap-4 py-4">
@@ -113,7 +115,7 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 							onClick={handleSelectMode}
 						>
 							<ListCheck />
-							{isSelectMode ? "Cancel" : "Select"}
+							{isSelectMode ? t("Cancel") : t("Select")}
 						</Button>
 						{isSelectMode && (
 							<DeleteDialog
@@ -128,7 +130,7 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 										size="sm"
 									>
 										<Trash2 />
-										Delete ({selectedScenes.size})
+										{t("Delete ({count})", { count: selectedScenes.size })}
 									</Button>
 								}
 							/>
@@ -136,7 +138,7 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 					</div>
 					{scenes.length === 0 ? (
 						<div className="text-muted-foreground text-sm">
-							No scenes available
+							{t("No scenes available")}
 						</div>
 					) : (
 						<div className="space-y-2">
@@ -183,6 +185,7 @@ function DeleteDialog({
 	disabled?: boolean;
 	trigger: React.ReactNode;
 }) {
+	const t = useT();
 	const [open, setOpen] = useState(false);
 
 	const handleDelete = () => {
@@ -195,22 +198,23 @@ function DeleteDialog({
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Delete Scenes</DialogTitle>
+					<DialogTitle>{t("Delete Scenes")}</DialogTitle>
 					<DialogDescription>
-						Are you sure you want to delete {count} scene
-						{count === 1 ? "" : "s"}? This action cannot be undone.
+						{count === 1
+							? t("Are you sure you want to delete {count} scene? This action cannot be undone.", { count })
+							: t("Are you sure you want to delete {count} scenes? This action cannot be undone.", { count })}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => setOpen(false)}>
-						Cancel
+						{t("Cancel")}
 					</Button>
 					<Button
 						variant="destructive"
 						onClick={handleDelete}
 						disabled={disabled}
 					>
-						Delete
+						{t("Delete")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

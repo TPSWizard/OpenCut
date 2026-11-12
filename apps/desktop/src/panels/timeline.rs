@@ -15,6 +15,7 @@ use crate::components::{Button, ButtonSize, ButtonVariant, eid};
 use crate::format::{short_duration, timecode};
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 const HEADER_WIDTH: f32 = 150.0;
 const RULER_HEIGHT: f32 = 24.0;
@@ -387,9 +388,9 @@ impl Render for TimelinePanel {
             let track_id = track.id.clone();
             let track_label = format!("{}", track.name);
             let kind_label = match track.kind {
-                TrackKind::Video => "video",
-                TrackKind::Text => "text",
-                TrackKind::Audio => "audio",
+                TrackKind::Video => t("video"),
+                TrackKind::Text => t("text"),
+                TrackKind::Audio => t("audio"),
             };
             let dimmed = track.hidden || track.muted;
             let locked = track.locked;
@@ -657,7 +658,7 @@ impl Render for TimelinePanel {
                                 .bg(gpui::black().opacity(0.55))
                                 .text_size(px(9.))
                                 .text_color(gpui::white())
-                                .child(format!("COMPOUND · {compound_count}")),
+                                .child(tf("COMPOUND · {count}", &[("count", &compound_count)])),
                         )
                     })
                     .when(muted_badge, |this| {
@@ -671,7 +672,7 @@ impl Render for TimelinePanel {
                                 .bg(gpui::black().opacity(0.55))
                                 .text_size(px(9.))
                                 .text_color(gpui::white())
-                                .child("MUTED"),
+                                .child(t("MUTED")),
                         )
                     })
                     .child(
@@ -931,7 +932,7 @@ impl Render for TimelinePanel {
                             .px(px(8.))
                             .text_xs()
                             .text_color(colors.muted_foreground)
-                            .child("Drop media here with Add, or press T for a title. Drag clips to move them, drag their edges to trim."),
+                            .child(t("Drop media here with Add, or press T for a title. Drag clips to move them, drag their edges to trim.")),
                     ),
             )
             .child(playhead_line);
@@ -954,23 +955,23 @@ impl Render for TimelinePanel {
             .border_b_1()
             .border_color(colors.border)
             .bg(colors.card)
-            .child(tool("undo", "Undo", can_undo, |s, cx| s.undo(cx)))
-            .child(tool("redo", "Redo", can_redo, |s, cx| s.redo(cx)))
+            .child(tool("undo", t("Undo"), can_undo, |s, cx| s.undo(cx)))
+            .child(tool("redo", t("Redo"), can_redo, |s, cx| s.redo(cx)))
             .child(div().w(px(8.)))
-            .child(tool("split", "Split", true, |s, cx| s.split_at_playhead(cx)))
-            .child(tool("duplicate", "Duplicate", !selection.is_empty(), |s, cx| s.duplicate_selection(cx)))
-            .child(tool("delete", "Delete", !selection.is_empty(), |s, cx| s.delete_selection(cx)))
+            .child(tool("split", t("Split"), true, |s, cx| s.split_at_playhead(cx)))
+            .child(tool("duplicate", t("Duplicate"), !selection.is_empty(), |s, cx| s.duplicate_selection(cx)))
+            .child(tool("delete", t("Delete"), !selection.is_empty(), |s, cx| s.delete_selection(cx)))
             .child(div().w(px(8.)))
-            .child(tool("group", "Group", selection.len() > 1, |s, cx| s.group_selection(cx)))
-            .child(tool("ungroup", "Ungroup", !selection.is_empty(), |s, cx| s.ungroup_selection(cx)))
-            .child(tool("compound", "Compound", !selection.is_empty(), |s, cx| s.create_compound(cx)))
-            .child(tool("break-apart", "Break apart", selection.len() == 1, |s, cx| s.break_apart_selected(cx)))
+            .child(tool("group", t("Group"), selection.len() > 1, |s, cx| s.group_selection(cx)))
+            .child(tool("ungroup", t("Ungroup"), !selection.is_empty(), |s, cx| s.ungroup_selection(cx)))
+            .child(tool("compound", t("Compound"), !selection.is_empty(), |s, cx| s.create_compound(cx)))
+            .child(tool("break-apart", t("Break apart"), selection.len() == 1, |s, cx| s.break_apart_selected(cx)))
             .child(div().flex_1())
             .child(
                 div()
                     .text_xs()
                     .text_color(colors.muted_foreground)
-                    .child(format!("{}  ·  {} s total", timecode(playhead, rate), short_duration(duration.to_seconds_f64()))),
+                    .child(tf("{playhead}  ·  {duration} s total", &[("playhead", &timecode(playhead, rate)), ("duration", &short_duration(duration.to_seconds_f64()))])),
             )
             .child(div().w(px(8.)))
             .child(tool("zoom-out", "−", true, |s, cx| s.zoom_by(1.0 / 1.4, None, cx)))

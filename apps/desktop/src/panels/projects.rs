@@ -7,6 +7,7 @@ use gpui::{
 use crate::components::{Button, ButtonSize, ButtonVariant, eid};
 use crate::format::{date_time, short_duration};
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 pub(crate) enum ProjectsEvent {
     Open(Project),
@@ -41,25 +42,37 @@ impl ProjectsView {
                 self.projects = projects;
                 self.error = None;
             }
-            Err(error) => self.error = Some(format!("Could not list projects: {error}")),
+            Err(error) => self.error = Some(tf("Could not list projects: {error}", &[("error", &error)])),
         }
+    }
+
+    /// Sets and saves the interface language, then redraws.
+    fn set_language(&mut self, preference: &str, cx: &mut Context<Self>) {
+        let mut settings = crate::settings::load();
+        settings.locale = preference.to_owned();
+        if let Err(message) = crate::settings::save(&settings) {
+            self.error = Some(message);
+        }
+        crate::i18n::init(preference);
+        cx.refresh_windows();
+        cx.notify();
     }
 
     fn clear_cache(&mut self, cx: &mut Context<Self>) {
         let (count, bytes) = render::clear_regenerable_cache(&render::default_cache_dir());
         self.cache = render::regenerable_cache(&render::default_cache_dir());
-        self.error = Some(format!("Cleared {count} cached file(s), {}", crate::format::byte_size(bytes)));
+        self.error = Some(tf("Cleared {count} cached file(s), {size}", &[("count", &count), ("size", &crate::format::byte_size(bytes))]));
         cx.notify();
     }
 
     fn create(&mut self, cx: &mut Context<Self>) {
         let count = self.projects.len() + 1;
-        match self.store.create(&format!("Untitled {count}")) {
+        match self.store.create(&tf("Untitled {count}", &[("count", &count)])) {
             Ok(project) => {
                 self.refresh();
                 cx.emit(ProjectsEvent::Open(project));
             }
-            Err(error) => self.error = Some(format!("Could not create a project: {error}")),
+            Err(error) => self.error = Some(tf("Could not create a project: {error}", &[("error", &error)])),
         }
         cx.notify();
     }
@@ -72,7 +85,7 @@ impl ProjectsView {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some("Import".into()),
+            prompt: Some(t("Import").into()),
         });
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(paths))) = receiver.await else {
@@ -90,11 +103,11 @@ impl ProjectsView {
                     Ok(report) => {
                         view.refresh();
                         view.error = (!report.skipped.is_empty()).then(|| {
-                            format!("Imported without: {}", report.skipped.join("; "))
+                            tf("Imported without: {items}", &[("items", &report.skipped.join("; "))])
                         });
                         cx.emit(ProjectsEvent::Open(report.project));
                     }
-                    Err(error) => view.error = Some(format!("Could not import the bundle: {error}")),
+                    Err(error) => view.error = Some(tf("Could not import the bundle: {error}", &[("error", &error)])),
                 }
                 cx.notify();
             })
@@ -107,7 +120,7 @@ impl ProjectsView {
         match self.store.load(id) {
             Ok(project) => cx.emit(ProjectsEvent::Open(project)),
             Err(error) => {
-                self.error = Some(format!("Could not open the project: {error}"));
+                self.error = Some(tf("Could not open the project: {error}", &[("error", &error)]));
                 cx.notify();
             }
         }
@@ -116,16 +129,16 @@ impl ProjectsView {
     fn delete(&mut self, id: String, name: String, window: &mut Window, cx: &mut Context<Self>) {
         let answer = window.prompt(
             PromptLevel::Warning,
-            &format!("Delete \"{name}\"?"),
-            Some("The project file is removed. Media files stay where they are."),
-            &["Delete", "Cancel"],
+            &tf("Delete {name}?", &[("name", &format!("\"{name}\""))]),
+            Some(t("The project file is removed. Media files stay where they are.")),
+            &[t("Delete"), t("Cancel")],
             cx,
         );
         cx.spawn(async move |this, cx| {
             if answer.await == Ok(0) {
                 this.update(cx, |view, cx| {
                     if let Err(error) = view.store.delete(&id) {
-                        view.error = Some(format!("Could not delete: {error}"));
+                        view.error = Some(tf("Could not delete: {error}", &[("error", &error)]));
                     }
                     view.refresh();
                     cx.notify();
@@ -180,15 +193,17 @@ impl Render for ProjectsView {
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child(format!(
-                                    "{}  ·  edited {}",
-                                    short_duration(project.duration.to_seconds_f64()),
-                                    date_time(project.updated_at)
+                                .child(tf(
+                                    "{duration}  ·  edited {date}",
+                                    &[
+                                        ("duration", &short_duration(project.duration.to_seconds_f64())),
+                                        ("date", &date_time(project.updated_at)),
+                                    ],
                                 )),
                         ),
                 )
                 .child(
-                    Button::new(eid("delete", &id), "Delete")
+                    Button::new(eid("delete", &id), t("Delete"))
                         .variant(ButtonVariant::Ghost)
                         .size(ButtonSize::Small)
                         .on_click(cx.listener(move |this, _, window, cx| {
@@ -223,7 +238,7 @@ impl Render for ProjectsView {
                                 div()
                                     .flex()
                                     .flex_col()
-                                    .child(div().text_xl().font_weight(FontWeight::SEMIBOLD).child("Projects"))
+                                    .child(div().text_xl().font_weight(FontWeight::SEMIBOLD).child(t("Projects")))
                                     .child(
                                         div()
                                             .text_xs()
@@ -236,12 +251,12 @@ impl Render for ProjectsView {
                                     .flex()
                                     .gap(px(8.))
                                     .child(
-                                        Button::new("import-bundle", "Import bundle…")
+                                        Button::new("import-bundle", t("Import bundle…"))
                                             .variant(ButtonVariant::Outline)
                                             .on_click(cx.listener(|this, _, _, cx| this.import_bundle(cx))),
                                     )
                                     .child(
-                                        Button::new("new-project", "New project")
+                                        Button::new("new-project", t("New project"))
                                             .on_click(cx.listener(|this, _, _, cx| this.create(cx))),
                                     ),
                             ),
@@ -267,7 +282,7 @@ impl Render for ProjectsView {
                                         .p(px(24.))
                                         .text_sm()
                                         .text_color(colors.muted_foreground)
-                                        .child("No projects yet. Create one to start editing."),
+                                        .child(t("No projects yet. Create one to start editing.")),
                                 )
                             })
                             .children(rows),
@@ -279,14 +294,26 @@ impl Render for ProjectsView {
                             .gap(px(8.))
                             .text_xs()
                             .text_color(colors.muted_foreground)
-                            .child(format!(
-                                "Cache you can clear (proxies, retimed audio): {} file(s), {}. They are made again when needed.",
-                                self.cache.0,
-                                crate::format::byte_size(self.cache.1)
+                            .child(tf(
+                                "Cache you can clear (proxies, retimed audio): {count} file(s), {size}. They are made again when needed.",
+                                &[("count", &self.cache.0), ("size", &crate::format::byte_size(self.cache.1))],
                             ))
+                            .child(div().flex_1())
+                            .child(t("Language"))
+                            .children(
+                                std::iter::once(("auto", t("Auto")))
+                                    .chain(crate::i18n::Locale::ALL.iter().map(|locale| (locale.id(), locale.label())))
+                                    .map(|(id, label)| {
+                                        let current = crate::settings::load().locale;
+                                        Button::new(eid("language", id), label)
+                                            .variant(if current == id { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                                            .size(ButtonSize::XSmall)
+                                            .on_click(cx.listener(move |this, _, _, cx| this.set_language(id, cx)))
+                                    }),
+                            )
                             .when(self.cache.0 > 0, |row| {
                                 row.child(
-                                    Button::new("clear-cache", "Clear")
+                                    Button::new("clear-cache", t("Clear"))
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(cx.listener(|this, _, _, cx| this.clear_cache(cx))),

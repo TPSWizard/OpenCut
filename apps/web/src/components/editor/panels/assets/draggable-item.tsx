@@ -11,6 +11,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import type { TimelineDragData } from "@/timeline/drag";
 import { cn } from "@/utils/ui";
 import type { MediaTime } from "@/wasm";
@@ -49,6 +50,7 @@ export function DraggableItem({
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
 	const dragRef = useRef<HTMLDivElement>(null);
+	const t = useT();
 	const editor = useEditor();
 
 	const handleAddToTimeline = () => {
@@ -187,7 +189,7 @@ export function DraggableItem({
 								{shouldShowPlusOnDrag && (
 									<PlusButton
 										onClick={handleAddToTimeline}
-										tooltipText="Add to timeline or drag to position"
+										tooltipText={t("Add to timeline or drag to position")}
 									/>
 								)}
 							</AspectRatio>

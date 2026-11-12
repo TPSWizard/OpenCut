@@ -14,6 +14,7 @@ use crate::panels::{
 };
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 /// Everything that exists while a project is open.
 struct OpenEditor {
@@ -147,8 +148,8 @@ impl Shell {
                 .await;
             state
                 .update(cx, |state, cx| match result {
-                    Ok(()) => state.set_status(format!("Saved bundle {shown}"), cx),
-                    Err(error) => state.set_status(format!("Bundle not saved: {error}"), cx),
+                    Ok(()) => state.set_status(tf("Saved bundle {path}", &[("path", &shown)]), cx),
+                    Err(error) => state.set_status(tf("Bundle not saved: {error}", &[("error", &error)]), cx),
                 })
                 .ok();
         })
@@ -183,8 +184,8 @@ impl Shell {
                 .await;
             state
                 .update(cx, |state, cx| match result {
-                    Ok(count) => state.set_status(format!("Saved {count} caption(s) to {shown}"), cx),
-                    Err(error) => state.set_status(format!("Captions not saved: {error}"), cx),
+                    Ok(count) => state.set_status(tf("Saved {count} caption(s) to {path}", &[("count", &count), ("path", &shown)]), cx),
+                    Err(error) => state.set_status(tf("Captions not saved: {error}", &[("error", &error)]), cx),
                 })
                 .ok();
         })
@@ -252,7 +253,7 @@ impl Render for Shell {
         let project = state.project();
         let name = project.name.clone();
         let focus_handle = state.focus_handle.clone();
-        let save_label = if state.is_dirty() { "Unsaved changes" } else { "Saved" };
+        let save_label = if state.is_dirty() { t("Unsaved changes") } else { t("Saved") };
         let export_running = state.export.as_ref().is_some_and(|e| e.finished.is_none());
         window.set_window_title(&format!("{name} – ConzaCut"));
 
@@ -267,7 +268,7 @@ impl Render for Shell {
             .border_color(colors.border)
             .bg(colors.card)
             .child(
-                Button::new("back", "← Projects")
+                Button::new("back", t("← Projects"))
                     .variant(ButtonVariant::Ghost)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.close_project(cx))),
@@ -289,25 +290,25 @@ impl Render for Shell {
             )
             .child({
                 let state = state_entity.clone();
-                Button::new("import-header", "Import")
+                Button::new("import-header", t("Import"))
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(move |_, _, cx| MediaPanel::import(&state, cx))
             })
             .child(
-                Button::new("export-captions", "Captions…")
+                Button::new("export-captions", t("Captions…"))
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.export_captions(cx))),
             )
             .child(
-                Button::new("export-bundle", "Save bundle…")
+                Button::new("export-bundle", t("Save bundle…"))
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.export_bundle(cx))),
             )
             .child(
-                Button::new("export-header", if export_running { "Exporting…" } else { "Export" })
+                Button::new("export-header", if export_running { t("Exporting…") } else { t("Export") })
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.open_export(cx))),
             );
@@ -411,7 +412,7 @@ impl Render for Shell {
                         files: true,
                         directories: false,
                         multiple: true,
-                        prompt: Some("Import".into()),
+                        prompt: Some(t("Import").into()),
                     });
                     cx.spawn(async move |_, cx| {
                         if let Ok(Ok(Some(paths))) = receiver.await {

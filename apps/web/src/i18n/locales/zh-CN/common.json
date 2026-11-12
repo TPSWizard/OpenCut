@@ -1,0 +1,19 @@
+{
+	"A new version of ConzaCut is ready": "ConzaCut 新版本已就绪",
+	"Automatic": "自动",
+	"Interface language": "界面语言",
+	"Reload": "重新加载",
+	"Reload to use it; your projects stay as they are.": "重新加载即可使用；你的项目保持不变。",
+	"Feedback sent": "反馈已发送",
+	"Failed to send feedback": "反馈发送失败",
+	"Send feedback": "发送反馈",
+	"Thoughts, bugs, ideas...": "想法、问题、建议……",
+	"Send": "发送",
+	"Cancel": "取消",
+	"Light theme": "浅色主题",
+	"Dark theme": "深色主题",
+	"Close": "关闭",
+	"Drag playhead": "拖动播放头",
+	"Select {name}": "选择{name}",
+	"Timeline playhead": "时间线播放头"
+}

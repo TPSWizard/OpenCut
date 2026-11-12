@@ -27,6 +27,7 @@ import {
 import { mediaTimeToSeconds } from "opencut-wasm";
 import { cn } from "@/utils/ui";
 import type { TCanvasSize } from "@/project/types";
+import { useT } from "@/i18n";
 
 export const CUSTOM_PLATFORM = "custom";
 
@@ -50,6 +51,7 @@ export function PlatformExportSection({
 	onChange: (value: PlatformChoice) => void;
 	includeAudio: boolean;
 }) {
+	const t = useT();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const duration = useEditor((e) => e.timeline.getTotalDuration());
@@ -90,7 +92,7 @@ export function PlatformExportSection({
 
 	return (
 		<div className="flex flex-col gap-2 px-3 pt-3" data-testid="platform-export">
-			<Label htmlFor="export-platform">Platform</Label>
+			<Label htmlFor="export-platform">{t("Platform")}</Label>
 			<Select
 				value={value}
 				onValueChange={(next) => {
@@ -98,10 +100,10 @@ export function PlatformExportSection({
 				}}
 			>
 				<SelectTrigger id="export-platform" className="w-full">
-					<SelectValue placeholder="Custom" />
+					<SelectValue placeholder={t("Custom")} />
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value={CUSTOM_PLATFORM}>Custom</SelectItem>
+					<SelectItem value={CUSTOM_PLATFORM}>{t("Custom")}</SelectItem>
 					{PLATFORM_PRESETS.map((candidate) => (
 						<SelectItem key={candidate.id} value={candidate.id}>
 							{candidate.label}
@@ -112,38 +114,46 @@ export function PlatformExportSection({
 			{preset && (
 				<div className="flex flex-col gap-1.5 text-xs">
 					<p className="text-muted-foreground">
-						MP4, H.264 High profile at{" "}
-						{formatMegabits({
-							bits: recommendedVideoBitrate({ canvas, fps }),
-						})}{" "}
-						with a half-second closed GOP and the index first, about{" "}
-						{formatBytes({
-							bytes: estimatePlatformFileBytes({
-								canvas,
-								fps,
-								durationSeconds,
-								includeAudio,
-							}),
-						})}
-						. Target {preset.canvas.width}×{preset.canvas.height} (
-						{describeAspect({ canvas: preset.canvas })}) at {preset.fps} fps
-						{preset.maxDurationSeconds !== null
-							? `, up to ${Math.round(preset.maxDurationSeconds / 60)} min`
-							: ""}
-						.
+						{(() => {
+							const params = {
+								bitrate: formatMegabits({
+									bits: recommendedVideoBitrate({ canvas, fps }),
+								}),
+								size: formatBytes({
+									bytes: estimatePlatformFileBytes({
+										canvas,
+										fps,
+										durationSeconds,
+										includeAudio,
+									}),
+								}),
+								width: preset.canvas.width,
+								height: preset.canvas.height,
+								aspect: describeAspect({ canvas: preset.canvas }),
+								fps: preset.fps,
+							};
+							return preset.maxDurationSeconds !== null
+								? t(
+										"MP4, H.264 High profile at {bitrate} with a half-second closed GOP and the index first, about {size}. Target {width}×{height} ({aspect}) at {fps} fps, up to {minutes} min.",
+										{ ...params, minutes: Math.round(preset.maxDurationSeconds / 60) },
+									)
+								: t(
+										"MP4, H.264 High profile at {bitrate} with a half-second closed GOP and the index first, about {size}. Target {width}×{height} ({aspect}) at {fps} fps.",
+										params,
+									);
+						})()}
 					</p>
 					{preset.verified === "third-party" && (
 						<p className="text-muted-foreground">
-							Limits come from third-party guides, not {preset.label}'s own
-							pages.
+							{t("Limits come from third-party guides, not {platform}'s own pages.", { platform: preset.label })}
 						</p>
 					)}
 					{issues.length === 0 ? (
 						<p className="text-constructive" data-testid="platform-ok">
-							The project matches {preset.label}.
+							{t("The project matches {platform}.", { platform: preset.label })}
 						</p>
 					) : (
-						<ul className="flex flex-col gap-1.5" aria-label="Platform checks">
+						<ul className="flex flex-col gap-1.5" aria-label={t("Platform checks")}>
 							{issues.map((issue) => (
 								<li
 									key={issue.kind}
@@ -163,8 +173,8 @@ export function PlatformExportSection({
 											onClick={() => applyFix({ fix: issue.fix! })}
 										>
 											{issue.fix.canvas
-												? `Set canvas to ${issue.fix.canvas.width}×${issue.fix.canvas.height}`
-												: `Set project to ${issue.fix.fps} fps`}
+												? t("Set canvas to {width}×{height}", { width: issue.fix.canvas.width, height: issue.fix.canvas.height })
+												: t("Set project to {fps} fps", { fps: String(issue.fix.fps) })}
 										</Button>
 									)}
 								</li>

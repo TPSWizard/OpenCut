@@ -1,5 +1,6 @@
 import type { TimelineElement, TimelineTrack } from "@/timeline/types";
 import { TICKS_PER_SECOND } from "@/wasm";
+import { useT } from "@/i18n";
 import {
 	getIncomingTransitionWindow,
 	getOutgoingTransitionWindow,
@@ -20,6 +21,7 @@ export function TransitionMarkers({
 	track: TimelineTrack;
 	pixelsPerSecond: number;
 }) {
+	const t = useT();
 	if (!isVisualElement(element)) return null;
 	const outgoing = getOutgoingTransitionWindow({ track, element });
 	const incoming = getIncomingTransitionWindow({ track, element });
@@ -55,8 +57,8 @@ export function TransitionMarkers({
 					}}
 					title={
 						span.outgoing
-							? `Transition out: ${element.transition?.type ?? ""}`
-							: "Transition in"
+							? t("Transition out: {type}", { type: element.transition?.type ?? "" })
+							: t("Transition in")
 					}
 				/>
 			))}

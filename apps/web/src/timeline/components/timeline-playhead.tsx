@@ -20,6 +20,7 @@ import {
 import { useEditor } from "@/editor/use-editor";
 import { TIMELINE_SCROLLBAR_SIZE_PX } from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
+import { t } from "@/i18n";
 
 interface TimelinePlayheadProps {
 	zoomLevel: number;
@@ -107,7 +108,7 @@ export function TimelinePlayhead({
 		<div
 			ref={playheadRef}
 			role="slider"
-			aria-label="Timeline playhead"
+			aria-label={t("Timeline playhead")}
 			aria-valuemin={0}
 			aria-valuemax={duration}
 			aria-valuenow={currentTime}
@@ -126,7 +127,7 @@ export function TimelinePlayhead({
 
 			<button
 				type="button"
-				aria-label="Drag playhead"
+				aria-label={t("Drag playhead")}
 				className={`pointer-events-auto absolute top-1 left-1/2 size-3 -translate-x-1/2 transform cursor-col-resize rounded-full border-2 shadow-xs ${isSnappingToPlayhead ? "bg-primary border-primary" : "bg-primary border-primary/50"}`}
 				onMouseDown={handlePlayheadMouseDown}
 			/>

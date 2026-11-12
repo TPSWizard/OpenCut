@@ -146,8 +146,9 @@
   --breakpoint-xs: 30rem;
 
   /* Typography */
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Chinese system fonts before the generic ones, so Han text is crisp (OpenCut #817). */
+  --font-sans: "Inter Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Inter Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
   /* Font sizes */
   --text-xs: 0.72rem;
   --text-sm: 0.79rem;

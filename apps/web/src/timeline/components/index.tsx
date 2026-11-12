@@ -83,6 +83,7 @@ import { useInitialScrollBottom } from "@/timeline/hooks/use-initial-scroll-bott
 import { useTimelineResize } from "@/timeline/hooks/use-timeline-resize";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import { useScrollPosition } from "@/timeline/hooks/use-scroll-position";
 import { useTimelinePlayhead } from "@/timeline/hooks/use-timeline-playhead";
 import { DragLine } from "./drag-line";
@@ -117,6 +118,7 @@ const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 };
 
 export function Timeline() {
+	const t = useT();
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const {
 		selectedElements,
@@ -436,7 +438,7 @@ export function Timeline() {
 				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
 			}
 			{...dragProps}
-			aria-label="Timeline"
+			aria-label={t("Timeline")}
 		>
 			<TimelineToolbar
 				zoomLevel={zoomLevel}
@@ -612,6 +614,7 @@ function TrackLabelsPanel({
 	hasHorizontalScrollbar: boolean;
 	getTrackExpansionHeight: (trackIndex: number) => number;
 }) {
+	const t = useT();
 	const editor = useEditor();
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
 	const tracks = useMemo<TimelineTrack[]>(
@@ -707,7 +710,7 @@ function TrackLabelsPanel({
 													on: LockOpenIcon,
 													off: LockIcon,
 												}}
-												title={track.locked ? "Unlock track" : "Lock track"}
+												title={track.locked ? t("Unlock track") : t("Lock track")}
 												onClick={() =>
 													editor.timeline.toggleTrackLock({
 														trackId: track.id,
@@ -767,6 +770,7 @@ function TimelineTrackRows({
 	isDragOver: boolean;
 	dropTarget: DropTarget | null;
 }) {
+	const t = useT();
 	const timeline = useEditor((e) => e.timeline);
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
 	const tracks = useMemo<TimelineTrack[]>(
@@ -861,7 +865,7 @@ function TimelineTrackRows({
 								invokeAction("paste-copied");
 							}}
 						>
-							Paste elements
+							{t("Paste elements")}
 						</ContextMenuItem>
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={VolumeHighIcon} />}
@@ -871,8 +875,8 @@ function TimelineTrackRows({
 							}}
 						>
 							{canTrackHaveAudio(track) && track.muted
-								? "Unmute track"
-								: "Mute track"}
+								? t("Unmute track")
+								: t("Mute track")}
 						</ContextMenuItem>
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={ViewIcon} />}
@@ -882,8 +886,8 @@ function TimelineTrackRows({
 							}}
 						>
 							{canTrackBeHidden(track) && track.hidden
-								? "Show track"
-								: "Hide track"}
+								? t("Show track")
+								: t("Hide track")}
 						</ContextMenuItem>
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={track.locked ? LockOpenIcon : LockIcon} />}
@@ -892,7 +896,7 @@ function TimelineTrackRows({
 								timeline.toggleTrackLock({ trackId: track.id });
 							}}
 						>
-							{track.locked ? "Unlock track" : "Lock track"}
+							{track.locked ? t("Unlock track") : t("Lock track")}
 						</ContextMenuItem>
 						{track.id !== mainTrackId && !track.locked && (
 							<ContextMenuItem
@@ -903,7 +907,7 @@ function TimelineTrackRows({
 								}}
 								variant="destructive"
 							>
-								Delete track
+								{t("Delete track")}
 							</ContextMenuItem>
 						)}
 					</ContextMenuContent>

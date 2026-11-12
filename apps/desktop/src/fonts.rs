@@ -106,7 +106,7 @@ pub(crate) fn select_files(detail_json: &str) -> Result<(FamilyDetail, Vec<FontF
         }
     }
     if files.is_empty() {
-        return Err(format!("{} has no TTF files to fetch", detail.family));
+        return Err(crate::i18n::tf("{family} has no TTF files to fetch", &[("family", &detail.family)]));
     }
     Ok((detail, files))
 }
@@ -136,7 +136,7 @@ pub(crate) struct FetchedFamily {
 pub(crate) fn fetch_family(fonts_dir: &Path, family: &str) -> Result<FetchedFamily, String> {
     let id = fontsource_id(family);
     if id.is_empty() {
-        return Err("No font family named".to_owned());
+        return Err(crate::i18n::t("No font family named").to_owned());
     }
     let detail_json = get(&format!("{API}/{id}"))?;
     let detail_json = String::from_utf8(detail_json).map_err(|error| error.to_string())?;

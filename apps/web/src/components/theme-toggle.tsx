@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { cn } from "@/utils/ui";
 import { Sun03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useT } from "@/i18n";
 
 interface ThemeToggleProps {
 	className?: string;
@@ -18,6 +19,7 @@ export function ThemeToggle({
 	onToggle,
 }: ThemeToggleProps) {
 	const { theme, setTheme } = useTheme();
+	const t = useT();
 
 	return (
 		<Button
@@ -33,7 +35,7 @@ export function ThemeToggle({
 				icon={Sun03Icon}
 				className={cn("!size-[1.1rem]", iconClassName)}
 			/>
-			<span className="sr-only">{theme === "dark" ? "Light" : "Dark"}</span>
+			<span className="sr-only">{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
 		</Button>
 	);
 }

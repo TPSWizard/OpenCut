@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useEditor } from "@/editor/use-editor";
+import { t, useT } from "@/i18n";
 import { NumberField } from "@/components/ui/number-field";
 import { Switch } from "@/components/ui/switch";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -64,12 +65,12 @@ function buildRetime({
 	return { ...buildConstantRetime({ rate, maintainPitch }), ...(reverse ? { reverse: true } : {}), ...(keys ? { ramp: keys } : {}) };
 }
 
-const RAMP_PRESETS: { id: string; label: string; keys: (duration: number) => RetimeRampKey[] }[] = [
-	{ id: "off", label: "Off", keys: () => [] },
-	{ id: "ease-in", label: "Ease in", keys: (d) => [{ time: 0, rate: 0.25 }, { time: d, rate: 1 }] },
-	{ id: "ease-out", label: "Ease out", keys: (d) => [{ time: 0, rate: 1 }, { time: d, rate: 0.25 }] },
-	{ id: "slow-middle", label: "Slow middle", keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 0.25 }, { time: d, rate: 1 }] },
-	{ id: "fast-middle", label: "Fast middle", keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 4 }, { time: d, rate: 1 }] },
+const RAMP_PRESETS: { id: string; label: () => string; keys: (duration: number) => RetimeRampKey[] }[] = [
+	{ id: "off", label: () => t("Off"), keys: () => [] },
+	{ id: "ease-in", label: () => t("Ease in"), keys: (d) => [{ time: 0, rate: 0.25 }, { time: d, rate: 1 }] },
+	{ id: "ease-out", label: () => t("Ease out"), keys: (d) => [{ time: 0, rate: 1 }, { time: d, rate: 0.25 }] },
+	{ id: "slow-middle", label: () => t("Slow middle"), keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 0.25 }, { time: d, rate: 1 }] },
+	{ id: "fast-middle", label: () => t("Fast middle"), keys: (d) => [{ time: 0, rate: 1 }, { time: d / 2, rate: 4 }, { time: d, rate: 1 }] },
 ];
 
 export function SpeedTab({
@@ -79,6 +80,7 @@ export function SpeedTab({
 	element: AudioElement | VideoElement;
 	trackId: string;
 }) {
+	const t = useT();
 	const editor = useEditor();
 	const rate = clampRetimeRate({
 		rate: element.retime?.rate ?? DEFAULT_RETIME_RATE,
@@ -137,11 +139,11 @@ export function SpeedTab({
 	return (
 		<Section collapsible sectionKey={`${element.id}:speed`}>
 			<SectionHeader>
-				<SectionTitle>Speed</SectionTitle>
+				<SectionTitle>{t("Speed")}</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
 				<SectionFields>
-					<SectionField label="Speed">
+					<SectionField label={t("Speed")}>
 						<NumberField
 							icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
 							value={speedDraft.displayValue}
@@ -165,7 +167,7 @@ export function SpeedTab({
 							isDefault={rate === DEFAULT_RETIME_RATE}
 						/>
 					</SectionField>
-					<SectionField label="Ramp">
+					<SectionField label={t("Ramp")}>
 						<div className="flex flex-wrap gap-1" data-testid="speed-ramp">
 							{RAMP_PRESETS.map((preset) => {
 								const keys = preset.keys(durationSeconds);
@@ -180,21 +182,21 @@ export function SpeedTab({
 										variant={active ? "default" : "outline"}
 										onClick={() => commitShape({ nextReverse: reverse, nextRamp: keys })}
 									>
-										{preset.label}
+										{preset.label()}
 									</Button>
 								);
 							})}
 						</div>
 					</SectionField>
 					<div className="flex items-center justify-between">
-						<span className="text-sm">Reverse</span>
+						<span className="text-sm">{t("Reverse")}</span>
 						<Switch
 							checked={reverse}
 							onCheckedChange={(checked) => commitShape({ nextReverse: checked, nextRamp: ramp })}
 						/>
 					</div>
 					<div className="flex items-center justify-between">
-						<span className="text-sm">Change pitch</span>
+						<span className="text-sm">{t("Change pitch")}</span>
 						<Switch
 							checked={!maintainPitch}
 							disabled={!isPitchPreserveAvailable}

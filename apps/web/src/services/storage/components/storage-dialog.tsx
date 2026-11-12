@@ -26,6 +26,7 @@ import {
 } from "@/services/storage/durability";
 import { formatStorageBytes, readStorageQuotaStatus } from "@/services/storage/quota";
 import { storageService } from "@/services/storage/service";
+import { useT } from "@/i18n";
 
 interface ProjectStorageRow {
 	id: string;
@@ -79,7 +80,8 @@ function useStorageReport({ open }: { open: boolean }) {
 }
 
 function LevelBadge({ level }: { level: DurabilityAssessment["level"] }) {
-	const label = level === "protected" ? "Protected" : level === "at-risk" ? "At risk" : "Unknown";
+	const t = useT();
+	const label = level === "protected" ? t("Protected") : level === "at-risk" ? t("At risk") : t("Unknown");
 	return (
 		<span
 			className={cn(
@@ -97,6 +99,7 @@ function LevelBadge({ level }: { level: DurabilityAssessment["level"] }) {
 
 /** The header button: storage level at a glance, opening the full report. */
 export function StorageStatusButton() {
+	const t = useT();
 	const [open, setOpen] = useState(false);
 	const [durability, setDurability] = useState<Durability | null>(null);
 
@@ -109,10 +112,10 @@ export function StorageStatusButton() {
 			<Button
 				variant="outline"
 				onClick={() => setOpen(true)}
-				title="Where your projects are kept and how safe they are"
+				title={t("Where your projects are kept and how safe they are")}
 				data-testid="storage-status-button"
 			>
-				Storage
+				{t("Storage")}
 				{durability ? <LevelBadge level={durability.level} /> : null}
 			</Button>
 			<StorageDialog open={open} onOpenChange={setOpen} />
@@ -121,14 +124,15 @@ export function StorageStatusButton() {
 }
 
 export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+	const t = useT();
 	const editor = useEditor();
 	const { durability, quota, rows, refresh } = useStorageReport({ open });
 	const [busy, setBusy] = useState<string | null>(null);
 
 	const protect = async () => {
 		const granted = await requestPersistence();
-		if (granted) toast.success("The browser will keep your projects");
-		else toast.warning("The browser said no", { description: "Installing the app or visiting often usually changes that." });
+		if (granted) toast.success(t("The browser will keep your projects"));
+		else toast.warning(t("The browser said no"), { description: t("Installing the app or visiting often usually changes that.") });
 		await refresh();
 	};
 
@@ -137,9 +141,9 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 		try {
 			const { blob, fileName } = await editor.project.exportProjectBundleById({ id: row.id });
 			downloadBlob({ blob, filename: fileName });
-			toast.success(`Backed up ${row.name}`, { description: fileName });
+			toast.success(t("Backed up {name}", { name: row.name }), { description: fileName });
 		} catch (error) {
-			toast.error(`Could not back up ${row.name}`, { description: error instanceof Error ? error.message : String(error) });
+			toast.error(t("Could not back up {name}", { name: row.name }), { description: error instanceof Error ? error.message : String(error) });
 		} finally {
 			setBusy(null);
 			await refresh();
@@ -150,7 +154,7 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 		setBusy(row.id);
 		try {
 			const freed = await storageService.clearProjectProxies({ projectId: row.id });
-			toast.success(`Freed ${formatStorageBytes({ bytes: freed })} of proxies from ${row.name}`);
+			toast.success(t("Freed {size} of proxies from {name}", { size: formatStorageBytes({ bytes: freed }), name: row.name }));
 		} finally {
 			setBusy(null);
 			await refresh();
@@ -164,10 +168,10 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 			<DialogContent className="sm:max-w-2xl" data-testid="storage-dialog">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						Storage {durability ? <LevelBadge level={durability.level} /> : null}
+						{t("Storage")} {durability ? <LevelBadge level={durability.level} /> : null}
 					</DialogTitle>
 					<DialogDescription>
-						Projects and media live in this browser only. Back them up as .opencut.zip bundles to keep them safe or move them.
+						{t("Projects and media live in this browser only. Back them up as .opencut.zip bundles to keep them safe or move them.")}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="flex flex-col gap-4">
@@ -190,10 +194,16 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
 					<div className="flex flex-col gap-1.5">
 						<div className="flex justify-between text-sm">
-							<span>Used by this site</span>
+							<span>{t("Used by this site")}</span>
 							<span className="tabular-nums text-muted-foreground" data-testid="storage-usage">
-								{quota.usage !== null ? formatStorageBytes({ bytes: quota.usage }) : "unknown"}
-								{quota.quota ? ` of ${formatStorageBytes({ bytes: quota.quota })}` : ""}
+								{quota.quota
+									? t("{used} of {total}", {
+											used: quota.usage !== null ? formatStorageBytes({ bytes: quota.usage }) : t("unknown"),
+											total: formatStorageBytes({ bytes: quota.quota }),
+										})
+									: quota.usage !== null
+										? formatStorageBytes({ bytes: quota.usage })
+										: t("unknown")}
 							</span>
 						</div>
 						{usedShare !== null ? <Progress value={usedShare} /> : null}
@@ -203,10 +213,10 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 						<table className="w-full text-sm">
 							<thead className="bg-muted/50 text-xs text-muted-foreground">
 								<tr>
-									<th className="p-2 text-left font-medium">Project</th>
-									<th className="p-2 text-right font-medium">Media</th>
-									<th className="p-2 text-right font-medium">Proxies</th>
-									<th className="p-2 text-left font-medium">Last backup</th>
+									<th className="p-2 text-left font-medium">{t("Project")}</th>
+									<th className="p-2 text-right font-medium">{t("Media")}</th>
+									<th className="p-2 text-right font-medium">{t("Proxies")}</th>
+									<th className="p-2 text-left font-medium">{t("Last backup")}</th>
 									<th className="p-2" />
 								</tr>
 							</thead>
@@ -214,7 +224,7 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 								{rows.length === 0 ? (
 									<tr>
 										<td className="p-3 text-muted-foreground" colSpan={5}>
-											No projects yet.
+											{t("No projects yet.")}
 										</td>
 									</tr>
 								) : (
@@ -225,23 +235,26 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 												<td className="max-w-48 truncate p-2" title={row.name}>
 													{row.name}
 													{row.missing > 0 ? (
-														<span className="ml-1 text-xs text-destructive">{row.missing} missing</span>
+														<span className="ml-1 text-xs text-destructive">{t("{count} missing", { count: row.missing })}</span>
 													) : null}
 												</td>
 												<td className="p-2 text-right tabular-nums">{formatStorageBytes({ bytes: row.mediaBytes })}</td>
 												<td className="p-2 text-right tabular-nums">{formatStorageBytes({ bytes: row.proxyBytes })}</td>
 												<td className={cn("p-2", stale && "text-amber-700 dark:text-amber-400")}>
-													{describeBackupAge({ lastBackupAt: row.lastBackupAt, now: Date.now() })}
-													{stale && row.lastBackupAt ? " (changed since)" : ""}
+													{stale && row.lastBackupAt
+														? t("{age} (changed since)", {
+																age: describeBackupAge({ lastBackupAt: row.lastBackupAt, now: Date.now() }),
+															})
+														: describeBackupAge({ lastBackupAt: row.lastBackupAt, now: Date.now() })}
 												</td>
 												<td className="flex justify-end gap-1 p-2">
 													{row.proxyBytes > 0 ? (
 														<Button size="sm" variant="ghost" disabled={busy === row.id} onClick={() => clearProxies(row)}>
-															Clear proxies
+															{t("Clear proxies")}
 														</Button>
 													) : null}
 													<Button size="sm" variant={stale ? "secondary" : "ghost"} disabled={busy === row.id} onClick={() => backUp(row)}>
-														Back up
+														{t("Back up")}
 													</Button>
 												</td>
 											</tr>
@@ -255,10 +268,10 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 				<DialogFooter>
 					{durability && durability.persisted === false ? (
 						<Button variant="secondary" onClick={protect}>
-							Allow persistent storage
+							{t("Allow persistent storage")}
 						</Button>
 					) : null}
-					<Button onClick={() => onOpenChange(false)}>Done</Button>
+					<Button onClick={() => onOpenChange(false)}>{t("Done")}</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
@@ -270,6 +283,7 @@ export function StorageDialog({ open, onOpenChange }: { open: boolean; onOpenCha
  * Safari's seven-day rule, or storage the browser has not agreed to keep.
  */
 export function StorageRiskBanner({ hasProjects }: { hasProjects: boolean }) {
+	const t = useT();
 	const [durability, setDurability] = useState<Durability | null>(null);
 	const [dismissed, setDismissed] = useState(() => {
 		try {
@@ -302,14 +316,14 @@ export function StorageRiskBanner({ hasProjects }: { hasProjects: boolean }) {
 		>
 			<span className="flex-1">
 				{durability.sevenDayRule
-					? "Safari deletes this site's projects after 7 days without a visit. Install the app or back up your projects."
-					: "This browser may delete your projects when the disk runs low. Allow persistent storage or back them up."}
+					? t("Safari deletes this site's projects after 7 days without a visit. Install the app or back up your projects.")
+					: t("This browser may delete your projects when the disk runs low. Allow persistent storage or back them up.")}
 			</span>
 			<Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-				Review storage
+				{t("Review storage")}
 			</Button>
 			<Button size="sm" variant="ghost" onClick={dismiss}>
-				Not now
+				{t("Not now")}
 			</Button>
 			<StorageDialog open={open} onOpenChange={setOpen} />
 		</div>

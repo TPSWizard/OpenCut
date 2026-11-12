@@ -10,6 +10,7 @@ use crate::components::{Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, 
 use crate::format::{short_duration, timecode};
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 /// The media bin: import files, see what the project has, put it on the timeline.
 pub(crate) struct MediaPanel {
@@ -71,7 +72,7 @@ impl MediaPanel {
                         panel.emoji.insert(set.to_owned(), std::sync::Arc::new(collection));
                     }
                     Err(message) => {
-                        panel.state.update(cx, |state, cx| state.set_status(format!("Emoji list: {message}"), cx));
+                        panel.state.update(cx, |state, cx| state.set_status(tf("Emoji list: {error}", &[("error", &message)]), cx));
                     }
                 }
                 cx.notify();
@@ -93,7 +94,7 @@ impl MediaPanel {
             None => {
                 let this = cx.entity().clone();
                 let search = cx.new(|cx| {
-                    TextInput::new(window, cx, "Search, then Enter")
+                    TextInput::new(window, cx, t("Search, then Enter"))
                         .focus_after(editor_focus)
                         .on_commit(move |text, _, cx| {
                             let text = text.to_owned();
@@ -111,7 +112,7 @@ impl MediaPanel {
         let mut pack_row = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
         for (index, label) in packs.iter().enumerate() {
             pack_row = pack_row.child(
-                Button::new(eid("sticker-pack", label), *label)
+                Button::new(eid("sticker-pack", label), t(label))
                     .variant(if index == self.sticker_pack { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                     .size(ButtonSize::XSmall)
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -128,11 +129,11 @@ impl MediaPanel {
         if self.sticker_pack < 2 {
             let (set, _, credit) = EMOJI_SETS[self.sticker_pack];
             let mut tones = div().flex().items_center().gap(px(4.)).p(px(4.)).child(
-                div().text_xs().text_color(colors.muted_foreground).child("Skin tone"),
+                div().text_xs().text_color(colors.muted_foreground).child(t("Skin tone")),
             );
             for (index, (label, _)) in SKIN_TONES.iter().enumerate() {
                 tones = tones.child(
-                    Button::new(eid("skin-tone", label), *label)
+                    Button::new(eid("skin-tone", label), t(label))
                         .variant(if index == self.skin_tone { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                         .size(ButtonSize::XSmall)
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -142,17 +143,17 @@ impl MediaPanel {
                 );
             }
             rows.push(tones.into_any_element());
-            rows.push(div().px(px(6.)).text_xs().text_color(colors.muted_foreground).child(credit).into_any_element());
+            rows.push(div().px(px(6.)).text_xs().text_color(colors.muted_foreground).child(t(credit)).into_any_element());
             let Some(collection) = self.emoji.get(set).cloned() else {
                 self.load_emoji(set, cx);
-                rows.push(div().p(px(8.)).text_xs().text_color(colors.muted_foreground).child("Loading the emoji list…").into_any_element());
+                rows.push(div().p(px(8.)).text_xs().text_color(colors.muted_foreground).child(t("Loading the emoji list…")).into_any_element());
                 return rows;
             };
             let names: Vec<String> = if query.is_empty() {
                 let mut categories = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
                 for (index, (category, _)) in collection.categories.iter().enumerate() {
                     categories = categories.child(
-                        Button::new(eid("emoji-category", category), category.clone())
+                        Button::new(eid("emoji-category", category), emoji_category_label(category))
                             .variant(if index == self.emoji_category { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -189,7 +190,7 @@ impl MediaPanel {
             let mut colours = div().flex().items_center().gap(px(4.)).p(px(4.));
             for (index, label) in ["Brand colour", "White", "Black"].iter().enumerate() {
                 colours = colours.child(
-                    Button::new(eid("brand-colour", label), *label)
+                    Button::new(eid("brand-colour", label), t(label))
                         .variant(if index == self.brand_color { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                         .size(ButtonSize::XSmall)
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -208,7 +209,7 @@ impl MediaPanel {
                     .border_color(colors.border)
                     .text_xs()
                     .text_color(colors.muted_foreground)
-                    .child(TRADEMARK_NOTICE)
+                    .child(t(TRADEMARK_NOTICE))
                     .into_any_element(),
             );
             let mut grid = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
@@ -263,7 +264,7 @@ impl MediaPanel {
                     let state = self.state.clone();
                     let focus = editor_focus.clone();
                     let field = cx.new(|cx| {
-                        TextInput::new(window, cx, "Note")
+                        TextInput::new(window, cx, t("Note"))
                             .focus_after(focus)
                             .on_commit(move |text, _, cx| {
                                 state.update(cx, |state, cx| state.set_marker_note(time, text, cx));
@@ -330,7 +331,7 @@ impl MediaPanel {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some("Relink".into()),
+            prompt: Some(t("Relink").into()),
         });
         let state = state.clone();
         cx.spawn(async move |cx| {
@@ -349,7 +350,7 @@ impl MediaPanel {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some("Look here".into()),
+            prompt: Some(t("Look here").into()),
         });
         let state = state.clone();
         cx.spawn(async move |cx| {
@@ -367,7 +368,7 @@ impl MediaPanel {
             files: true,
             directories: false,
             multiple: true,
-            prompt: Some("Import".into()),
+            prompt: Some(t("Import").into()),
         });
         let state = state.clone();
         cx.spawn(async move |cx| {
@@ -383,9 +384,9 @@ impl MediaPanel {
     fn remove(&mut self, media_id: String, name: String, window: &mut Window, cx: &mut Context<Self>) {
         let answer = window.prompt(
             PromptLevel::Warning,
-            &format!("Remove \"{name}\" from the project?"),
-            Some("Clips that use it are removed from the timeline. The file itself is not touched."),
-            &["Remove", "Cancel"],
+            &tf("Remove {name} from the project?", &[("name", &format!("\"{name}\""))]),
+            Some(t("Clips that use it are removed from the timeline. The file itself is not touched.")),
+            &[t("Remove"), t("Cancel")],
             cx,
         );
         let state = self.state.clone();
@@ -423,9 +424,9 @@ impl Render for MediaPanel {
                 let remove_name = media.name.clone();
                 let thumbnail = state.thumbnails.get(&media.id).cloned();
                 let kind = match media.kind {
-                    MediaKind::Video => "video",
-                    MediaKind::Image => "image",
-                    MediaKind::Audio => "audio",
+                    MediaKind::Video => t("video"),
+                    MediaKind::Image => t("image"),
+                    MediaKind::Audio => t("audio"),
                 };
                 let detail = match media.kind {
                     MediaKind::Image => format!(
@@ -505,9 +506,9 @@ impl Render for MediaPanel {
                                     .items_center()
                                     .gap(px(6.))
                                     .child(Badge::new(kind).variant(BadgeVariant::Outline))
-                                    .when(missing, |row| row.child(Badge::new("missing").variant(BadgeVariant::Destructive)))
-                                    .when(proxy_ready, |row| row.child(Badge::new("proxy").variant(BadgeVariant::Secondary)))
-                                    .when(proxy_making, |row| row.child(Badge::new("proxy…").variant(BadgeVariant::Outline)))
+                                    .when(missing, |row| row.child(Badge::new(t("missing")).variant(BadgeVariant::Destructive)))
+                                    .when(proxy_ready, |row| row.child(Badge::new(t("proxy")).variant(BadgeVariant::Secondary)))
+                                    .when(proxy_making, |row| row.child(Badge::new(t("proxy…")).variant(BadgeVariant::Outline)))
                                     .child(
                                         div()
                                             .text_xs()
@@ -518,7 +519,7 @@ impl Render for MediaPanel {
                     )
                     .child({
                         let state = self.state.clone();
-                        Button::new(eid("add", &id), "Add")
+                        Button::new(eid("add", &id), t("Add"))
                             .variant(ButtonVariant::Secondary)
                             .size(ButtonSize::XSmall)
                             .on_click(move |_, window, cx| {
@@ -532,7 +533,7 @@ impl Render for MediaPanel {
                         let state = self.state.clone();
                         let media_id = relink_media_id.clone();
                         row.child(
-                            Button::new(eid("relink", &relink_media_id), "Relink…")
+                            Button::new(eid("relink", &relink_media_id), t("Relink…"))
                                 .variant(ButtonVariant::Secondary)
                                 .size(ButtonSize::XSmall)
                                 .on_click(move |_, _, cx| Self::relink(&state, media_id.clone(), cx)),
@@ -542,7 +543,7 @@ impl Render for MediaPanel {
                         let state = self.state.clone();
                         let proxy_id = proxy_media_id.clone();
                         row.child(
-                            Button::new(eid("proxy", &proxy_media_id), if proxy_ready { "Drop proxy" } else { "Proxy" })
+                            Button::new(eid("proxy", &proxy_media_id), if proxy_ready { t("Drop proxy") } else { t("Proxy") })
                                 .variant(ButtonVariant::Ghost)
                                 .size(ButtonSize::XSmall)
                                 .on_click(move |_, _, cx| {
@@ -591,7 +592,7 @@ impl Render for MediaPanel {
                     .border_b_1()
                     .border_color(colors.sidebar_border)
                     .child(
-                        Button::new("tab-media", "Media")
+                        Button::new("tab-media", t("Media"))
                             .variant(if show_media { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -601,7 +602,7 @@ impl Render for MediaPanel {
                             })),
                     )
                     .child(
-                        Button::new("tab-markers", format!("Markers {marker_count}"))
+                        Button::new("tab-markers", tf("Markers {count}", &[("count", &marker_count)]))
                             .variant(if show_markers { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -611,7 +612,7 @@ impl Render for MediaPanel {
                             })),
                     )
                     .child(
-                        Button::new("tab-stickers", "Stickers")
+                        Button::new("tab-stickers", t("Stickers"))
                             .variant(if show_stickers { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -623,13 +624,13 @@ impl Render for MediaPanel {
                     .child(div().flex_1())
                     .when(show_markers, |row| {
                         row.child(
-                            Button::new("copy-chapters", "Chapters")
+                            Button::new("copy-chapters", t("Chapters"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::Small)
                                 .on_click(move |_, _, cx| state_for_chapters.update(cx, |state, cx| state.copy_chapters(cx))),
                         )
                         .child(
-                            Button::new("add-marker", "Add (M)")
+                            Button::new("add-marker", t("Add (M)"))
                                 .size(ButtonSize::Small)
                                 .on_click(move |_, _, cx| {
                                     state_for_marker.update(cx, |state, cx| state.toggle_marker_at_playhead(cx))
@@ -638,14 +639,14 @@ impl Render for MediaPanel {
                     })
                     .when(missing_count > 0 && show_media, |row| {
                         row.child(
-                            Button::new("find-missing", format!("Find {missing_count} missing…"))
+                            Button::new("find-missing", tf("Find {count} missing…", &[("count", &missing_count)]))
                                 .variant(ButtonVariant::Secondary)
                                 .size(ButtonSize::Small)
                                 .on_click(move |_, _, cx| Self::find_missing(&state_for_find, cx)),
                         )
                     })
                     .when(show_media, |row| row.child(
-                        Button::new("add-text", "Text")
+                        Button::new("add-text", t("Text"))
                             .variant(ButtonVariant::Outline)
                             .size(ButtonSize::Small)
                             .on_click(move |_, _, cx| {
@@ -653,7 +654,7 @@ impl Render for MediaPanel {
                             }),
                     ))
                     .when(show_media, |row| row.child(
-                        Button::new("import", "Import…")
+                        Button::new("import", t("Import…"))
                             .size(ButtonSize::Small)
                             .on_click(move |_, _, cx| Self::import(&state_for_import, cx)),
                     )),
@@ -673,7 +674,7 @@ impl Render for MediaPanel {
                                 .p(px(12.))
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("No markers yet. Press M to add one at the playhead. I and O mark a range; Ctrl+Shift+A selects the clips in it."),
+                                .child(t("No markers yet. Press M to add one at the playhead. I and O mark a range; Ctrl+Shift+A selects the clips in it.")),
                         )
                     })
                     .when(show_markers, |this| this.children(marker_rows))
@@ -685,13 +686,31 @@ impl Render for MediaPanel {
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
                                 .child(if has_ffmpeg {
-                                    "Import video, audio or images, then double-click one (or press Add) to put it on the timeline at the playhead."
+                                    t("Import video, audio or images, then double-click one (or press Add) to put it on the timeline at the playhead.")
                                 } else {
-                                    "Import images to start. Install FFmpeg to import video and audio."
+                                    t("Import images to start. Install FFmpeg to import video and audio.")
                                 }),
                         )
                     })
                     .when(show_media, |this| this.children(rows)),
             )
     }
+}
+
+/// The emoji category's name in the interface language (the data's English
+/// name when there is no entry).
+fn emoji_category_label(category: &str) -> gpui::SharedString {
+    let label = match category {
+        "Smileys & Emotion" => t("Smileys & Emotion"),
+        "People & Body" => t("People & Body"),
+        "Animals & Nature" => t("Animals & Nature"),
+        "Food & Drink" => t("Food & Drink"),
+        "Travel & Places" => t("Travel & Places"),
+        "Activities" => t("Activities"),
+        "Objects" => t("Objects"),
+        "Symbols" => t("Symbols"),
+        "Flags" => t("Flags"),
+        other => return other.to_owned().into(),
+    };
+    label.into()
 }

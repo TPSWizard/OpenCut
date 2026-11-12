@@ -6,6 +6,7 @@
  */
 
 import { toast } from "sonner";
+import { t } from "@/i18n";
 import { create } from "zustand";
 
 /** The `beforeinstallprompt` event, which browsers that support installing fire once. */
@@ -38,12 +39,12 @@ let reloading = false;
 
 function offerUpdate({ registration }: { registration: ServiceWorkerRegistration }): void {
 	usePwaStore.getState().setUpdateReady(true);
-	toast("A new version of ConzaCut is ready", {
+	toast(t("A new version of ConzaCut is ready"), {
 		id: "pwa-update",
 		duration: Number.POSITIVE_INFINITY,
-		description: "Reload to use it; your projects stay as they are.",
+		description: t("Reload to use it; your projects stay as they are."),
 		action: {
-			label: "Reload",
+			label: t("Reload"),
 			onClick: () => {
 				registration.waiting?.postMessage({ type: "SKIP_WAITING" });
 			},

@@ -5,6 +5,7 @@ import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/
 import type { TextElement } from "@/timeline/types";
 import { mediaTimeToSeconds } from "@/wasm";
 import { cn } from "@/utils/ui";
+import { useT } from "@/i18n";
 import { CAPTION_PARAM_KEYS } from "../params";
 import { getActiveWordState } from "../active-word";
 
@@ -19,6 +20,7 @@ export function CaptionsTab({
 	element: TextElement;
 	trackId: string;
 }) {
+	const t = useT();
 	const words = element.words ?? [];
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
@@ -38,10 +40,13 @@ export function CaptionsTab({
 			/>
 			<div className="flex flex-col gap-2 px-4 pb-4">
 				<p className="text-muted-foreground text-xs">
-					{words.length} timed word{words.length === 1 ? "" : "s"}; times are
-					from the start of the clip.
+					{words.length === 1
+						? t("1 timed word; times are from the start of the clip.")
+						: t("{count} timed words; times are from the start of the clip.", {
+								count: words.length,
+							})}
 				</p>
-				<ol className="flex flex-col gap-0.5" aria-label="Caption words">
+				<ol className="flex flex-col gap-0.5" aria-label={t("Caption words")}>
 					{words.map((word, index) => (
 						<li
 							key={`${index}:${word.text}`}

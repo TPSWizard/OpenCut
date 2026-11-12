@@ -5,6 +5,7 @@ import { compoundChildCount } from "@/timeline/compound";
 
 import { createContext, useContext } from "react";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
@@ -234,6 +235,7 @@ export function TimelineElement({
 	dragView,
 	isDropTarget = false,
 }: TimelineElementProps) {
+	const t = useT();
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
 	const requestRevealMedia = useAssetsPanelStore((s) => s.requestRevealMedia);
@@ -345,9 +347,10 @@ export function TimelineElement({
 		isCurrentElementSelected &&
 		canToggleSourceAudio(element, mediaAsset);
 	const sourceAudioLabel =
-		element.type === "video"
-			? getSourceAudioActionLabel({ element })
-			: "Extract audio";
+		element.type === "video" &&
+		getSourceAudioActionLabel({ element }) === "Recover audio"
+			? t("Recover audio")
+			: t("Extract audio");
 	const isElementSourceAudioSeparated =
 		element.type === "video" && isSourceAudioSeparated({ element });
 	const hasKeyframes = elementKeyframes.length > 0;
@@ -441,7 +444,7 @@ export function TimelineElement({
 						action="split"
 						icon={<HugeiconsIcon icon={ScissorIcon} />}
 					>
-						Split
+						{t("Split")}
 					</ActionMenuItem>
 					<CopyMenuItem />
 					{selectedElements.length === 1 && (
@@ -449,7 +452,7 @@ export function TimelineElement({
 							action="duplicate-selected"
 							icon={<HugeiconsIcon icon={Copy01Icon} />}
 						>
-							Duplicate
+							{t("Duplicate")}
 						</ActionMenuItem>
 					)}
 					{canElementHaveAudio(element) && hasAudio && (
@@ -491,7 +494,7 @@ export function TimelineElement({
 								toggleElementExpanded(element.id);
 							}}
 						>
-							{isExpanded ? "Collapse keyframes" : "Expand keyframes"}
+							{isExpanded ? t("Collapse keyframes") : t("Expand keyframes")}
 						</ContextMenuItem>
 					)}
 					{selectedElements.length === 1 && hasMediaId(element) && (
@@ -502,21 +505,21 @@ export function TimelineElement({
 									handleRevealInMedia({ event })
 								}
 							>
-								Reveal media
+								{t("Reveal media")}
 							</ContextMenuItem>
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Exchange01Icon} />}
 								disabled
 							>
-								Replace media
+								{t("Replace media")}
 							</ContextMenuItem>
 						</>
 					)}
-					<ActionMenuItem action="group-selected">Group</ActionMenuItem>
-					{element.groupId ? <ActionMenuItem action="ungroup-selected">Ungroup</ActionMenuItem> : null}
-					<ActionMenuItem action="create-compound">Make compound clip</ActionMenuItem>
+					<ActionMenuItem action="group-selected">{t("Group")}</ActionMenuItem>
+					{element.groupId ? <ActionMenuItem action="ungroup-selected">{t("Ungroup")}</ActionMenuItem> : null}
+					<ActionMenuItem action="create-compound">{t("Make compound clip")}</ActionMenuItem>
 					{element.type === "compound" ? (
-						<ActionMenuItem action="break-apart-compound">Break apart compound clip</ActionMenuItem>
+						<ActionMenuItem action="break-apart-compound">{t("Break apart compound clip")}</ActionMenuItem>
 					) : null}
 					<ContextMenuSeparator />
 					<DeleteMenuItem
@@ -659,6 +662,7 @@ function ResizeHandle({
 		side: "left" | "right";
 	}) => void;
 }) {
+	const t = useT();
 	const isLeft = side === "left";
 	return (
 		<button
@@ -669,7 +673,7 @@ function ResizeHandle({
 			)}
 			onMouseDown={(event) => onResizeStart({ event, element, track, side })}
 			onClick={(event) => event.stopPropagation()}
-			aria-label={`${isLeft ? "Left" : "Right"} resize handle`}
+			aria-label={isLeft ? t("Left resize handle") : t("Right resize handle")}
 		></button>
 	);
 }
@@ -705,6 +709,7 @@ function KeyframeIndicators({
 		elementLeft: number;
 	}) => number;
 }) {
+	const t = useT();
 	const { isKeyframeSelected } = useKeyframeSelection();
 	const orderedKeyframes = indicators.flatMap(
 		(indicator) => indicator.keyframes,
@@ -742,7 +747,7 @@ function KeyframeIndicators({
 						indicatorTime: indicator.time,
 					})
 				}
-				aria-label="Select keyframe"
+				aria-label={t("Select keyframe")}
 			>
 				<HugeiconsIcon
 					icon={KeyframeIcon}
@@ -808,6 +813,7 @@ function ExpandedKeyframeLanes({
 		elementLeft: number;
 	}) => number;
 }) {
+	const t = useT();
 	const { isKeyframeSelected } = useKeyframeSelection();
 
 	const orderedKeyframes = useMemo(
@@ -895,7 +901,7 @@ function ExpandedKeyframeLanes({
 											indicatorTime: kf.time,
 										});
 									}}
-									aria-label="Select keyframe"
+									aria-label={t("Select keyframe")}
 								>
 									<HugeiconsIcon
 										icon={KeyframeIcon}
@@ -1184,6 +1190,7 @@ function MediaElementHeader({
 }
 
 function ElementContent(props: ElementContentProps) {
+	const t = useT();
 	const { element } = props;
 	return (
 		<>
@@ -1191,7 +1198,7 @@ function ElementContent(props: ElementContentProps) {
 				<div
 					className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px]"
 					style={{ backgroundColor: groupColor(element.groupId) }}
-					title="Grouped (Alt-click picks one clip)"
+					title={t("Grouped (Alt-click picks one clip)")}
 					data-testid="group-strip"
 				/>
 			) : null}
@@ -1210,11 +1217,12 @@ function groupColor(groupId: string): string {
 }
 
 function CompoundElementContent({ element }: { element: CompoundElement }) {
+	const t = useT();
 	const clips = compoundChildCount(element);
 	return (
 		<div className="flex size-full items-center gap-1.5 bg-slate-600/80 pl-2 text-xs text-white" data-testid="compound-clip">
 			<span className="truncate font-medium">{element.name}</span>
-			<span className="shrink-0 rounded bg-black/40 px-1 text-[10px]">COMPOUND · {clips}</span>
+			<span className="shrink-0 rounded bg-black/40 px-1 text-[10px]">{t("COMPOUND · {count}", { count: clips })}</span>
 		</div>
 	);
 }
@@ -1240,12 +1248,13 @@ function ElementBody({ element, track }: ElementContentProps) {
 }
 
 function CopyMenuItem() {
+	const t = useT();
 	return (
 		<ActionMenuItem
 			action="copy-selected"
 			icon={<HugeiconsIcon icon={Copy01Icon} />}
 		>
-			Copy
+			{t("Copy")}
 		</ActionMenuItem>
 	);
 }
@@ -1259,6 +1268,7 @@ function MuteMenuItem({
 	isCurrentElementSelected: boolean;
 	isMuted: boolean;
 }) {
+	const t = useT();
 	const getIcon = () => {
 		if (isMultipleSelected && isCurrentElementSelected) {
 			return <HugeiconsIcon icon={VolumeMute02Icon} />;
@@ -1272,7 +1282,7 @@ function MuteMenuItem({
 
 	return (
 		<ActionMenuItem action="toggle-elements-muted-selected" icon={getIcon()}>
-			{isMuted ? "Unmute" : "Mute"}
+			{isMuted ? t("Unmute") : t("Mute")}
 		</ActionMenuItem>
 	);
 }
@@ -1286,6 +1296,7 @@ function VisibilityMenuItem({
 	isMultipleSelected: boolean;
 	isCurrentElementSelected: boolean;
 }) {
+	const t = useT();
 	const isHidden = canElementBeHidden(element) && element.hidden;
 
 	const getIcon = () => {
@@ -1304,7 +1315,7 @@ function VisibilityMenuItem({
 			action="toggle-elements-visibility-selected"
 			icon={getIcon()}
 		>
-			{isHidden ? "Show" : "Hide"}
+			{isHidden ? t("Show") : t("Hide")}
 		</ActionMenuItem>
 	);
 }
@@ -1320,6 +1331,7 @@ function DeleteMenuItem({
 	elementType: TimelineElementType["type"];
 	selectedCount: number;
 }) {
+	const t = useT();
 	return (
 		<ActionMenuItem
 			action="delete-selected"
@@ -1327,8 +1339,10 @@ function DeleteMenuItem({
 			icon={<HugeiconsIcon icon={Delete02Icon} />}
 		>
 			{isMultipleSelected && isCurrentElementSelected
-				? `Delete ${selectedCount} elements`
-				: `Delete ${elementType === "text" ? "text" : "clip"}`}
+				? t("Delete {count} elements", { count: selectedCount })
+				: elementType === "text"
+					? t("Delete text")
+					: t("Delete clip")}
 		</ActionMenuItem>
 	);
 }

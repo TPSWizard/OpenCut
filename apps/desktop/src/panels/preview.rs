@@ -11,6 +11,7 @@ use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::format::timecode;
 use crate::state::{EditorState, FreeformHit, FreeformOverlay};
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 /// How far (in screen pixels) a click may be from a path point or segment
 /// to take hold of it, and how far a press must travel to count as a drag.
@@ -425,7 +426,7 @@ impl Render for PreviewPanel {
                     div()
                         .text_xs()
                         .text_color(colors.muted_foreground)
-                        .child("Rendering…"),
+                        .child(t("Rendering…")),
                 ),
             })
             .when_some(guide.and_then(|guide| guide.safe_area), |this, safe_area| {
@@ -451,20 +452,21 @@ impl Render for PreviewPanel {
 
         // Platform safe-area guides: the presets that publish one, plus "Off".
         let mut guide_row = div().flex().items_center().gap(px(2.)).ml(px(8.)).child(
-            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Guide"),
+            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child(t("Guide")),
         );
         let guide_choices = std::iter::once(None)
             .chain(editor::PLATFORM_PRESETS.iter().filter(|preset| preset.safe_area.is_some()).map(Some));
         for choice in guide_choices {
             let state = self.state.clone();
             let label = choice.map(|preset| preset.label).unwrap_or("Off");
+            let shown = if choice.is_some() { label } else { t("Off") };
             let active = match (choice, guide) {
                 (None, None) => true,
                 (Some(a), Some(b)) => a.id == b.id,
                 _ => false,
             };
             guide_row = guide_row.child(
-                Button::new(crate::components::eid("guide", label), label)
+                Button::new(crate::components::eid("guide", label), shown)
                     .variant(if active { ButtonVariant::Default } else { ButtonVariant::Ghost })
                     .size(ButtonSize::XSmall)
                     .on_click(move |_, _, cx| {
@@ -478,12 +480,12 @@ impl Render for PreviewPanel {
         let use_proxies = state.settings.use_proxies;
         let (pixels_w, pixels_h) = state.preview_pixels();
         let mut quality_row = div().flex().items_center().gap(px(2.)).ml(px(8.)).child(
-            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Quality"),
+            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child(t("Quality")),
         );
         for choice in crate::settings::PreviewQuality::ALL {
             let state = self.state.clone();
             quality_row = quality_row.child(
-                Button::new(crate::components::eid("quality", choice.label()), choice.label())
+                Button::new(crate::components::eid("quality", choice.label()), t(choice.label()))
                     .variant(if choice == quality { ButtonVariant::Default } else { ButtonVariant::Ghost })
                     .size(ButtonSize::XSmall)
                     .on_click(move |_, _, cx| {
@@ -493,14 +495,14 @@ impl Render for PreviewPanel {
         }
         quality_row = quality_row.child({
             let state = self.state.clone();
-            Button::new("use-proxies", "Proxies")
+            Button::new("use-proxies", t("Proxies"))
                 .variant(if use_proxies { ButtonVariant::Default } else { ButtonVariant::Ghost })
                 .size(ButtonSize::XSmall)
                 .on_click(move |_, _, cx| {
                     state.update(cx, |state, cx| state.set_use_proxies(!use_proxies, cx));
                 })
         });
-        let canvas_label = format!("{canvas_label} · preview {pixels_w}×{pixels_h}");
+        let canvas_label = tf("{canvas} · preview {width}×{height}", &[("canvas", &canvas_label), ("width", &pixels_w), ("height", &pixels_h)]);
 
         let transport = |id: &'static str, label: &'static str, action: fn(&mut EditorState, &mut Context<EditorState>)| {
             let state = self.state.clone();
@@ -536,7 +538,7 @@ impl Render for PreviewPanel {
                     .child({
                         let state = self.state.clone();
                         let focus_handle = focus_handle.clone();
-                        Button::new("play", if playing { "Pause" } else { "Play" })
+                        Button::new("play", if playing { t("Pause") } else { t("Play") })
                             .size(ButtonSize::Small)
                             .on_click(move |_, window, cx| {
                                 window.focus(&focus_handle);

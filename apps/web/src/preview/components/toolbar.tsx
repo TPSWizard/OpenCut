@@ -28,12 +28,26 @@ import { usePreviewViewport } from "./preview-viewport";
 import { GridPopover } from "./guide-popover";
 import { getGuideById } from "@/guides";
 import type { MediaTime } from "@/wasm";
+import { useT } from "@/i18n";
+
+/** Preview quality names (PREVIEW_QUALITIES holds the English; fractions stay as they are). */
+function qualityLabel(value: string, fallback: string, t: ReturnType<typeof useT>): string {
+	switch (value) {
+		case "auto":
+			return t("Auto");
+		case "full":
+			return t("Full");
+		default:
+			return fallback;
+	}
+}
 
 export function PreviewToolbar({
 	onToggleFullscreen,
 }: {
 	onToggleFullscreen: () => void;
 }) {
+	const t = useT();
 	const activeGuide = usePreviewStore((state) => state.activeGuide);
 	const activeGuideDefinition = getGuideById(activeGuide);
 	return (
@@ -48,8 +62,8 @@ export function PreviewToolbar({
 					<Button
 						variant={activeGuideDefinition ? "secondary" : "text"}
 						size="icon"
-						aria-label="Guides"
-						title="Guides and safe areas"
+						aria-label={t("Guides")}
+						title={t("Guides and safe areas")}
 					>
 						{activeGuideDefinition ? (
 							activeGuideDefinition.renderTriggerIcon()
@@ -107,10 +121,11 @@ function TimecodeDisplay() {
 
 /** Preview decode quality and proxies; export always uses full quality. */
 function QualitySelect() {
+	const t = useT();
 	const quality = usePreviewStore((state) => state.previewQuality);
 	const useProxies = usePreviewStore((state) => state.useProxies);
 	const autoProxies = usePreviewStore((state) => state.autoProxies);
-	const label = PREVIEW_QUALITIES.find((item) => item.value === quality)?.label ?? "Auto";
+	const label = qualityLabel(quality, PREVIEW_QUALITIES.find((item) => item.value === quality)?.label ?? "Auto", t);
 
 	const onValueChange = (value: string) => {
 		const store = usePreviewStore.getState();
@@ -123,24 +138,23 @@ function QualitySelect() {
 		<Select value={quality} onValueChange={onValueChange}>
 			<SelectTrigger
 				className="tabular-nums"
-				title="Preview quality (export always renders at full quality)"
+				title={t("Preview quality (export always renders at full quality)")}
 				data-testid="preview-quality"
 			>
-				{label}
-				{useProxies ? "" : " · originals"}
+				{useProxies ? label : t("{quality} · originals", { quality: label })}
 			</SelectTrigger>
 			<SelectContent>
 				{PREVIEW_QUALITIES.map((item) => (
 					<SelectItem key={item.value} value={item.value}>
-						{item.label}
+						{qualityLabel(item.value, item.label, t)}
 					</SelectItem>
 				))}
 				<SelectSeparator />
 				<SelectItem value="toggle-proxies">
-					{useProxies ? "Proxies on (click to use originals)" : "Proxies off (click to use them)"}
+					{useProxies ? t("Proxies on (click to use originals)") : t("Proxies off (click to use them)")}
 				</SelectItem>
 				<SelectItem value="toggle-auto-proxies">
-					{autoProxies ? "Auto proxies above 1080p: on" : "Auto proxies above 1080p: off"}
+					{autoProxies ? t("Auto proxies above 1080p: on") : t("Auto proxies above 1080p: off")}
 				</SelectItem>
 			</SelectContent>
 		</Select>
@@ -148,10 +162,11 @@ function QualitySelect() {
 }
 
 function ZoomSelect() {
+	const t = useT();
 	const { isAtFit, zoomPercent, fitToScreen, setViewportPercent } =
 		usePreviewViewport();
 
-	const displayLabel = isAtFit ? "Fit" : `${zoomPercent}%`;
+	const displayLabel = isAtFit ? t("Fit") : `${zoomPercent}%`;
 
 	const onValueChange = (value: string) => {
 		if (value === "fit") {
@@ -168,7 +183,7 @@ function ZoomSelect() {
 		>
 			<SelectTrigger className="tabular-nums">{displayLabel}</SelectTrigger>
 			<SelectContent>
-				<SelectItem value="fit">Fit</SelectItem>
+				<SelectItem value="fit">{t("Fit")}</SelectItem>
 				<SelectSeparator />
 				{PREVIEW_ZOOM_PRESETS.map((preset) => (
 					<SelectItem key={preset} value={String(preset)}>

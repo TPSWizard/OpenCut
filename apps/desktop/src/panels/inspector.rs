@@ -11,6 +11,7 @@ use crate::components::{Button, ButtonSize, ButtonVariant, Separator, TextInput,
 use crate::format::timecode;
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf, tr};
 
 /// Properties of the selected element, or of the project when nothing is
 /// selected. Every field is a text input that commits on Enter or blur.
@@ -222,11 +223,11 @@ impl InspectorPanel {
             .flex()
             .items_center()
             .justify_between()
-            .child(self.heading("Transition", window));
+            .child(self.heading(t("Transition"), window));
         if current.is_some() {
             let state = self.state.clone();
             header = header.child(
-                Button::new("transition-remove", "Remove")
+                Button::new("transition-remove", t("Remove"))
                     .variant(ButtonVariant::Ghost)
                     .size(ButtonSize::XSmall)
                     .on_click(move |_, _, cx| state.update(cx, |state, cx| state.remove_transition(cx))),
@@ -235,9 +236,9 @@ impl InspectorPanel {
         content = content.child(Separator::horizontal()).child(header);
         let names: Vec<&'static str> = catalogue.iter().map(|info| info.name).collect();
         let kind_row = self.row(
-            "Type",
+            t("Type"),
             "transition.kind",
-            "None (type a name)",
+            t("None (type a name)"),
             current.as_ref().map(|transition| transition.kind.clone()).unwrap_or_default(),
             None,
             window,
@@ -257,7 +258,7 @@ impl InspectorPanel {
                         .or_else(|| names.iter().find(|name| name.to_ascii_lowercase().contains(&wanted)));
                     match found {
                         Some(name) => state.set_transition_kind(name, cx),
-                        None => state.set_status(format!("No transition called \"{}\"", text.trim()), cx),
+                        None => state.set_status(tf("No transition called {name}", &[("name", &format!("\"{}\"", text.trim()))]), cx),
                     }
                 }
             }),
@@ -275,13 +276,13 @@ impl InspectorPanel {
         let next = step(1);
         let mut picks = div().flex().flex_wrap().items_center().gap(px(4.));
         for (id, label, name) in [
-            ("transition-prev", "‹ Previous", previous),
-            ("transition-next", "Next ›", next),
-            ("transition-fade", "Fade", "Fade"),
-            ("transition-wipe", "Wipe", "DirectionalWipe"),
-            ("transition-zoom", "Zoom", "CrossZoom"),
-            ("transition-cube", "Cube", "Cube"),
-            ("transition-slide", "Slide", "Directional"),
+            ("transition-prev", t("‹ Previous"), previous),
+            ("transition-next", t("Next ›"), next),
+            ("transition-fade", t("Fade"), "Fade"),
+            ("transition-wipe", t("Wipe"), "DirectionalWipe"),
+            ("transition-zoom", t("Zoom"), "CrossZoom"),
+            ("transition-cube", t("Cube"), "Cube"),
+            ("transition-slide", t("Slide"), "Directional"),
         ] {
             let state = self.state.clone();
             let active = current.as_ref().is_some_and(|transition| transition.kind == name)
@@ -300,16 +301,16 @@ impl InspectorPanel {
                 div()
                     .text_xs()
                     .text_color(colors.muted_foreground)
-                    .child(format!(
-                        "No transition. One plays centred on the cut to the next clip ({} to choose from).",
-                        names.len()
+                    .child(tf(
+                        "No transition. One plays centred on the cut to the next clip ({count} to choose from).",
+                        &[("count", &names.len())],
                     )),
             );
         };
         let duration_row = self.row(
-            "Duration",
+            t("Duration"),
             "transition.duration",
-            "Seconds",
+            t("Seconds"),
             format!("{:.2}", transition.duration.to_seconds_f64()),
             None,
             window,
@@ -350,9 +351,9 @@ impl InspectorPanel {
                 let kind = param.kind;
                 let name = param.name;
                 let placeholder: &'static str = match kind {
-                    "bool" => "true or false",
-                    "float" | "int" => "Number",
-                    _ => "Numbers, comma separated",
+                    "bool" => t("true or false"),
+                    "float" | "int" => t("Number"),
+                    _ => t("Numbers, comma separated"),
                 };
                 let row = self.row(
                     name,
@@ -385,7 +386,7 @@ impl InspectorPanel {
                                 params.set(name, value);
                                 state.update_transition(None, Some(params), cx);
                             }
-                            None => state.set_status(format!("{name} must be a {kind}"), cx),
+                            None => state.set_status(tf("{name} must be a {kind}", &[("name", &name), ("kind", &kind)]), cx),
                         }
                     }),
                 );
@@ -527,7 +528,7 @@ impl Render for InspectorPanel {
 
         match selected {
             Some(element) => {
-                let kind = element.kind.label();
+                let kind = kind_name(element.kind.label());
                 let is_text = matches!(element.kind, ElementKind::Text);
                 let has_audio = matches!(element.kind, ElementKind::Audio { .. })
                     || (matches!(element.kind, ElementKind::Video { .. }) && media_has_audio);
@@ -568,9 +569,9 @@ impl Render for InspectorPanel {
                     .sum();
 
                 let name_row = self.row(
-                    "Name",
+                    t("Name"),
                     "element.name",
-                    "Name",
+                    t("Name"),
                     element.name.clone(),
                     None,
                     window,
@@ -589,7 +590,7 @@ impl Render for InspectorPanel {
                     }),
                 );
                 content = content
-                    .child(self.heading("Element", window))
+                    .child(self.heading(t("Element"), window))
                     .child(name_row)
                     .child(
                         div()
@@ -597,10 +598,13 @@ impl Render for InspectorPanel {
                             .flex_col()
                             .text_xs()
                             .text_color(colors.muted_foreground)
-                            .child(format!(
-                                "{kind} on a {} track, {} long",
-                                track_kind.map(|k| k.label()).unwrap_or("?"),
-                                timecode(element.duration, rate)
+                            .child(tf(
+                                "{kind} on a {track} track, {length} long",
+                                &[
+                                    ("kind", &kind),
+                                    ("track", &track_kind.map(|k| kind_name(k.label())).unwrap_or("?")),
+                                    ("length", &timecode(element.duration, rate)),
+                                ],
                             ))
                             .child(format!(
                                 "{} → {}",
@@ -608,10 +612,11 @@ impl Render for InspectorPanel {
                                 timecode(element.end_time(), rate)
                             ))
                             .when(key_count > 0, |this| {
-                                this.child(format!(
-                                    "{key_count} keyframe{} · Shift+←/→ steps through them",
-                                    if key_count == 1 { "" } else { "s" }
-                                ))
+                                this.child(if key_count == 1 {
+                                    tf("{count} keyframe · Shift+←/→ steps through them", &[("count", &key_count)])
+                                } else {
+                                    tf("{count} keyframes · Shift+←/→ steps through them", &[("count", &key_count)])
+                                })
                             }),
                     )
                     .child(
@@ -621,7 +626,7 @@ impl Render for InspectorPanel {
                             .gap(px(6.))
                             .child({
                                 let state = self.state.clone();
-                                Button::new("split", "Split at playhead")
+                                Button::new("split", t("Split at playhead"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -630,7 +635,7 @@ impl Render for InspectorPanel {
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("duplicate", "Duplicate")
+                                Button::new("duplicate", t("Duplicate"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -640,7 +645,7 @@ impl Render for InspectorPanel {
                             .when(is_visual, |this| {
                                 let state = self.state.clone();
                                 this.child(
-                                    Button::new("hide", if hidden { "Show" } else { "Hide" })
+                                    Button::new("hide", if hidden { t("Show") } else { t("Hide") })
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::Small)
                                         .on_click(move |_, _, cx| {
@@ -658,7 +663,7 @@ impl Render for InspectorPanel {
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("delete", "Delete")
+                                Button::new("delete", t("Delete"))
                                     .variant(ButtonVariant::Destructive)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -670,15 +675,15 @@ impl Render for InspectorPanel {
                 if let Some((clips, tracks)) = compound_summary {
                     let state = self.state.clone();
                     content = content
-                        .child(self.heading("Compound clip", window))
+                        .child(self.heading(t("Compound clip"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child(format!("{clips} clip(s) on {tracks} track(s). Trim, split and move it like one clip; break it apart to edit what is inside.")),
+                                .child(tf("{clips} clip(s) on {tracks} track(s). Trim, split and move it like one clip; break it apart to edit what is inside.", &[("clips", &clips), ("tracks", &tracks)])),
                         )
                         .child(
-                            Button::new("break-apart", "Break apart")
+                            Button::new("break-apart", t("Break apart"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::Small)
                                 .on_click(move |_, _, cx| state.update(cx, |state, cx| state.break_apart_selected(cx))),
@@ -696,10 +701,10 @@ impl Render for InspectorPanel {
                                     .flex_1()
                                     .text_xs()
                                     .text_color(colors.muted_foreground)
-                                    .child(format!("In a group of {group_size}; Alt-click picks one clip")),
+                                    .child(tf("In a group of {count}; Alt-click picks one clip", &[("count", &group_size)])),
                             )
                             .child(
-                                Button::new("ungroup-one", "Ungroup")
+                                Button::new("ungroup-one", t("Ungroup"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| state.update(cx, |state, cx| state.ungroup_selection(cx))),
@@ -709,10 +714,10 @@ impl Render for InspectorPanel {
                 if has_picture {
                     content = content
                         .child(Separator::horizontal())
-                        .child(self.heading("Transform", window));
+                        .child(self.heading(t("Transform"), window));
                     for (key, label, default) in NUMBER_PARAMS {
                         let row = self.row(
-                            label,
+                            t(label),
                             key,
                             "",
                             number_text(params.number(key, *default)),
@@ -728,12 +733,12 @@ impl Render for InspectorPanel {
                 if is_text {
                     content = content
                         .child(Separator::horizontal())
-                        .child(self.heading("Text", window));
+                        .child(self.heading(t("Text"), window));
                     for (key, label, default) in TEXT_STRING_PARAMS {
                         // The colour can be keyframed (as four channels, like the web app).
                         let keyable = *key == "color";
                         let row = self.row(
-                            label,
+                            t(label),
                             key,
                             default,
                             params.text(key, default).into_owned(),
@@ -752,10 +757,10 @@ impl Render for InspectorPanel {
                             .flex()
                             .items_center()
                             .gap(px(8.))
-                            .child(Self::label_cell("Font files", window))
+                            .child(Self::label_cell(t("Font files"), window))
                             .child({
                                 let state = self.state.clone();
-                                let label = format!("Fetch {family} from Fontsource");
+                                let label = tf("Fetch {family} from Fontsource", &[("family", &family)]);
                                 Button::new("fetch-font", label)
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::XSmall)
@@ -767,7 +772,7 @@ impl Render for InspectorPanel {
                     );
                     for (key, label, default) in TEXT_NUMBER_PARAMS {
                         let row = self.row(
-                            label,
+                            t(label),
                             key,
                             "",
                             number_text(params.number(key, *default)),
@@ -782,12 +787,12 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(6.))
-                        .child(Self::label_cell("Align", window));
-                    for option in ["left", "center", "right"] {
+                        .child(Self::label_cell(t("Align"), window));
+                    for (option, label) in [("left", t("left")), ("center", t("center")), ("right", t("right"))] {
                         let state = self.state.clone();
                         let active = align == option;
                         align_row = align_row.child(
-                            Button::new(eid("align", option), option)
+                            Button::new(eid("align", option), label)
                                 .variant(if active {
                                     ButtonVariant::Default
                                 } else {
@@ -805,10 +810,10 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(6.))
-                        .child(Self::label_cell("Style", window))
+                        .child(Self::label_cell(t("Style"), window))
                         .child({
                             let state = self.state.clone();
-                            Button::new("bold", "Bold")
+                            Button::new("bold", t("Bold"))
                                 .variant(if bold {
                                     ButtonVariant::Default
                                 } else {
@@ -823,7 +828,7 @@ impl Render for InspectorPanel {
                         })
                         .child({
                             let state = self.state.clone();
-                            Button::new("italic", "Italic")
+                            Button::new("italic", t("Italic"))
                                 .variant(if italic {
                                     ButtonVariant::Default
                                 } else {
@@ -846,8 +851,8 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(6.))
-                        .child(Self::label_cell("Highlight", window));
-                    for (option, label) in [("none", "None"), ("word", "Word"), ("box", "Box"), ("fill", "Fill")] {
+                        .child(Self::label_cell(t("Highlight"), window));
+                    for (option, label) in [("none", t("None")), ("word", t("Word")), ("box", t("Box")), ("fill", t("Fill"))] {
                         let state = self.state.clone();
                         let active = highlight == option;
                         highlight_row = highlight_row.child(
@@ -867,17 +872,17 @@ impl Render for InspectorPanel {
                     }
                     content = content
                         .child(Separator::horizontal())
-                        .child(self.heading("Captions", window))
+                        .child(self.heading(t("Captions"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child(format!("{word_count} timed word(s); the spoken one is emphasised.")),
+                                .child(tf("{count} timed word(s); the spoken one is emphasised.", &[("count", &word_count)])),
                         )
                         .child(highlight_row);
                     for (key, label, default) in CAPTION_COLOR_PARAMS {
                         let row = self.row(
-                            label,
+                            t(label),
                             key,
                             default,
                             params.text(key, default).into_owned(),
@@ -892,7 +897,7 @@ impl Render for InspectorPanel {
 
                 if has_audio {
                     let volume_row = self.row(
-                        "Volume (dB)",
+                        t("Volume (dB)"),
                         "volume",
                         "0",
                         number_text(params.number("volume", 0.0)),
@@ -909,7 +914,7 @@ impl Render for InspectorPanel {
                     );
                     content = content
                         .child(Separator::horizontal())
-                        .child(self.heading("Audio", window))
+                        .child(self.heading(t("Audio"), window))
                         .child(volume_row)
                         .child({
                             let state = self.state.clone();
@@ -917,9 +922,9 @@ impl Render for InspectorPanel {
                                 .flex()
                                 .items_center()
                                 .gap(px(8.))
-                                .child(Self::label_cell("Mute", window))
+                                .child(Self::label_cell(t("Mute"), window))
                                 .child(
-                                    Button::new("mute", if muted { "Muted" } else { "On" })
+                                    Button::new("mute", if muted { t("Muted") } else { t("On") })
                                         .variant(if muted {
                                             ButtonVariant::Default
                                         } else {
@@ -945,15 +950,15 @@ impl Render for InspectorPanel {
                         .as_ref()
                         .and_then(|id| others.iter().find(|(other, _)| other == id))
                         .map(|(_, name)| name.clone())
-                        .unwrap_or_else(|| "All other clips".to_owned());
+                        .unwrap_or_else(|| t("All other clips").to_owned());
                     let mut voice_row = div()
                         .flex()
                         .items_center()
                         .gap(px(8.))
-                        .child(Self::label_cell("Voice", window));
+                        .child(Self::label_cell(t("Voice"), window));
                     if others.is_empty() {
                         voice_row = voice_row.child(
-                            div().text_xs().text_color(colors.muted_foreground).child("Add a voice clip to duck under."),
+                            div().text_xs().text_color(colors.muted_foreground).child(t("Add a voice clip to duck under.")),
                         );
                     } else {
                         // Each click moves to the next voice choice, wrapping
@@ -979,7 +984,7 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Drop (dB)", window));
+                        .child(Self::label_cell(t("Drop (dB)"), window));
                     for amount in DUCK_AMOUNTS {
                         let amount = *amount;
                         let active = (self.duck_amount_db - amount).abs() < 0.01;
@@ -1009,7 +1014,7 @@ impl Render for InspectorPanel {
                         .gap(px(8.))
                         .child({
                             let state = self.state.clone();
-                            Button::new("duck", "Duck under voice")
+                            Button::new("duck", t("Duck under voice"))
                                 .size(ButtonSize::XSmall)
                                 .disabled(!can_duck)
                                 .on_click(move |_, _, cx| {
@@ -1019,7 +1024,7 @@ impl Render for InspectorPanel {
                         })
                         .child({
                             let state = self.state.clone();
-                            Button::new("unduck", "Clear")
+                            Button::new("unduck", t("Clear"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::XSmall)
                                 .disabled(!ducked)
@@ -1028,12 +1033,12 @@ impl Render for InspectorPanel {
                                 })
                         });
                     content = content
-                        .child(self.heading("Ducking", window))
+                        .child(self.heading(t("Ducking"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Dips this clip while speech plays: down 0.1 s before, up 0.5 s after."),
+                                .child(t("Dips this clip while speech plays: down 0.1 s before, up 0.5 s after.")),
                         )
                         .child(voice_row)
                         .child(amount_row)
@@ -1045,7 +1050,7 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Longer than", window));
+                        .child(Self::label_cell(t("Longer than"), window));
                     for seconds in SILENCE_MIN_SECONDS {
                         let seconds = *seconds;
                         let active = (self.silence_min_seconds - seconds).abs() < 0.01;
@@ -1067,15 +1072,15 @@ impl Render for InspectorPanel {
                     }
                     let ripple = self.silence_ripple;
                     let (ripple_label, next_ripple) = match ripple {
-                        editor::RippleScope::All => ("Close gaps on every track", editor::RippleScope::Track),
-                        editor::RippleScope::Track => ("Close gaps on this track", editor::RippleScope::None),
-                        editor::RippleScope::None => ("Leave the gaps", editor::RippleScope::All),
+                        editor::RippleScope::All => (t("Close gaps on every track"), editor::RippleScope::Track),
+                        editor::RippleScope::Track => (t("Close gaps on this track"), editor::RippleScope::None),
+                        editor::RippleScope::None => (t("Leave the gaps"), editor::RippleScope::All),
                     };
                     let ripple_row = div()
                         .flex()
                         .items_center()
                         .gap(px(8.))
-                        .child(Self::label_cell("Afterwards", window))
+                        .child(Self::label_cell(t("Afterwards"), window))
                         .child(
                             Button::new("silence-ripple", ripple_label)
                                 .variant(ButtonVariant::Outline)
@@ -1088,7 +1093,7 @@ impl Render for InspectorPanel {
                     let min_seconds = self.silence_min_seconds;
                     let silence_row = div().flex().items_center().gap(px(8.)).child({
                         let state = self.state.clone();
-                        Button::new("cut-silence", "Cut silence")
+                        Button::new("cut-silence", t("Cut silence"))
                             .size(ButtonSize::XSmall)
                             .disabled(!has_ffmpeg)
                             .on_click(move |_, _, cx| {
@@ -1102,7 +1107,7 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Model", window));
+                        .child(Self::label_cell(t("Model"), window));
                     for model in crate::transcribe::MODELS {
                         let active = self.transcribe_model == model.id;
                         let id = model.id;
@@ -1119,7 +1124,7 @@ impl Render for InspectorPanel {
                     let model_id = self.transcribe_model;
                     let transcribe_row = div().flex().items_center().gap(px(8.)).child({
                         let state = self.state.clone();
-                        Button::new("transcribe", "Transcribe to captions")
+                        Button::new("transcribe", t("Transcribe to captions"))
                             .size(ButtonSize::XSmall)
                             .disabled(!has_ffmpeg)
                             .on_click(move |_, _, cx| {
@@ -1133,11 +1138,11 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Fillers", window));
+                        .child(Self::label_cell(t("Fillers"), window));
                     for (code, label) in editor::FILLER_LANGUAGES {
                         let active = self.filler_language == *code;
                         language_row = language_row.child(
-                            Button::new(eid("filler-language", code), *label)
+                            Button::new(eid("filler-language", code), t(label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1150,7 +1155,7 @@ impl Render for InspectorPanel {
                     let filler_ripple = self.silence_ripple;
                     let fillers_row = div().flex().items_center().gap(px(8.)).child({
                         let state = self.state.clone();
-                        Button::new("remove-fillers", "Remove filler words")
+                        Button::new("remove-fillers", t("Remove filler words"))
                             .size(ButtonSize::XSmall)
                             .disabled(!has_ffmpeg)
                             .on_click(move |_, _, cx| {
@@ -1160,12 +1165,12 @@ impl Render for InspectorPanel {
                             })
                     });
                     content = content
-                        .child(self.heading("Captions", window))
+                        .child(self.heading(t("Captions"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Word-timed captions from this clip's speech, on a new text track; the model is fetched once into ~/.opencut/models."),
+                                .child(t("Word-timed captions from this clip's speech, on a new text track; the model is fetched once into ~/.opencut/models.")),
                         )
                         .child(model_row)
                         .child(transcribe_row)
@@ -1173,18 +1178,18 @@ impl Render for InspectorPanel {
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Filler words are cut with 40 ms of padding (gaps close as the Silence setting says), from captions over the clip or a transcription."),
+                                .child(t("Filler words are cut with 40 ms of padding (gaps close as the Silence setting says), from captions over the clip or a transcription.")),
                         )
                         .child(language_row)
                         .child(fillers_row);
 
                     content = content
-                        .child(self.heading("Silence", window))
+                        .child(self.heading(t("Silence"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Removes pauses under -40 dBFS, keeping 0.1 s next to the speech, in one undo step."),
+                                .child(t("Removes pauses under -40 dBFS, keeping 0.1 s next to the speech, in one undo step.")),
                         )
                         .child(min_row)
                         .child(ripple_row)
@@ -1197,11 +1202,11 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Reduction", window));
+                        .child(Self::label_cell(t("Reduction"), window));
                     for (label, value) in [("Light 6 dB", 6.0), ("Normal 12 dB", 12.0), ("Strong 20 dB", 20.0), ("Max 30 dB", 30.0)] {
                         let active = (self.denoise_db - value).abs() < 0.01;
                         reduction_row = reduction_row.child(
-                            Button::new(eid("denoise-db", label), label)
+                            Button::new(eid("denoise-db", label), t(label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1213,16 +1218,16 @@ impl Render for InspectorPanel {
                     let reduction_db = self.denoise_db;
                     let state = self.state.clone();
                     content = content
-                        .child(self.heading("Noise", window))
+                        .child(self.heading(t("Noise"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Subtracts the clip's steady background (hiss, hum, room tone) and writes a denoised copy the clip then plays; undo puts the original back."),
+                                .child(t("Subtracts the clip's steady background (hiss, hum, room tone) and writes a denoised copy the clip then plays; undo puts the original back.")),
                         )
                         .child(reduction_row)
                         .child(
-                            Button::new("reduce-noise", "Reduce noise")
+                            Button::new("reduce-noise", t("Reduce noise"))
                                 .size(ButtonSize::XSmall)
                                 .disabled(!has_ffmpeg)
                                 .on_click(move |_, _, cx| {
@@ -1237,11 +1242,11 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Mark", window));
+                        .child(Self::label_cell(t("Mark"), window));
                     for (label, value) in [("Every beat", 1usize), ("Every 2nd", 2), ("Bars (4)", 4)] {
                         let active = self.beats_every == value;
                         every_row = every_row.child(
-                            Button::new(eid("beats-every", label), label)
+                            Button::new(eid("beats-every", label), t(label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1257,7 +1262,7 @@ impl Render for InspectorPanel {
                         .gap(px(8.))
                         .child({
                             let state = self.state.clone();
-                            Button::new("beats-find", "Find beats")
+                            Button::new("beats-find", t("Find beats"))
                                 .size(ButtonSize::XSmall)
                                 .disabled(!has_ffmpeg)
                                 .on_click(move |_, _, cx| {
@@ -1266,7 +1271,7 @@ impl Render for InspectorPanel {
                         })
                         .child({
                             let state = self.state.clone();
-                            Button::new("beats-clear", "Clear markers")
+                            Button::new("beats-clear", t("Clear markers"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::XSmall)
                                 .disabled(marker_count == 0)
@@ -1275,17 +1280,21 @@ impl Render for InspectorPanel {
                                 })
                         });
                     content = content
-                        .child(self.heading("Beats", window))
+                        .child(self.heading(t("Beats"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
                                 .child(match beats {
-                                    Some((bpm, confidence)) => format!(
-                                        "{bpm:.1} BPM, confidence {:.0}%, {marker_count} marker(s) on the ruler; clips snap to them.",
-                                        confidence * 100.0
+                                    Some((bpm, confidence)) => tf(
+                                        "{bpm} BPM, confidence {confidence}%, {count} marker(s) on the ruler; clips snap to them.",
+                                        &[
+                                            ("bpm", &format!("{bpm:.1}")),
+                                            ("confidence", &format!("{:.0}", confidence * 100.0)),
+                                            ("count", &marker_count),
+                                        ],
                                     ),
-                                    None => "Finds the tempo (60–200 BPM) and puts markers on the beats; clips snap to markers while dragged.".to_owned(),
+                                    None => t("Finds the tempo (60–200 BPM) and puts markers on the beats; clips snap to markers while dragged.").to_owned(),
                                 }),
                         )
                         .child(every_row)
@@ -1299,11 +1308,11 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Target", window));
+                        .child(Self::label_cell(t("Target"), window));
                     for (index, target) in editor::LOUDNESS_TARGETS.iter().enumerate() {
                         let active = self.loudness_target == index;
                         target_row = target_row.child(
-                            Button::new(eid("loudness-target", target.id), target.label)
+                            Button::new(eid("loudness-target", target.id), t(target.label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1319,7 +1328,7 @@ impl Render for InspectorPanel {
                         .gap(px(8.))
                         .child({
                             let state = self.state.clone();
-                            Button::new("loudness-measure", "Measure")
+                            Button::new("loudness-measure", t("Measure"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::XSmall)
                                 .disabled(!has_ffmpeg)
@@ -1329,7 +1338,7 @@ impl Render for InspectorPanel {
                         })
                         .child({
                             let state = self.state.clone();
-                            Button::new("loudness-normalize", "Normalise")
+                            Button::new("loudness-normalize", t("Normalise"))
                                 .size(ButtonSize::XSmall)
                                 .disabled(!has_ffmpeg)
                                 .on_click(move |_, _, cx| {
@@ -1337,24 +1346,26 @@ impl Render for InspectorPanel {
                                 })
                         });
                     content = content
-                        .child(self.heading("Loudness", window))
+                        .child(self.heading(t("Loudness"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("EBU R128 on the clip's source after trims, before its volume. Normalise sets the volume to meet the target under a −1 dBTP ceiling."),
+                                .child(t("EBU R128 on the clip's source after trims, before its volume. Normalise sets the volume to meet the target under a −1 dBTP ceiling.")),
                         );
                     if let Some(report) = report {
                         let fmt = |value: f64, unit: &str| {
-                            if value.is_finite() { format!("{value:.1} {unit}") } else { "silent".to_owned() }
+                            if value.is_finite() { format!("{value:.1} {unit}") } else { t("silent").to_owned() }
                         };
-                        content = content.child(div().text_xs().child(format!(
-                            "Integrated {} · Range {:.1} LU · True peak {} · Max momentary {} · Max short-term {}",
-                            fmt(report.integrated_lufs, "LUFS"),
-                            report.loudness_range_lu,
-                            fmt(report.true_peak_dbtp, "dBTP"),
-                            fmt(report.max_momentary_lufs, "LUFS"),
-                            fmt(report.max_short_term_lufs, "LUFS")
+                        content = content.child(div().text_xs().child(tf(
+                            "Integrated {integrated} · Range {range} LU · True peak {peak} · Max momentary {momentary} · Max short-term {short}",
+                            &[
+                                ("integrated", &fmt(report.integrated_lufs, "LUFS")),
+                                ("range", &format!("{:.1}", report.loudness_range_lu)),
+                                ("peak", &fmt(report.true_peak_dbtp, "dBTP")),
+                                ("momentary", &fmt(report.max_momentary_lufs, "LUFS")),
+                                ("short", &fmt(report.max_short_term_lufs, "LUFS")),
+                            ],
                         )));
                     }
                     content = content.child(target_row).child(loudness_actions);
@@ -1370,7 +1381,7 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Speed", window));
+                        .child(Self::label_cell(t("Speed"), window));
                     for (label, rate) in [("0.25x", 0.25), ("0.5x", 0.5), ("1x", 1.0), ("2x", 2.0), ("4x", 4.0)] {
                         let active = !is_ramp && (current.rate - rate).abs() < 1e-6;
                         let state = self.state.clone();
@@ -1391,7 +1402,7 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Ramp", window));
+                        .child(Self::label_cell(t("Ramp"), window));
                     let duration = element.duration.to_seconds_f64().max(0.1);
                     let presets: [(&str, Vec<(f64, f64)>); 5] = [
                         ("Off", Vec::new()),
@@ -1411,7 +1422,7 @@ impl Render for InspectorPanel {
                         let state = self.state.clone();
                         let base = current.clone();
                         ramp_row = ramp_row.child(
-                            Button::new(eid("speed-ramp", label), label)
+                            Button::new(eid("speed-ramp", label), t(label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(move |_, _, cx| {
@@ -1428,7 +1439,7 @@ impl Render for InspectorPanel {
                         let state = self.state.clone();
                         let base = current.clone();
                         let reversed = current.reverse;
-                        Button::new("speed-reverse", if reversed { "Reversed" } else { "Reverse" })
+                        Button::new("speed-reverse", if reversed { t("Reversed") } else { t("Reverse") })
                             .variant(if reversed { ButtonVariant::Default } else { ButtonVariant::Outline })
                             .size(ButtonSize::XSmall)
                             .on_click(move |_, _, cx| {
@@ -1438,12 +1449,12 @@ impl Render for InspectorPanel {
                             })
                     });
                     content = content
-                        .child(self.heading("Speed", window))
+                        .child(self.heading(t("Speed"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("A rate, a ramp between rates or backwards; audio follows without pitch correction. The clip's length changes to play the same source."),
+                                .child(t("A rate, a ramp between rates or backwards; audio follows without pitch correction. The clip's length changes to play the same source.")),
                         )
                         .child(rate_row)
                         .child(ramp_row)
@@ -1462,11 +1473,11 @@ impl Render for InspectorPanel {
                         .flex_wrap()
                         .items_center()
                         .gap(px(4.))
-                        .child(Self::label_cell("Sensitivity", window));
+                        .child(Self::label_cell(t("Sensitivity"), window));
                     for (label, value) in [("High", 10.0), ("Normal", 20.0), ("Low", 35.0)] {
                         let active = (self.shot_threshold - value).abs() < 0.01;
                         threshold_row = threshold_row.child(
-                            Button::new(eid("shot-threshold", label), label)
+                            Button::new(eid("shot-threshold", label), t(label))
                                 .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                 .size(ButtonSize::XSmall)
                                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1478,16 +1489,16 @@ impl Render for InspectorPanel {
                     let threshold = self.shot_threshold;
                     let state = self.state.clone();
                     content = content
-                        .child(self.heading("Shots", window))
+                        .child(self.heading(t("Shots"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("Finds scene changes in this clip and splits it there, in one undo step."),
+                                .child(t("Finds scene changes in this clip and splits it there, in one undo step.")),
                         )
                         .child(threshold_row)
                         .child(
-                            Button::new("split-at-shots", "Split at shot changes")
+                            Button::new("split-at-shots", t("Split at shot changes"))
                                 .size(ButtonSize::XSmall)
                                 .disabled(!has_ffmpeg)
                                 .on_click(move |_, _, cx| {
@@ -1504,16 +1515,16 @@ impl Render for InspectorPanel {
                                 .flex()
                                 .items_center()
                                 .justify_between()
-                                .child(self.heading("Effects", window)),
+                                .child(self.heading(t("Effects"), window)),
                         );
                     let mut add_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(
-                        div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child("Add"),
+                        div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child(t("Add")),
                     );
                     for spec in editor::EFFECT_CATALOGUE {
                         let state = self.state.clone();
                         let kind = spec.kind;
                         add_row = add_row.child(
-                            Button::new(eid("add-effect", kind), spec.label)
+                            Button::new(eid("add-effect", kind), t(spec.label))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::XSmall)
                                 .on_click(move |_, _, cx| {
@@ -1529,7 +1540,7 @@ impl Render for InspectorPanel {
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("No effects. Number settings can be keyframed; grain and glitch move on their own."),
+                                .child(t("No effects. Number settings can be keyframed; grain and glitch move on their own.")),
                         );
                     }
                     for effect in &element.effects {
@@ -1540,11 +1551,11 @@ impl Render for InspectorPanel {
                             .flex()
                             .items_center()
                             .gap(px(6.))
-                            .child(Self::label_cell(effect.label().to_owned(), window))
+                            .child(Self::label_cell(tr(effect.label()).to_owned(), window))
                             .child({
                                 let state = self.state.clone();
                                 let effect_id = effect_id.clone();
-                                Button::new(eid("effect-on", &effect_id), if enabled { "On" } else { "Off" })
+                                Button::new(eid("effect-on", &effect_id), if enabled { t("On") } else { t("Off") })
                                     .variant(if enabled {
                                         ButtonVariant::Default
                                     } else {
@@ -1560,7 +1571,7 @@ impl Render for InspectorPanel {
                             .child({
                                 let state = self.state.clone();
                                 let effect_id = effect_id.clone();
-                                Button::new(eid("effect-remove", &effect_id), "Remove")
+                                Button::new(eid("effect-remove", &effect_id), t("Remove"))
                                     .variant(ButtonVariant::Ghost)
                                     .size(ButtonSize::XSmall)
                                     .on_click(move |_, _, cx| {
@@ -1573,19 +1584,19 @@ impl Render for InspectorPanel {
                             let param = effect.params.text("lut", "").into_owned();
                             let label = match editor::decode_lut_param(&param) {
                                 Ok((name, table)) => format!("{name} ({}³)", table.size),
-                                Err(_) if param.is_empty() => "No table loaded".to_owned(),
-                                Err(_) => "Unreadable table".to_owned(),
+                                Err(_) if param.is_empty() => t("No table loaded").to_owned(),
+                                Err(_) => t("Unreadable table").to_owned(),
                             };
                             let mut lut_row = div()
                                 .flex()
                                 .items_center()
                                 .gap(px(6.))
-                                .child(Self::label_cell("Table", window))
+                                .child(Self::label_cell(t("Table"), window))
                                 .child(div().text_xs().text_color(colors.muted_foreground).child(label))
                                 .child({
                                     let state = self.state.clone();
                                     let effect_id = effect_id.clone();
-                                    Button::new(eid("lut-load", &effect_id), "Load…")
+                                    Button::new(eid("lut-load", &effect_id), t("Load…"))
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| {
@@ -1596,7 +1607,7 @@ impl Render for InspectorPanel {
                                 let state = self.state.clone();
                                 let effect_id = effect_id.clone();
                                 lut_row = lut_row.child(
-                                    Button::new(eid("lut-clear", &effect_id), "Clear")
+                                    Button::new(eid("lut-clear", &effect_id), t("Clear"))
                                         .variant(ButtonVariant::Ghost)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| {
@@ -1618,14 +1629,14 @@ impl Render for InspectorPanel {
                                     .flex_wrap()
                                     .items_center()
                                     .gap(px(4.))
-                                    .child(Self::label_cell(param.label, window));
+                                    .child(Self::label_cell(t(param.label), window));
                                 for (value, label) in param.options {
                                     let state = self.state.clone();
                                     let effect_id = effect_id.clone();
                                     let active = current == *value;
                                     let key = param.key;
                                     choice_row = choice_row.child(
-                                        Button::new(eid(&format!("effect-{effect_id}-{key}"), value), *label)
+                                        Button::new(eid(&format!("effect-{effect_id}-{key}"), value), t(label))
                                             .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                                             .size(ButtonSize::XSmall)
                                             .on_click(move |_, _, cx| {
@@ -1645,7 +1656,7 @@ impl Render for InspectorPanel {
                             let (key, min, max) = (param.key, param.min, param.max);
                             let placeholder: &'static str = "";
                             let row = self.row(
-                                param.label,
+                                t(param.label),
                                 &format!("effect.{effect_id}.{key}"),
                                 placeholder,
                                 number_text(effect_params.number(key, param.default)),
@@ -1670,7 +1681,7 @@ impl Render for InspectorPanel {
                         .flex()
                         .items_center()
                         .justify_between()
-                        .child(self.heading("Mask", window));
+                        .child(self.heading(t("Mask"), window));
                     content = content.child(Separator::horizontal()).child(mask_header);
                     if element.masks.is_empty() {
                         content = content.child(
@@ -1681,7 +1692,7 @@ impl Render for InspectorPanel {
                                 .children(Mask::SHAPES.iter().map(|kind| {
                                     let state = self.state.clone();
                                     let sample = Mask::shape(kind);
-                                    Button::new(eid("add-mask", kind), sample.label().to_owned())
+                                    Button::new(eid("add-mask", kind), tr(sample.label()).to_owned())
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| {
@@ -1690,7 +1701,7 @@ impl Render for InspectorPanel {
                                 }))
                                 .child({
                                     let state = self.state.clone();
-                                    Button::new("draw-mask-path", "Draw path (pen)")
+                                    Button::new("draw-mask-path", t("Draw path (pen)"))
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| state.update(cx, |state, cx| state.start_pen(cx)))
@@ -1704,11 +1715,11 @@ impl Render for InspectorPanel {
                             .flex()
                             .items_center()
                             .gap(px(6.))
-                            .child(Self::label_cell(mask.label().to_owned(), window))
+                            .child(Self::label_cell(tr(mask.label()).to_owned(), window))
                             .child({
                                 let state = self.state.clone();
                                 let mask_id = mask_id.clone();
-                                Button::new(eid("mask-invert", &mask_id), if inverted { "Inverted" } else { "Invert" })
+                                Button::new(eid("mask-invert", &mask_id), if inverted { t("Inverted") } else { t("Invert") })
                                     .variant(if inverted {
                                         ButtonVariant::Default
                                     } else {
@@ -1724,7 +1735,7 @@ impl Render for InspectorPanel {
                             .child({
                                 let state = self.state.clone();
                                 let mask_id = mask_id.clone();
-                                Button::new(eid("mask-remove", &mask_id), "Remove")
+                                Button::new(eid("mask-remove", &mask_id), t("Remove"))
                                     .variant(ButtonVariant::Ghost)
                                     .size(ButtonSize::XSmall)
                                     .on_click(move |_, _, cx| {
@@ -1740,20 +1751,23 @@ impl Render for InspectorPanel {
                                 .flex_wrap()
                                 .items_center()
                                 .gap(px(6.))
-                                .child(div().text_xs().text_color(colors.muted_foreground).child(format!(
-                                    "{points} point(s), {}",
-                                    if pen_active { "drawing" } else if closed { "closed" } else { "open" }
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                                    "{count} point(s), {state}",
+                                    &[
+                                        ("count", &points),
+                                        ("state", &if pen_active { t("drawing") } else if closed { t("closed") } else { t("open") }),
+                                    ],
                                 )));
                             if pen_active {
                                 let state = self.state.clone();
                                 pen_row = pen_row.child(
-                                    Button::new("pen-close", "Close path")
+                                    Button::new("pen-close", t("Close path"))
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| state.update(cx, |state, cx| state.finish_pen(cx))),
                                 );
                                 let state = self.state.clone();
                                 pen_row = pen_row.child(
-                                    Button::new("pen-cancel", "Cancel")
+                                    Button::new("pen-cancel", t("Cancel"))
                                         .variant(ButtonVariant::Ghost)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| state.update(cx, |state, cx| state.cancel_pen(cx))),
@@ -1761,7 +1775,7 @@ impl Render for InspectorPanel {
                             } else {
                                 let state = self.state.clone();
                                 pen_row = pen_row.child(
-                                    Button::new("pen-redraw", "Redraw")
+                                    Button::new("pen-redraw", t("Redraw"))
                                         .variant(ButtonVariant::Outline)
                                         .size(ButtonSize::XSmall)
                                         .on_click(move |_, _, cx| state.update(cx, |state, cx| state.start_pen(cx))),
@@ -1779,9 +1793,9 @@ impl Render for InspectorPanel {
                         };
                         if is_text {
                             let content_row = self.row(
-                                "Text",
+                                t("Text"),
                                 &format!("mask.{}.content", mask.id),
-                                "Mask",
+                                t("Mask"),
                                 mask.params.text("content", "").into_owned(),
                                 None,
                                 window,
@@ -1796,7 +1810,7 @@ impl Render for InspectorPanel {
                                 }),
                             );
                             let size_row = self.row(
-                                "Font size",
+                                t("Font size"),
                                 &format!("mask.{}.fontSize", mask.id),
                                 "15",
                                 number_text(mask.params.number("fontSize", 15.0)),
@@ -1820,7 +1834,7 @@ impl Render for InspectorPanel {
                             let mask_id = mask_id.clone();
                             let param = *key;
                             let row = self.row(
-                                label,
+                                t(label),
                                 &format!("mask.{}.{key}", mask.id),
                                 "",
                                 number_text(mask.params.number(key, 0.0) * 100.0),
@@ -1844,7 +1858,7 @@ impl Render for InspectorPanel {
                         ] {
                             let mask_id = mask_id.clone();
                             let row = self.row(
-                                label,
+                                t(label),
                                 &format!("mask.{}.{key}", mask.id),
                                 "0",
                                 number_text(mask.params.number(key, 0.0)),
@@ -1863,7 +1877,7 @@ impl Render for InspectorPanel {
                         }
                         if mask.params.number("strokeWidth", 0.0) > 0.0 {
                             let color_row = self.row(
-                                "Stroke color",
+                                t("Stroke color"),
                                 &format!("mask.{}.strokeColor", mask.id),
                                 "#ffffff",
                                 element.mask_params_at(mask, playhead).text("strokeColor", "#ffffff").into_owned(),
@@ -1887,12 +1901,12 @@ impl Render for InspectorPanel {
                                 .flex_wrap()
                                 .items_center()
                                 .gap(px(6.))
-                                .child(Self::label_cell("Stroke align", window));
+                                .child(Self::label_cell(t("Stroke align"), window));
                             for (label, value) in [("Inside", "inside"), ("Center", "center"), ("Outside", "outside")] {
                                 let state = self.state.clone();
                                 let mask_id = mask_id.clone();
                                 align_row = align_row.child(
-                                    Button::new(eid("stroke-align", &format!("{mask_id}-{value}")), label)
+                                    Button::new(eid("stroke-align", &format!("{mask_id}-{value}")), t(label))
                                         .variant(if align == value {
                                             ButtonVariant::Default
                                         } else {
@@ -1913,19 +1927,19 @@ impl Render for InspectorPanel {
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child("No mask. A mask shows only part of the clip; sizes are percentages of the clip."),
+                                .child(t("No mask. A mask shows only part of the clip; sizes are percentages of the clip.")),
                         );
                     }
                 }
             }
             None if selection_count > 1 => {
                 content = content
-                    .child(self.heading("Selection", window))
+                    .child(self.heading(t("Selection"), window))
                     .child(
                         div()
                             .text_xs()
                             .text_color(colors.muted_foreground)
-                            .child(format!("{selection_count} elements selected")),
+                            .child(tf("{count} elements selected", &[("count", &selection_count)])),
                     )
                     .child(
                         div()
@@ -1934,7 +1948,7 @@ impl Render for InspectorPanel {
                             .gap(px(6.))
                             .child({
                                 let state = self.state.clone();
-                                Button::new("duplicate-many", "Duplicate")
+                                Button::new("duplicate-many", t("Duplicate"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -1943,28 +1957,28 @@ impl Render for InspectorPanel {
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("group-many", "Group")
+                                Button::new("group-many", t("Group"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| state.update(cx, |state, cx| state.group_selection(cx)))
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("ungroup-many", "Ungroup")
+                                Button::new("ungroup-many", t("Ungroup"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| state.update(cx, |state, cx| state.ungroup_selection(cx)))
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("compound-many", "Compound")
+                                Button::new("compound-many", t("Compound"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| state.update(cx, |state, cx| state.create_compound(cx)))
                             })
                             .child({
                                 let state = self.state.clone();
-                                Button::new("delete-many", "Delete")
+                                Button::new("delete-many", t("Delete"))
                                     .variant(ButtonVariant::Destructive)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -1975,9 +1989,9 @@ impl Render for InspectorPanel {
             }
             None => {
                 let name_row = self.row(
-                    "Name",
+                    t("Name"),
                     "project.name",
-                    "Project name",
+                    t("Project name"),
                     project_name,
                     None,
                     window,
@@ -1985,7 +1999,7 @@ impl Render for InspectorPanel {
                     Box::new(|text, state, cx| state.rename_project(text.to_owned(), cx)),
                 );
                 let background_row = self.row(
-                    "Background",
+                    t("Background"),
                     "project.background",
                     "#000000",
                     background.clone(),
@@ -2012,7 +2026,7 @@ impl Render for InspectorPanel {
                     .flex_wrap()
                     .items_center()
                     .gap(px(6.))
-                    .child(Self::label_cell("Backdrop", window));
+                    .child(Self::label_cell(t("Backdrop"), window));
                 for (label, preset) in [
                     ("Color", None),
                     ("Light blur", Some(100.0)),
@@ -2027,7 +2041,7 @@ impl Render for InspectorPanel {
                         _ => false,
                     };
                     blur_row = blur_row.child(
-                        Button::new(eid("backdrop", label), label)
+                        Button::new(eid("backdrop", label), t(label))
                             .variant(if active {
                                 ButtonVariant::Default
                             } else {
@@ -2052,7 +2066,7 @@ impl Render for InspectorPanel {
                     );
                 }
                 content = content
-                    .child(self.heading("Project", window))
+                    .child(self.heading(t("Project"), window))
                     .child(name_row)
                     .child(background_row)
                     .child(blur_row);
@@ -2062,7 +2076,7 @@ impl Render for InspectorPanel {
                     .flex_wrap()
                     .items_center()
                     .gap(px(6.))
-                    .child(Self::label_cell("Frame rate", window));
+                    .child(Self::label_cell(t("Frame rate"), window));
                 for (label, option) in [
                     ("24", FrameRate::FPS_24),
                     ("25", FrameRate::FPS_25),
@@ -2098,7 +2112,7 @@ impl Render for InspectorPanel {
                     .flex_wrap()
                     .items_center()
                     .gap(px(6.))
-                    .child(Self::label_cell("Canvas", window));
+                    .child(Self::label_cell(t("Canvas"), window));
                 for (label, width, height) in [
                     ("1080p", 1920, 1080),
                     ("720p", 1280, 720),
@@ -2109,7 +2123,7 @@ impl Render for InspectorPanel {
                     let state = self.state.clone();
                     let active = canvas == CanvasSize { width, height };
                     size_row = size_row.child(
-                        Button::new(eid("canvas", label), label)
+                        Button::new(eid("canvas", label), t(label))
                             .variant(if active {
                                 ButtonVariant::Default
                             } else {
@@ -2133,7 +2147,7 @@ impl Render for InspectorPanel {
                     div()
                         .text_xs()
                         .text_color(colors.muted_foreground)
-                        .child("Select a clip on the timeline to edit it."),
+                        .child(t("Select a clip on the timeline to edit it.")),
                 );
             }
         }
@@ -2154,8 +2168,22 @@ impl Render for InspectorPanel {
                     .border_color(colors.border)
                     .text_xs()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child("Inspector"),
+                    .child(t("Inspector")),
             )
             .child(content)
+    }
+}
+
+/// An element or track kind's name (`ElementKind::label`, `TrackKind::label`)
+/// in the interface language.
+fn kind_name(label: &'static str) -> &'static str {
+    match label {
+        "video" => t("video"),
+        "image" => t("image"),
+        "audio" => t("audio"),
+        "text" => t("text"),
+        "sticker" => t("sticker"),
+        "compound" => t("compound"),
+        other => other,
     }
 }

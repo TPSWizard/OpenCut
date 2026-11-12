@@ -10,6 +10,7 @@ import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import { useEditor } from "@/editor/use-editor";
 import type { PreviewOverlayControl } from "@/preview/overlays";
 import { toast } from "sonner";
+import { useT } from "@/i18n";
 
 export function PreviewContextMenu({
 	onToggleFullscreen,
@@ -25,6 +26,7 @@ export function PreviewContextMenu({
 		isVisible: boolean;
 	}) => void;
 }) {
+	const t = useT();
 	const editor = useEditor();
 	const viewport = usePreviewViewport();
 
@@ -32,8 +34,8 @@ export function PreviewContextMenu({
 		const result = await editor.renderer.copySnapshot();
 
 		if (!result.success) {
-			toast.error("Failed to copy snapshot", {
-				description: result.error ?? "Please try again",
+			toast.error(t("Failed to copy snapshot"), {
+				description: result.error ?? t("Please try again"),
 			});
 			return;
 		}
@@ -43,8 +45,8 @@ export function PreviewContextMenu({
 		const result = await editor.renderer.saveSnapshot();
 
 		if (!result.success) {
-			toast.error("Failed to save snapshot", {
-				description: result.error ?? "Please try again",
+			toast.error(t("Failed to save snapshot"), {
+				description: result.error ?? t("Please try again"),
 			});
 			return;
 		}
@@ -53,17 +55,17 @@ export function PreviewContextMenu({
 	return (
 		<ContextMenuContent className="w-56" container={container}>
 			<ContextMenuItem onClick={viewport.fitToScreen} inset>
-				Fit to screen
+				{t("Fit to screen")}
 			</ContextMenuItem>
 			<ContextMenuSeparator />
 			<ContextMenuItem onClick={onToggleFullscreen} inset>
-				Full screen
+				{t("Full screen")}
 			</ContextMenuItem>
 			<ContextMenuItem onClick={handleSaveSnapshot} inset>
-				Save snapshot
+				{t("Save snapshot")}
 			</ContextMenuItem>
 			<ContextMenuItem onClick={handleCopySnapshot} inset>
-				Copy snapshot
+				{t("Copy snapshot")}
 			</ContextMenuItem>
 			{overlayControls.length > 0 ? <ContextMenuSeparator /> : null}
 			{overlayControls.map((overlayControl) => (
@@ -77,7 +79,7 @@ export function PreviewContextMenu({
 						})
 					}
 				>
-					{overlayControl.label}
+					{overlayControl.label === "Show bookmark notes" ? t("Show bookmark notes") : overlayControl.label}
 				</ContextMenuCheckboxItem>
 			))}
 		</ContextMenuContent>

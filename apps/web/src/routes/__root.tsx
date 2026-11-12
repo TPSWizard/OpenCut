@@ -1,3 +1,4 @@
+import { LanguageRoot } from "@/i18n/components/language-select";
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,6 +37,7 @@ function RootComponent() {
 		>
 			<TooltipProvider>
 				<Toaster />
+				<LanguageRoot />
 				<EditorApiRoot />
 				<PwaRoot />
 				<Outlet />

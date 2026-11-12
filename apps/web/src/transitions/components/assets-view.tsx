@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { Input } from "@/components/ui/input";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import {
 	DEFAULT_TRANSITION_DURATION,
 	getTransitionCatalogue,
@@ -19,6 +20,7 @@ import { cn } from "@/utils/ui";
  * clip that transition out of its end (keeping a duration it already has).
  */
 export function TransitionsView() {
+	const t = useT();
 	const [query, setQuery] = useState("");
 	const editor = useEditor();
 	// A primitive key, so a fresh snapshot object cannot re-render us forever.
@@ -40,7 +42,7 @@ export function TransitionsView() {
 	const apply = (info: TransitionInfo) => {
 		const clips = getSelectedVisualClips({ editor });
 		if (clips.length === 0) {
-			toast.info("Select a clip first; the transition plays out of its end.");
+			toast.info(t("Select a clip first; the transition plays out of its end."));
 			return;
 		}
 		for (const { track, element } of clips) {
@@ -59,21 +61,23 @@ export function TransitionsView() {
 
 	return (
 		<PanelView
-			title="Transitions"
+			title={t("Transitions")}
 			actions={
 				<Input
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
-					placeholder={`Search ${total} transitions`}
+					placeholder={t("Search {count} transitions", { count: total })}
 					className="h-8 w-44 text-xs"
-					aria-label="Search transitions"
+					aria-label={t("Search transitions")}
 				/>
 			}
 		>
 			<p className="text-muted-foreground mb-3 text-xs">
 				{selected.length === 0
-					? "Select a clip, then pick a transition to play out of its end into the next clip."
-					: `Applies to ${selected.length} selected clip${selected.length === 1 ? "" : "s"}.`}
+					? t("Select a clip, then pick a transition to play out of its end into the next clip.")
+					: selected.length === 1
+						? t("Applies to 1 selected clip.")
+						: t("Applies to {count} selected clips.", { count: selected.length })}
 			</p>
 			<div
 				className="grid gap-2"
@@ -98,7 +102,7 @@ export function TransitionsView() {
 				))}
 				{results.length === 0 && (
 					<p className="text-muted-foreground col-span-full text-xs">
-						Nothing matches "{query}".
+						{t("Nothing matches \"{query}\".", { query })}
 					</p>
 				)}
 			</div>

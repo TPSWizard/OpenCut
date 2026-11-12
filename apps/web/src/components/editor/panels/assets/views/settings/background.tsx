@@ -20,6 +20,27 @@ import { syntaxUIGradients } from "@/data/colors/syntax-ui";
 import { useEditor } from "@/editor/use-editor";
 import { effectPreviewService } from "@/services/renderer/effect-preview";
 import { cn } from "@/utils/ui";
+import { useT } from "@/i18n";
+
+/** The blur preset's name in the interface language. */
+function blurPresetLabel({
+	label,
+	t,
+}: {
+	label: string;
+	t: ReturnType<typeof useT>;
+}): string {
+	switch (label) {
+		case "Light":
+			return t("Light");
+		case "Medium":
+			return t("Medium");
+		case "Heavy":
+			return t("Heavy");
+		default:
+			return label;
+	}
+}
 
 const BLUR_PREVIEW_UNIFORM_DIMENSIONS = {
 	width: 1920,
@@ -39,6 +60,7 @@ const BlurPreview = memo(
 		isSelected: boolean;
 		onSelect: () => void;
 	}) => {
+		const t = useT();
 		const canvasRef = useRef<HTMLCanvasElement>(null);
 
 		useEffect(() => {
@@ -67,7 +89,7 @@ const BlurPreview = memo(
 				)}
 				onClick={onSelect}
 				type="button"
-				aria-label={`Select ${blur.label} blur`}
+				aria-label={t("Select {name} blur", { name: blurPresetLabel({ label: blur.label, t }) })}
 			>
 				<canvas
 					ref={canvasRef}
@@ -75,7 +97,7 @@ const BlurPreview = memo(
 				/>
 				<div className="absolute right-1 bottom-1 left-1 text-center">
 					<span className="rounded bg-black/50 px-1 text-xs text-white">
-						{blur.label}
+						{blurPresetLabel({ label: blur.label, t })}
 					</span>
 				</div>
 			</button>
@@ -99,6 +121,7 @@ const BackgroundPreviews = memo(
 		onSelect: (bg: string) => void;
 		useBackgroundColor?: boolean;
 	}) => {
+		const t = useT();
 		return useMemo(
 			() =>
 				backgrounds.map((bg) => (
@@ -122,7 +145,7 @@ const BackgroundPreviews = memo(
 						}
 						onClick={() => onSelect(bg)}
 						type="button"
-						aria-label={`Select background ${bg}`}
+						aria-label={t("Select background {value}", { value: bg })}
 					/>
 				)),
 			[
@@ -149,6 +172,7 @@ function CustomColorPreview({
 	onPreview: (color: string) => void;
 	onCommit: (color: string) => void;
 }) {
+	const t = useT();
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
@@ -158,7 +182,7 @@ function CustomColorPreview({
 						isSelected && "border-primary border-2",
 					)}
 					type="button"
-					aria-label="Pick a custom background color"
+					aria-label={t("Pick a custom background color")}
 				>
 					<span
 						className="absolute inset-0"
@@ -186,6 +210,7 @@ const COLOR_SECTIONS = [
 ] as const;
 
 export function BackgroundContent() {
+	const t = useT();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 
@@ -263,7 +288,7 @@ export function BackgroundContent() {
 				showTopBorder={false}
 			>
 				<SectionHeader>
-					<SectionTitle>Blur</SectionTitle>
+					<SectionTitle>{t("Blur")}</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<div className="flex flex-wrap gap-2">{blurPreviews}</div>
@@ -277,7 +302,7 @@ export function BackgroundContent() {
 					sectionKey={`settings:background-${section.id}`}
 				>
 					<SectionHeader>
-						<SectionTitle>{section.title}</SectionTitle>
+						<SectionTitle>{section.id === "colors" ? t("Colors") : section.title}</SectionTitle>
 					</SectionHeader>
 					<SectionContent>
 						<div className="flex flex-wrap gap-2">

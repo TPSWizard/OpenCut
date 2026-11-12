@@ -12,6 +12,7 @@ use crate::components::{Button, ButtonSize, ButtonVariant, eid};
 use crate::render_thread::ExportSettings;
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
+use crate::i18n::{t, tf};
 
 pub(crate) enum ExportEvent {
     Close,
@@ -146,7 +147,7 @@ impl Render for ExportDialog {
             .output
             .as_ref()
             .map(|path| path.display().to_string())
-            .unwrap_or_else(|| "Choose where to save…".to_owned());
+            .unwrap_or_else(|| t("Choose where to save…").to_owned());
 
         let mut card = div()
             .flex()
@@ -160,7 +161,7 @@ impl Render for ExportDialog {
             .bg(colors.popover)
             .text_color(colors.popover_foreground)
             .shadow_lg()
-            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Export"))
+            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child(t("Export")))
             .child(
                 div()
                     .text_xs()
@@ -176,11 +177,11 @@ impl Render for ExportDialog {
                 .child(match &result {
                     Ok(path) => div()
                         .text_sm()
-                        .child(format!("Saved to {}", path.display())),
+                        .child(tf("Saved to {path}", &[("path", &path.display())])),
                     Err(error) => div()
                         .text_sm()
                         .text_color(colors.destructive)
-                        .child(format!("Export failed: {error}")),
+                        .child(tf("Export failed: {error}", &[("error", &error)])),
                 })
                 .child(
                     div()
@@ -190,12 +191,12 @@ impl Render for ExportDialog {
                         .when(result.is_ok(), |this| {
                             let path = result.clone().unwrap();
                             this.child(
-                                Button::new("reveal", "Show in folder")
+                                Button::new("reveal", t("Show in folder"))
                                     .variant(ButtonVariant::Outline)
                                     .on_click(move |_, _, cx| cx.reveal_path(&path)),
                             )
                         })
-                        .child(Button::new("close", "Close").on_click(cx.listener(|this, _, _, cx| {
+                        .child(Button::new("close", t("Close")).on_click(cx.listener(|this, _, _, cx| {
                             this.state.update(cx, |state, cx| state.dismiss_export(cx));
                             cx.emit(ExportEvent::Close);
                         }))),
@@ -205,7 +206,7 @@ impl Render for ExportDialog {
                 .child(
                     div()
                         .text_sm()
-                        .child(format!("Rendering frame {} of {}…", frames.0, frames.1)),
+                        .child(tf("Rendering frame {done} of {total}…", &[("done", &frames.0), ("total", &frames.1)])),
                 )
                 .child(
                     div()
@@ -223,7 +224,7 @@ impl Render for ExportDialog {
                 )
                 .child(
                     div().flex().justify_end().child(
-                        Button::new("cancel-export", "Cancel")
+                        Button::new("cancel-export", t("Cancel"))
                             .variant(ButtonVariant::Outline)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.state.update(cx, |state, cx| state.cancel_export(cx));
@@ -233,11 +234,12 @@ impl Render for ExportDialog {
         } else {
             let platform = self.platform;
             let mut platform_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
-                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Platform"),
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Platform")),
             );
             let choices = std::iter::once(None).chain(PLATFORM_PRESETS.iter().map(Some));
             for choice in choices {
                 let label = choice.map(|preset| preset.label).unwrap_or("Custom");
+                let shown = if choice.is_some() { label } else { t("Custom") };
                 let active = match (choice, platform) {
                     (None, None) => true,
                     (Some(a), Some(b)) => a.id == b.id,
@@ -245,7 +247,7 @@ impl Render for ExportDialog {
                 };
                 let id = choice.map(|preset| preset.id);
                 platform_row = platform_row.child(
-                    Button::new(eid("platform", label), label)
+                    Button::new(eid("platform", label), shown)
                         .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                         .size(ButtonSize::Small)
                         .on_click(cx.listener(move |this, _, _, cx| this.choose_platform(id, cx))),
@@ -257,33 +259,38 @@ impl Render for ExportDialog {
                 let encode = platform_encode_settings(canvas, fps_value);
                 let estimate = estimate_platform_file_bytes(canvas, fps_value, duration, self.include_audio);
                 platform_notes = platform_notes.child(
-                    div().text_xs().text_color(colors.muted_foreground).child(format!(
-                        "MP4, H.264 High profile at {} Mbps, closed GOP every {} frames, moov atom first, about {}. Target {}x{} ({}) at {} fps{}.",
-                        encode.video_bitrate as f64 / 1_000_000.0,
-                        encode.gop_frames,
-                        format_bytes(estimate),
-                        preset.canvas.width,
-                        preset.canvas.height,
-                        describe_aspect(preset.canvas),
-                        preset.fps.as_f64().unwrap_or(30.0),
-                        preset
-                            .max_duration_seconds
-                            .map(|max| format!(", up to {} min", (max / 60.0).round()))
-                            .unwrap_or_default()
+                    div().text_xs().text_color(colors.muted_foreground).child(tf(
+                        "MP4, H.264 High profile at {mbps} Mbps, closed GOP every {gop} frames, moov atom first, about {size}. Target {width}x{height} ({aspect}) at {fps} fps{limit}.",
+                        &[
+                            ("mbps", &(encode.video_bitrate as f64 / 1_000_000.0)),
+                            ("gop", &encode.gop_frames),
+                            ("size", &format_bytes(estimate)),
+                            ("width", &preset.canvas.width),
+                            ("height", &preset.canvas.height),
+                            ("aspect", &describe_aspect(preset.canvas)),
+                            ("fps", &preset.fps.as_f64().unwrap_or(30.0)),
+                            (
+                                "limit",
+                                &preset
+                                    .max_duration_seconds
+                                    .map(|max| tf(", up to {minutes} min", &[("minutes", &(max / 60.0).round())]))
+                                    .unwrap_or_default(),
+                            ),
+                        ],
                     )),
                 );
                 if preset.verified == Verified::ThirdParty {
                     platform_notes = platform_notes.child(
-                        div().text_xs().text_color(colors.muted_foreground).child(format!(
-                            "Limits come from third-party guides, not {}'s own pages.",
-                            preset.label
+                        div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "Limits come from third-party guides, not {platform}'s own pages.",
+                            &[("platform", &preset.label)],
                         )),
                     );
                 }
                 let issues = check_platform_export(preset, canvas, project.settings.fps, duration, self.include_audio);
                 if issues.is_empty() {
                     platform_notes = platform_notes
-                        .child(div().text_xs().child(format!("The project matches {}.", preset.label)));
+                        .child(div().text_xs().child(tf("The project matches {platform}.", &[("platform", &preset.label)])));
                 }
                 for issue in issues {
                     let color = match issue.severity {
@@ -296,20 +303,22 @@ impl Render for ExportDialog {
                         .gap(px(2.))
                         .child(div().text_xs().text_color(color).child(issue.message.clone()));
                     if let Some(fix) = issue.fix {
-                        let (label, patch) = match fix {
+                        let (label, shown, patch) = match fix {
                             PlatformFix::Canvas(CanvasSize { width, height }) => (
                                 format!("Set canvas to {width}x{height}"),
+                                tf("Set canvas to {width}x{height}", &[("width", &width), ("height", &height)]),
                                 SettingsPatch { canvas: Some(CanvasSize { width, height }), ..Default::default() },
                             ),
                             PlatformFix::Fps(rate) => (
                                 format!("Set project to {} fps", rate.as_f64().unwrap_or(30.0)),
+                                tf("Set project to {fps} fps", &[("fps", &rate.as_f64().unwrap_or(30.0))]),
                                 SettingsPatch { fps: Some(rate), ..Default::default() },
                             ),
                         };
                         let state = self.state.clone();
                         row = row.child(
                             div().child(
-                                Button::new(eid("fix", &label), label.clone())
+                                Button::new(eid("fix", &label), shown)
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
@@ -325,7 +334,7 @@ impl Render for ExportDialog {
                 }
             }
             let mut format_row = div().flex().items_center().gap(px(6.)).child(
-                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Format"),
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Format")),
             );
             for (label, format) in [("MP4 (H.264)", EncodeFormat::Mp4), ("WebM (VP9)", EncodeFormat::Webm)] {
                 let active = self.format == format;
@@ -343,7 +352,7 @@ impl Render for ExportDialog {
                 );
             }
             let mut quality_row = div().flex().items_center().gap(px(6.)).child(
-                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Quality"),
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Quality")),
             );
             for (label, quality) in [
                 ("Low", EncodeQuality::Low),
@@ -353,7 +362,7 @@ impl Render for ExportDialog {
             ] {
                 let active = self.quality == quality;
                 quality_row = quality_row.child(
-                    Button::new(eid("quality", label), label)
+                    Button::new(eid("quality", label), t(label))
                         .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                         .size(ButtonSize::Small)
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -364,10 +373,10 @@ impl Render for ExportDialog {
             }
             let include_audio = self.include_audio;
             let audio_row = div().flex().items_center().gap(px(6.)).child(
-                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Audio"),
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Audio")),
             )
             .child(
-                Button::new("audio", if include_audio { "Included" } else { "Left out" })
+                Button::new("audio", if include_audio { t("Included") } else { t("Left out") })
                     .variant(if include_audio { ButtonVariant::Default } else { ButtonVariant::Outline })
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -381,7 +390,7 @@ impl Render for ExportDialog {
                         .flex()
                         .items_center()
                         .gap(px(6.))
-                        .child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child("Save to"))
+                        .child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Save to")))
                         .child(
                             div()
                                 .flex_1()
@@ -392,7 +401,7 @@ impl Render for ExportDialog {
                                 .child(output_text),
                         )
                         .child(
-                            Button::new("choose", "Choose…")
+                            Button::new("choose", t("Choose…"))
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::Small)
                                 .on_click(cx.listener(|this, _, _, cx| this.choose_path(cx))),
@@ -407,7 +416,7 @@ impl Render for ExportDialog {
                         div()
                             .text_xs()
                             .text_color(colors.destructive)
-                            .child("FFmpeg is not installed, so nothing can be encoded."),
+                            .child(t("FFmpeg is not installed, so nothing can be encoded.")),
                     )
                 })
                 .when(duration <= 0.0, |this| {
@@ -415,7 +424,7 @@ impl Render for ExportDialog {
                         div()
                             .text_xs()
                             .text_color(colors.destructive)
-                            .child("The timeline is empty."),
+                            .child(t("The timeline is empty.")),
                     )
                 })
                 .child(
@@ -424,12 +433,12 @@ impl Render for ExportDialog {
                         .justify_end()
                         .gap(px(8.))
                         .child(
-                            Button::new("cancel", "Cancel")
+                            Button::new("cancel", t("Cancel"))
                                 .variant(ButtonVariant::Outline)
                                 .on_click(cx.listener(|_, _, _, cx| cx.emit(ExportEvent::Close))),
                         )
                         .child(
-                            Button::new("start", "Export")
+                            Button::new("start", t("Export"))
                                 .disabled(self.output.is_none() || !has_ffmpeg || duration <= 0.0)
                                 .on_click(cx.listener(|this, _, _, cx| this.start(cx))),
                         ),

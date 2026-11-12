@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { ACTIONS, type TActionWithOptionalArgs } from "@/actions";
+import { describeAction } from "@/actions/describe";
+import { useT } from "@/i18n";
 import {
 	getPlatformAlternateKey,
 	getPlatformSpecialKey,
@@ -37,6 +39,8 @@ function formatKey({ key }: { key: string }): string {
 
 export function useKeyboardShortcutsHelp() {
 	const { keybindings } = useKeybindingsStore();
+	// Re-render when the language changes, so the descriptions follow it.
+	useT();
 
 	const shortcuts = useMemo(() => {
 		const actionToKeys = new Map<TActionWithOptionalArgs, string[]>();
@@ -71,7 +75,13 @@ export function useKeyboardShortcutsHelp() {
 		});
 	}, [keybindings]);
 
+	// Sorted by the English text above, so the order is the same in every language.
+	const translated = shortcuts.map((shortcut) => ({
+		...shortcut,
+		description: describeAction(shortcut.action),
+	}));
+
 	return {
-		shortcuts,
+		shortcuts: translated,
 	};
 }

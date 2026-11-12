@@ -13,12 +13,29 @@ import {
 	TAB_KEYS,
 	tabs,
 	useAssetsPanelStore,
+	type BuiltinTab,
 	type Tab,
 } from "@/components/editor/panels/assets/assets-panel-store";
+import { t, useT } from "@/i18n";
 import { useEnabledPlugins } from "@/plugins/plugins-store";
 import { pluginTabKey } from "@/plugins/types";
 
+const TAB_LABELS: Record<BuiltinTab, () => string> = {
+	media: () => t("Media"),
+	sounds: () => t("Sounds"),
+	text: () => t("Text"),
+	stickers: () => t("Stickers"),
+	effects: () => t("Effects"),
+	transitions: () => t("Transitions"),
+	captions: () => t("Captions"),
+	markers: () => t("Markers"),
+	adjustment: () => t("Adjustment"),
+	scripting: () => t("Scripting"),
+	settings: () => t("Settings"),
+};
+
 export function TabBar() {
+	useT();
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
 	const plugins = useEnabledPlugins();
 	const entries: Array<{
@@ -26,7 +43,7 @@ export function TabBar() {
 		label: string;
 		icon: (typeof tabs)[keyof typeof tabs]["icon"];
 	}> = [
-		...TAB_KEYS.map((key) => ({ key, label: tabs[key].label, icon: tabs[key].icon })),
+		...TAB_KEYS.map((key) => ({ key, label: TAB_LABELS[key]?.() ?? tabs[key].label, icon: tabs[key].icon })),
 		...plugins
 			.filter((plugin) => plugin.panelUrl)
 			.map((plugin) => ({

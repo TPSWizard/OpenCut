@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { useReducer, useRef, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
+import { useT } from "@/i18n";
 import { TRANSCRIPTION_DIAGNOSTICS_SCOPE } from "@/transcription/diagnostics";
 import { TRANSCRIPTION_LANGUAGES } from "@/transcription/supported-languages";
 import type {
@@ -101,6 +102,7 @@ function processingReducer(
 /* eslint-enable opencut/prefer-object-params */
 
 export function Captions() {
+	const t = useT();
 	const [selectedLanguage, setSelectedLanguage] =
 		useState<TranscriptionLanguage>("auto");
 	const [modelId, setModelId] = useState<TranscriptionModelId>(
@@ -122,7 +124,9 @@ export function Captions() {
 		const tracks = [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio];
 		const cues = collectCaptionCues({ tracks });
 		if (cues.length === 0) {
-			setExportNote("No captions on the timeline: text elements on visible text tracks are exported.");
+			setExportNote(
+				t("No captions on the timeline: text elements on visible text tracks are exported."),
+			);
 			return;
 		}
 		const content = writeSubtitles({
@@ -137,7 +141,7 @@ export function Captions() {
 			filename: fileName,
 			mimeType: exportFormat === "vtt" ? "text/vtt" : "text/plain",
 		});
-		setExportNote(`Saved ${cues.length} caption(s) as ${fileName}.`);
+		setExportNote(t("Saved {count} caption(s) as {fileName}.", { count: cues.length, fileName }));
 	};
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,22 +156,22 @@ export function Captions() {
 	const handleStep = (step: GenerateCaptionsStep) => {
 		switch (step.step) {
 			case "extracting-audio":
-				dispatch({ type: "update_step", step: "Extracting audio..." });
+				dispatch({ type: "update_step", step: t("Extracting audio...") });
 				break;
 			case "preparing-audio":
-				dispatch({ type: "update_step", step: "Preparing audio..." });
+				dispatch({ type: "update_step", step: t("Preparing audio...") });
 				break;
 			case "loading-model":
 				dispatch({
 					type: "update_step",
-					step: `Loading model ${Math.round(step.progress)}%`,
+					step: t("Loading model {percent}%", { percent: Math.round(step.progress) }),
 				});
 				break;
 			case "transcribing":
-				dispatch({ type: "update_step", step: "Transcribing..." });
+				dispatch({ type: "update_step", step: t("Transcribing...") });
 				break;
 			case "building-captions":
-				dispatch({ type: "update_step", step: "Generating captions..." });
+				dispatch({ type: "update_step", step: t("Generating captions...") });
 				break;
 		}
 	};
@@ -186,7 +190,7 @@ export function Captions() {
 	};
 
 	const handleGenerateTranscript = async () => {
-		dispatch({ type: "start", step: "Extracting audio..." });
+		dispatch({ type: "start", step: t("Extracting audio...") });
 		try {
 			const { result, captions } = await generateCaptions({
 				editor,
@@ -197,7 +201,7 @@ export function Captions() {
 			});
 
 			if (!insertCaptions({ captions })) {
-				dispatch({ type: "fail", error: "No captions were generated" });
+				dispatch({ type: "fail", error: t("No captions were generated") });
 				return;
 			}
 
@@ -206,7 +210,9 @@ export function Captions() {
 				warnings:
 					result.words.length === 0
 						? [
-								"This model gave no word timings, so the captions are cut evenly and cannot highlight the spoken word.",
+								t(
+									"This model gave no word timings, so the captions are cut evenly and cannot highlight the spoken word.",
+								),
 							]
 						: [],
 			});
@@ -217,7 +223,7 @@ export function Captions() {
 				error:
 					error instanceof Error
 						? error.message
-						: "An unexpected error occurred",
+						: t("An unexpected error occurred"),
 			});
 		}
 	};
@@ -227,7 +233,7 @@ export function Captions() {
 	};
 
 	const handleImportFile = async ({ file }: { file: File }) => {
-		dispatch({ type: "start", step: "Reading subtitle file..." });
+		dispatch({ type: "start", step: t("Reading subtitle file...") });
 		try {
 			const input = await file.text();
 			const result = parseSubtitleFile({
@@ -238,22 +244,25 @@ export function Captions() {
 			if (result.captions.length === 0) {
 				dispatch({
 					type: "fail",
-					error: "No valid subtitle cues were found in the subtitle file",
+					error: t("No valid subtitle cues were found in the subtitle file"),
 				});
 				return;
 			}
 
-			dispatch({ type: "update_step", step: "Importing subtitles..." });
+			dispatch({ type: "update_step", step: t("Importing subtitles...") });
 
 			if (!insertCaptions({ captions: result.captions })) {
-				dispatch({ type: "fail", error: "No captions were generated" });
+				dispatch({ type: "fail", error: t("No captions were generated") });
 				return;
 			}
 
 			const nextWarnings = [...result.warnings];
 			if (result.skippedCueCount > 0) {
 				nextWarnings.unshift(
-					`Imported ${result.captions.length} subtitle cue(s) and skipped ${result.skippedCueCount} malformed cue(s).`,
+					t("Imported {imported} subtitle cue(s) and skipped {skipped} malformed cue(s).", {
+						imported: result.captions.length,
+						skipped: result.skippedCueCount,
+					}),
 				);
 			}
 
@@ -265,7 +274,7 @@ export function Captions() {
 				error:
 					error instanceof Error
 						? error.message
-						: "An unexpected error occurred",
+						: t("An unexpected error occurred"),
 			});
 		}
 	};
@@ -302,7 +311,7 @@ export function Captions() {
 
 	return (
 		<PanelView
-			title="Captions"
+			title={t("Captions")}
 			contentClassName="px-0 flex flex-col h-full"
 			actions={
 				<TooltipProvider>
@@ -331,7 +340,7 @@ export function Captions() {
 							className="items-center justify-center gap-1.5"
 						>
 							<HugeiconsIcon icon={CloudUploadIcon} />
-							Import
+							{t("Import")}
 						</Button>
 					</div>
 				</TooltipProvider>
@@ -352,16 +361,16 @@ export function Captions() {
 			>
 				<SectionContent className="flex flex-col gap-4 h-full pt-1">
 					<SectionFields>
-						<SectionField label="Language">
+						<SectionField label={t("Language")}>
 							<Select
 								value={selectedLanguage}
 								onValueChange={(value) => handleLanguageChange({ value })}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a language" />
+									<SelectValue placeholder={t("Select a language")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="auto">Auto detect</SelectItem>
+									<SelectItem value="auto">{t("Auto detect")}</SelectItem>
 									{TRANSCRIPTION_LANGUAGES.map((language) => (
 										<SelectItem key={language.code} value={language.code}>
 											{language.name}
@@ -370,7 +379,7 @@ export function Captions() {
 								</SelectContent>
 							</Select>
 						</SectionField>
-						<SectionField label="Model">
+						<SectionField label={t("Model")}>
 							<Select
 								value={modelId}
 								onValueChange={(value) => {
@@ -378,7 +387,7 @@ export function Captions() {
 								}}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a model" />
+									<SelectValue placeholder={t("Select a model")} />
 								</SelectTrigger>
 								<SelectContent>
 									{TRANSCRIPTION_MODELS.map((model) => (
@@ -389,7 +398,7 @@ export function Captions() {
 								</SelectContent>
 							</Select>
 						</SectionField>
-						<SectionField label="Words per caption">
+						<SectionField label={t("Words per caption")}>
 							<Input
 								type="number"
 								min={1}
@@ -402,10 +411,10 @@ export function Captions() {
 										setWordsPerCaption(Math.min(12, next));
 									}
 								}}
-								aria-label="Words per caption"
+								aria-label={t("Words per caption")}
 							/>
 						</SectionField>
-						<SectionField label="Highlight">
+						<SectionField label={t("Highlight")}>
 							<Select
 								value={highlight}
 								onValueChange={(value) => {
@@ -416,14 +425,14 @@ export function Captions() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="none">None</SelectItem>
-									<SelectItem value="word">Active word</SelectItem>
-									<SelectItem value="box">Active word in a box</SelectItem>
-									<SelectItem value="fill">Spoken so far (karaoke)</SelectItem>
+									<SelectItem value="none">{t("None")}</SelectItem>
+									<SelectItem value="word">{t("Active word")}</SelectItem>
+									<SelectItem value="box">{t("Active word in a box")}</SelectItem>
+									<SelectItem value="fill">{t("Spoken so far (karaoke)")}</SelectItem>
 								</SelectContent>
 							</Select>
 						</SectionField>
-						<SectionField label="Export">
+						<SectionField label={t("Export")}>
 							<div className="flex items-center gap-2">
 								<Select
 									value={exportFormat}
@@ -431,7 +440,7 @@ export function Captions() {
 										if (isSubtitleFormat(value)) setExportFormat(value);
 									}}
 								>
-									<SelectTrigger aria-label="Subtitle format">
+									<SelectTrigger aria-label={t("Subtitle format")}>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
@@ -449,7 +458,7 @@ export function Captions() {
 									onClick={handleExportCaptions}
 									disabled={isProcessing}
 								>
-									Download
+									{t("Download")}
 								</Button>
 							</div>
 						</SectionField>
@@ -467,7 +476,7 @@ export function Captions() {
 						disabled={isProcessing || activeDiagnostics.length > 0}
 					>
 						{isProcessing && <Spinner className="mr-1" />}
-						{isProcessing ? processing.step : "Generate transcript"}
+						{isProcessing ? processing.step : t("Generate transcript")}
 					</Button>
 					{error && (
 						<div className="bg-destructive/10 border-destructive/20 rounded-md border p-3">

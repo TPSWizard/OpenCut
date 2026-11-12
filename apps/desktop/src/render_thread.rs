@@ -133,8 +133,9 @@ fn render_loop(
         Ok(renderer) => Some(renderer),
         Err(error) => {
             events
-                .unbounded_send(RenderEvent::Status(format!(
-                    "The preview cannot render: {error}"
+                .unbounded_send(RenderEvent::Status(crate::i18n::tf(
+                    "The preview cannot render: {error}",
+                    &[("error", &error)],
                 )))
                 .ok();
             None
@@ -202,7 +203,7 @@ fn handle(
                 }
                 Err(error) => {
                     events
-                        .unbounded_send(RenderEvent::Status(format!("Preview: {error}")))
+                        .unbounded_send(RenderEvent::Status(crate::i18n::tf("Preview: {error}", &[("error", &error)])))
                         .ok();
                 }
             }

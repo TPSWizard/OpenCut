@@ -40,6 +40,7 @@ import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { CompoundTab } from "@/timeline/components/compound-tab";
 import { OcShapesIcon } from "@/components/icons";
+import { t } from "@/i18n";
 
 const TRANSFORM_PARAM_KEYS = [
 	"transform.positionX",
@@ -81,6 +82,36 @@ export type PropertiesTabDef = {
 	icon: ReactNode;
 	content: (props: TabContentProps) => ReactNode;
 };
+
+/** The tab's label in the active language (tab defs hold the English). Call while rendering. */
+export function propertiesTabLabel(tab: PropertiesTabDef): string {
+	switch (tab.label) {
+		case "Transform":
+			return t("Transform");
+		case "Blending":
+			return t("Blending");
+		case "Audio":
+			return t("Audio");
+		case "Speed":
+			return t("Speed");
+		case "Masks":
+			return t("Masks");
+		case "Effects":
+			return t("Effects");
+		case "Transition":
+			return t("Transition");
+		case "Captions":
+			return t("Captions");
+		case "Text":
+			return t("Text");
+		case "Graphic":
+			return t("Graphic");
+		case "Compound":
+			return t("Compound");
+		default:
+			return tab.label;
+	}
+}
 
 export type ElementPropertiesConfig = {
 	defaultTab: string;

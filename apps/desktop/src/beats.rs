@@ -14,11 +14,11 @@ pub(crate) fn clip_beats(ffmpeg: &Arc<Ffmpeg>, project: &Project, element_id: &s
     let clip = plan_audio(project)
         .into_iter()
         .find(|clip| clip.element_id == element_id)
-        .ok_or_else(|| "The clip has no audio to analyse".to_owned())?;
+        .ok_or_else(|| crate::i18n::t("The clip has no audio to analyse").to_owned())?;
     let from = clip.source_start.to_seconds_f64();
     let to = clip.source_end.to_seconds_f64();
     if to <= from {
-        return Err("The clip's span holds no audio".to_owned());
+        return Err(crate::i18n::t("The clip's span holds no audio").to_owned());
     }
     let settings = AudioSettings { sample_rate: SAMPLE_RATE, channels: 1 };
     let mut reader = AudioReader::open(ffmpeg, &clip.path, from, settings).map_err(|error| error.to_string())?;
@@ -34,7 +34,7 @@ pub(crate) fn clip_beats(ffmpeg: &Arc<Ffmpeg>, project: &Project, element_id: &s
         samples.extend_from_slice(&buffer[..got]);
     }
     if samples.is_empty() {
-        return Err("No audio could be read from the clip".to_owned());
+        return Err(crate::i18n::t("No audio could be read from the clip").to_owned());
     }
     Ok((track_beats(&samples, SAMPLE_RATE, &BeatOptions::default()), from))
 }

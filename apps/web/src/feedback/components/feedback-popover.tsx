@@ -21,6 +21,7 @@ import {
 	clearFormDraft,
 } from "@/components/ui/form";
 import type { FeedbackEntry } from "../types";
+import { useT } from "@/i18n";
 
 const PERSIST_KEY = "feedback-draft";
 const HISTORY_KEY = "feedback-history";
@@ -48,6 +49,7 @@ function writeHistory({ entries }: { entries: FeedbackEntry[] }): void {
 }
 
 function useFeedback() {
+	const t = useT();
 	const [entries, setEntries] = useState<FeedbackEntry[]>(readHistory);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,10 +80,10 @@ function useFeedback() {
 			setEntries(next);
 			writeHistory({ entries: next });
 			onSuccess();
-			toast.success("Feedback sent");
+			toast.success(t("Feedback sent"));
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to send feedback",
+				error instanceof Error ? error.message : t("Failed to send feedback"),
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -92,13 +94,14 @@ function useFeedback() {
 }
 
 export function FeedbackPopover() {
+	const t = useT();
 	const [open, setOpen] = useState(false);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button variant="outline" className="h-8">
-					Send feedback
+					{t("Send feedback")}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-80 p-0">
@@ -111,6 +114,7 @@ export function FeedbackPopover() {
 type View = "compose" | "history";
 
 function FeedbackPopoverContent({ onClose }: { onClose: () => void }) {
+	const t = useT();
 	const { entries, isSubmitting, submit } = useFeedback();
 	const [view, setView] = useState<View>("compose");
 
@@ -167,7 +171,7 @@ function FeedbackPopoverContent({ onClose }: { onClose: () => void }) {
 							<FormItem>
 								<FormControl>
 									<Textarea
-										placeholder="Thoughts, bugs, ideas..."
+										placeholder={t("Thoughts, bugs, ideas...")}
 										className="min-h-[7rem] text-sm p-3 bg-background shadow-none border-none! resize-none"
 										{...field}
 									/>
@@ -196,7 +200,7 @@ function FeedbackPopoverContent({ onClose }: { onClose: () => void }) {
 									size="sm"
 									onClick={onClose}
 								>
-									Cancel
+									{t("Cancel")}
 								</Button>
 							)}
 							<Button
@@ -204,7 +208,7 @@ function FeedbackPopoverContent({ onClose }: { onClose: () => void }) {
 								size="sm"
 								disabled={isSubmitting || !form.watch("message").trim()}
 							>
-								{isSubmitting ? <Spinner /> : "Send"}
+								{isSubmitting ? <Spinner /> : t("Send")}
 							</Button>
 						</div>
 					</div>
