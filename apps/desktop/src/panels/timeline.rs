@@ -241,6 +241,18 @@ impl Render for TimelinePanel {
         let duration = state.duration();
         let marks = (state.mark_in, state.mark_out);
         let markers: Vec<f64> = state.markers.iter().map(|time| time.to_seconds_f64()).collect();
+        // Saved markers: start, length and colour.
+        let saved_markers: Vec<(f64, f64, gpui::Hsla)> = project
+            .markers
+            .iter()
+            .map(|marker| {
+                (
+                    marker.time.to_seconds_f64(),
+                    marker.duration.map(|length| length.to_seconds_f64()).unwrap_or(0.0),
+                    marker_color(marker.color.as_deref()),
+                )
+            })
+            .collect();
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
@@ -325,6 +337,24 @@ impl Render for TimelinePanel {
                             .h(px(8.))
                             .bg(colors.primary)
                     }))
+                    .children(
+                        saved_markers
+                            .iter()
+                            .filter(|(start, length, _)| start + length >= scroll && *start <= scroll + visible_seconds)
+                            .map(|(start, length, color)| {
+                                let left = to_x(*start);
+                                div()
+                                    .absolute()
+                                    .top_0()
+                                    .left(px(left - 1.0))
+                                    .h_full()
+                                    .w(px((to_x(start + length) - left).max(0.0) + 2.0))
+                                    .border_l_2()
+                                    .border_color(*color)
+                                    .when(*length > 0.0, |this| this.bg(color.opacity(0.18)))
+                                    .child(div().size(px(7.)).bg(*color).rounded(px(1.)))
+                            }),
+                    )
                     .when(marks.0.is_some() || marks.1.is_some(), |this| {
                         let start = marks.0.map(|t| t.to_seconds_f64()).unwrap_or(0.0);
                         let end = marks.1.map(|t| t.to_seconds_f64()).unwrap_or(duration.to_seconds_f64().max(start));
@@ -355,6 +385,7 @@ impl Render for TimelinePanel {
                 TrackKind::Audio => "audio",
             };
             let dimmed = track.hidden || track.muted;
+            let locked = track.locked;
 
             // Elements shown on this lane: its own (except one being moved
             // away) plus a clip being dragged onto it.
@@ -547,8 +578,9 @@ impl Render for TimelinePanel {
                     .border_2()
                     .border_color(if selected { colors.foreground } else { color.opacity(0.3) })
                     .when(element.hidden, |this| this.opacity(0.45))
+                    .when(locked, |this| this.opacity(0.5))
                     .overflow_hidden()
-                    .cursor_grab()
+                    .when(!locked, |this| this.cursor_grab())
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(move |this, event: &MouseDownEvent, window, cx| {
@@ -560,7 +592,7 @@ impl Render for TimelinePanel {
                             this.state.update(cx, |state, cx| state.select(&select_id, extend, cx));
                         }),
                     )
-                    .on_drag(
+                    .when(!locked, |this| this.on_drag(
                         TimelineDrag {
                             mode: DragMode::Move,
                             element_id: id.clone(),
@@ -584,7 +616,7 @@ impl Render for TimelinePanel {
                                 cx.new(|_| gpui::Empty)
                             }
                         },
-                    )
+                    ))
                     .when_some(waveform, |this, waveform| {
                         this.child(
                             canvas(
@@ -635,7 +667,7 @@ impl Render for TimelinePanel {
                     )
                     .children(transition_marks)
                     .children(markers)
-                    .child(
+                    .when(!locked, |this| this.child(
                         div()
                             .id(eid("trim-start", &id))
                             .absolute()
@@ -654,8 +686,8 @@ impl Render for TimelinePanel {
                                 },
                                 |_, _, _, cx| cx.new(|_| gpui::Empty),
                             ),
-                    )
-                    .child(
+                    ))
+                    .when(!locked, |this| this.child(
                         div()
                             .id(eid("trim-end", &id))
                             .absolute()
@@ -674,7 +706,7 @@ impl Render for TimelinePanel {
                                 },
                                 |_, _, _, cx| cx.new(|_| gpui::Empty),
                             ),
-                    )
+                    ))
             });
 
             let muted = track.muted;
@@ -735,6 +767,16 @@ impl Render for TimelinePanel {
                                 })
                             }),
                     )
+                })
+                .child({
+                    let state = toggle_state.clone();
+                    let id = toggle_id.clone();
+                    Button::new(eid("lock", &track_id), if locked { "L" } else { "l" })
+                        .variant(if locked { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::IconXSmall)
+                        .on_click(move |_, _, cx| {
+                            state.update(cx, |state, cx| state.set_track_locked(&id, !locked, cx));
+                        })
                 })
                 .when(!is_audio, |this| {
                     let state = toggle_state.clone();
@@ -1057,4 +1099,13 @@ mod marker_tests {
         assert_eq!(snap_to_markers(3.0, 1.0, &markers, 0.1), 3.0, "nothing within reach stays put");
         assert_eq!(snap_to_markers(0.0, 3.0, &markers, 0.1), 0.0, "a negative candidate is skipped");
     }
+}
+
+/// A marker's `#rrggbb` colour (the default blue when missing or unreadable).
+fn marker_color(color: Option<&str>) -> gpui::Hsla {
+    let hex = color.and_then(|text| text.strip_prefix('#')).filter(|text| text.len() == 6);
+    let value = hex
+        .and_then(|text| u32::from_str_radix(text, 16).ok())
+        .unwrap_or(0x009dff);
+    gpui::rgb(value).into()
 }

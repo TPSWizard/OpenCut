@@ -52,6 +52,15 @@ export class MoveElementCommand extends Command {
 		}
 
 		const movedElementsById = new Map<string, TimelineElement>();
+		// Nothing leaves or lands on a locked track.
+		const lockedIds = new Set(
+			[...this.savedState.overlay, this.savedState.main, ...this.savedState.audio]
+				.filter((track) => track.locked)
+				.map((track) => track.id),
+		);
+		if (this.moves.some((move) => lockedIds.has(move.sourceTrackId) || lockedIds.has(move.targetTrackId))) {
+			return undefined;
+		}
 		for (const move of this.moves) {
 			const sourceTrack = findTrackInSceneTracks({
 				tracks: this.savedState,

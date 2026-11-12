@@ -3,6 +3,8 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Delete02Icon,
+	LockIcon,
+	LockOpenIcon,
 	MagicWand05Icon,
 	MusicNote03Icon,
 	TaskAdd02Icon,
@@ -698,6 +700,20 @@ function TrackLabelsPanel({
 													}
 												/>
 											)}
+											<TrackToggleIcon
+												isOff={Boolean(track.locked)}
+												offTone="accent"
+												icons={{
+													on: LockOpenIcon,
+													off: LockIcon,
+												}}
+												title={track.locked ? "Unlock track" : "Lock track"}
+												onClick={() =>
+													editor.timeline.toggleTrackLock({
+														trackId: track.id,
+													})
+												}
+											/>
 											<TrackIcon track={track} />
 										</div>
 										{expandedRows.length > 0 && (
@@ -811,7 +827,9 @@ function TimelineTrackRows({
 							className={cn(
 								"absolute right-0 left-0 transition-colors",
 								tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
+								track.locked && "opacity-60 bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,rgb(127_127_127/0.12)_6px,rgb(127_127_127/0.12)_8px)]",
 							)}
+							data-locked={track.locked ? "true" : undefined}
 							style={{
 								top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight })}px`,
 								height: `${getTrackHeight({ type: track.type }) + getTrackExpansionHeight(index)}px`,
@@ -867,7 +885,16 @@ function TimelineTrackRows({
 								? "Show track"
 								: "Hide track"}
 						</ContextMenuItem>
-						{track.id !== mainTrackId && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={track.locked ? LockOpenIcon : LockIcon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								timeline.toggleTrackLock({ trackId: track.id });
+							}}
+						>
+							{track.locked ? "Unlock track" : "Lock track"}
+						</ContextMenuItem>
+						{track.id !== mainTrackId && !track.locked && (
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Delete02Icon} />}
 								onClick={(event: React.MouseEvent) => {
@@ -907,6 +934,8 @@ function TrackToggleIcon({
 	isOff,
 	icons,
 	onClick,
+	offTone = "destructive",
+	title,
 }: {
 	isOff: boolean;
 	icons: {
@@ -914,13 +943,18 @@ function TrackToggleIcon({
 		off: IconSvgElement;
 	};
 	onClick: () => void;
+	offTone?: "destructive" | "accent";
+	title?: string;
 }) {
 	return (
-		<>
+		<span title={title} className="inline-flex">
 			{isOff ? (
 				<HugeiconsIcon
 					icon={icons.off}
-					className="text-destructive size-4 cursor-pointer"
+					className={cn(
+						"size-4 cursor-pointer",
+						offTone === "accent" ? "text-amber-500" : "text-destructive",
+					)}
 					onClick={onClick}
 				/>
 			) : (
@@ -930,7 +964,7 @@ function TrackToggleIcon({
 					onClick={onClick}
 				/>
 			)}
-		</>
+		</span>
 	);
 }
 

@@ -18,8 +18,12 @@ export function applyRippleAdjustments({
 		return tracks;
 	}
 
+	const lockedIds = new Set(
+		[...tracks.overlay, tracks.main, ...tracks.audio].filter((track) => track.locked).map((track) => track.id),
+	);
 	const adjustmentsByTrack = new Map<string, RippleAdjustment[]>();
 	for (const adjustment of adjustments) {
+		if (lockedIds.has(adjustment.trackId)) continue;
 		const trackAdjustments = adjustmentsByTrack.get(adjustment.trackId) ?? [];
 		trackAdjustments.push(adjustment);
 		adjustmentsByTrack.set(adjustment.trackId, trackAdjustments);

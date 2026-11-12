@@ -18,4 +18,6 @@ pub enum EditorError {
     Overlap,
     #[error("nothing to {0}")]
     NothingTo(&'static str),
+    #[error("track {0} is locked; unlock it to change its clips")]
+    TrackLocked(String),
 }

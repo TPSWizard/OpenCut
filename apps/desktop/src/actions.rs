@@ -36,6 +36,8 @@ actions!(
         PreviousEdit,
         RippleDelete,
         DeleteMarkedRange,
+        SelectRange,
+        AddMarker,
     ]
 );
 
@@ -146,6 +148,8 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("alt-delete", DeleteMarkedRange, editor),
         KeyBinding::new(&format!("{primary}-d"), DuplicateSelection, editor),
         KeyBinding::new(&format!("{primary}-a"), SelectAll, editor),
+        KeyBinding::new(&format!("{primary}-shift-a"), SelectRange, editor),
+        KeyBinding::new("m", AddMarker, editor),
         KeyBinding::new("escape", ClearSelection, anywhere),
         KeyBinding::new("p", DrawMaskPath, editor),
         KeyBinding::new("enter", FinishPenPath, editor),

@@ -278,6 +278,8 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - media.list / media.importUrl { url, name? } / media.remove { mediaId }
 - media.makeProxy { mediaId } → ApiMediaInfo (960 px preview proxy; export reads the original) / media.removeProxy { mediaId }
 - media.missing → [{ id, name, type, size }] (files gone from browser storage) / media.relink { mediaId, file } → ApiMediaInfo (in page only)
+- timeline.setTrackLocked { trackId, locked } → ApiTrackInfo / selection.selectRange { from?, to? } → ElementRef[] (clips on unlocked tracks overlapping the range; default: in/out marks)
+- markers.list / markers.add { time?, note?, color?, duration? } / markers.update { time, note?, color?, duration? } / markers.remove { time } → ApiMarker[] (seconds) / markers.chapters → { text }
 - storage.status / storage.persist → { level, persisted, browser, standalone, sevenDayRule, reasons, advice, usageBytes, quotaBytes }
 - storage.usage → [{ projectId, name, mediaBytes, proxyBytes, mediaCount, missing, lastBackupAt, needsBackup }] / storage.clearProxies { projectId? } → { freedBytes }
 - preview.getSettings / preview.setSettings { quality?: auto|full|half|quarter, useProxies?, autoProxies? } / preview.capture { time? } → { width, height, centre, decoders }

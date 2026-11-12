@@ -430,7 +430,19 @@ impl EditorState {
         self.selection.iter().any(|id| id == element_id)
     }
 
+    /// The name of the locked track an element sits on, if it does.
+    pub(crate) fn locked_track_of(&self, element_id: &str) -> Option<String> {
+        self.project()
+            .element(element_id)
+            .filter(|(track, _)| track.locked)
+            .map(|(track, _)| track.name.clone())
+    }
+
     pub(crate) fn select(&mut self, element_id: &str, extend: bool, cx: &mut Context<Self>) {
+        if let Some(track) = self.locked_track_of(element_id) {
+            self.set_status(format!("{track} is locked; unlock it to edit its clips"), cx);
+            return;
+        }
         if self.pen.is_some() && (extend || !self.is_selected(element_id)) {
             self.finish_pen(cx);
         }
@@ -483,10 +495,100 @@ impl EditorState {
         self.selection = self
             .project()
             .elements()
+            .filter(|(track, _)| !track.locked)
             .map(|(_, element)| element.id.clone())
             .collect();
         self.selected_mask_points.clear();
         cx.notify();
+    }
+
+    /// Selects every clip on an unlocked track that overlaps the marked
+    /// range (mark in to mark out; a missing mark is the start or the end).
+    pub(crate) fn select_range(&mut self, cx: &mut Context<Self>) {
+        if self.mark_in.is_none() && self.mark_out.is_none() {
+            self.set_status("Set a mark in (I) or out (O) first", cx);
+            return;
+        }
+        let from = self.mark_in.unwrap_or(MediaTime::ZERO);
+        let to = self.mark_out.unwrap_or_else(|| self.duration());
+        let ids = editor::elements_in_range(self.project(), from, to);
+        let count = ids.len();
+        self.select_only(ids, cx);
+        self.set_status(format!("Selected {count} clip(s) in the marked range"), cx);
+    }
+
+    /// Locks or unlocks a track; locking drops its clips from the selection.
+    pub(crate) fn set_track_locked(&mut self, track_id: &str, locked: bool, cx: &mut Context<Self>) {
+        if locked {
+            let on_track: Vec<String> = self
+                .project()
+                .tracks
+                .iter()
+                .find(|track| track.id == track_id)
+                .map(|track| track.elements.iter().map(|element| element.id.clone()).collect())
+                .unwrap_or_default();
+            self.selection.retain(|id| !on_track.contains(id));
+        }
+        self.execute(Command::SetTrackLocked { track_id: track_id.to_owned(), locked }, cx);
+    }
+
+    // ---- markers -------------------------------------------------------
+
+    /// Adds a marker at the playhead, or removes the one already there.
+    pub(crate) fn toggle_marker_at_playhead(&mut self, cx: &mut Context<Self>) {
+        let time = self.playhead();
+        let mut markers = self.project().markers.clone();
+        if let Some(index) = markers.iter().position(|marker| marker.time == time) {
+            markers.remove(index);
+            self.execute(Command::SetMarkers(markers), cx);
+            self.set_status("Marker removed", cx);
+        } else {
+            markers.push(editor::Marker::at(time));
+            self.execute(Command::SetMarkers(markers), cx);
+            self.set_status("Marker added", cx);
+        }
+    }
+
+    fn update_marker(&mut self, time: MediaTime, cx: &mut Context<Self>, change: impl FnOnce(&mut editor::Marker)) {
+        let mut markers = self.project().markers.clone();
+        if let Some(marker) = markers.iter_mut().find(|marker| marker.time == time) {
+            let before = marker.clone();
+            change(marker);
+            if *marker != before {
+                self.execute(Command::SetMarkers(markers), cx);
+            }
+        }
+    }
+
+    pub(crate) fn set_marker_note(&mut self, time: MediaTime, note: &str, cx: &mut Context<Self>) {
+        let note = note.trim();
+        self.update_marker(time, cx, |marker| marker.note = (!note.is_empty()).then(|| note.to_owned()));
+    }
+
+    /// Steps a marker through a few colours.
+    pub(crate) fn cycle_marker_color(&mut self, time: MediaTime, cx: &mut Context<Self>) {
+        const COLORS: [&str; 6] = [editor::DEFAULT_MARKER_COLOR, "#22c55e", "#eab308", "#f97316", "#ef4444", "#a855f7"];
+        self.update_marker(time, cx, |marker| {
+            let current = marker.color.as_deref().unwrap_or(editor::DEFAULT_MARKER_COLOR);
+            let index = COLORS.iter().position(|color| color.eq_ignore_ascii_case(current)).unwrap_or(0);
+            marker.color = Some(COLORS[(index + 1) % COLORS.len()].to_owned());
+        });
+    }
+
+    pub(crate) fn remove_marker(&mut self, time: MediaTime, cx: &mut Context<Self>) {
+        let markers: Vec<editor::Marker> = self.project().markers.iter().filter(|marker| marker.time != time).cloned().collect();
+        self.execute(Command::SetMarkers(markers), cx);
+    }
+
+    /// Puts the markers on the clipboard as YouTube chapters.
+    pub(crate) fn copy_chapters(&mut self, cx: &mut Context<Self>) {
+        if self.project().markers.is_empty() {
+            self.set_status("Add markers (M) first", cx);
+            return;
+        }
+        let text = editor::chapters_text(&self.project().markers);
+        cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+        self.set_status("Chapters copied", cx);
     }
 
     /// The single selected element, if exactly one is selected.

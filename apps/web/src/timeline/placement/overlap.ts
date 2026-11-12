@@ -30,9 +30,11 @@ export function canPlaceTimeSpansOnTrack({
 	track,
 	timeSpans,
 }: {
-	track: TrackWithElements;
+	track: TrackWithElements & { locked?: boolean };
 	timeSpans: PlacementTimeSpan[];
 }): boolean {
+	// Nothing new lands on a locked track.
+	if (track.locked) return false;
 	return timeSpans.every(({ startTime, duration, excludeElementId }) => {
 		return !wouldElementOverlap({
 			elements: track.elements,

@@ -106,6 +106,10 @@ export const ACTIONS = {
 		description: "Select all elements",
 		category: "selection",
 	},
+	"select-range": {
+		description: "Select the clips between the in and out marks (unlocked tracks)",
+		category: "selection",
+	},
 	"cancel-interaction": {
 		description: "Cancel current interaction",
 		category: "controls",
@@ -216,6 +220,7 @@ const ACTION_DEFAULT_SHORTCUTS = [
 	["ripple-delete", ["shift+delete", "shift+backspace"]],
 	["delete-marked-range", ["alt+delete"]],
 	["select-all", ["ctrl+a"]],
+	["select-range", ["ctrl+shift+a"]],
 	["cancel-interaction", ["escape"]],
 	["duplicate-selected", ["ctrl+d"]],
 	["undo", ["ctrl+z"]],

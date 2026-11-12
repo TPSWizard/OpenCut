@@ -432,6 +432,8 @@ impl Render for Shell {
             .on_action(cx.listener(|this, _: &PreviousEdit, _, cx| this.with_state(cx, |s, cx| s.jump_to_edit(false, cx))))
             .on_action(cx.listener(|this, _: &RippleDelete, _, cx| this.with_state(cx, |s, cx| s.ripple_delete_selection(cx))))
             .on_action(cx.listener(|this, _: &DeleteMarkedRange, _, cx| this.with_state(cx, |s, cx| s.delete_marked_range(cx))))
+            .on_action(cx.listener(|this, _: &SelectRange, _, cx| this.with_state(cx, |s, cx| s.select_range(cx))))
+            .on_action(cx.listener(|this, _: &AddMarker, _, cx| this.with_state(cx, |s, cx| s.toggle_marker_at_playhead(cx))))
             .on_action(cx.listener(|this, _: &ExportProject, _, cx| this.open_export(cx)))
             .on_action(cx.listener(|this, _: &CloseProject, _, cx| this.close_project(cx)))
             .child(header)

@@ -41,7 +41,7 @@ const BOOKMARK_HALF_WIDTH_PX = BOOKMARK_MARKER_WIDTH_PX / 2;
 const BOOKMARK_MARKER_CLIP_PATH =
 	"polygon(50% 100%, 12% 72%, 12% 10%, 88% 10%, 88% 72%)";
 
-function seekToBookmarkTime({
+export function seekToBookmarkTime({
 	editor,
 	time,
 }: {

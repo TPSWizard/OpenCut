@@ -4,20 +4,105 @@ use gpui::{
     div, img, prelude::*, px,
 };
 
-use crate::components::{Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, eid};
-use crate::format::short_duration;
+use std::collections::HashMap;
+
+use crate::components::{Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, TextInput, eid};
+use crate::format::{short_duration, timecode};
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
 
 /// The media bin: import files, see what the project has, put it on the timeline.
 pub(crate) struct MediaPanel {
     state: Entity<EditorState>,
+    /// Showing the saved markers instead of the media.
+    show_markers: bool,
+    /// Note fields by marker time (ticks).
+    notes: HashMap<i64, Entity<TextInput>>,
 }
 
 impl MediaPanel {
     pub(crate) fn new(state: Entity<EditorState>, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        Self { state }
+        Self { state, show_markers: false, notes: HashMap::new() }
+    }
+
+    /// The saved markers: colour (click to change), time (click to go
+    /// there), note, remove.
+    fn marker_rows(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
+        let state = self.state.read(cx);
+        let rate = state.project().settings.fps;
+        let editor_focus = state.focus_handle.clone();
+        let markers = state.project().markers.clone();
+        let times: Vec<i64> = markers.iter().map(|marker| marker.time.as_ticks()).collect();
+        self.notes.retain(|time, _| times.contains(time));
+        let mut rows = Vec::new();
+        for marker in markers {
+            let time = marker.time;
+            let key = time.as_ticks();
+            let field = match self.notes.get(&key) {
+                Some(field) => field.clone(),
+                None => {
+                    let state = self.state.clone();
+                    let focus = editor_focus.clone();
+                    let field = cx.new(|cx| {
+                        TextInput::new(window, cx, "Note")
+                            .focus_after(focus)
+                            .on_commit(move |text, _, cx| {
+                                state.update(cx, |state, cx| state.set_marker_note(time, text, cx));
+                            })
+                    });
+                    self.notes.insert(key, field.clone());
+                    field
+                }
+            };
+            let note = marker.note.clone().unwrap_or_default();
+            field.update(cx, |field, cx| field.set_text(note, window, cx));
+            let color = marker
+                .color
+                .as_deref()
+                .and_then(|text| text.strip_prefix('#'))
+                .and_then(|text| u32::from_str_radix(text, 16).ok())
+                .unwrap_or(0x009dff);
+            let seek_state = self.state.clone();
+            let color_state = self.state.clone();
+            let remove_state = self.state.clone();
+            let length = marker
+                .duration
+                .map(|length| format!(" +{}", short_duration(length.to_seconds_f64())))
+                .unwrap_or_default();
+            let id = key.to_string();
+            rows.push(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .p(px(4.))
+                    .child(
+                        div()
+                            .id(eid("marker-color", &id))
+                            .size(px(12.))
+                            .rounded(px(2.))
+                            .bg(gpui::rgb(color))
+                            .cursor_pointer()
+                            .on_click(move |_, _, cx| color_state.update(cx, |state, cx| state.cycle_marker_color(time, cx))),
+                    )
+                    .child(
+                        Button::new(eid("marker-seek", &id), format!("{}{length}", timecode(time, rate)))
+                            .variant(ButtonVariant::Ghost)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| seek_state.update(cx, |state, cx| state.seek(time, cx))),
+                    )
+                    .child(div().flex_1().min_w_0().child(field))
+                    .child(
+                        Button::new(eid("marker-remove", &id), "×")
+                            .variant(ButtonVariant::Ghost)
+                            .size(ButtonSize::IconXSmall)
+                            .on_click(move |_, _, cx| remove_state.update(cx, |state, cx| state.remove_marker(time, cx))),
+                    )
+                    .into_any_element(),
+            );
+        }
+        rows
     }
 
     /// Opens the file picker and imports whatever is chosen.
@@ -105,6 +190,8 @@ impl Render for MediaPanel {
         let project = state.project();
         let has_ffmpeg = state.has_ffmpeg();
         let focus_handle = state.focus_handle.clone();
+        let marker_count = project.markers.len();
+        let show_markers = self.show_markers;
 
         let rows: Vec<_> = project
             .media
@@ -263,7 +350,10 @@ impl Render for MediaPanel {
         let state_for_import = self.state.clone();
         let state_for_text = self.state.clone();
         let state_for_find = self.state.clone();
+        let state_for_marker = self.state.clone();
+        let state_for_chapters = self.state.clone();
         let missing_count = state.missing_media.len();
+        let marker_rows = if show_markers { self.marker_rows(window, cx) } else { Vec::new() };
         div()
             .flex()
             .flex_col()
@@ -280,13 +370,40 @@ impl Render for MediaPanel {
                     .border_b_1()
                     .border_color(colors.sidebar_border)
                     .child(
-                        div()
-                            .flex_1()
-                            .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child("Media"),
+                        Button::new("tab-media", "Media")
+                            .variant(if show_markers { ButtonVariant::Ghost } else { ButtonVariant::Secondary })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_markers = false;
+                                cx.notify();
+                            })),
                     )
-                    .when(missing_count > 0, |row| {
+                    .child(
+                        Button::new("tab-markers", format!("Markers {marker_count}"))
+                            .variant(if show_markers { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_markers = true;
+                                cx.notify();
+                            })),
+                    )
+                    .child(div().flex_1())
+                    .when(show_markers, |row| {
+                        row.child(
+                            Button::new("copy-chapters", "Chapters")
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::Small)
+                                .on_click(move |_, _, cx| state_for_chapters.update(cx, |state, cx| state.copy_chapters(cx))),
+                        )
+                        .child(
+                            Button::new("add-marker", "Add (M)")
+                                .size(ButtonSize::Small)
+                                .on_click(move |_, _, cx| {
+                                    state_for_marker.update(cx, |state, cx| state.toggle_marker_at_playhead(cx))
+                                }),
+                        )
+                    })
+                    .when(missing_count > 0 && !show_markers, |row| {
                         row.child(
                             Button::new("find-missing", format!("Find {missing_count} missing…"))
                                 .variant(ButtonVariant::Secondary)
@@ -294,19 +411,19 @@ impl Render for MediaPanel {
                                 .on_click(move |_, _, cx| Self::find_missing(&state_for_find, cx)),
                         )
                     })
-                    .child(
+                    .when(!show_markers, |row| row.child(
                         Button::new("add-text", "Text")
                             .variant(ButtonVariant::Outline)
                             .size(ButtonSize::Small)
                             .on_click(move |_, _, cx| {
                                 state_for_text.update(cx, |state, cx| state.add_text(cx));
                             }),
-                    )
-                    .child(
+                    ))
+                    .when(!show_markers, |row| row.child(
                         Button::new("import", "Import…")
                             .size(ButtonSize::Small)
                             .on_click(move |_, _, cx| Self::import(&state_for_import, cx)),
-                    ),
+                    )),
             )
             .child(
                 div()
@@ -317,7 +434,17 @@ impl Render for MediaPanel {
                     .min_h_0()
                     .overflow_y_scroll()
                     .p(px(4.))
-                    .when(rows.is_empty(), |this| {
+                    .when(show_markers && marker_rows.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .p(px(12.))
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child("No markers yet. Press M to add one at the playhead. I and O mark a range; Ctrl+Shift+A selects the clips in it."),
+                        )
+                    })
+                    .when(show_markers, |this| this.children(marker_rows))
+                    .when(!show_markers && rows.is_empty(), |this| {
                         this.child(
                             div()
                                 .p(px(12.))
@@ -330,7 +457,7 @@ impl Render for MediaPanel {
                                 }),
                         )
                     })
-                    .children(rows),
+                    .when(!show_markers, |this| this.children(rows)),
             )
     }
 }

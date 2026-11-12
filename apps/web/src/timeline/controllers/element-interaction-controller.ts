@@ -369,6 +369,8 @@ export class ElementInteractionController {
 
 		event.stopPropagation();
 		this.lastGestureWasDrag = false;
+		// Locked tracks' clips stay put: no selection, no drag.
+		if (track.locked) return;
 
 		const ref = { trackId: track.id, elementId: element.id };
 

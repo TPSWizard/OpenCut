@@ -143,6 +143,10 @@ pub struct Track {
     pub muted: bool,
     #[serde(default)]
     pub hidden: bool,
+    /// A locked track's clips cannot be moved, trimmed, split, deleted or
+    /// shifted by ripple edits, and nothing new lands on it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub locked: bool,
     #[serde(default)]
     pub elements: Vec<Element>,
 }
@@ -156,6 +160,7 @@ impl Track {
             lane,
             muted: false,
             hidden: false,
+            locked: false,
             elements: Vec::new(),
         }
     }
@@ -684,6 +689,9 @@ pub struct Project {
     pub tracks: Vec<Track>,
     #[serde(default = "zero")]
     pub playhead: MediaTime,
+    /// Saved timeline markers, sorted by time.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<crate::Marker>,
 }
 
 impl Project {
@@ -699,6 +707,7 @@ impl Project {
             media: Vec::new(),
             tracks: vec![Track::new(TrackKind::Video, Lane::Main, "Main")],
             playhead: MediaTime::ZERO,
+            markers: Vec::new(),
         }
     }
 

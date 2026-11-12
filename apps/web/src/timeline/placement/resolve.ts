@@ -153,7 +153,7 @@ export function resolveTrackPlacement({
 		}
 
 		const track = orderedTracks[trackIndex];
-		if (track.type !== trackType) {
+		if (track.type !== trackType || track.locked) {
 			return null;
 		}
 

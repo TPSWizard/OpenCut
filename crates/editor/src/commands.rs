@@ -137,6 +137,13 @@ pub enum Command {
         track_id: String,
         hidden: bool,
     },
+    /// Locks or unlocks a track; see [`crate::Track::locked`].
+    SetTrackLocked {
+        track_id: String,
+        locked: bool,
+    },
+    /// Replaces the project's markers (sorted, one per time).
+    SetMarkers(Vec<crate::Marker>),
     RenameProject(String),
     UpdateSettings(SettingsPatch),
     /// Sets a keyframe of `path` at a timeline time (relative times are
@@ -245,7 +252,56 @@ fn apply_ripple_plan(project: &mut Project, plan: &crate::edits::RipplePlan) -> 
     Ok(())
 }
 
+/// The locked track an element sits on, if it does.
+fn locked_track_of(project: &Project, element_id: &str) -> Option<String> {
+    let (track_index, _) = project.locate(element_id)?;
+    let track = &project.tracks[track_index];
+    track.locked.then(|| track.name.clone())
+}
+
+fn locked_track_named(project: &Project, track_id: &str) -> Option<String> {
+    project.tracks.iter().find(|track| track.id == track_id && track.locked).map(|track| track.name.clone())
+}
+
+/// Refuses commands that would change clips on a locked track. Ripple and
+/// range edits are not refused: they skip locked tracks instead.
+fn check_locks(project: &Project, command: &Command) -> Result<(), EditorError> {
+    let element = |id: &String| locked_track_of(project, id).map(EditorError::TrackLocked);
+    let found = match command {
+        Command::InsertElement { placement: TrackPlacement::Track(track_id), .. } => {
+            locked_track_named(project, track_id).map(EditorError::TrackLocked)
+        }
+        Command::MoveElement { element_id, track_id, .. } => element(element_id).or_else(|| {
+            track_id.as_ref().and_then(|id| locked_track_named(project, id)).map(EditorError::TrackLocked)
+        }),
+        Command::ResizeElement { element_id, .. }
+        | Command::SplitElement { element_id, .. }
+        | Command::RemoveRanges { element_id, .. }
+        | Command::ReplaceMedia { element_id, .. }
+        | Command::SplitElementAtTimes { element_id, .. }
+        | Command::UpdateElement { element_id, .. }
+        | Command::SetKeyframe { element_id, .. }
+        | Command::SetColorKeyframe { element_id, .. }
+        | Command::RemoveKeyframe { element_id, .. }
+        | Command::SetKeyframes { element_id, .. }
+        | Command::ClearAnimation { element_id, .. }
+        | Command::AddEffect { element_id, .. }
+        | Command::UpdateEffect { element_id, .. }
+        | Command::RemoveEffect { element_id, .. }
+        | Command::AddMask { element_id, .. }
+        | Command::UpdateMask { element_id, .. }
+        | Command::RemoveMask { element_id, .. }
+        | Command::SetTransition { element_id, .. } => element(element_id),
+        Command::RippleDelete { element_ids } => element_ids.iter().find_map(element),
+        Command::DeleteElements(ids) | Command::DuplicateElements(ids) => ids.iter().find_map(element),
+        Command::RemoveTrack { track_id } => locked_track_named(project, track_id).map(EditorError::TrackLocked),
+        _ => None,
+    };
+    found.map_or(Ok(()), Err)
+}
+
 pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, EditorError> {
+    check_locks(project, command)?;
     let outcome = match command {
         Command::AddMedia(item) => {
             if project.media_item(&item.id).is_some() {
@@ -493,7 +549,7 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                     RippleScope::None => {}
                     RippleScope::Track | RippleScope::All => {
                         for track in project.tracks.iter_mut() {
-                            if *ripple == RippleScope::Track && track.id != track_id {
+                            if (*ripple == RippleScope::Track && track.id != track_id) || track.locked {
                                 continue;
                             }
                             for element in track.elements.iter_mut() {
@@ -704,6 +760,17 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 .track_mut(track_id)
                 .ok_or_else(|| EditorError::TrackNotFound(track_id.clone()))?;
             track.hidden = *hidden;
+            Outcome::None
+        }
+        Command::SetTrackLocked { track_id, locked } => {
+            let track = project
+                .track_mut(track_id)
+                .ok_or_else(|| EditorError::TrackNotFound(track_id.clone()))?;
+            track.locked = *locked;
+            Outcome::None
+        }
+        Command::SetMarkers(markers) => {
+            project.markers = crate::normalize_markers(markers);
             Outcome::None
         }
         Command::SetKeyframe {
@@ -1048,7 +1115,7 @@ fn fitting_track(project: &mut Project, kind: &ElementKind, start: MediaTime, en
     };
     if let Some(index) = candidates
         .into_iter()
-        .find(|&index| project.tracks[index].is_free(start, end, None))
+        .find(|&index| !project.tracks[index].locked && project.tracks[index].is_free(start, end, None))
     {
         return index;
     }

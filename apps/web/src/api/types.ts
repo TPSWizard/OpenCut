@@ -81,6 +81,15 @@ export interface ApiMediaInfo {
 
 export type ApiPreviewQuality = "auto" | "full" | "half" | "quarter";
 
+export interface ApiMarker {
+	/** Seconds from the start of the timeline. */
+	time: number;
+	note?: string;
+	color?: string;
+	/** Seconds the marker spans, when it covers a stretch. */
+	duration?: number;
+}
+
 export interface ApiStorageStatus {
 	/** protected: the browser keeps the data; at-risk: it may delete it (low disk, or Safari's 7-day rule); unknown: it does not say. */
 	level: "protected" | "at-risk" | "unknown";
@@ -216,6 +225,8 @@ export interface ApiTrackInfo {
 	lane: "overlay" | "main" | "audio";
 	muted?: boolean;
 	hidden?: boolean;
+	/** Locked: its clips cannot be selected or edited and ripple edits leave it alone. */
+	locked?: boolean;
 	elements: ApiElementInfo[];
 }
 
@@ -635,6 +646,24 @@ export interface EditorApiMethods {
 		params: { trackId: string; hidden: boolean };
 		result: ApiTrackInfo;
 	};
+	/** Locks a track (its clips cannot be selected, moved, trimmed, split or deleted; ripple edits skip it; nothing new lands on it) or unlocks it. */
+	"timeline.setTrackLocked": {
+		params: { trackId: string; locked: boolean };
+		result: ApiTrackInfo;
+	};
+	/** Selects every clip on unlocked tracks overlapping `[from, to)` seconds (default: the in and out marks). */
+	"selection.selectRange": {
+		params: { from?: number; to?: number };
+		result: { trackId: string; elementId: string }[];
+	};
+	/** The active scene's markers (the timeline's bookmarks), sorted by time. */
+	"markers.list": { params: Record<string, never>; result: ApiMarker[] };
+	/** Adds a marker at `time` seconds (default: the playhead); a marker already there is updated instead. */
+	"markers.add": { params: { time?: number; note?: string; color?: string; duration?: number }; result: ApiMarker[] };
+	"markers.update": { params: { time: number; note?: string | null; color?: string | null; duration?: number | null }; result: ApiMarker[] };
+	"markers.remove": { params: { time: number }; result: ApiMarker[] };
+	/** The markers as YouTube chapters (`MM:SS Title` lines from 00:00). */
+	"markers.chapters": { params: Record<string, never>; result: { text: string } };
 
 	"playback.getState": {
 		params: Record<string, never>;

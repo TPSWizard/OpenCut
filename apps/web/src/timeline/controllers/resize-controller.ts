@@ -207,6 +207,7 @@ export class ResizeController {
 	}): void {
 		event.stopPropagation();
 		event.preventDefault();
+		if (track.locked) return;
 
 		// UI should prevent this, but be explicit: a new resize start
 		// means the previous one is abandoned, not silently replaced.

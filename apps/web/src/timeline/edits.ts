@@ -98,6 +98,8 @@ export function rippleDeletePlan({
 	const merged = mergeSpans({ spans });
 	const moves: RipplePlan["moves"] = [];
 	for (const track of tracks) {
+		// Locked tracks stay where they are.
+		if (track.locked) continue;
 		for (const element of track.elements as TimelineElement[]) {
 			if (removedIds.has(element.id)) continue;
 			let shift = 0;
@@ -134,6 +136,7 @@ export function deleteRangePlan({
 	const moves: RipplePlan["moves"] = [];
 	const length = Math.max(0, to - from);
 	for (const track of tracks) {
+		if (track.locked) continue;
 		for (const element of track.elements as TimelineElement[]) {
 			const end = element.startTime + element.duration;
 			if (element.startTime >= from && end <= to) {
@@ -156,8 +159,32 @@ export function elementsCrossing({
 }): ElementRef[] {
 	const refs: ElementRef[] = [];
 	for (const track of tracks) {
+		if (track.locked) continue;
 		for (const element of track.elements as TimelineElement[]) {
 			if (element.startTime < time && element.startTime + element.duration > time) {
+				refs.push({ trackId: track.id, elementId: element.id });
+			}
+		}
+	}
+	return refs;
+}
+
+/** Clips on unlocked tracks that overlap `[from, to)` (in either order). */
+export function elementsInRange({
+	tracks,
+	from,
+	to,
+}: {
+	tracks: TimelineTrack[];
+	from: number;
+	to: number;
+}): ElementRef[] {
+	const [start, end] = from <= to ? [from, to] : [to, from];
+	const refs: ElementRef[] = [];
+	for (const track of tracks) {
+		if (track.locked) continue;
+		for (const element of track.elements as TimelineElement[]) {
+			if (element.startTime < end && element.startTime + element.duration > start) {
 				refs.push({ trackId: track.id, elementId: element.id });
 			}
 		}

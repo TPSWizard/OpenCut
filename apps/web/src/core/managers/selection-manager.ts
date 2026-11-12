@@ -15,9 +15,7 @@ export class SelectionManager {
 	private selectedMaskPoints: SelectedMaskPointSelection | null = null;
 	private listeners = new Set<() => void>();
 
-	constructor(editor: EditorCore) {
-		void editor;
-	}
+	constructor(private editor: EditorCore) {}
 
 	getSelectedElements(): ElementRef[] {
 		return this.selectedElements;
@@ -63,7 +61,12 @@ export class SelectionManager {
 	}
 
 	setSelectedElements({ elements }: { elements: ElementRef[] }): void {
-		this.selectedElements = elements;
+		// Clips on locked tracks are never selected.
+		const tracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		const locked = new Set(
+			tracks ? [...tracks.overlay, tracks.main, ...tracks.audio].filter((track) => track.locked).map((track) => track.id) : [],
+		);
+		this.selectedElements = locked.size > 0 ? elements.filter((ref) => !locked.has(ref.trackId)) : elements;
 		this.selectedKeyframes = [];
 		this.keyframeSelectionAnchor = null;
 		this.selectedMaskPoints = null;

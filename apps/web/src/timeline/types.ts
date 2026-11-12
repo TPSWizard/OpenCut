@@ -33,6 +33,8 @@ export type TrackType = "video" | "text" | "audio" | "graphic" | "effect";
 interface BaseTrack {
 	id: string;
 	name: string;
+	/** A locked track's clips cannot be selected, moved, trimmed, split or deleted, ripple edits leave them in place, and nothing new lands on it. */
+	locked?: boolean;
 }
 
 export interface VideoTrack extends BaseTrack {

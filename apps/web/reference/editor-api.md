@@ -72,6 +72,13 @@ methods answer with the error code `no_project` before that.
 | `timeline.duplicate` | `{ elements }` | `ApiElementRef[]` |
 | `timeline.addTrack` / `timeline.removeTrack` | `{ type, index? }` / `{ trackId }` | `ApiTrackInfo` / `{ removed: true }` |
 | `timeline.setTrackMuted` / `timeline.setTrackHidden` | `{ trackId, muted }` / `{ trackId, hidden }` | `ApiTrackInfo` |
+| `timeline.setTrackLocked` | `{ trackId, locked }` | `ApiTrackInfo` — a locked track's clips cannot be selected, moved, trimmed, split or deleted; ripple and range deletes leave it in place; new clips never land on it. `ApiTrackInfo.locked` reports it (the desktop editor reads and writes the same flag in bundles) |
+| `selection.selectRange` | `{ from?, to? }` (seconds; default: the in and out marks) | `ElementRef[]` — selects every clip on unlocked tracks that overlaps the range |
+| `markers.list` | – | `ApiMarker[]` `{ time, note?, color?, duration? }` (seconds) — the active scene's bookmarks; the desktop editor keeps them as project markers |
+| `markers.add` | `{ time?, note?, color?, duration? }` | `ApiMarker[]` — adds a marker (default: at the playhead); one already there is updated |
+| `markers.update` | `{ time, note?, color?, duration? }` (null clears) | `ApiMarker[]` |
+| `markers.remove` | `{ time }` | `ApiMarker[]` |
+| `markers.chapters` | – | `{ text }` — the markers as YouTube chapters (`MM:SS Title`, from 00:00) |
 | `playback.getState` / `play` / `pause` / `seek` | – / – / – / `{ time }` | `ApiPlaybackState` |
 | `selection.get` / `set` / `clear` | – / `{ elements }` / – | `ApiElementRef[]` |
 | `history.undo` / `redo` / `state` | – | `{ canUndo, canRedo }` |

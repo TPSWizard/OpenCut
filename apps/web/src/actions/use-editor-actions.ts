@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useActionHandler } from "@/actions/use-action-handler";
-import { allTracks, collectEditPoints, nextEditPoint, previousEditPoint } from "@/timeline/edits";
+import { allTracks, collectEditPoints, elementsInRange, nextEditPoint, previousEditPoint } from "@/timeline/edits";
+import { toast } from "sonner";
 import { DeleteRangeCommand, RippleDeleteCommand } from "@/commands/timeline/element/ripple-delete";
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
@@ -409,6 +410,25 @@ export function useEditorActions() {
 			editor.command.execute({ command });
 			const first = command.getPlan()?.remove[0];
 			if (first) setElementSelection({ elements: [] });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"select-range",
+		() => {
+			const { markIn, markOut } = useTimelineStore.getState();
+			if (markIn === null && markOut === null) {
+				toast.info("Set an in mark (I) or an out mark (O) first");
+				return;
+			}
+			const scene = editor.scenes.getActiveScene();
+			const elements = elementsInRange({
+				tracks: allTracks({ tracks: scene.tracks }),
+				from: markIn ?? 0,
+				to: markOut ?? editor.timeline.getTotalDuration(),
+			});
+			setElementSelection({ elements });
 		},
 		undefined,
 	);

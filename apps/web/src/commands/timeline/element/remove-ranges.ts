@@ -106,7 +106,7 @@ export class RemoveRangesCommand extends Command {
 					mapTracks({
 						tracks: editor.scenes.getActiveScene().tracks,
 						update: (candidate) =>
-							this.ripple === "all" || candidate.id === this.trackId
+							(this.ripple === "all" || candidate.id === this.trackId) && !candidate.locked
 								? ({
 										...candidate,
 										elements: rippleShiftElements({

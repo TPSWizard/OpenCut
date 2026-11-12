@@ -38,6 +38,9 @@ import {
 	type MediaTime,
 } from "@/wasm";
 import { useProxyJobs } from "@/media/proxy-store";
+import { chaptersText } from "@/timeline/bookmarks/chapters";
+import { elementsInRange } from "@/timeline/edits";
+import { useTimelineStore } from "@/timeline/timeline-store";
 import { needsBackup, readBackups, readDurability, requestPersistence } from "@/services/storage/durability";
 import { readStorageQuotaStatus } from "@/services/storage/quota";
 import { storageService } from "@/services/storage/service";
@@ -64,6 +67,7 @@ import {
 	type ApiMediaInfo,
 	type ApiPreviewSettings,
 	type ApiStorageStatus,
+	type ApiMarker,
 	type ApiPlaybackState,
 	type ApiProjectInfo,
 	type ApiProjectSummary,
@@ -323,6 +327,7 @@ function toTrackInfo({
 		lane: laneOf({ tracks, trackId: track.id }),
 		muted: "muted" in track ? track.muted : undefined,
 		hidden: "hidden" in track ? track.hidden : undefined,
+		...(track.locked ? { locked: true } : {}),
 		elements: (track.elements as TimelineElement[]).map((element) =>
 			toElementInfo({ element, trackId: track.id }),
 		),
@@ -445,6 +450,26 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		});
 	};
 
+	/** Refuses edits to clips on a locked track (reads are fine). */
+	const requireUnlocked = (track: TimelineTrack) => {
+		if (track.locked) {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: `Track "${track.name}" is locked; unlock it with timeline.setTrackLocked to edit its clips`,
+			});
+		}
+	};
+
+	const unlockedRefs = (locators: ApiElementLocator[]): ApiElementRef[] => {
+		const refs = resolveRefs(locators);
+		const tracks = allTracks(tracksOf());
+		for (const ref of refs) {
+			const track = tracks.find((candidate) => candidate.id === ref.trackId);
+			if (track) requireUnlocked(track);
+		}
+		return refs;
+	};
+
 	const resolveRefs = (locators: ApiElementLocator[]): ApiElementRef[] => {
 		if (!Array.isArray(locators)) {
 			throw new EditorApiError({
@@ -537,6 +562,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				(track.elements as TimelineElement[]).map((element) => element.id),
 			),
 		);
+
+	const listMarkers = (): ApiMarker[] => {
+		requireProject();
+		return [...editor.scenes.getActiveScene().bookmarks]
+			.sort((a, b) => a.time - b.time)
+			.map((bookmark) => ({
+				time: mediaTimeToSeconds({ time: bookmark.time }),
+				...(bookmark.note ? { note: bookmark.note } : {}),
+				...(bookmark.color ? { color: bookmark.color } : {}),
+				...(bookmark.duration ? { duration: mediaTimeToSeconds({ time: bookmark.duration }) } : {}),
+			}));
+	};
 
 	const importFiles = async (files: File[]): Promise<ApiMediaInfo[]> => {
 		const project = requireProject();
@@ -874,6 +911,68 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			if (!updated) throw new EditorApiError({ code: "not_found", message: `No media ${mediaId}` });
 			return toMediaInfo(updated);
 		},
+		"timeline.setTrackLocked": ({ trackId, locked }) => {
+			requireProject();
+			const track = editor.timeline.getTrackById({ trackId });
+			if (!track) throw new EditorApiError({ code: "not_found", message: `No track ${trackId}` });
+			if (Boolean(track.locked) !== Boolean(locked)) {
+				editor.timeline.setTrackLocked({ trackId, locked: Boolean(locked) });
+			}
+			const updated = editor.timeline.getTrackById({ trackId });
+			if (!updated) throw new EditorApiError({ code: "not_found", message: `No track ${trackId}` });
+			return toTrackInfo({ track: updated, tracks: editor.scenes.getActiveScene().tracks });
+		},
+		"selection.selectRange": ({ from, to }) => {
+			requireProject();
+			const { markIn, markOut } = useTimelineStore.getState();
+			const start = from !== undefined ? mediaTimeFromSeconds({ seconds: Number(from) }) : (markIn ?? 0);
+			const end =
+				to !== undefined ? mediaTimeFromSeconds({ seconds: Number(to) }) : (markOut ?? editor.timeline.getTotalDuration());
+			const refs = elementsInRange({ tracks: allTracks(editor.scenes.getActiveScene().tracks), from: start, to: end });
+			editor.selection.setSelectedElements({ elements: refs });
+			return editor.selection.getSelectedElements().map((ref) => ({ trackId: ref.trackId, elementId: ref.elementId }));
+		},
+		"markers.list": () => listMarkers(),
+		"markers.add": async ({ time, note, color, duration }) => {
+			requireProject();
+			const at = time !== undefined ? mediaTimeFromSeconds({ seconds: Number(time) }) : editor.playback.getCurrentTime();
+			if (!editor.scenes.isBookmarked({ time: at })) await editor.scenes.toggleBookmark({ time: at });
+			const existing = editor.scenes.getBookmarkAtTime({ time: at });
+			const updates: Record<string, unknown> = {};
+			if (note !== undefined) updates.note = note || undefined;
+			if (color !== undefined) updates.color = color || undefined;
+			if (duration !== undefined) updates.duration = duration ? mediaTimeFromSeconds({ seconds: Number(duration) }) : undefined;
+			if (Object.keys(updates).length > 0) {
+				await editor.scenes.updateBookmark({ time: (existing?.time ?? at) as MediaTime, updates });
+			}
+			return listMarkers();
+		},
+		"markers.update": async ({ time, note, color, duration }) => {
+			requireProject();
+			const at = mediaTimeFromSeconds({ seconds: Number(time) });
+			if (!editor.scenes.isBookmarked({ time: at })) {
+				throw new EditorApiError({ code: "not_found", message: `No marker at ${time} s` });
+			}
+			const updates: Record<string, unknown> = {};
+			if (note !== undefined) updates.note = note || undefined;
+			if (color !== undefined) updates.color = color || undefined;
+			if (duration !== undefined) updates.duration = duration ? mediaTimeFromSeconds({ seconds: Number(duration) }) : undefined;
+			await editor.scenes.updateBookmark({ time: at, updates });
+			return listMarkers();
+		},
+		"markers.remove": async ({ time }) => {
+			requireProject();
+			const at = mediaTimeFromSeconds({ seconds: Number(time) });
+			if (!editor.scenes.isBookmarked({ time: at })) {
+				throw new EditorApiError({ code: "not_found", message: `No marker at ${time} s` });
+			}
+			await editor.scenes.removeBookmark({ time: at });
+			return listMarkers();
+		},
+		"markers.chapters": () => {
+			requireProject();
+			return { text: chaptersText({ bookmarks: editor.scenes.getActiveScene().bookmarks, ticksPerSecond: TICKS_PER_SECOND }) };
+		},
 		"storage.status": () => storageStatus(),
 		"storage.persist": async () => {
 			await requestPersistence();
@@ -1060,6 +1159,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		},
 		"timeline.updateElement": ({ elementId, trackId, patch }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
 			if (!patch || typeof patch !== "object") {
 				throw new EditorApiError({
 					code: "invalid_params",
@@ -1245,6 +1345,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		},
 		"timeline.moveElement": ({ elementId, trackId, startTime }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
 			editor.timeline.updateElementTrim({
 				elementId: element.id,
 				trimStart: element.trimStart,
@@ -1255,11 +1356,11 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		},
 		"timeline.split": ({ elements, time }) =>
 			editor.timeline.splitElements({
-				elements: resolveRefs(elements),
+				elements: unlockedRefs(elements),
 				splitTime: ticks(time, "time"),
 			}),
 		"timeline.delete": ({ elements }) => {
-			const refs = resolveRefs(elements);
+			const refs = unlockedRefs(elements);
 			editor.timeline.deleteElements({ elements: refs });
 			return { deleted: refs.length };
 		},

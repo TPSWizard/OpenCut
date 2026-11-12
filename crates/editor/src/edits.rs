@@ -70,8 +70,9 @@ pub fn ripple_delete_plan(project: &Project, element_ids: &[String]) -> RipplePl
         .collect();
     let merged = merge_spans(spans);
     let mut moves = Vec::new();
-    for (_, element) in project.elements() {
-        if element_ids.contains(&element.id) {
+    for (track, element) in project.elements() {
+        // Locked tracks stay where they are.
+        if element_ids.contains(&element.id) || track.locked {
             continue;
         }
         let shift = merged
@@ -95,7 +96,7 @@ pub fn ripple_delete_plan(project: &Project, element_ids: &[String]) -> RipplePl
 pub fn delete_range_plan(project: &Project, from: MediaTime, to: MediaTime) -> RipplePlan {
     let length = (to - from).max(MediaTime::ZERO);
     let mut plan = RipplePlan { removed: length, ..Default::default() };
-    for (_, element) in project.elements() {
+    for (_, element) in project.elements().filter(|(track, _)| !track.locked) {
         if element.start_time >= from && element.end_time() <= to {
             plan.remove.push(element.id.clone());
         } else if element.start_time >= to && length > MediaTime::ZERO {
@@ -110,6 +111,7 @@ pub fn delete_range_plan(project: &Project, from: MediaTime, to: MediaTime) -> R
 pub fn elements_crossing(project: &Project, time: MediaTime, margin: MediaTime) -> Vec<String> {
     project
         .elements()
+        .filter(|(track, _)| !track.locked)
         .filter(|(_, element)| element.start_time + margin < time && element.end_time() - margin > time)
         .map(|(_, element)| element.id.clone())
         .collect()
@@ -174,5 +176,50 @@ mod tests {
         let plan = delete_range_plan(&project, seconds(10.0), seconds(15.0));
         assert_eq!(plan.remove, vec![ids[1].clone(), ids[3].clone()]);
         assert_eq!(plan.moves, vec![(ids[2].clone(), seconds(15.0))]);
+    }
+
+    #[test]
+    fn locked_tracks_refuse_edits_and_stay_put_in_ripples() {
+        use crate::{Command, EditorError, Element, TrackPlacement, apply};
+        let seconds = |value: f64| MediaTime::from_seconds_f64(value).unwrap();
+        let mut project = Project::new("Lock");
+        let insert = |project: &mut Project, start: f64| {
+            let mut element = Element::text("t", seconds(start));
+            element.duration = seconds(2.0);
+            apply(project, &Command::InsertElement { element, placement: TrackPlacement::Auto }).unwrap().element_refs()[0].clone()
+        };
+        let first = insert(&mut project, 0.0);
+        let later = insert(&mut project, 4.0);
+        // A second text track (overlapping) holds the clip that will be locked.
+        let locked_clip = insert(&mut project, 1.0);
+        assert_ne!(locked_clip.track_id, first.track_id);
+        apply(&mut project, &Command::SetTrackLocked { track_id: locked_clip.track_id.clone(), locked: true }).unwrap();
+
+        let moved = apply(&mut project, &Command::MoveElement { element_id: locked_clip.element_id.clone(), track_id: None, start_time: seconds(9.0) });
+        assert!(matches!(moved, Err(EditorError::TrackLocked(_))));
+        assert!(apply(&mut project, &Command::DeleteElements(vec![locked_clip.element_id.clone()])).is_err());
+        let onto = apply(
+            &mut project,
+            &Command::MoveElement { element_id: later.element_id.clone(), track_id: Some(locked_clip.track_id.clone()), start_time: seconds(5.0) },
+        );
+        assert!(matches!(onto, Err(EditorError::TrackLocked(_))), "nothing moves onto a locked track");
+
+        // Ripple-deleting the first clip shifts the unlocked track only.
+        apply(&mut project, &Command::RippleDelete { element_ids: vec![first.element_id.clone()] }).unwrap();
+        assert_eq!(project.element(&later.element_id).unwrap().1.start_time, seconds(2.0));
+        assert_eq!(project.element(&locked_clip.element_id).unwrap().1.start_time, seconds(1.0));
+
+        // A range delete skips the locked clip it crosses.
+        apply(&mut project, &Command::DeleteRange { from: seconds(1.5), to: seconds(2.5) }).unwrap();
+        let kept = project.element(&locked_clip.element_id).unwrap().1;
+        assert_eq!((kept.start_time, kept.duration), (seconds(1.0), seconds(2.0)));
+
+        // New clips never land on the locked track.
+        let placed = insert(&mut project, 20.0);
+        assert_ne!(placed.track_id, locked_clip.track_id);
+        assert!(apply(&mut project, &Command::RemoveTrack { track_id: locked_clip.track_id.clone() }).is_err());
+
+        apply(&mut project, &Command::SetTrackLocked { track_id: locked_clip.track_id.clone(), locked: false }).unwrap();
+        apply(&mut project, &Command::DeleteElements(vec![locked_clip.element_id])).unwrap();
     }
 }

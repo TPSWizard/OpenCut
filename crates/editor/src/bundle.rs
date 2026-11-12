@@ -215,7 +215,15 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
         .or_else(|| web.scenes.iter().find(|scene| scene.is_main))
         .or_else(|| web.scenes.first());
     let mut tracks = Vec::new();
+    let mut markers = Vec::new();
     if let Some(scene) = scene {
+        // Bookmarks are the desktop's markers; times are ticks on both sides.
+        for value in &scene.bookmarks {
+            match serde_json::from_value::<crate::Marker>(value.clone()) {
+                Ok(marker) => markers.push(marker),
+                Err(_) => skipped.push("a bookmark this editor cannot read".to_owned()),
+            }
+        }
         if web.scenes.len() > 1 {
             skipped.push(format!(
                 "{} other scene(s); only \"{}\" was imported",
@@ -262,6 +270,7 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     };
     project.media = media;
     project.tracks = tracks;
+    project.markers = crate::normalize_markers(&markers);
     store.save(&project)?;
     Ok(ImportReport { project, skipped })
 }
@@ -311,6 +320,7 @@ fn convert_track(track: &Value, lane: Lane, skipped: &mut Vec<String>) -> Option
     }
     native.muted = track.get("muted").and_then(Value::as_bool).unwrap_or(false);
     native.hidden = track.get("hidden").and_then(Value::as_bool).unwrap_or(false);
+    native.locked = track.get("locked").and_then(Value::as_bool).unwrap_or(false);
     for element in track.get("elements").and_then(Value::as_array).into_iter().flatten() {
         let name = element.get("name").and_then(Value::as_str).unwrap_or("").to_owned();
         let kind = element.get("type").and_then(Value::as_str).unwrap_or("");
@@ -390,7 +400,7 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
         name: "Main scene".to_owned(),
         is_main: true,
         tracks: WebTracks { overlay, main, audio },
-        bookmarks: Vec::new(),
+        bookmarks: project.markers.iter().filter_map(|marker| serde_json::to_value(marker).ok()).collect(),
         created_at: iso_from_millis(project.created_at),
         updated_at: now.clone(),
     };
@@ -469,6 +479,9 @@ fn web_track(track: &Track) -> Value {
         "elements": elements,
     });
     let object = value.as_object_mut().expect("object");
+    if track.locked {
+        object.insert("locked".to_owned(), json!(true));
+    }
     match track.kind {
         TrackKind::Video => {
             object.insert("muted".to_owned(), json!(track.muted));
@@ -597,6 +610,16 @@ mod tests {
             .or_default()
             .upsert(seconds(0.0), 0.0, None);
         apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+        let text_track = project.tracks[0].id.clone();
+        apply(&mut project, &Command::SetTrackLocked { track_id: text_track, locked: true }).unwrap();
+        apply(
+            &mut project,
+            &Command::SetMarkers(vec![
+                crate::Marker { note: Some("Hook".into()), color: Some("#ff0000".into()), ..crate::Marker::at(seconds(0.5)) },
+                crate::Marker { duration: Some(seconds(1.0)), ..crate::Marker::at(seconds(2.0)) },
+            ]),
+        )
+        .unwrap();
 
         let bundle_path = dir.path().join("out.opencut.zip");
         export_bundle(&project, &bundle_path).unwrap();
@@ -611,6 +634,10 @@ mod tests {
         assert_eq!(value["project"]["settings"]["canvasSize"]["width"], 640);
         assert_eq!(value["project"]["scenes"][0]["tracks"]["main"]["type"], "video");
         assert_eq!(value["project"]["scenes"][0]["tracks"]["overlay"][0]["type"], "text");
+        assert_eq!(value["project"]["scenes"][0]["tracks"]["overlay"][0]["locked"], true);
+        assert_eq!(value["project"]["scenes"][0]["bookmarks"][0]["time"], 60_000, "ticks, like the web");
+        assert_eq!(value["project"]["scenes"][0]["bookmarks"][0]["note"], "Hook");
+        assert_eq!(value["project"]["scenes"][0]["bookmarks"][1]["duration"], 120_000);
         assert_eq!(value["media"][0]["file"], "media/img.png");
         assert_eq!(value["media"][0]["size"], 15);
         let entry = archive.by_name("media/img.png").unwrap();
@@ -625,6 +652,9 @@ mod tests {
         let store = ProjectStore::new(dir.path().join("projects"));
         let report = import_bundle(&bundle_path, &store).unwrap();
         assert!(report.skipped.is_empty(), "{:?}", report.skipped);
+        let imported = store.load(&report.project.id).unwrap();
+        assert_eq!(imported.markers, project.markers);
+        assert!(imported.tracks[0].locked);
         let imported = report.project;
         assert_eq!(imported.id, project.id, "a free id is kept");
         assert_eq!(imported.name, "Bundle me");
