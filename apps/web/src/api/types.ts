@@ -473,6 +473,15 @@ export interface EditorApiMethods {
 		result: { trackId: string; elements: ApiElementRef[] };
 	};
 	/**
+	 * The scene's captions (visible text elements, or those of one track) as
+	 * a subtitle file: SubRip, WebVTT (inline word timestamps) or ASS (`\k`
+	 * karaoke tags, one style per look). `content` is the file's text.
+	 */
+	"captions.export": {
+		params: { format: "srt" | "vtt" | "ass"; trackId?: string };
+		result: { format: "srt" | "vtt" | "ass"; fileName: string; cueCount: number; content: string };
+	};
+	/**
 	 * Transcribes the scene's audio in the page (Whisper, downloaded on first
 	 * use) and, unless `insert` is false, inserts the captions.
 	 */

@@ -155,6 +155,42 @@ impl Shell {
         .detach();
     }
 
+    /// Writes the captions (the text elements) as a subtitle file; the
+    /// extension the user picks (`.srt`, `.vtt`, `.ass`) chooses the format.
+    fn export_captions(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let name = state.read(cx).project().name.clone();
+        let suggested = format!("{}.srt", bundle_file_name(&name));
+        let directory = std::env::current_dir().unwrap_or_default();
+        let receiver = cx.prompt_for_new_path(&directory, Some(&suggested));
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(mut path))) = receiver.await else {
+                return;
+            };
+            if editor::SubtitleFormat::from_path(&path).is_none() {
+                path.set_extension("srt");
+            }
+            let Ok(project) = state.update(cx, |state, _| state.project().clone()) else {
+                return;
+            };
+            let shown = path.display().to_string();
+            let result = cx
+                .background_executor()
+                .spawn(async move { editor::export_subtitles(&project, &path, None) })
+                .await;
+            state
+                .update(cx, |state, cx| match result {
+                    Ok(count) => state.set_status(format!("Saved {count} caption(s) to {shown}"), cx),
+                    Err(error) => state.set_status(format!("Captions not saved: {error}"), cx),
+                })
+                .ok();
+        })
+        .detach();
+    }
+
     fn with_state(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut EditorState, &mut Context<EditorState>)) {
         if let Some(open) = &self.editor {
             open.state.update(cx, f);
@@ -258,6 +294,12 @@ impl Render for Shell {
                     .size(ButtonSize::Small)
                     .on_click(move |_, _, cx| MediaPanel::import(&state, cx))
             })
+            .child(
+                Button::new("export-captions", "Captions…")
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.export_captions(cx))),
+            )
             .child(
                 Button::new("export-bundle", "Save bundle…")
                     .variant(ButtonVariant::Outline)

@@ -284,6 +284,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.setTransition { elementId, trackId?, transition: { type, duration?, params? } | null } (a gl-transitions name; plays centred on the cut to the next clip)
 - transitions.list → [{ name, description, tags, params[{ name, kind, default, min, max }] }]
 - captions.insert { captions[{ text, startTime, duration, words?[{ text, start, end }], style? }], style?: { highlight?: none|word|box|fill, activeColor?, boxColor? } } → { trackId, elements[] } (timed words make the spoken word highlight)
+- captions.export { format: "srt" | "vtt" | "ass", trackId? } → { format, fileName, cueCount, content }
 - captions.transcribe { language?, modelId?, wordsPerCaption?, insert?, style? } → { text, words[], captions[], trackId } (Whisper in the page; the model downloads on first use)
 - timeline.split { elements, time } / timeline.delete { elements } / timeline.duplicate { elements }
 - timeline.addTrack { type, index? } / timeline.removeTrack { trackId }

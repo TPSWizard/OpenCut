@@ -24,6 +24,7 @@ mod params;
 mod platforms;
 mod silence;
 mod store;
+mod subtitles;
 mod transition;
 
 pub use animation::{
@@ -73,6 +74,10 @@ pub use platforms::{
 };
 pub use silence::{RippleScope, SilenceOptions, silence_intervals};
 pub use store::{ProjectStore, ProjectSummary};
+pub use subtitles::{
+    ExportCue, ExportCueStyle, ExportWord, SubtitleFormat, ass_colour, ass_placement, collect_caption_cues,
+    export_subtitles, subtitle_file_name, write_ass, write_srt, write_subtitles, write_vtt,
+};
 pub use time;
 
 /// Generates a fresh identifier for projects, media, tracks and elements.

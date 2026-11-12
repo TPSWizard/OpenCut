@@ -37,6 +37,8 @@ opencut-render: render a ConzaCut project from the command line
   --stills every=<s>|at=<s,s,...>   write PNG stills to --stills-dir
   --stills-dir <dir>       where stills go (default: stills/ next to --out, or ./stills)
   --contact-sheet <png>    tile the stills (320 px wide each) into one image
+  --captions <file>        write the captions as .srt, .vtt (inline word times) or
+                           .ass (karaoke \\k tags); the extension picks the format
   --quiet                  no progress on stderr
   --help                   this text
 
@@ -59,6 +61,7 @@ struct Args {
     stills_at: Vec<f64>,
     stills_dir: Option<PathBuf>,
     contact_sheet: Option<PathBuf>,
+    captions: Option<PathBuf>,
     quiet: bool,
 }
 
@@ -78,6 +81,7 @@ fn parse_args() -> Result<Args, String> {
         stills_at: Vec::new(),
         stills_dir: None,
         contact_sheet: None,
+        captions: None,
         quiet: false,
     };
     let mut it = std::env::args().skip(1);
@@ -129,6 +133,7 @@ fn parse_args() -> Result<Args, String> {
             }
             "--stills-dir" => args.stills_dir = Some(PathBuf::from(value()?)),
             "--contact-sheet" => args.contact_sheet = Some(PathBuf::from(value()?)),
+            "--captions" => args.captions = Some(PathBuf::from(value()?)),
             "--quiet" => args.quiet = true,
             "--help" | "-h" => {
                 print!("{USAGE}");
@@ -140,8 +145,13 @@ fn parse_args() -> Result<Args, String> {
     if args.project.is_none() && args.bundle.is_none() {
         return Err(format!("give --project <dir> or --bundle <file>\n\n{USAGE}"));
     }
-    if args.out.is_none() && args.stills_every.is_none() && args.stills_at.is_empty() && args.frame_at.is_none() {
-        return Err("nothing to do: give --out, --frame-at or --stills".to_owned());
+    if args.out.is_none()
+        && args.stills_every.is_none()
+        && args.stills_at.is_empty()
+        && args.frame_at.is_none()
+        && args.captions.is_none()
+    {
+        return Err("nothing to do: give --out, --frame-at, --stills or --captions".to_owned());
     }
     Ok(args)
 }
@@ -223,6 +233,20 @@ fn run() -> Result<(), String> {
     let args = parse_args()?;
     let mut keep_alive = None;
     let mut project = load_project(&args, &mut keep_alive)?;
+    if let Some(path) = &args.captions {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
+            }
+        }
+        let count = editor::export_subtitles(&project, path, None)?;
+        if !args.quiet {
+            eprintln!("opencut-render: {count} caption(s) in {}", path.display());
+        }
+        if args.out.is_none() && args.stills_every.is_none() && args.stills_at.is_empty() && args.frame_at.is_none() {
+            return Ok(());
+        }
+    }
 
     // Overrides: preset first, then explicit size and fps on top.
     let mut platform: Option<PlatformEncode> = None;

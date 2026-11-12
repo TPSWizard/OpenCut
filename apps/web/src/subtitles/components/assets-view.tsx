@@ -31,6 +31,15 @@ import {
 import { generateCaptions, type GenerateCaptionsStep } from "@/captions/generate";
 import { Input } from "@/components/ui/input";
 import { parseSubtitleFile } from "@/subtitles/parse";
+import {
+	SUBTITLE_FORMATS,
+	collectCaptionCues,
+	isSubtitleFormat,
+	subtitleFileName,
+	writeSubtitles,
+	type SubtitleFormat,
+} from "@/subtitles/write";
+import { downloadBuffer } from "@/export";
 import { Spinner } from "@/components/ui/spinner";
 import {
 	Section,
@@ -104,6 +113,32 @@ export function Captions() {
 		GENERATED_CAPTION_HIGHLIGHT,
 	);
 	const [processing, dispatch] = useReducer(processingReducer, IDLE_STATE);
+	const [exportFormat, setExportFormat] = useState<SubtitleFormat>("srt");
+	const [exportNote, setExportNote] = useState<string | null>(null);
+
+	const handleExportCaptions = () => {
+		const project = editor.project.getActive();
+		const scene = editor.scenes.getActiveScene();
+		const tracks = [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio];
+		const cues = collectCaptionCues({ tracks });
+		if (cues.length === 0) {
+			setExportNote("No captions on the timeline: text elements on visible text tracks are exported.");
+			return;
+		}
+		const content = writeSubtitles({
+			format: exportFormat,
+			cues,
+			canvasSize: project.settings.canvasSize,
+			title: project.metadata.name,
+		});
+		const fileName = subtitleFileName({ name: project.metadata.name, format: exportFormat });
+		downloadBuffer({
+			buffer: new TextEncoder().encode(content).buffer as ArrayBuffer,
+			filename: fileName,
+			mimeType: exportFormat === "vtt" ? "text/vtt" : "text/plain",
+		});
+		setExportNote(`Saved ${cues.length} caption(s) as ${fileName}.`);
+	};
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const editor = useEditor();
@@ -388,7 +423,42 @@ export function Captions() {
 								</SelectContent>
 							</Select>
 						</SectionField>
+						<SectionField label="Export">
+							<div className="flex items-center gap-2">
+								<Select
+									value={exportFormat}
+									onValueChange={(value) => {
+										if (isSubtitleFormat(value)) setExportFormat(value);
+									}}
+								>
+									<SelectTrigger aria-label="Subtitle format">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{SUBTITLE_FORMATS.map((format) => (
+											<SelectItem key={format.id} value={format.id}>
+												{format.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleExportCaptions}
+									disabled={isProcessing}
+								>
+									Download
+								</Button>
+							</div>
+						</SectionField>
 					</SectionFields>
+					{exportNote && (
+						<p className="text-xs text-muted-foreground" role="status">
+							{exportNote}
+						</p>
+					)}
 
 					<Button
 						type="button"

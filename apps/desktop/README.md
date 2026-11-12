@@ -216,6 +216,26 @@ resolution and pipes BGRA frames into `media::Encoder`.
 - **Linux**: renders via Vulkan (Blade), windows via Wayland or X11 (both enabled by default). System packages (Debian/Ubuntu names): `libvulkan1` + working Vulkan drivers, `libwayland-dev`, `libx11-xcb-dev`, `libxkbcommon-x11-dev`, `libfontconfig-dev`, `libasound2-dev` (audio), plus a C toolchain and `cmake`.
 - **WSL2/WSLg**: uses XWayland automatically when available. GPUI 0.2.2 requires `xdg_wm_base` v2–5, while WSLg advertises v1.
 
+## Exporting captions
+
+**Captions…** in the header writes the timeline's captions (the text elements
+on visible text tracks, in order) as a subtitle file. The extension you give
+the file picks the format: `.srt` (SubRip), `.vtt` (WebVTT, with an inline
+timestamp before each word so players can style the words spoken so far) or
+`.ass` (Advanced SubStation Alpha, with one style per distinct look and `\k`
+karaoke tags carrying each word's duration). Plain text elements export too,
+without word tags. The same writers sit behind `opencut-render --captions
+<file>` and the web editor's Captions panel and `captions.export` API method,
+and the three produce identical files for the same project. ASS placement is
+derived from each caption's position: the lower third of the canvas maps to
+the bottom alignments, the upper third to the top ones, the rest to the
+middle (an approximation of the editor's free placement).
+
+The desktop draws captions itself when it renders, so burning subtitles in
+needs no libass pass; the bundled FFmpeg does include libass if you want to
+burn an exported `.ass` onto a finished video yourself
+(`ffmpeg -i out.mp4 -vf ass=captions.ass burned.mp4`).
+
 ## Rendering from the command line
 
 `apps/render-cli` builds `opencut-render`, the same renderer without the

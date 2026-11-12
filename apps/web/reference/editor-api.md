@@ -54,6 +54,7 @@ methods answer with the error code `no_project` before that.
 | `timeline.setTransition` | `{ elementId, trackId?, transition: { type, duration?, params? } \| null }` | `ApiElementInfo` |
 | `transitions.list` | – | `ApiTransitionInfo[]` |
 | `captions.insert` | `{ captions: ApiCaption[], style?: ApiCaptionStyle }` | `{ trackId, elements: ApiElementRef[] }` |
+| `captions.export` | `{ format: "srt" \| "vtt" \| "ass", trackId? }` | `{ format, fileName, cueCount, content }` — the visible text elements (or one track's) as a subtitle file; WebVTT carries inline word timestamps and ASS `\k` karaoke tags with one style per look |
 | `captions.transcribe` | `{ language?, modelId?, wordsPerCaption?, insert?, style? }` | `{ text, words, captions, trackId }` (in page: runs Whisper) |
 | `timeline.split` | `{ elements, time }` | `ApiElementRef[]` |
 | `timeline.delete` | `{ elements }` | `{ deleted }` |

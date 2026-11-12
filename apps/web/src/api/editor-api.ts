@@ -9,6 +9,7 @@ import { setElementTransition } from "@/transitions/apply";
 import { generateCaptions, insertGeneratedCaptions } from "@/captions/generate";
 import { isCaptionHighlight, type CaptionStyle } from "@/captions";
 import { insertCaptionChunksAsTextTrack } from "@/subtitles/insert";
+import { collectCaptionCues, isSubtitleFormat, subtitleFileName, writeSubtitles } from "@/subtitles/write";
 import type { SubtitleCue } from "@/subtitles/types";
 import { isTranscriptionModelId } from "@/transcription/models";
 import type { TranscriptionLanguage } from "@/transcription/types";
@@ -949,6 +950,26 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				}
 			}
 			return { trackId, elements };
+		},
+		"captions.export": ({ format, trackId }) => {
+			const project = requireProject();
+			if (!isSubtitleFormat(format)) {
+				throw new EditorApiError({ code: "invalid_params", message: "format must be srt, vtt or ass" });
+			}
+			if (trackId !== undefined) {
+				const track = allTracks(tracksOf()).find((candidate) => candidate.id === trackId);
+				if (!track) {
+					throw new EditorApiError({ code: "not_found", message: `No track ${trackId}` });
+				}
+			}
+			const cues = collectCaptionCues({ tracks: allTracks(tracksOf()) as TimelineTrack[], trackId });
+			const content = writeSubtitles({
+				format,
+				cues,
+				canvasSize: project.settings.canvasSize,
+				title: project.metadata.name,
+			});
+			return { format, fileName: subtitleFileName({ name: project.metadata.name, format }), cueCount: cues.length, content };
 		},
 		"captions.transcribe": async ({ language, modelId, wordsPerCaption, insert, style }) => {
 			requireProject();
