@@ -185,6 +185,7 @@ export async function buildProjectBundle({
 			duration: asset.duration,
 			fps: asset.fps,
 			hasAudio: asset.hasAudio,
+			...(asset.credit ? { credit: asset.credit } : {}),
 			file: entry,
 		});
 	}

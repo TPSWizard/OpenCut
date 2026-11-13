@@ -30,6 +30,21 @@ export interface MediaAssetData {
 	/** Frame size of the stored proxy, when the video has one. */
 	proxyWidth?: number;
 	proxyHeight?: number;
+	/** Where stock media came from and how to credit it. */
+	credit?: StockCredit;
+}
+
+/** The desktop editor's `editor::StockCredit`; bundles carry it on each media entry. */
+export interface StockCredit {
+	provider: string;
+	id: string;
+	title: string;
+	creator: string;
+	creatorUrl?: string;
+	license: string;
+	licenseUrl: string;
+	sourceUrl: string;
+	attribution: string;
 }
 
 export type SerializedScene = Omit<TScene, "createdAt" | "updatedAt"> & {

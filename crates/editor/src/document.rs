@@ -78,6 +78,23 @@ pub enum MediaKind {
     Audio,
 }
 
+/// Where a stock picture or video came from and how to credit it (the web
+/// app's `StockCredit`; bundles carry it on each media entry).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StockCredit {
+    pub provider: String,
+    pub id: String,
+    pub title: String,
+    pub creator: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creator_url: Option<String>,
+    pub license: String,
+    pub license_url: String,
+    pub source_url: String,
+    pub attribution: String,
+}
+
 /// A file the project refers to. Media is referenced by path, never copied.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -780,6 +797,9 @@ pub struct Project {
     /// Saved timeline markers, sorted by time.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub markers: Vec<crate::Marker>,
+    /// Credits for stock media, by media id.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub credits: std::collections::BTreeMap<String, StockCredit>,
 }
 
 impl Project {
@@ -796,6 +816,7 @@ impl Project {
             tracks: vec![Track::new(TrackKind::Video, Lane::Main, "Main")],
             playhead: MediaTime::ZERO,
             markers: Vec::new(),
+            credits: Default::default(),
         }
     }
 

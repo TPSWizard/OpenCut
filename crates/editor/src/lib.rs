@@ -35,6 +35,7 @@ mod picture;
 mod reframe;
 mod voiceover;
 mod shots;
+mod stock;
 mod silence;
 mod store;
 mod subtitles;
@@ -56,7 +57,7 @@ pub use commands::{
     nearest_free_start,
 };
 pub use document::{
-    Cutout,
+    Cutout, StockCredit,
     Background, CanvasSize, CaptionWord, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
@@ -110,6 +111,7 @@ pub use reframe::{
     clip_seconds_for_source, cover_scale, plan_path, plan_reframe, shot_subjects, subject_from_detections,
     visible_fraction,
 };
+pub use stock::{DEFAULT_API_URL, OPENVERSE_LICENSES, StockItem, credits_text, openverse_license_label, parse_openverse};
 pub use shots::{
     FrameScore, HISTOGRAM_CUT_THRESHOLD, ShotOptions, colour_histogram, histogram_distance, pick_cuts, source_to_timeline,
 };

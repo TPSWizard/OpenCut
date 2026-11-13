@@ -308,6 +308,7 @@ class StorageService {
 			hasAudio: mediaAsset.hasAudio,
 			thumbnailUrl: mediaAsset.thumbnailUrl,
 			ephemeral: mediaAsset.ephemeral,
+			...(mediaAsset.credit ? { credit: mediaAsset.credit } : {}),
 			...(mediaAsset.proxyFile
 				? { proxyWidth: mediaAsset.proxyWidth, proxyHeight: mediaAsset.proxyHeight }
 				: {}),
@@ -397,6 +398,7 @@ class StorageService {
 			hasAudio: metadata.hasAudio,
 			thumbnailUrl: metadata.thumbnailUrl,
 			ephemeral: metadata.ephemeral,
+			...(metadata.credit ? { credit: metadata.credit } : {}),
 			...(proxyFile
 				? { proxyFile, proxyWidth: metadata.proxyWidth, proxyHeight: metadata.proxyHeight }
 				: {}),

@@ -297,6 +297,7 @@ export class ProjectManager {
 					hasAudio: data.hasAudio,
 					ephemeral: data.ephemeral,
 					thumbnailUrl: data.thumbnailUrl,
+					...(data.credit ? { credit: data.credit } : {}),
 					file: mediaFile,
 				},
 			});

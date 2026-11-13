@@ -21,6 +21,15 @@ pub(crate) struct MediaPanel {
     show_stickers: bool,
     /// Showing the voice-over tools instead of the media.
     show_voice: bool,
+    /// Showing stock search instead of the media.
+    show_stock: bool,
+    stock_input: Option<Entity<TextInput>>,
+    stock_query: String,
+    stock_provider: &'static str,
+    stock_kind: &'static str,
+    stock_items: Vec<editor::StockItem>,
+    stock_note: Option<String>,
+    stock_busy: bool,
     voice_script: String,
     voice_input: Option<Entity<TextInput>>,
     /// The computer's voices, once listed (`None` while loading).
@@ -51,6 +60,14 @@ impl MediaPanel {
             show_markers: false,
             show_stickers: false,
             show_voice: false,
+            show_stock: false,
+            stock_input: None,
+            stock_query: String::new(),
+            stock_provider: "openverse",
+            stock_kind: "image",
+            stock_items: Vec::new(),
+            stock_note: None,
+            stock_busy: false,
             voice_script: String::new(),
             voice_input: None,
             voices: None,
@@ -67,6 +84,169 @@ impl MediaPanel {
             sticker_search: None,
             notes: HashMap::new(),
         }
+    }
+
+    /// Runs the stock search in the background.
+    fn search_stock(&mut self, cx: &mut Context<Self>) {
+        let query = self.stock_query.trim().to_owned();
+        if query.is_empty() {
+            return;
+        }
+        let (provider, kind) = (self.stock_provider, self.stock_kind);
+        self.stock_busy = true;
+        self.stock_note = None;
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let found = cx.background_executor().spawn(async move { crate::stock::search(provider, kind, &query, 1) }).await;
+            this.update(cx, |panel, cx| {
+                panel.stock_busy = false;
+                match found {
+                    Ok(items) => {
+                        if items.is_empty() {
+                            panel.stock_note = Some(t("Nothing found.").to_owned());
+                        }
+                        panel.stock_items = items;
+                    }
+                    Err(message) => {
+                        panel.stock_items.clear();
+                        panel.stock_note = Some(message);
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// The stock tab: search, source, pictures or videos, results with
+    /// licence and creator, Add, and the project's credits.
+    fn stock_rows(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
+        let colors = window.theme().colors;
+        let editor_focus = self.state.read(cx).focus_handle.clone();
+        let input = match &self.stock_input {
+            Some(input) => input.clone(),
+            None => {
+                let this = cx.entity().clone();
+                let input = cx.new(|cx| {
+                    TextInput::new(window, cx, t("Search pictures and videos, then Enter"))
+                        .focus_after(editor_focus)
+                        .on_commit(move |text, _, cx| {
+                            let text = text.to_owned();
+                            this.update(cx, |panel, cx| {
+                                panel.stock_query = text;
+                                panel.search_stock(cx);
+                            });
+                        })
+                });
+                self.stock_input = Some(input.clone());
+                input
+            }
+        };
+        let mut rows: Vec<gpui::AnyElement> = vec![div().p(px(4.)).child(input).into_any_element()];
+        let mut choices = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+        for (id, label, provider) in [("stock-openverse", "Openverse", "openverse"), ("stock-pixabay", "Pixabay", "pixabay")] {
+            choices = choices.child(
+                Button::new(id, label)
+                    .variant(if self.stock_provider == provider { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.stock_provider = provider;
+                        if provider == "openverse" {
+                            this.stock_kind = "image";
+                        }
+                        this.search_stock(cx);
+                        cx.notify();
+                    })),
+            );
+        }
+        for (id, label, kind) in [("stock-images", t("Pictures"), "image"), ("stock-videos", t("Videos"), "video")] {
+            choices = choices.child(
+                Button::new(id, label)
+                    .variant(if self.stock_kind == kind { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.stock_kind = kind;
+                        this.search_stock(cx);
+                        cx.notify();
+                    })),
+            );
+        }
+        let credits_state = self.state.clone();
+        choices = choices.child(div().flex_1()).child(
+            Button::new("stock-credits", t("Copy credits"))
+                .variant(ButtonVariant::Outline)
+                .size(ButtonSize::XSmall)
+                .on_click(move |_, _, cx| credits_state.update(cx, |state, cx| state.copy_stock_credits(cx))),
+        );
+        rows.push(choices.into_any_element());
+        rows.push(
+            div()
+                .px(px(4.))
+                .text_xs()
+                .text_color(colors.muted_foreground)
+                .child(if self.stock_provider == "openverse" {
+                    t("Pictures from Openverse that are free to use and change, even commercially (CC0, public domain, CC BY). Most need a credit: it is kept with each one.")
+                } else {
+                    t("Pictures and videos from Pixabay, under the Pixabay Content License. The credit is kept with each one.")
+                })
+                .into_any_element(),
+        );
+        if self.stock_busy {
+            rows.push(div().p(px(4.)).text_xs().child(t("Searching…")).into_any_element());
+        }
+        if let Some(note) = &self.stock_note {
+            rows.push(div().p(px(4.)).text_xs().text_color(colors.muted_foreground).child(note.clone()).into_any_element());
+        }
+        for (index, item) in self.stock_items.iter().enumerate() {
+            let state = self.state.clone();
+            let chosen = item.clone();
+            let detail = match item.duration {
+                Some(seconds) => format!("{} · {} · {} s", item.creator, item.license, seconds.round()),
+                None => format!("{} · {} · {}×{}", item.creator, item.license, item.width, item.height),
+            };
+            rows.push(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .px(px(4.))
+                    .py(px(2.))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .child(div().text_xs().truncate().child(item.title.clone()))
+                            .child(div().text_xs().text_color(colors.muted_foreground).truncate().child(detail)),
+                    )
+                    .child(
+                        Button::new(eid("stock-add", &index.to_string()), t("Add"))
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                let chosen = chosen.clone();
+                                state.update(cx, |state, cx| state.import_stock(chosen, cx));
+                            }),
+                    )
+                    .into_any_element(),
+            );
+        }
+        if !self.stock_items.is_empty() {
+            rows.push(
+                div()
+                    .px(px(4.))
+                    .text_xs()
+                    .text_color(colors.muted_foreground)
+                    .child(if self.stock_provider == "openverse" {
+                        t("Results from Openverse (openverse.org).")
+                    } else {
+                        t("Results from Pixabay (pixabay.com).")
+                    })
+                    .into_any_element(),
+            );
+        }
+        rows
     }
 
     /// Lists the computer's voices in the background (once).
@@ -591,7 +771,8 @@ impl Render for MediaPanel {
         let show_markers = self.show_markers;
         let show_stickers = self.show_stickers;
         let show_voice = self.show_voice;
-        let show_media = !show_markers && !show_stickers && !show_voice;
+        let show_stock = self.show_stock;
+        let show_media = !show_markers && !show_stickers && !show_voice && !show_stock;
 
         let rows: Vec<_> = project
             .media
@@ -756,6 +937,7 @@ impl Render for MediaPanel {
         let marker_rows = if show_markers { self.marker_rows(window, cx) } else { Vec::new() };
         let sticker_rows = if show_stickers { self.sticker_rows(window, cx) } else { Vec::new() };
         let voice_rows = if show_voice { self.voice_rows(window, cx) } else { Vec::new() };
+        let stock_rows = if show_stock { self.stock_rows(window, cx) } else { Vec::new() };
         div()
             .flex()
             .flex_col()
@@ -779,6 +961,7 @@ impl Render for MediaPanel {
                                 this.show_markers = false;
                                 this.show_stickers = false;
                                 this.show_voice = false;
+                                this.show_stock = false;
                                 cx.notify();
                             })),
                     )
@@ -790,6 +973,7 @@ impl Render for MediaPanel {
                                 this.show_markers = true;
                                 this.show_stickers = false;
                                 this.show_voice = false;
+                                this.show_stock = false;
                                 cx.notify();
                             })),
                     )
@@ -801,6 +985,7 @@ impl Render for MediaPanel {
                                 this.show_stickers = true;
                                 this.show_markers = false;
                                 this.show_voice = false;
+                                this.show_stock = false;
                                 cx.notify();
                             })),
                     )
@@ -810,9 +995,22 @@ impl Render for MediaPanel {
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_voice = true;
+                                this.show_stock = false;
                                 this.show_markers = false;
                                 this.show_stickers = false;
                                 this.load_voices(cx);
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("tab-stock", t("Stock"))
+                            .variant(if show_stock { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_stock = true;
+                                this.show_voice = false;
+                                this.show_markers = false;
+                                this.show_stickers = false;
                                 cx.notify();
                             })),
                     )
@@ -875,6 +1073,7 @@ impl Render for MediaPanel {
                     .when(show_markers, |this| this.children(marker_rows))
                     .when(show_stickers, |this| this.children(sticker_rows))
                     .when(show_voice, |this| this.children(voice_rows))
+                    .when(show_stock, |this| this.children(stock_rows))
                     .when(show_media && rows.is_empty(), |this| {
                         this.child(
                             div()

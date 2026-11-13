@@ -1,6 +1,17 @@
 import { env } from "cloudflare:workers";
 import { Elysia, t } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
+import {
+	cachedJson,
+	normalizePixabayImage,
+	normalizePixabayVideo,
+	openverseFileUrl,
+	pixabayUrl,
+	pixabayVideoFile,
+	streamFile,
+	type PixabayImageHit,
+	type PixabayVideoHit,
+} from "./stock";
 
 /**
  * Bindings and variables the worker can use. Every one of them is optional:
@@ -10,6 +21,8 @@ import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 type Env = {
 	/** Freesound API token (`wrangler secret put FREESOUND_API_KEY`). */
 	FREESOUND_API_KEY?: string;
+	/** Pixabay API key for stock images and videos (`wrangler secret put PIXABAY_API_KEY`). */
+	PIXABAY_API_KEY?: string;
 	/** KV namespace that stores feedback entries. */
 	FEEDBACK?: KVNamespace;
 	/** Workers rate limiting binding, applied per client IP. */
@@ -150,6 +163,18 @@ function transformFreesoundResult(result: FreesoundResult) {
 	};
 }
 
+const stockSearchQuery = t.Object({
+	q: t.Optional(t.String({ maxLength: 100 })),
+	kind: t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
+	page: t.Optional(t.Numeric({ minimum: 1, maximum: 100 })),
+});
+
+const stockFileQuery = t.Object({
+	provider: t.Union([t.Literal("pixabay"), t.Literal("openverse")]),
+	id: t.String({ minLength: 1, maxLength: 64 }),
+	kind: t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
+});
+
 const soundsSearchQuery = t.Object({
 	q: t.Optional(t.String({ maxLength: 500 })),
 	type: t.Optional(t.Union([t.Literal("songs"), t.Literal("effects")])),
@@ -262,6 +287,87 @@ export default new Elysia({ adapter: CloudflareAdapter })
 			};
 		},
 		{ query: soundsSearchQuery },
+	)
+	.get(
+		"/stock/search",
+		async ({ request, query, set }) => {
+			if (await isRateLimited(request)) {
+				set.status = 429;
+				return { error: "Too many requests" };
+			}
+			const key = bindings.PIXABAY_API_KEY;
+			if (!key) {
+				set.status = 503;
+				return {
+					error: "Pixabay is not configured",
+					message: "Set the PIXABAY_API_KEY secret on the API worker to search Pixabay images and videos.",
+				};
+			}
+			const kind = query.kind ?? "image";
+			const page = query.page ?? 1;
+			const fetched = await cachedJson<{ totalHits: number; hits: unknown[] }>(
+				pixabayUrl({ key, kind, q: query.q ?? "", page, perPage: 30 }),
+			);
+			if (!fetched.ok) {
+				set.status = fetched.status === 429 ? 429 : 502;
+				return { error: "Pixabay search failed" };
+			}
+			const hits = Array.isArray(fetched.data.hits) ? fetched.data.hits : [];
+			return {
+				provider: "pixabay",
+				kind,
+				page,
+				total: fetched.data.totalHits ?? hits.length,
+				results: hits.map((hit) =>
+					kind === "video" ? normalizePixabayVideo(hit as PixabayVideoHit) : normalizePixabayImage(hit as PixabayImageHit),
+				),
+			};
+		},
+		{ query: stockSearchQuery },
+	)
+	.get(
+		"/stock/file",
+		async ({ request, query, set }) => {
+			const headers = corsHeaders(request);
+			if (await isRateLimited(request)) {
+				set.status = 429;
+				return { error: "Too many requests" };
+			}
+			if (query.provider === "openverse") {
+				const url = await openverseFileUrl(query.id);
+				if (!url) {
+					set.status = 404;
+					return { error: "No such Openverse image" };
+				}
+				return streamFile(url, headers);
+			}
+			const key = bindings.PIXABAY_API_KEY;
+			if (!key) {
+				set.status = 503;
+				return { error: "Pixabay is not configured" };
+			}
+			if (!/^\d+$/.test(query.id)) {
+				set.status = 400;
+				return { error: "Pixabay ids are numbers" };
+			}
+			const kind = query.kind ?? "image";
+			const fetched = await cachedJson<{ hits: unknown[] }>(pixabayUrl({ key, kind, id: query.id }));
+			const hit = fetched.ok && Array.isArray(fetched.data.hits) ? fetched.data.hits[0] : undefined;
+			if (!hit) {
+				set.status = 404;
+				return { error: "No such Pixabay item" };
+			}
+			const url =
+				kind === "video"
+					? pixabayVideoFile(hit as PixabayVideoHit)?.url
+					: (hit as PixabayImageHit).largeImageURL || (hit as PixabayImageHit).webformatURL;
+			if (!url) {
+				set.status = 404;
+				return { error: "The item has no file" };
+			}
+			return streamFile(url, headers);
+		},
+		{ query: stockFileQuery },
 	)
 	.post(
 		"/feedback",

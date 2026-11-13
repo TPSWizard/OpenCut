@@ -25,6 +25,7 @@ const TAB_LABELS: Record<BuiltinTab, () => string> = {
 	sounds: () => t("Sounds"),
 	text: () => t("Text"),
 	stickers: () => t("Stickers"),
+	stock: () => t("Stock"),
 	effects: () => t("Effects"),
 	transitions: () => t("Transitions"),
 	captions: () => t("Captions"),

@@ -272,3 +272,23 @@ its pack.
   (`crates/editor/src/picture.rs`) and TypeScript (`apps/web/src/picture/cleanup.ts`)
   so both produce the same `TracedPath` JSON; halo removal and the inward
   feather are new here. No third-party code, models or assets.
+
+## Stock media search (added 2026-11-12)
+
+Nothing is bundled; users search and download items into their own
+projects, and each item keeps its credit (in the media item, project
+bundles and "Copy credits").
+
+- **Openverse** (https://openverse.org, WordPress Foundation): searched
+  from the browser or desktop without a key (anonymous limits: 20 requests
+  a minute, 200 a day, at most 20 results a page, as the API reported on
+  2026-11-12). Only CC0, Public Domain Mark and CC BY results are offered
+  (free to use and change commercially); share-alike and non-commercial
+  licences are left out. Each item's own licence and Openverse's
+  attribution line are kept with it.
+- **Pixabay** (https://pixabay.com): through the API worker when its
+  `PIXABAY_API_KEY` secret is set (not set as of 2026-11-12). Per the API
+  docs (read 2026-11-12) the worker caches requests for 24 hours, search
+  results only show Pixabay's preview URLs temporarily, items are
+  downloaded before use, and results say they come from Pixabay. Items are
+  under the Pixabay Content License (no standalone redistribution).

@@ -10,6 +10,8 @@
   // answers 503 and the editor degrades gracefully.
   //
   // Sound search (Freesound):   wrangler secret put FREESOUND_API_KEY
+  // Stock images and video (Pixabay): wrangler secret put PIXABAY_API_KEY
+  //   (Openverse images need no key; the editor calls Openverse directly.)
   //
   // Feedback storage:
   //   "kv_namespaces": [{ "binding": "FEEDBACK", "id": "<namespace id>" }],

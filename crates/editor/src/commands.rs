@@ -99,6 +99,11 @@ pub enum Command {
         element_id: String,
         media_id: String,
     },
+    /// Sets (or clears) the stock credit of a media item.
+    SetCredit {
+        media_id: String,
+        credit: Option<crate::StockCredit>,
+    },
     /// Splits one element at several times in one step (the first piece
     /// keeps the id); times outside the element are skipped.
     SplitElementAtTimes {
@@ -621,6 +626,20 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             *project = draft;
             last
+        }
+        Command::SetCredit { media_id, credit } => {
+            if project.media_item(media_id).is_none() {
+                return Err(EditorError::InvalidParams(format!("no media item {media_id}")));
+            }
+            match credit {
+                Some(credit) => {
+                    project.credits.insert(media_id.clone(), credit.clone());
+                }
+                None => {
+                    project.credits.remove(media_id);
+                }
+            }
+            Outcome::None
         }
         Command::ReplaceMedia { element_id, media_id } => {
             if project.media_item(media_id).is_none() {

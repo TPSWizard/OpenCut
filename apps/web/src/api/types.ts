@@ -171,6 +171,25 @@ export interface ApiElementInfo {
 export type ApiTransitionParamValue = number | boolean | number[];
 
 /** A clip's transition: a catalogue name, a duration in seconds, parameters. */
+/** A stock search result (see `stock.search`). */
+export interface ApiStockItem {
+	provider: "openverse" | "pixabay";
+	id: string;
+	kind: "image" | "video";
+	title: string;
+	thumbnail: string;
+	width: number;
+	height: number;
+	duration?: number;
+	license: string;
+	licenseUrl: string;
+	creator: string;
+	creatorUrl?: string;
+	sourceUrl: string;
+	attribution: string;
+	fileUrl?: string;
+}
+
 export interface ApiTransition {
 	type: string;
 	duration: number;
@@ -608,6 +627,20 @@ export interface EditorApiMethods {
 		result: ApiElementInfo;
 	};
 	/** Every transition the renderer can draw, with its parameters. */
+	/**
+	 * Stock search: Openverse (CC0, public domain and CC BY pictures; no
+	 * key, from the browser) or Pixabay (pictures and videos through the API
+	 * worker, which needs PIXABAY_API_KEY). Results carry licence, creator,
+	 * source page and a credit line.
+	 */
+	"stock.search": {
+		params: { query: string; provider?: "openverse" | "pixabay"; kind?: "image" | "video"; page?: number };
+		result: { items: ApiStockItem[]; total: number };
+	};
+	/** Downloads a search result into the project with its credit (and puts it at the playhead unless `addToTimeline` is false). */
+	"stock.import": { params: { item: ApiStockItem; addToTimeline?: boolean }; result: { mediaId: string; name: string } };
+	/** The credits of the project's stock media, one line each. */
+	"stock.credits": { params: Record<string, never>; result: { text: string } };
 	/**
 	 * Cleans up an image clip's picture on this device (for drawings on
 	 * white): flood-fill white paper away with a soft edge, remove the white

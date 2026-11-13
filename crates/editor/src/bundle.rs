@@ -129,6 +129,9 @@ struct WebMedia {
     fps: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     has_audio: Option<bool>,
+    /// Stock credit, when the media came from a stock provider.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    credit: Option<crate::StockCredit>,
     /// Entry name inside the bundle.
     file: String,
 }
@@ -180,7 +183,11 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     fs::create_dir_all(&media_dir)?;
 
     let mut media = Vec::with_capacity(bundle.media.len());
+    let mut credits = std::collections::BTreeMap::new();
     for item in &bundle.media {
+        if let Some(credit) = &item.credit {
+            credits.insert(item.id.clone(), credit.clone());
+        }
         let file_name = Path::new(&item.file)
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
@@ -263,6 +270,7 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
         background: web.settings.background,
     };
     project.media = media;
+    project.credits = credits;
     project.tracks = tracks;
     project.markers = crate::normalize_markers(&markers);
     store.save(&project)?;
@@ -462,6 +470,7 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
             duration: item.duration.map(|duration| duration.to_seconds_f64()),
             fps: item.fps,
             has_audio: Some(item.has_audio),
+            credit: project.credits.get(&item.id).cloned(),
             file: entry.clone(),
         });
         entries.push((entry, item.path.clone(), metadata.len()));
@@ -672,6 +681,18 @@ mod tests {
             }),
         )
         .unwrap();
+        let credit = crate::StockCredit {
+            provider: "openverse".into(),
+            id: "49dec960".into(),
+            title: "gloomy forest".into(),
+            creator: "gorchakov.artem".into(),
+            creator_url: None,
+            license: "CC BY 2.0".into(),
+            license_url: "https://creativecommons.org/licenses/by/2.0/".into(),
+            source_url: "https://www.flickr.com/photos/56003265@N05/8394379683".into(),
+            attribution: "\"gloomy forest\" by gorchakov.artem is licensed under CC BY 2.0.".into(),
+        };
+        apply(&mut project, &Command::SetCredit { media_id: "img".into(), credit: Some(credit.clone()) }).unwrap();
         let mut image = Element::from_media(project.media_item("img").unwrap(), seconds(0.0));
         image.masks.push(crate::document::Mask::ellipse());
         apply(&mut project, &Command::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
@@ -711,6 +732,7 @@ mod tests {
         assert_eq!(value["project"]["scenes"][0]["bookmarks"][0]["note"], "Hook");
         assert_eq!(value["project"]["scenes"][0]["bookmarks"][1]["duration"], 120_000);
         assert_eq!(value["media"][0]["file"], "media/img.png");
+        assert_eq!(value["media"][0]["credit"]["license"], "CC BY 2.0", "credits travel on the media entry, as on the web");
         assert_eq!(value["media"][0]["size"], 15);
         let entry = archive.by_name("media/img.png").unwrap();
         assert_eq!(entry.size(), 15);
@@ -726,6 +748,7 @@ mod tests {
         assert!(report.skipped.is_empty(), "{:?}", report.skipped);
         let imported = store.load(&report.project.id).unwrap();
         assert_eq!(imported.markers, project.markers);
+        assert_eq!(imported.credits.get("img").map(|c| c.creator.as_str()), Some("gorchakov.artem"));
         assert!(imported.tracks[0].locked);
         let imported = report.project;
         assert_eq!(imported.id, project.id, "a free id is kept");

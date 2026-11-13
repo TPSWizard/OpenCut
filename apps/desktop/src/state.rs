@@ -990,6 +990,58 @@ impl EditorState {
         self.set_status(t("Path copied"), cx);
     }
 
+    /// Downloads a stock result into `~/.opencut/stock/`, adds it with its
+    /// credit, and puts it at the playhead; one undo step.
+    pub(crate) fn import_stock(&mut self, item: editor::StockItem, cx: &mut Context<Self>) {
+        let ffmpeg = self.ffmpeg.clone();
+        let dir = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("stock"))
+            .unwrap_or_else(|| std::path::PathBuf::from("stock"));
+        let start = self.playhead();
+        self.set_status(tf("Downloading {name}…", &[("name", &item.title)]), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let path = crate::stock::download(&item, &dir)?;
+                    let media = probe_media(ffmpeg.as_deref(), path)?;
+                    Ok::<_, String>((item, media))
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok((item, mut media)) => {
+                    media.name = format!("{} ({})", item.title, item.provider);
+                    let mut element = editor::Element::from_media(&media, start);
+                    element.name = item.title.clone();
+                    let commands = vec![
+                        Command::AddMedia(media.clone()),
+                        Command::SetCredit { media_id: media.id.clone(), credit: Some(item.credit()) },
+                        Command::InsertElement { element, placement: editor::TrackPlacement::Auto },
+                    ];
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.render.send(RenderRequest::Thumbnail { media });
+                        state.set_status(tf("Added {name}. Credit: {credit}", &[("name", &item.title), ("credit", &item.attribution)]), cx);
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Copies the credits of the project's stock media.
+    pub(crate) fn copy_stock_credits(&mut self, cx: &mut Context<Self>) {
+        let text = editor::credits_text(self.project());
+        if text.is_empty() {
+            self.set_status(t("No stock media in this project yet."), cx);
+            return;
+        }
+        cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+        self.set_status(t("Credits copied. Paste them into your video's description."), cx);
+    }
+
     /// Beat-tracks the selected clip on a background thread and puts a
     /// marker on every `every`-th beat; clips snap to markers while dragged.
     pub(crate) fn detect_beats_selected(&mut self, every: usize, cx: &mut Context<Self>) {

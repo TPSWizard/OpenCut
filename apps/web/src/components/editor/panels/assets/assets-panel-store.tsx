@@ -6,6 +6,7 @@ import {
 	Bookmark02Icon,
 	ClosedCaptionIcon,
 	Folder03Icon,
+	Image02Icon,
 	Happy01Icon,
 	HeadphonesIcon,
 	MagicWand05Icon,
@@ -23,6 +24,7 @@ export const TAB_KEYS = [
 	"sounds",
 	"text",
 	"stickers",
+	"stock",
 	"effects",
 	"transitions",
 	"captions",
@@ -59,6 +61,10 @@ export const tabs = {
 	stickers: {
 		icon: createHugeiconsIcon({ icon: Happy01Icon }),
 		label: "Stickers",
+	},
+	stock: {
+		icon: createHugeiconsIcon({ icon: Image02Icon }),
+		label: "Stock",
 	},
 	effects: {
 		icon: createHugeiconsIcon({ icon: MagicWand05Icon }),

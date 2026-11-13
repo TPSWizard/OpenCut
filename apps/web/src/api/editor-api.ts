@@ -101,6 +101,7 @@ import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions
 import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
 import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
 import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
+import { importStockItem, projectCredits, searchStock } from "@/stock/stock";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -1620,6 +1621,34 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
 			}
 		},
+		"stock.search": async ({ query, provider, kind, page }) => {
+			if (typeof query !== "string" || !query.trim()) {
+				throw new EditorApiError({ code: "invalid_params", message: "query must be non-empty text" });
+			}
+			if (provider !== undefined && provider !== "openverse" && provider !== "pixabay") {
+				throw new EditorApiError({ code: "invalid_params", message: "provider must be openverse or pixabay" });
+			}
+			if (kind !== undefined && kind !== "image" && kind !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "kind must be image or video" });
+			}
+			try {
+				return await searchStock({ query, provider: provider ?? "openverse", kind: kind ?? "image", page: page ?? 1 });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Search failed" });
+			}
+		},
+		"stock.import": async ({ item, addToTimeline }) => {
+			requireProject();
+			if (!item || typeof item !== "object" || typeof item.id !== "string" || (item.provider !== "openverse" && item.provider !== "pixabay")) {
+				throw new EditorApiError({ code: "invalid_params", message: "item must be a result from stock.search" });
+			}
+			try {
+				return await importStockItem({ editor, item, addToTimeline: addToTimeline ?? true });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Import failed" });
+			}
+		},
+		"stock.credits": () => ({ text: projectCredits({ editor }) }),
 		"picture.cleanup": async ({ elementId, trackId, removeWhite, decontaminate, feather, tint, crop, trace }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
 			if (element.type !== "image") {
