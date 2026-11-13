@@ -240,3 +240,26 @@ its pack.
   offers the pair; Chrome manages and downloads its own language packs.
 - Desktop: English-only translation of speech uses whisper.cpp's own
   `--translate` (see "Native transcription").
+
+## Voice-over (text to speech, added 2026-11-12)
+
+- **Kokoro-82M** (hexgrad, Apache-2.0; ONNX conversion
+  `onnx-community/Kokoro-82M-v1.0-ONNX`, Apache-2.0, base model
+  hexgrad/Kokoro-82M) and its voice files. Not kept in this repository: the
+  browser fetches the 8-bit model (about 90 MB) and the chosen voice from
+  huggingface.co on first use and caches them.
+- **kokoro-js** 1.2.1 (npm, Apache-2.0) runs it in a web worker on
+  Transformers.js.
+- **phonemizer** 1.2.1 (npm, labelled Apache-2.0), a dependency of
+  kokoro-js, contains **eSpeak NG** compiled for the web together with its
+  `espeak-ng-data`. **eSpeak NG is licensed GPL-3.0-or-later**
+  (https://github.com/espeak-ng/espeak-ng, source available there). It is
+  bundled into the web app's voice-over worker chunk, which loads only when a
+  voice-over is generated. This was a deliberate choice by the project owner
+  on 2026-11-12 (the alternative, SpeechT5, was all MIT but English-only and
+  lower quality); distributing the site therefore includes a GPL-3.0
+  component, and the licence position of the combined web app should be
+  reviewed before relying on MIT terms for it.
+- The desktop editor speaks with the operating system's own voices
+  (Windows System.Speech, macOS `say`, or a separately installed `espeak-ng`
+  on Linux, run as a separate program); nothing is bundled.

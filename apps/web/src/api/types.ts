@@ -609,6 +609,17 @@ export interface EditorApiMethods {
 	};
 	/** Every transition the renderer can draw, with its parameters. */
 	/**
+	 * Voice-over: speaks `script` on this device with Kokoro (English voices,
+	 * `voice` default "af_heart", `speed` 0.5–2), one line per sentence with
+	 * pauses, adds the WAV to the project at `at` (timeline seconds, default
+	 * the playhead) on an audio track, and with `captions` (default true) a
+	 * caption track timed line by line.
+	 */
+	"audio.textToSpeech": {
+		params: { script: string; voice?: string; speed?: number; captions?: boolean; at?: number };
+		result: { mediaId: string; elementId: string | null; captionTrackId: string | null; lines: number; seconds: number };
+	};
+	/**
 	 * Translates a caption track (default: the top one with captions) on this
 	 * device into a new text track straight above it: the browser's built-in
 	 * translator when it has the pair (`engine` "auto"), else Opus-MT models

@@ -9,6 +9,7 @@ import {
 	Happy01Icon,
 	HeadphonesIcon,
 	MagicWand05Icon,
+	Mic01Icon,
 	TextIcon,
 	Settings01Icon,
 	SlidersHorizontalIcon,
@@ -25,6 +26,7 @@ export const TAB_KEYS = [
 	"effects",
 	"transitions",
 	"captions",
+	"voiceover",
 	"markers",
 	"adjustment",
 	"scripting",
@@ -69,6 +71,10 @@ export const tabs = {
 	captions: {
 		icon: createHugeiconsIcon({ icon: ClosedCaptionIcon }),
 		label: "Captions",
+	},
+	voiceover: {
+		icon: createHugeiconsIcon({ icon: Mic01Icon }),
+		label: "Voice-over",
 	},
 	markers: {
 		icon: createHugeiconsIcon({ icon: Bookmark02Icon }),

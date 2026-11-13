@@ -795,6 +795,86 @@ impl EditorState {
         .detach();
     }
 
+    /// Speaks `script` with a system voice into a WAV, adds it on an audio
+    /// track at the playhead and, with `captions`, a caption track timed
+    /// line by line; one undo step.
+    pub(crate) fn voiceover(&mut self, script: String, voice: Option<String>, speed: f64, captions: bool, cx: &mut Context<Self>) {
+        let lines = editor::split_script(&script, editor::MAX_LINE_CHARS);
+        if lines.is_empty() {
+            self.set_status(t("Type a script first."), cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to make a voice-over."), cx);
+            return;
+        };
+        let start = self.playhead().to_seconds_f64();
+        let canvas = self.project().settings.canvas;
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("voiceover-{}.wav", editor::new_id()));
+        let first: String = lines[0].text.chars().take(32).collect();
+        let name = match &voice {
+            Some(voice) => format!("Voice-over ({voice}) {first}"),
+            None => format!("Voice-over {first}"),
+        };
+        self.set_status(tf("Speaking {count} line(s)…", &[("count", &lines.len())]), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let durations = crate::voiceover::speak_to_wav(&ffmpeg, &lines, voice.as_deref(), speed, &output)?;
+                    let item = probe_media(Some(&ffmpeg), output)?;
+                    Ok::<_, String>((lines, durations, item))
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok((lines, durations, mut item)) => {
+                    item.name = name;
+                    let (spans, total) = editor::layout_lines(&lines, &durations);
+                    let mut commands = vec![Command::AddMedia(item.clone())];
+                    let Some(start_time) = MediaTime::from_seconds_f64(start) else { return };
+                    let mut audio = editor::Element::from_media(&item, start_time);
+                    if let Some(duration) = MediaTime::from_seconds_f64(total) {
+                        audio.duration = duration.max(MediaTime::ONE_TICK);
+                    }
+                    commands.push(Command::InsertElement { element: audio, placement: editor::TrackPlacement::Auto });
+                    if captions {
+                        let elements: Vec<editor::Element> = lines
+                            .iter()
+                            .zip(&spans)
+                            .enumerate()
+                            .map(|(index, (line, (from, to)))| {
+                                let chunk = editor::CaptionChunk {
+                                    text: line.text.clone(),
+                                    start: start + from,
+                                    duration: (to - from + line.pause_after).max(0.2),
+                                    words: Vec::new(),
+                                };
+                                editor::caption_element(index, &chunk, canvas)
+                            })
+                            .collect();
+                        commands.push(Command::InsertCaptions { elements });
+                    }
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(
+                            tf("Added {seconds} s of voice-over at the playhead ({count} lines).", &[
+                                ("seconds", &format!("{total:.1}")),
+                                ("count", &lines.len()),
+                            ]),
+                            cx,
+                        );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Beat-tracks the selected clip on a background thread and puts a
     /// marker on every `every`-th beat; clips snap to markers while dragged.
     pub(crate) fn detect_beats_selected(&mut self, every: usize, cx: &mut Context<Self>) {

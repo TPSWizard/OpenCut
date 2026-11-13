@@ -20,6 +20,7 @@ mod loudness;
 mod luts;
 mod panels;
 mod reframe;
+mod voiceover;
 mod render_thread;
 mod settings;
 mod shell;

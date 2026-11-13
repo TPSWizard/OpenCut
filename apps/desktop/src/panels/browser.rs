@@ -19,6 +19,15 @@ pub(crate) struct MediaPanel {
     show_markers: bool,
     /// Showing the sticker packs instead of the media.
     show_stickers: bool,
+    /// Showing the voice-over tools instead of the media.
+    show_voice: bool,
+    voice_script: String,
+    voice_input: Option<Entity<TextInput>>,
+    /// The computer's voices, once listed (`None` while loading).
+    voices: Option<Vec<String>>,
+    voice: usize,
+    voice_speed: f64,
+    voice_captions: bool,
     /// 0 = Twemoji, 1 = Noto Emoji, 2 = Brands.
     sticker_pack: usize,
     sticker_query: String,
@@ -41,6 +50,13 @@ impl MediaPanel {
             state,
             show_markers: false,
             show_stickers: false,
+            show_voice: false,
+            voice_script: String::new(),
+            voice_input: None,
+            voices: None,
+            voice: 0,
+            voice_speed: 1.0,
+            voice_captions: true,
             sticker_pack: 0,
             sticker_query: String::new(),
             skin_tone: 0,
@@ -51,6 +67,168 @@ impl MediaPanel {
             sticker_search: None,
             notes: HashMap::new(),
         }
+    }
+
+    /// Lists the computer's voices in the background (once).
+    fn load_voices(&mut self, cx: &mut Context<Self>) {
+        if self.voices.is_some() {
+            return;
+        }
+        self.voices = Some(Vec::new());
+        cx.spawn(async move |this, cx| {
+            let voices = cx.background_executor().spawn(async move { crate::voiceover::system_voices() }).await;
+            this.update(cx, |panel, cx| {
+                panel.voices = Some(voices);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// The voice-over tab: a script (typed, or read from a text file),
+    /// voice, speed, captions, and Speak.
+    fn voice_rows(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
+        let colors = window.theme().colors;
+        let editor_focus = self.state.read(cx).focus_handle.clone();
+        let input = match &self.voice_input {
+            Some(input) => input.clone(),
+            None => {
+                let this = cx.entity().clone();
+                let input = cx.new(|cx| {
+                    TextInput::new(window, cx, t("Script (sentences), then Enter"))
+                        .focus_after(editor_focus)
+                        .on_commit(move |text, _, cx| {
+                            let text = text.to_owned();
+                            this.update(cx, |panel, cx| {
+                                panel.voice_script = text;
+                                cx.notify();
+                            });
+                        })
+                });
+                self.voice_input = Some(input.clone());
+                input
+            }
+        };
+        let mut rows: Vec<gpui::AnyElement> = Vec::new();
+        rows.push(div().p(px(4.)).child(input.clone()).into_any_element());
+        let lines = editor::split_script(&self.voice_script, editor::MAX_LINE_CHARS).len();
+        rows.push(
+            div()
+                .px(px(4.))
+                .text_xs()
+                .text_color(colors.muted_foreground)
+                .child(if lines == 0 {
+                    t("Type the script and press Enter, or read it from a text file. Each sentence becomes a line.").to_owned()
+                } else {
+                    tf("{count} line(s) ready.", &[("count", &lines)])
+                })
+                .into_any_element(),
+        );
+        let from_file = {
+            let this = cx.entity().clone();
+            Button::new("voice-file", t("From text file…"))
+                .variant(ButtonVariant::Outline)
+                .size(ButtonSize::XSmall)
+                .on_click(move |_, window, cx| {
+                    let this = this.clone();
+                    let receiver = cx.prompt_for_paths(gpui::PathPromptOptions {
+                        files: true,
+                        directories: false,
+                        multiple: false,
+                        prompt: Some(t("Script").into()),
+                    });
+                    let _ = window;
+                    cx.spawn(async move |cx| {
+                        let Ok(Ok(Some(paths))) = receiver.await else { return };
+                        let Some(path) = paths.into_iter().next() else { return };
+                        let Ok(text) = std::fs::read_to_string(&path) else { return };
+                        this.update(cx, |panel, cx| {
+                            panel.voice_script = text;
+                            cx.notify();
+                        })
+                        .ok();
+                    })
+                    .detach();
+                })
+        };
+        rows.push(div().p(px(4.)).flex().gap(px(4.)).child(from_file).into_any_element());
+        let voices = self.voices.clone().unwrap_or_default();
+        let mut voice_row = div().flex().flex_wrap().gap(px(4.)).p(px(4.));
+        if voices.is_empty() {
+            voice_row = voice_row.child(
+                div().text_xs().text_color(colors.muted_foreground).child(if self.voices.is_none() {
+                    t("Listing voices…")
+                } else {
+                    t("No system voices found (Windows speech, macOS say, or espeak-ng on Linux).")
+                }),
+            );
+        }
+        for (index, name) in voices.iter().enumerate() {
+            voice_row = voice_row.child(
+                Button::new(eid("voice", &index.to_string()), name.clone())
+                    .variant(if index == self.voice { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.voice = index;
+                        cx.notify();
+                    })),
+            );
+        }
+        rows.push(voice_row.into_any_element());
+        let mut speed_row = div().flex().flex_wrap().items_center().gap(px(4.)).p(px(4.)).child(
+            div().text_xs().text_color(colors.muted_foreground).mr(px(4.)).child(t("Speed")),
+        );
+        for speed in [0.8, 0.9, 1.0, 1.1, 1.25] {
+            speed_row = speed_row.child(
+                Button::new(eid("voice-speed", &format!("{speed}")), format!("{speed}×"))
+                    .variant(if (self.voice_speed - speed).abs() < 1e-6 { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.voice_speed = speed;
+                        cx.notify();
+                    })),
+            );
+        }
+        let captions = self.voice_captions;
+        speed_row = speed_row.child(
+            Button::new("voice-captions", if captions { t("Captions: on") } else { t("Captions: off") })
+                .variant(if captions { ButtonVariant::Default } else { ButtonVariant::Outline })
+                .size(ButtonSize::XSmall)
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.voice_captions = !captions;
+                    cx.notify();
+                })),
+        );
+        rows.push(speed_row.into_any_element());
+        let state = self.state.clone();
+        let script = self.voice_script.clone();
+        let voice = voices.get(self.voice).cloned();
+        let speed = self.voice_speed;
+        rows.push(
+            div()
+                .p(px(4.))
+                .child(
+                    Button::new("voice-speak", t("Speak at the playhead"))
+                        .size(ButtonSize::Small)
+                        .disabled(lines == 0)
+                        .on_click(move |_, _, cx| {
+                            let script = script.clone();
+                            let voice = voice.clone();
+                            state.update(cx, |state, cx| state.voiceover(script, voice, speed, captions, cx));
+                        }),
+                )
+                .into_any_element(),
+        );
+        rows.push(
+            div()
+                .px(px(4.))
+                .text_xs()
+                .text_color(colors.muted_foreground)
+                .child(t("Uses this computer's own voices. The web editor speaks with Kokoro's natural voices instead."))
+                .into_any_element(),
+        );
+        rows
     }
 
     /// Fetches an emoji set's category lists in the background.
@@ -412,7 +590,8 @@ impl Render for MediaPanel {
         let marker_count = project.markers.len();
         let show_markers = self.show_markers;
         let show_stickers = self.show_stickers;
-        let show_media = !show_markers && !show_stickers;
+        let show_voice = self.show_voice;
+        let show_media = !show_markers && !show_stickers && !show_voice;
 
         let rows: Vec<_> = project
             .media
@@ -576,6 +755,7 @@ impl Render for MediaPanel {
         let missing_count = state.missing_media.len();
         let marker_rows = if show_markers { self.marker_rows(window, cx) } else { Vec::new() };
         let sticker_rows = if show_stickers { self.sticker_rows(window, cx) } else { Vec::new() };
+        let voice_rows = if show_voice { self.voice_rows(window, cx) } else { Vec::new() };
         div()
             .flex()
             .flex_col()
@@ -598,6 +778,7 @@ impl Render for MediaPanel {
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_markers = false;
                                 this.show_stickers = false;
+                                this.show_voice = false;
                                 cx.notify();
                             })),
                     )
@@ -608,6 +789,7 @@ impl Render for MediaPanel {
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_markers = true;
                                 this.show_stickers = false;
+                                this.show_voice = false;
                                 cx.notify();
                             })),
                     )
@@ -618,6 +800,19 @@ impl Render for MediaPanel {
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_stickers = true;
                                 this.show_markers = false;
+                                this.show_voice = false;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("tab-voice", t("Voice"))
+                            .variant(if show_voice { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_voice = true;
+                                this.show_markers = false;
+                                this.show_stickers = false;
+                                this.load_voices(cx);
                                 cx.notify();
                             })),
                     )
@@ -679,6 +874,7 @@ impl Render for MediaPanel {
                     })
                     .when(show_markers, |this| this.children(marker_rows))
                     .when(show_stickers, |this| this.children(sticker_rows))
+                    .when(show_voice, |this| this.children(voice_rows))
                     .when(show_media && rows.is_empty(), |this| {
                         this.child(
                             div()

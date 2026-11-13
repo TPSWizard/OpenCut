@@ -99,6 +99,7 @@ import { clearReframe, reframeClip } from "@/reframe/scan";
 import { REFRAME_CAMERAS } from "@/reframe/path";
 import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions";
 import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
+import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -1616,6 +1617,26 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
+			}
+		},
+		"audio.textToSpeech": async ({ script, voice, speed, captions, at }) => {
+			requireProject();
+			if (typeof script !== "string" || !script.trim()) {
+				throw new EditorApiError({ code: "invalid_params", message: "script must be non-empty text" });
+			}
+			if (voice !== undefined && !(KOKORO_VOICES as readonly string[]).includes(voice)) {
+				throw new EditorApiError({ code: "invalid_params", message: `voice must be one of ${KOKORO_VOICES.join(", ")}` });
+			}
+			if (speed !== undefined && (typeof speed !== "number" || !(speed >= 0.5 && speed <= 2))) {
+				throw new EditorApiError({ code: "invalid_params", message: "speed must be from 0.5 to 2" });
+			}
+			if (at !== undefined && (typeof at !== "number" || !Number.isFinite(at) || at < 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be seconds, 0 or more" });
+			}
+			try {
+				return await generateVoiceover({ editor, script, voice, speed, captions: captions ?? true, at });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Voice-over failed" });
 			}
 		},
 		"captions.translate": async ({ trackId, from, to, engine }) => {

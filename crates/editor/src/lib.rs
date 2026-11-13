@@ -32,6 +32,7 @@ mod platforms;
 mod relink;
 mod retime;
 mod reframe;
+mod voiceover;
 mod shots;
 mod silence;
 mod store;
@@ -98,6 +99,7 @@ pub use platforms::{
     estimate_platform_file_bytes, format_bytes, format_duration, platform_encode_settings, platform_preset,
     recommended_video_bitrate,
 };
+pub use voiceover::{MAX_LINE_CHARS, PARAGRAPH_PAUSE, SENTENCE_PAUSE, ScriptLine, layout_lines, split_script};
 pub use reframe::{
     Detection, PathPoint, ReframeCamera, SUBJECT_FRAME_WIDTH, ReframeGeometry, ReframePlan, ReframeSample, Subject, axis_keys,
     clip_seconds_for_source, cover_scale, plan_path, plan_reframe, shot_subjects, subject_from_detections,

@@ -11,6 +11,7 @@ import { useEnabledPlugins } from "@/plugins/plugins-store";
 import { isPluginTabKey, pluginIdFromTabKey } from "@/plugins/types";
 import { TabBar } from "./tabbar";
 import { Captions } from "@/subtitles/components/assets-view";
+import { VoiceoverView } from "@/voiceover/components/voiceover-view";
 import { MediaView } from "./views/assets";
 import { SettingsView } from "./views/settings";
 import { SoundsView } from "@/sounds/components/assets-view";
@@ -32,6 +33,7 @@ export function AssetsPanel() {
 		effects: <EffectsView />,
 		transitions: <TransitionsView />,
 		captions: <Captions />,
+		voiceover: <VoiceoverView />,
 		markers: <MarkersView />,
 		adjustment: (
 			<div className="text-muted-foreground p-4">

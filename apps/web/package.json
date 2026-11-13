@@ -43,6 +43,7 @@
     "eventemitter3": "^5.0.1",
     "fflate": "^0.8.3",
     "input-otp": "^1.4.2",
+    "kokoro-js": "1.2.1",
     "lucide-react": "^1.14.0",
     "mediabunny": "^1.29.1",
     "motion": "^12.18.1",
