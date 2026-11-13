@@ -47,7 +47,7 @@ export function Onboarding() {
 					<div className="space-y-5">
 						<div className="space-y-3">
 							<Title title={t("Welcome to ConzaCut Beta! 🎉")} />
-							<Description description={t("You made it in early. ConzaCut is a free, open source video editor that lives in your browser: no account, no uploads, and your footage never leaves your device.")} />
+							<Description description={t("You're among the first to try ConzaCut - an open source video editor built on OpenCut.")} />
 						</div>
 						<NextButton onClick={handleNext}>{t("Next")}</NextButton>
 					</div>

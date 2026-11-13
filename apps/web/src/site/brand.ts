@@ -3,7 +3,7 @@ export const SITE_URL = "https://conzacut.conzahub.com";
 export const SITE_INFO = {
 	title: "ConzaCut",
 	description:
-		"A free, open source video editor that runs in your browser. Captions, transitions, colour, audio tools and platform exports, with your footage staying on your device.",
+		"A simple but powerful video editor that gets the job done. In your browser.",
 	url: SITE_URL,
 	openGraphImage: "/open-graph/default.jpg",
 	twitterImage: "/open-graph/default.jpg",
