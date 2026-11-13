@@ -263,3 +263,12 @@ its pack.
 - The desktop editor speaks with the operating system's own voices
   (Windows System.Speech, macOS `say`, or a separately installed `espeak-ng`
   on Linux, run as a separate program); nothing is bundled.
+
+## Picture cleanup (added 2026-11-12)
+
+- Own code. The white removal, ink tint, crop, Zhang–Suen thinning and
+  longest-path tracing follow the owner's Shortform Studio
+  (`lib/shortform/imageops.ts` in overtime-ai-studio), ported to Rust
+  (`crates/editor/src/picture.rs`) and TypeScript (`apps/web/src/picture/cleanup.ts`)
+  so both produce the same `TracedPath` JSON; halo removal and the inward
+  feather are new here. No third-party code, models or assets.

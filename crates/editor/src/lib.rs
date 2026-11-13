@@ -31,6 +31,7 @@ mod params;
 mod platforms;
 mod relink;
 mod retime;
+mod picture;
 mod reframe;
 mod voiceover;
 mod shots;
@@ -100,6 +101,10 @@ pub use platforms::{
     recommended_video_bitrate,
 };
 pub use voiceover::{MAX_LINE_CHARS, PARAGRAPH_PAUSE, SENTENCE_PAUSE, ScriptLine, layout_lines, split_script};
+pub use picture::{
+    Picture, PictureCleanup, TracedPath, clean_picture, crop_to_content, decontaminate_white, feather_alpha, ink_tint,
+    remove_flat_white, trace_main_path,
+};
 pub use reframe::{
     Detection, PathPoint, ReframeCamera, SUBJECT_FRAME_WIDTH, ReframeGeometry, ReframePlan, ReframeSample, Subject, axis_keys,
     clip_seconds_for_source, cover_scale, plan_path, plan_reframe, shot_subjects, subject_from_detections,

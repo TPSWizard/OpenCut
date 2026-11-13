@@ -629,8 +629,10 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             let (track_index, element_index) = locate(project, element_id)?;
             let element = &mut project.tracks[track_index].elements[element_index];
             match &mut element.kind {
-                ElementKind::Video { media_id: id } | ElementKind::Audio { media_id: id } => *id = media_id.clone(),
-                _ => return Err(EditorError::InvalidParams("only video and audio elements play media".to_owned())),
+                ElementKind::Video { media_id: id } | ElementKind::Audio { media_id: id } | ElementKind::Image { media_id: id } => {
+                    *id = media_id.clone()
+                }
+                _ => return Err(EditorError::InvalidParams("only video, audio and image elements show media".to_owned())),
             }
             Outcome::None
         }
@@ -2011,6 +2013,25 @@ mod tests {
         let text_id = text.id.clone();
         apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
         assert!(apply(&mut project, &Command::ReplaceMedia { element_id: text_id, media_id: "clean".to_owned() }).is_err());
+        // Image clips swap pictures too (picture cleanup).
+        let picture = |id: &str| MediaItem {
+            id: id.to_owned(),
+            name: format!("{id}.png"),
+            kind: MediaKind::Image,
+            path: format!("{id}.png").into(),
+            duration: None,
+            width: Some(64),
+            height: Some(48),
+            fps: None,
+            has_audio: false,
+        };
+        apply(&mut project, &Command::AddMedia(picture("drawing"))).unwrap();
+        apply(&mut project, &Command::AddMedia(picture("cleaned"))).unwrap();
+        let image = Element::from_media(project.media_item("drawing").unwrap(), MediaTime::ZERO);
+        let image_id = image.id.clone();
+        apply(&mut project, &Command::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+        apply(&mut project, &Command::ReplaceMedia { element_id: image_id.clone(), media_id: "cleaned".to_owned() }).unwrap();
+        assert_eq!(project.element(&image_id).unwrap().1.media_id(), Some("cleaned"));
     }
 
     #[test]

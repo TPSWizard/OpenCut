@@ -609,6 +609,27 @@ export interface EditorApiMethods {
 	};
 	/** Every transition the renderer can draw, with its parameters. */
 	/**
+	 * Cleans up an image clip's picture on this device (for drawings on
+	 * white): flood-fill white paper away with a soft edge, remove the white
+	 * halo, feather `feather` px inwards, tint the ink (`tint` "#rrggbb"),
+	 * crop to the drawing, and trace its longest skeleton path (the Shortform
+	 * Studio's `TracedPath`: points as fractions, top end first). The result
+	 * is a new PNG the clip shows; its original is kept for a restore.
+	 */
+	"picture.cleanup": {
+		params: ApiElementLocator & {
+			removeWhite?: boolean;
+			decontaminate?: boolean;
+			feather?: number;
+			tint?: string | null;
+			crop?: boolean;
+			trace?: boolean;
+		};
+		result: { mediaId: string; width: number; height: number; path: { id: string; points: [number, number][] } | null };
+	};
+	/** Shows a cleaned clip's original picture again. */
+	"picture.restore": { params: ApiElementLocator; result: ApiElementInfo };
+	/**
 	 * Voice-over: speaks `script` on this device with Kokoro (English voices,
 	 * `voice` default "af_heart", `speed` 0.5–2), one line per sentence with
 	 * pauses, adds the WAV to the project at `at` (timeline seconds, default

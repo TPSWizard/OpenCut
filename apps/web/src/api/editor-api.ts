@@ -100,6 +100,7 @@ import { REFRAME_CAMERAS } from "@/reframe/path";
 import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions";
 import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
 import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
+import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -1618,6 +1619,34 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
 			}
+		},
+		"picture.cleanup": async ({ elementId, trackId, removeWhite, decontaminate, feather, tint, crop, trace }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "image") {
+				throw new EditorApiError({ code: "invalid_params", message: "Picture cleanup needs an image clip" });
+			}
+			if (feather !== undefined && (typeof feather !== "number" || !Number.isInteger(feather) || feather < 0 || feather > 16)) {
+				throw new EditorApiError({ code: "invalid_params", message: "feather must be a whole number from 0 to 16" });
+			}
+			if (tint !== undefined && tint !== null && !/^#[0-9a-fA-F]{6}$/.test(tint)) {
+				throw new EditorApiError({ code: "invalid_params", message: "tint must be #rrggbb or null" });
+			}
+			const options = Object.fromEntries(
+				Object.entries({ removeWhite, decontaminate, feather, tint, crop, trace }).filter(([, value]) => value !== undefined),
+			);
+			try {
+				return await cleanUpPicture({ editor, trackId: track.id, elementId: element.id, options });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Cleanup failed" });
+			}
+		},
+		"picture.restore": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "image" || !restoreOriginalPicture({ editor, trackId: track.id, elementId: element.id })) {
+				throw new EditorApiError({ code: "invalid_params", message: "The clip has no original picture to restore" });
+			}
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
 		},
 		"audio.textToSpeech": async ({ script, voice, speed, captions, at }) => {
 			requireProject();

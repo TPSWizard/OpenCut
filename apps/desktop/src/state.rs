@@ -875,6 +875,121 @@ impl EditorState {
         .detach();
     }
 
+    /// Cleans up the selected image clip's picture (white paper out, halo
+    /// out, feather, tint, crop, traced path) into a new PNG the clip shows,
+    /// in one undo step; cleaning again starts from the original, which the
+    /// clip keeps in `picture.source`. The path is kept in `picture.path`.
+    pub(crate) fn clean_up_picture_selected(&mut self, options: editor::PictureCleanup, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Image { .. }) {
+            self.set_status(t("Picture cleanup needs an image clip."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let source_id = element.params.text("picture.source", "").into_owned();
+        let source = self
+            .project()
+            .media_item(&source_id)
+            .or_else(|| self.project().media_for(element))
+            .cloned();
+        let Some(source) = source else { return };
+        let ffmpeg = self.ffmpeg.clone();
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-cleaned-{}.png", source.id, editor::new_id()));
+        self.set_status(t("Cleaning up the picture…"), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let decoded = image::open(&source.path).map_err(|error| error.to_string())?.to_rgba8();
+                    let picture = editor::Picture {
+                        width: decoded.width() as usize,
+                        height: decoded.height() as usize,
+                        rgba: decoded.into_raw(),
+                    };
+                    let (cleaned, path) = editor::clean_picture(&picture, &options);
+                    if let Some(parent) = output.parent() {
+                        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+                    }
+                    image::RgbaImage::from_raw(cleaned.width as u32, cleaned.height as u32, cleaned.rgba)
+                        .ok_or_else(|| "the cleaned picture has the wrong size".to_owned())?
+                        .save(&output)
+                        .map_err(|error| error.to_string())?;
+                    let item = probe_media(ffmpeg.as_deref(), output)?;
+                    Ok::<_, String>((item, path, source))
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok((mut item, path, source)) => {
+                    let base = source.name.rsplit_once('.').map_or(source.name.as_str(), |(base, _)| base);
+                    item.name = format!("{base} (cleaned).png");
+                    let mut params = editor::Params::new();
+                    params.set("picture.source", source.id.clone());
+                    params.set(
+                        "picture.path",
+                        path.as_ref().and_then(|path| serde_json::to_string(path).ok()).unwrap_or_default(),
+                    );
+                    let media_id = item.id.clone();
+                    let commands = vec![
+                        Command::AddMedia(item),
+                        Command::ReplaceMedia { element_id: element_id.clone(), media_id },
+                        Command::UpdateElement {
+                            element_id,
+                            patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+                        },
+                    ];
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(
+                            match &path {
+                                Some(path) => tf("Picture cleaned; a {count}-point path traced.", &[("count", &path.points.len())]),
+                                None => t("Picture cleaned; no path could be traced.").to_owned(),
+                            },
+                            cx,
+                        );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Shows a cleaned image clip's original picture again.
+    pub(crate) fn restore_picture_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let source_id = element.params.text("picture.source", "").into_owned();
+        if source_id.is_empty() || self.project().media_item(&source_id).is_none() {
+            return;
+        }
+        let element_id = element.id.clone();
+        let mut params = editor::Params::new();
+        params.set("picture.source", "");
+        params.set("picture.path", "");
+        self.execute(
+            Command::Batch(vec![
+                Command::ReplaceMedia { element_id: element_id.clone(), media_id: source_id },
+                Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+            ]),
+            cx,
+        );
+        self.set_status(t("The original picture is back."), cx);
+    }
+
+    /// Copies the selected clip's traced path (the studio's `TracedPath` JSON).
+    pub(crate) fn copy_picture_path(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let path = element.params.text("picture.path", "").into_owned();
+        if path.is_empty() {
+            return;
+        }
+        cx.write_to_clipboard(gpui::ClipboardItem::new_string(path));
+        self.set_status(t("Path copied"), cx);
+    }
+
     /// Beat-tracks the selected clip on a background thread and puts a
     /// marker on every `every`-th beat; clips snap to markers while dragged.
     pub(crate) fn detect_beats_selected(&mut self, every: usize, cx: &mut Context<Self>) {

@@ -35,6 +35,7 @@ pub(crate) struct InspectorPanel {
     loudness_target: usize,
     shot_threshold: f64,
     reframe_camera: editor::ReframeCamera,
+    picture_cleanup: editor::PictureCleanup,
     reframe_reset_at_shots: bool,
     beats_every: usize,
     denoise_db: f64,
@@ -111,6 +112,7 @@ impl InspectorPanel {
             loudness_target: 0,
             shot_threshold: 20.0,
             reframe_camera: editor::ReframeCamera::Smooth,
+            picture_cleanup: editor::PictureCleanup::default(),
             reframe_reset_at_shots: true,
             beats_every: 1,
             denoise_db: 12.0,
@@ -1592,6 +1594,108 @@ impl Render for InspectorPanel {
                                     state.update(cx, |state, cx| state.split_at_shots_selected(threshold, cx));
                                 }),
                         );
+                }
+
+                if matches!(element.kind, ElementKind::Image { .. }) {
+                    // Picture cleanup for drawings on white.
+                    let options = self.picture_cleanup.clone();
+                    let cleaned = !element.params.text("picture.source", "").is_empty();
+                    let path_points = serde_json::from_str::<editor::TracedPath>(&element.params.text("picture.path", ""))
+                        .map(|path| path.points.len())
+                        .unwrap_or(0);
+                    content = content.child(self.heading(t("Clean up picture"), window)).child(
+                        div()
+                            .text_xs()
+                            .text_color(colors.muted_foreground)
+                            .child(t("For drawings on white: takes the paper out, then tidies the edge.")),
+                    );
+                    let mut toggles = div().flex().flex_wrap().gap(px(4.));
+                    for (id, label, on) in [
+                        ("picture-white", t("Remove white background"), options.remove_white),
+                        ("picture-halo", t("Remove white halo"), options.decontaminate),
+                        ("picture-crop", t("Crop to the drawing"), options.crop),
+                    ] {
+                        toggles = toggles.child(
+                            Button::new(id, label)
+                                .variant(if on { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    let o = &mut this.picture_cleanup;
+                                    match id {
+                                        "picture-white" => o.remove_white = !o.remove_white,
+                                        "picture-halo" => o.decontaminate = !o.decontaminate,
+                                        _ => o.crop = !o.crop,
+                                    }
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let mut feather_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Feather"), window));
+                    for value in [0usize, 1, 2, 4] {
+                        feather_row = feather_row.child(
+                            Button::new(eid("picture-feather", &value.to_string()), if value == 0 { t("Off").to_owned() } else { format!("{value} px") })
+                                .variant(if options.feather == value { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.picture_cleanup.feather = value;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let mut ink_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Ink"), window));
+                    for (id, label, value) in [
+                        ("picture-ink-none", t("As drawn"), None),
+                        ("picture-ink-white", t("White"), Some("#ffffff")),
+                        ("picture-ink-black", t("Black"), Some("#111111")),
+                    ] {
+                        ink_row = ink_row.child(
+                            Button::new(id, label)
+                                .variant(if options.tint.as_deref() == value { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.picture_cleanup.tint = value.map(str::to_owned);
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let run_state = self.state.clone();
+                    let restore_state = self.state.clone();
+                    let copy_state = self.state.clone();
+                    let mut actions = div().flex().flex_wrap().gap(px(4.)).child(
+                        Button::new("picture-run", if cleaned { t("Clean again") } else { t("Clean up") })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                let options = options.clone();
+                                run_state.update(cx, |state, cx| state.clean_up_picture_selected(options, cx));
+                            }),
+                    );
+                    if cleaned {
+                        actions = actions.child(
+                            Button::new("picture-restore", t("Restore original"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| restore_state.update(cx, |state, cx| state.restore_picture_selected(cx))),
+                        );
+                    }
+                    if path_points > 0 {
+                        actions = actions.child(
+                            Button::new("picture-copy-path", tf("Copy path ({count} points)", &[("count", &path_points)]))
+                                .variant(ButtonVariant::Ghost)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| copy_state.update(cx, |state, cx| state.copy_picture_path(cx))),
+                        );
+                    }
+                    content = content.child(toggles).child(feather_row).child(ink_row).child(actions);
                 }
 
                 if matches!(element.kind, ElementKind::Video { .. }) {

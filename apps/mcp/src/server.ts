@@ -318,6 +318,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - timeline.removeEffect { elementId, trackId?, effectId } → ApiElementInfo
 - shots.detect { elementId, trackId?, threshold?, minGapSeconds?, sampleFps?, apply?: "none" | "bookmarks" | "split" } → { cuts[], framesScored, seconds, applied } (scene changes in a video clip)
 - reframe.apply { elementId, trackId?, camera?: "steady" | "smooth" | "follow", resetAtShots?, faces?, sampleFps? } → { scale, positionX, positionY, keysX[], keysY[], shots, cuts, samples, faceSamples, fallbackShots, keyframes } (covers the canvas and pans to keep faces in view; change the canvas to 9:16 first) / reframe.clear { elementId, trackId? } → ApiElementInfo
+- picture.cleanup { elementId, trackId?, removeWhite?, decontaminate?, feather?, tint?, crop?, trace? } → { mediaId, width, height, path } (drawing on white → clean cut-out PNG + traced path) / picture.restore { elementId } → ApiElementInfo
 - audio.textToSpeech { script, voice?, speed?, captions?, at? } → { mediaId, elementId, captionTrackId, lines, seconds } (Kokoro voice-over on the device, captions per line)
 - captions.translate { trackId?, from, to, engine?: "auto" | "browser" | "opus" } → { trackId, captions, engine, models, translations } (translated copy of a caption track on a new track above it)
 - cutout.removeBackground { elementId, trackId?, sampleFps? } → { matteId, matteName, frames, seconds, keptShare } (person cut-out from an on-device matte) / cutout.setInverted { elementId, inverted } / cutout.clear { elementId } → ApiElementInfo
