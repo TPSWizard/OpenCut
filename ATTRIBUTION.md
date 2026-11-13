@@ -69,6 +69,16 @@ published from the classic repository under MIT.
 - `platform-guides/`: layout guide images for TikTok, Reels, Shorts and
   Spotlight drawn by OpenCut.
 
+## Landing page (`apps/web/public/landing`, `apps/web/src/components/landing`)
+
+Original work, made 2026-11-12 (MIT). `editor-dark` and `editor-light` (AVIF
+and WebP) are screenshots of this repository's own editor, captured from the
+running app through the Editor API. The project on screen uses only media
+generated for the page with FFmpeg's built-in sources (`gradients` for the
+four clips, `sine` and `anoisesrc` for the two audio beds); no stock,
+third-party or proprietary footage appears in them. The drawings in the
+feature cards are CSS and inline SVG written for the page.
+
 ## Third-party packages
 
 See each app's `package.json`. Notable runtime dependencies: mediabunny

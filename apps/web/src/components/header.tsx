@@ -18,6 +18,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/utils/ui";
 import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
+import { useSiteT } from "@/site/use-site-t";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -26,6 +27,7 @@ import {
 } from "./ui/context-menu";
 
 export function Header() {
+	const t = useSiteT();
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const closeMenu = () => setIsMenuOpen(false);
 
@@ -91,7 +93,7 @@ export function Header() {
 						{links.map((link) => (
 							<Link key={link.href} href={link.href}>
 								<Button variant="text" className="p-0 text-sm">
-									{link.label}
+									{t(link.label)}
 								</Button>
 							</Link>
 						))}
@@ -118,7 +120,7 @@ export function Header() {
 						</Link>
 						<Link href="/projects">
 							<Button className="text-sm">
-								Projects
+								{t("Projects")}
 								<ArrowRight className="size-4" />
 							</Button>
 						</Link>
@@ -169,7 +171,7 @@ export function Header() {
 										className="text-2xl font-semibold"
 										onClick={() => setIsMenuOpen(false)}
 									>
-										{link.label}
+										{t(link.label)}
 									</Link>
 								</motion.div>
 							))}

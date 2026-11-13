@@ -1,11 +1,11 @@
 import Link from "@/compat/link";
 import { FaGithub } from "react-icons/fa6";
 import Image from "@/compat/image";
-import { DEFAULT_LOGO_URL, UPSTREAM } from "@/site/brand";
+import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
-import { capitalizeFirstLetter } from "@/utils/string";
+import { useSiteT } from "@/site/use-site-t";
 
-type Category = "resources" | "company";
+type Category = "resources" | "project";
 
 interface FooterLink {
 	label: string;
@@ -14,19 +14,24 @@ interface FooterLink {
 
 type CategoryLinks = Record<Category, FooterLink[]>;
 
+const CATEGORY_TITLES: Record<Category, string> = {
+	resources: "Resources",
+	project: "Project",
+};
+
 const links: CategoryLinks = {
 	resources: [
 		{ label: "Changelog", href: "/changelog" },
 		{ label: "Roadmap", href: `${SOCIAL_LINKS.github}/issues` },
 	],
-	company: [
+	project: [
 		{ label: "About", href: `${SOCIAL_LINKS.github}/blob/main/README.md` },
 		{ label: "License", href: `${SOCIAL_LINKS.github}/blob/main/LICENSE` },
-		{ label: `Built on ${UPSTREAM.name}`, href: UPSTREAM.url },
 	],
 };
 
 export function Footer() {
+	const t = useSiteT();
 	return (
 		<footer className="bg-background border-t">
 			<div className="mx-auto max-w-5xl px-8 py-10">
@@ -44,7 +49,7 @@ export function Footer() {
 							<span className="text-lg font-bold">ConzaCut</span>
 						</div>
 						<p className="text-muted-foreground mb-5 text-sm md:text-left">
-							The privacy-first video editor that feels simple to use.
+							{t("The privacy-first video editor that feels simple to use.")}
 						</p>
 						<div className="flex justify-start gap-3">
 							<Link
@@ -62,7 +67,7 @@ export function Footer() {
 						{(Object.keys(links) as Category[]).map((category) => (
 							<div key={category} className="flex flex-col gap-2">
 								<h3 className="text-foreground font-semibold">
-									{capitalizeFirstLetter({ string: category })}
+									{t(CATEGORY_TITLES[category])}
 								</h3>
 								<ul className="space-y-2 text-sm">
 									{links[category].map((link) => (
@@ -79,7 +84,7 @@ export function Footer() {
 														: undefined
 												}
 											>
-												{link.label}
+												{t(link.label)}
 											</Link>
 										</li>
 									))}
@@ -93,16 +98,8 @@ export function Footer() {
 				<div className="flex flex-col items-start justify-between gap-4 pt-2 md:flex-row">
 					<div className="text-muted-foreground flex items-center gap-4 text-sm">
 						<span>
-							© {new Date().getFullYear()} ConzaCut. A fork of{" "}
-							<Link
-								href={UPSTREAM.url}
-								className="hover:text-foreground underline underline-offset-4 transition-colors"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								{UPSTREAM.name}
-							</Link>
-							, MIT licensed.
+							© {new Date().getFullYear()} ConzaCut.{" "}
+							{t("Free and open source under the MIT licence.")}
 						</span>
 					</div>
 				</div>
