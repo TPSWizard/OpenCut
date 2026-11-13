@@ -746,6 +746,7 @@ impl EditorState {
             .unwrap_or_else(|| std::path::PathBuf::from("processed"))
             .join(format!("{}-denoised-{}db.wav", media.id, reduction_db.round() as i64));
         let source_name = media.name.clone();
+        let source_id = media.id.clone();
         self.set_status(t("Reducing noise…"), cx);
         cx.spawn(async move |this, cx| {
             let produced = cx
@@ -759,7 +760,13 @@ impl EditorState {
                 Ok(mut item) => {
                     item.name = format!("{source_name} (denoised {} dB)", reduction_db.round() as i64);
                     let media_id = item.id.clone();
-                    let mut commands = vec![Command::AddMedia(item.clone())];
+                    let mut commands = vec![
+                        Command::AddMedia(item.clone()),
+                        Command::SetOrigin {
+                            media_id: media_id.clone(),
+                            origin: Some(editor::MediaOrigin::generated("denoise", Some(&source_id), None)),
+                        },
+                    ];
                     if is_video {
                         let mut audio = editor::Element::from_media(&item, element.start_time);
                         audio.name = element.name.clone();
@@ -820,6 +827,11 @@ impl EditorState {
             Some(voice) => format!("Voice-over ({voice}) {first}"),
             None => format!("Voice-over {first}"),
         };
+        // The desktop speaks with the system's own voices (see voiceover.rs).
+        let voice_model = match &voice {
+            Some(voice) => format!("system voice {voice}"),
+            None => "system voice".to_owned(),
+        };
         self.set_status(tf("Speaking {count} line(s)…", &[("count", &lines.len())]), cx);
         cx.spawn(async move |this, cx| {
             let produced = cx
@@ -834,7 +846,13 @@ impl EditorState {
                 Ok((lines, durations, mut item)) => {
                     item.name = name;
                     let (spans, total) = editor::layout_lines(&lines, &durations);
-                    let mut commands = vec![Command::AddMedia(item.clone())];
+                    let mut commands = vec![
+                        Command::AddMedia(item.clone()),
+                        Command::SetOrigin {
+                            media_id: item.id.clone(),
+                            origin: Some(editor::MediaOrigin::generated("voiceover", None, Some(&voice_model))),
+                        },
+                    ];
                     let Some(start_time) = MediaTime::from_seconds_f64(start) else { return };
                     let mut audio = editor::Element::from_media(&item, start_time);
                     if let Some(duration) = MediaTime::from_seconds_f64(total) {
@@ -935,6 +953,10 @@ impl EditorState {
                     let media_id = item.id.clone();
                     let commands = vec![
                         Command::AddMedia(item),
+                        Command::SetOrigin {
+                            media_id: media_id.clone(),
+                            origin: Some(editor::MediaOrigin::generated("picture", Some(&source.id), None)),
+                        },
                         Command::ReplaceMedia { element_id: element_id.clone(), media_id },
                         Command::UpdateElement {
                             element_id,
@@ -1032,10 +1054,18 @@ impl EditorState {
     }
 
     /// Copies the credits of the project's stock media.
+    /// Where projects are kept (fonts, stickers and tools sit beside it).
+    pub(crate) fn projects_root(&self) -> std::path::PathBuf {
+        self.store.root().to_path_buf()
+    }
+
+    /// Copies the credit lines of everything in the project that has one
+    /// (stock media, sounds, stickers), as the bundle's asset manifest lists them.
     pub(crate) fn copy_stock_credits(&mut self, cx: &mut Context<Self>) {
-        let text = editor::credits_text(self.project());
+        let lookups = crate::assets::lookups(self.project(), &self.projects_root(), false);
+        let text = editor::manifest_credits_text(&editor::project_asset_manifest(self.project(), &lookups));
         if text.is_empty() {
-            self.set_status(t("No stock media in this project yet."), cx);
+            self.set_status(t("Nothing in this project has a credit line yet."), cx);
             return;
         }
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));

@@ -140,6 +140,9 @@ pub(crate) struct Brand {
     pub slug: String,
     pub title: String,
     pub hex: String,
+    /// The icon's licence and whether it asks for a credit (`brands.json`).
+    pub license: String,
+    pub credit: bool,
 }
 
 pub(crate) fn brands() -> &'static [Brand] {
@@ -147,10 +150,25 @@ pub(crate) fn brands() -> &'static [Brand] {
     BRANDS.get_or_init(|| {
         #[derive(serde::Deserialize)]
         struct File {
+            #[serde(default)]
+            license: String,
             brands: Vec<(String, String, String, String, String, bool)>,
         }
         serde_json::from_str::<File>(BRAND_DATA)
-            .map(|file| file.brands.into_iter().map(|(slug, title, hex, ..)| Brand { slug, title, hex }).collect())
+            .map(|file| {
+                // An empty per-icon licence means the collection's own (as the web app reads it).
+                let default = file.license;
+                file.brands
+                    .into_iter()
+                    .map(|(slug, title, hex, _, license, credit)| Brand {
+                        slug,
+                        title,
+                        hex,
+                        license: if license.is_empty() { default.clone() } else { license },
+                        credit,
+                    })
+                    .collect()
+            })
             .unwrap_or_default()
     })
 }

@@ -800,6 +800,10 @@ pub struct Project {
     /// Credits for stock media, by media id.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub credits: std::collections::BTreeMap<String, StockCredit>,
+    /// Where generated media came from (voice-over, cleaned pictures,
+    /// denoised audio), by media id; feeds the bundle's asset manifest.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub origins: std::collections::BTreeMap<String, crate::MediaOrigin>,
 }
 
 impl Project {
@@ -817,6 +821,7 @@ impl Project {
             playhead: MediaTime::ZERO,
             markers: Vec::new(),
             credits: Default::default(),
+            origins: Default::default(),
         }
     }
 

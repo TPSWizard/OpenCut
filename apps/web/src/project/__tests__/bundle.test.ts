@@ -139,9 +139,13 @@ describe("project bundles", () => {
 		const { unzipSync, strFromU8 } = await import("fflate");
 		const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
 		expect(Object.keys(entries).sort()).toEqual([
+			"assets.json",
 			"media/m-1.mp4",
 			"project.json",
 		]);
+		const assets = JSON.parse(strFromU8(entries["assets.json"]));
+		expect(assets.format).toBe("opencut-asset-manifest");
+		expect(assets.assets[0]).toMatchObject({ kind: "media", id: "m-1", file: "media/m-1.mp4", license: null });
 		const manifest = JSON.parse(strFromU8(entries["project.json"]));
 		expect(manifest.format).toBe(PROJECT_BUNDLE_FORMAT);
 		expect(manifest.formatVersion).toBe(1);

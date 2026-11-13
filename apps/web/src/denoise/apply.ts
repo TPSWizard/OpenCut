@@ -146,7 +146,10 @@ export async function reduceNoiseOnElement({
 	if (!processed) {
 		throw new Error("The denoised audio could not be prepared");
 	}
-	const saved = await editor.media.addMediaAsset({ projectId: project.metadata.id, asset: processed });
+	const saved = await editor.media.addMediaAsset({
+		projectId: project.metadata.id,
+		asset: { ...processed, origin: { kind: "generated", tool: "denoise", from: asset.id } },
+	});
 	if (!saved) {
 		throw new Error("The denoised audio could not be stored");
 	}

@@ -1,3 +1,4 @@
+import { gatherAssetLookups } from "@/project/assets";
 import type { EditorCore } from "@/core";
 import type {
 	TProject,
@@ -239,7 +240,7 @@ export class ProjectManager {
 		const mediaAssets = await storageService.loadAllMediaAssets({
 			projectId: project.metadata.id,
 		});
-		const blob = await buildProjectBundle({ project, mediaAssets });
+		const blob = await buildProjectBundle({ project, mediaAssets, gatherLookups: gatherAssetLookups });
 		recordBackup({ projectId: project.metadata.id });
 		return {
 			blob,
@@ -254,7 +255,7 @@ export class ProjectManager {
 		if (!stored) throw new Error("No such project");
 		const project = stored.project;
 		const mediaAssets = await storageService.loadAllMediaAssets({ projectId: id });
-		const blob = await buildProjectBundle({ project, mediaAssets });
+		const blob = await buildProjectBundle({ project, mediaAssets, gatherLookups: gatherAssetLookups });
 		recordBackup({ projectId: id });
 		return {
 			blob,
@@ -298,6 +299,7 @@ export class ProjectManager {
 					ephemeral: data.ephemeral,
 					thumbnailUrl: data.thumbnailUrl,
 					...(data.credit ? { credit: data.credit } : {}),
+					...(data.origin ? { origin: data.origin } : {}),
 					file: mediaFile,
 				},
 			});

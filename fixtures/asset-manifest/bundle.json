@@ -1,0 +1,70 @@
+{
+  "format": "opencut-project-bundle",
+  "formatVersion": 1,
+  "project": {
+    "metadata": { "id": "proj-1", "name": "Manifest check", "createdAt": "2026-11-12T00:00:00.000Z", "updatedAt": "2026-11-12T00:00:00.000Z" },
+    "currentSceneId": "s1",
+    "settings": { "fps": 30, "canvasSize": { "width": 1080, "height": 1920 } },
+    "version": 31,
+    "scenes": [
+      {
+        "id": "s1", "name": "Main scene", "isMain": true, "bookmarks": [],
+        "createdAt": "2026-11-12T00:00:00.000Z", "updatedAt": "2026-11-12T00:00:00.000Z",
+        "tracks": {
+          "overlay": [
+            { "id": "t-text", "type": "text", "elements": [
+              { "id": "x1", "type": "text", "name": "Title", "params": { "content": "Hi", "fontFamily": "Inter" } },
+              { "id": "x2", "type": "text", "name": "Body", "params": { "content": "Yo", "fontFamily": "Arial" } },
+              { "id": "x3", "type": "text", "name": "Odd", "params": { "content": "?", "fontFamily": "Mystery Font" } }
+            ] },
+            { "id": "t-stickers", "type": "graphic", "elements": [
+              { "id": "k1", "type": "sticker", "name": "Smile", "stickerId": "icons:twemoji:smiling-face", "params": {} },
+              { "id": "k2", "type": "sticker", "name": "Home", "stickerId": "icons:mdi:home", "params": {} },
+              { "id": "k3", "type": "sticker", "name": "Home again", "stickerId": "icons:mdi:home", "params": {} },
+              { "id": "k4", "type": "sticker", "name": "Star", "stickerId": "icons:cc:star", "params": {} },
+              { "id": "k5", "type": "sticker", "name": "Thing", "stickerId": "icons:zzz:thing", "params": {} },
+              { "id": "k6", "type": "sticker", "name": "YouTube", "stickerId": "logos:youtube:FF0000", "params": {} },
+              { "id": "k7", "type": "sticker", "name": "Mystery brand", "stickerId": "logos:nobrand:000000", "params": {} },
+              { "id": "k8", "type": "sticker", "name": "US", "stickerId": "flags:US", "params": {} },
+              { "id": "k9", "type": "sticker", "name": "Circle", "stickerId": "shapes:circle", "params": {} },
+              { "id": "k10", "type": "sticker", "name": "Weird", "stickerId": "weird:thing", "params": {} },
+              { "id": "k11", "type": "sticker", "name": "Noto", "stickerId": "icons:noto:rocket", "params": {} }
+            ] }
+          ],
+          "main": { "id": "t-main", "type": "video", "elements": [
+            { "id": "v1", "type": "video", "name": "Clip", "mediaId": "vid", "params": {},
+              "masks": [ { "id": "m1", "type": "text", "params": { "content": "M", "fontFamily": "Inter" } } ] },
+            { "id": "v2", "type": "image", "name": "Photo", "mediaId": "stock1", "params": {} },
+            { "id": "v3", "type": "image", "name": "Photo cut out", "mediaId": "cut", "params": {} },
+            { "id": "v4", "type": "video", "name": "Waves", "mediaId": "pix", "params": {} }
+          ] },
+          "audio": [
+            { "id": "t-audio", "type": "audio", "elements": [
+              { "id": "a1", "type": "audio", "sourceType": "upload", "name": "Voice", "mediaId": "vo", "params": {} },
+              { "id": "a2", "type": "audio", "sourceType": "upload", "name": "Click", "mediaId": "bundled-sound-kenney-ui-click-1-ogg", "params": {} },
+              { "id": "a3", "type": "audio", "sourceType": "library", "name": "Rain", "sourceUrl": "https://cdn.freesound.org/previews/123/123456_789-hq.mp3", "params": {} },
+              { "id": "a4", "type": "audio", "sourceType": "library", "name": "Blip", "sourceUrl": "/sounds/retro/blip.ogg", "params": {} },
+              { "id": "a5", "type": "audio", "sourceType": "library", "name": "Other", "sourceUrl": "https://example.com/a.mp3", "params": {} },
+              { "id": "a6", "type": "audio", "sourceType": "library", "name": "Rain again", "sourceUrl": "https://cdn.freesound.org/previews/123/123456_789-hq.mp3", "params": {} }
+            ] }
+          ]
+        }
+      }
+    ]
+  },
+  "media": [
+    { "id": "vid", "name": "my-holiday.mp4", "type": "video", "size": 10, "lastModified": 0, "file": "media/vid.mp4" },
+    { "id": "stock1", "name": "Lighthouse (openverse).jpg", "type": "image", "size": 10, "lastModified": 0, "file": "media/stock1.jpg",
+      "credit": { "provider": "openverse", "id": "abc", "title": "Lighthouse", "creator": "Kenneth", "creatorUrl": "https://example.com/k", "license": "CC BY 2.0", "licenseUrl": "https://creativecommons.org/licenses/by/2.0/", "sourceUrl": "https://example.com/lighthouse", "attribution": "\"Lighthouse\" by Kenneth is licensed under CC BY 2.0." } },
+    { "id": "pix", "name": "Waves (pixabay).mp4", "type": "video", "size": 10, "lastModified": 0, "file": "media/pix.mp4",
+      "credit": { "provider": "pixabay", "id": "42", "title": "Waves", "creator": "someone", "license": "Pixabay Content License", "licenseUrl": "https://pixabay.com/service/license-summary/", "sourceUrl": "https://pixabay.com/videos/id-42/", "attribution": "Waves by someone from Pixabay" } },
+    { "id": "cut", "name": "Lighthouse (cut out).png", "type": "image", "size": 10, "lastModified": 0, "file": "media/cut.png",
+      "origin": { "kind": "generated", "tool": "cutout", "from": "stock1", "model": "MediaPipe Selfie Segmenter" } },
+    { "id": "vo", "name": "Voice-over.wav", "type": "audio", "size": 10, "lastModified": 0, "file": "media/vo.wav",
+      "origin": { "kind": "generated", "tool": "voiceover", "model": "Kokoro-82M" } },
+    { "id": "bundled-sound-kenney-ui-click-1-ogg", "name": "click 1", "type": "audio", "size": 10, "lastModified": 0, "file": "media/bundled-sound-kenney-ui-click-1-ogg.ogg",
+      "origin": { "kind": "library", "source": "/sounds/kenney-ui/click-1.ogg" },
+      "credit": { "provider": "kenney-ui", "id": "kenney-ui/click-1.ogg", "title": "click 1", "creator": "Kenney", "license": "CC0-1.0", "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/", "sourceUrl": "https://kenney.nl/assets/ui-audio", "attribution": "\"click 1\" from Kenney UI Audio by Kenney (CC0-1.0)" } },
+    { "id": "unused", "name": "old.wav", "type": "audio", "size": 10, "lastModified": 0, "file": "media/unused.wav", "origin": { "kind": "library", "source": "/sounds/x/y.ogg" } }
+  ]
+}

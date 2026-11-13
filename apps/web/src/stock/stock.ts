@@ -191,13 +191,3 @@ export async function importStockItem({
 	}
 	return { mediaId: saved.id, name: saved.name };
 }
-
-/** The credits of the project's stock media, one line each. */
-export function projectCredits({ editor }: { editor: EditorCore }): string {
-	const lines: string[] = [];
-	for (const asset of editor.media.getAssets()) {
-		const line = asset.credit?.attribution;
-		if (line && !lines.includes(line)) lines.push(line);
-	}
-	return lines.join("\n");
-}

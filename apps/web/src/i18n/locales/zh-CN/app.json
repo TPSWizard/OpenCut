@@ -183,5 +183,20 @@
   "{name} relinked to {file}": "已将“{name}”重新链接到 {file}",
   "{used} of {total}": "{used} / {total}",
   "⚠️ This is a super early beta!": "⚠️ 这是一个非常早期的测试版！",
-  "🦋 Have fun testing!": "🦋 祝你测试愉快！"
+  "🦋 Have fun testing!": "🦋 祝你测试愉快！",
+  "Credits and licences": "署名与许可",
+  "Everything this project uses, where it came from and its licence. Exported projects carry this list as assets.json.": "此项目使用的所有内容、其来源和许可。导出的项目会以 assets.json 附带此列表。",
+  "Library sounds": "音效库声音",
+  "Stickers": "贴纸",
+  "Fonts": "字体",
+  "{count} items · {credit} need a credit · {unknown} with no recorded licence": "共 {count} 项 · {credit} 项需要署名 · {unknown} 项未记录许可",
+  "System font": "系统字体",
+  "Not recorded": "未记录",
+  "Credit": "需署名",
+  "Download assets.json": "下载 assets.json",
+  "Copy credits": "拷贝署名",
+  "Nothing in this project has a credit line yet.": "此项目中还没有需要署名的内容。",
+  "Credits copied": "署名已拷贝",
+  "Paste them into your video's description.": "请粘贴到视频的描述中。",
+  "The clipboard is not available here": "此处无法使用剪贴板"
 }

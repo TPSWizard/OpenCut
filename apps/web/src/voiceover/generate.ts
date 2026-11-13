@@ -149,7 +149,10 @@ export async function generateVoiceover({
 	});
 	const [processed] = await processMediaAssets({ files: [file] });
 	if (!processed) throw new Error("The voice-over could not be prepared");
-	const saved = await editor.media.addMediaAsset({ projectId: project.metadata.id, asset: processed });
+	const saved = await editor.media.addMediaAsset({
+		projectId: project.metadata.id,
+		asset: { ...processed, origin: { kind: "generated", tool: "voiceover", model: "Kokoro-82M" } },
+	});
 	if (!saved) throw new Error("The voice-over could not be stored");
 
 	const startSeconds = at ?? mediaTimeToSeconds({ time: editor.playback.getCurrentTime() });

@@ -368,3 +368,7 @@ dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
   projects page reads one, from here or from the web app's *Export project…*
   menu item. Web-only content (stickers, graphics, effect tracks, library
   sounds, extra scenes) is left out of an import and listed on the page.
+  Every bundle also holds `assets.json`, the asset manifest: each media
+  file, library sound, sticker and font with where it came from, its
+  licence (or that none is recorded), source and credit line. *Copy
+  credits* in the Stock tab copies its credit lines.

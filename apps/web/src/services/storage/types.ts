@@ -32,6 +32,21 @@ export interface MediaAssetData {
 	proxyHeight?: number;
 	/** Where stock media came from and how to credit it. */
 	credit?: StockCredit;
+	/** Where generated media came from (the voice-over, cut-out and clean-up tools) or which library sound it is. */
+	origin?: MediaOrigin;
+}
+
+/**
+ * The desktop editor's `editor::MediaOrigin`: `kind` "generated" (with
+ * the `tool`, the media it was made `from` and the `model`) or "library"
+ * (with the sound's `source` path). The asset manifest reads it.
+ */
+export interface MediaOrigin {
+	kind: "generated" | "library";
+	tool?: string;
+	from?: string;
+	model?: string;
+	source?: string;
 }
 
 /** The desktop editor's `editor::StockCredit`; bundles carry it on each media entry. */

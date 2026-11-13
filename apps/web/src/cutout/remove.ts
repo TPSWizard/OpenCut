@@ -173,7 +173,10 @@ export async function removeBackground({
 
 	const [processed] = await processMediaAssets({ files: [matteFile] });
 	if (!processed) throw new Error("The matte could not be prepared");
-	const saved = await editor.media.addMediaAsset({ projectId: project.metadata.id, asset: processed });
+	const saved = await editor.media.addMediaAsset({
+		projectId: project.metadata.id,
+		asset: { ...processed, origin: { kind: "generated", tool: "cutout", from: asset.id, model: "MediaPipe Selfie Segmenter" } },
+	});
 	if (!saved) throw new Error("The matte could not be stored");
 	setCutout({ editor, trackId, elementId, cutout: { matteId: saved.id, offset: from, inverted: false } });
 	onProgress?.(1);

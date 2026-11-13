@@ -309,6 +309,7 @@ class StorageService {
 			thumbnailUrl: mediaAsset.thumbnailUrl,
 			ephemeral: mediaAsset.ephemeral,
 			...(mediaAsset.credit ? { credit: mediaAsset.credit } : {}),
+			...(mediaAsset.origin ? { origin: mediaAsset.origin } : {}),
 			...(mediaAsset.proxyFile
 				? { proxyWidth: mediaAsset.proxyWidth, proxyHeight: mediaAsset.proxyHeight }
 				: {}),
@@ -399,6 +400,7 @@ class StorageService {
 			thumbnailUrl: metadata.thumbnailUrl,
 			ephemeral: metadata.ephemeral,
 			...(metadata.credit ? { credit: metadata.credit } : {}),
+			...(metadata.origin ? { origin: metadata.origin } : {}),
 			...(proxyFile
 				? { proxyFile, proxyWidth: metadata.proxyWidth, proxyHeight: metadata.proxyHeight }
 				: {}),

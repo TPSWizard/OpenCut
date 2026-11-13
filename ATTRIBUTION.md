@@ -292,3 +292,14 @@ bundles and "Copy credits").
   results only show Pixabay's preview URLs temporarily, items are
   downloaded before use, and results say they come from Pixabay. Items are
   under the Pixabay Content License (no standalone redistribution).
+
+## Asset manifest (added 2026-11-12)
+
+Bundles from both editors now hold `assets.json`, which lists every media
+file, library sound, sticker and font a project uses with its origin,
+licence (null when none is recorded), source and credit line. Licences come
+only from what was recorded with each item or looked up from its source
+(the Iconify API for icon sets, the Fontsource catalogue for fonts,
+`brands.json` for brand logos, the bundled sounds' `manifest.json`); nothing
+is guessed. The flag pictures' source licence is not recorded, and the
+manifest says so. `fixtures/asset-manifest/` is synthetic test data.

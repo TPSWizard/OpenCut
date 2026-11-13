@@ -104,6 +104,11 @@ pub enum Command {
         media_id: String,
         credit: Option<crate::StockCredit>,
     },
+    /// Sets (or clears) where a media item came from (see `MediaOrigin`).
+    SetOrigin {
+        media_id: String,
+        origin: Option<crate::MediaOrigin>,
+    },
     /// Splits one element at several times in one step (the first piece
     /// keeps the id); times outside the element are skipped.
     SplitElementAtTimes {
@@ -637,6 +642,20 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 }
                 None => {
                     project.credits.remove(media_id);
+                }
+            }
+            Outcome::None
+        }
+        Command::SetOrigin { media_id, origin } => {
+            if project.media_item(media_id).is_none() {
+                return Err(EditorError::InvalidParams(format!("no media item {media_id}")));
+            }
+            match origin {
+                Some(origin) => {
+                    project.origins.insert(media_id.clone(), origin.clone());
+                }
+                None => {
+                    project.origins.remove(media_id);
                 }
             }
             Outcome::None

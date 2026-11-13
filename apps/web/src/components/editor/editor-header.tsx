@@ -12,6 +12,7 @@ import {
 import Link from "@/compat/link";
 import { RenameProjectDialog } from "@/project/components/rename-project-dialog";
 import { DeleteProjectDialog } from "@/project/components/delete-project-dialog";
+import { AssetLicencesDialog } from "@/project/components/asset-licences-dialog";
 import { useRouter } from "@/compat/navigation";
 import { FaGithub } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
@@ -21,7 +22,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Download01Icon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, Download01Icon, LicenseIcon, Logout05Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "@/compat/image";
@@ -47,7 +48,7 @@ export function EditorHeader() {
 function ProjectDropdown() {
 	const t = useT();
 	const [openDialog, setOpenDialog] = useState<
-		"delete" | "rename" | "shortcuts" | null
+		"delete" | "rename" | "shortcuts" | "licences" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
 	const [isExportingBundle, setIsExportingBundle] = useState(false);
@@ -172,6 +173,13 @@ function ProjectDropdown() {
 						{isExportingBundle ? t("Exporting project…") : t("Export project…")}
 					</DropdownMenuItem>
 
+					<DropdownMenuItem
+						onClick={() => setOpenDialog("licences")}
+						icon={<HugeiconsIcon icon={LicenseIcon} />}
+					>
+						{t("Credits and licences")}
+					</DropdownMenuItem>
+
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem asChild icon={<FaGithub className="size-4!" />}>
@@ -200,6 +208,10 @@ function ProjectDropdown() {
 			<ShortcutsDialog
 				isOpen={openDialog === "shortcuts"}
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
+			/>
+			<AssetLicencesDialog
+				isOpen={openDialog === "licences"}
+				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "licences" : null)}
 			/>
 		</>
 	);

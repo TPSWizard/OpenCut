@@ -135,16 +135,19 @@ impl Shell {
             if path.extension().is_none() {
                 path.set_extension("zip");
             }
-            let Ok(project) = state.update(cx, |state, cx| {
+            let Ok((project, root)) = state.update(cx, |state, cx| {
                 state.save_now(cx);
-                state.project().clone()
+                (state.project().clone(), state.projects_root())
             }) else {
                 return;
             };
             let shown = path.display().to_string();
             let result = cx
                 .background_executor()
-                .spawn(async move { editor::export_bundle(&project, &path) })
+                .spawn(async move {
+                    let lookups = crate::assets::lookups(&project, &root, true);
+                    editor::export_bundle_with(&project, &path, &lookups)
+                })
                 .await;
             state
                 .update(cx, |state, cx| match result {

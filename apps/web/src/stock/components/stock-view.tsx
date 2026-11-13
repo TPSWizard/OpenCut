@@ -9,10 +9,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { useEditor } from "@/editor/use-editor";
 import { useT } from "@/i18n";
 import { cn } from "@/utils/ui";
+import { copyProjectCredits } from "@/project/components/copy-credits";
 import {
 	StockUnavailableError,
 	importStockItem,
-	projectCredits,
 	searchStock,
 	type StockItem,
 	type StockKind,
@@ -71,17 +71,7 @@ export function StockView() {
 		}
 	};
 
-	const copyCredits = () => {
-		const credits = projectCredits({ editor });
-		if (!credits) {
-			toast.info(t("No stock media in this project yet."));
-			return;
-		}
-		void navigator.clipboard.writeText(credits).then(
-			() => toast.success(t("Credits copied"), { description: t("Paste them into your video's description.") }),
-			() => toast.error(t("The clipboard is not available here")),
-		);
-	};
+	const copyCredits = () => copyProjectCredits({ editor, t });
 
 	const choice = <T extends string>(value: T, current: T, label: string, onPick: (value: T) => void, testId: string) => (
 		<button

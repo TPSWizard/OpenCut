@@ -132,6 +132,9 @@ struct WebMedia {
     /// Stock credit, when the media came from a stock provider.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     credit: Option<crate::StockCredit>,
+    /// Where generated media came from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    origin: Option<crate::MediaOrigin>,
     /// Entry name inside the bundle.
     file: String,
 }
@@ -184,9 +187,13 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
 
     let mut media = Vec::with_capacity(bundle.media.len());
     let mut credits = std::collections::BTreeMap::new();
+    let mut origins = std::collections::BTreeMap::new();
     for item in &bundle.media {
         if let Some(credit) = &item.credit {
             credits.insert(item.id.clone(), credit.clone());
+        }
+        if let Some(origin) = &item.origin {
+            origins.insert(item.id.clone(), origin.clone());
         }
         let file_name = Path::new(&item.file)
             .file_name()
@@ -271,6 +278,7 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     };
     project.media = media;
     project.credits = credits;
+    project.origins = origins;
     project.tracks = tracks;
     project.markers = crate::normalize_markers(&markers);
     store.save(&project)?;
@@ -427,22 +435,9 @@ fn mark_web_audio(value: &mut Value) {
     }
 }
 
-/// Writes the project and copies of its media files as a bundle.
-pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
-    let file = File::create(path)?;
-    let mut writer = zip::ZipWriter::new(file);
-    let deflated = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
-    // Media is already compressed, so it is stored. ZIP64 fields are only
-    // written for files that need them: fflate, which the web app reads
-    // bundles with, cannot read a local header with ZIP64 placeholders and
-    // would run every entry on to the end of the archive.
-    let stored = |size: u64| {
-        zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Stored)
-            .large_file(size >= u32::MAX as u64)
-    };
-
+/// The bundle's `project.json` for `project`, and the media files to copy
+/// (entry, source, size). With `strict`, a missing media file is an error.
+fn web_bundle(project: &Project, strict: bool) -> io::Result<(Bundle, Vec<(String, PathBuf, u64)>)> {
     let mut media = Vec::with_capacity(project.media.len());
     let mut entries: Vec<(String, PathBuf, u64)> = Vec::new();
     for item in &project.media {
@@ -452,10 +447,15 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
             .map(|ext| format!(".{}", ext.to_string_lossy()))
             .unwrap_or_default();
         let entry = format!("media/{}{extension}", item.id);
-        let metadata = fs::metadata(&item.path)?;
+        let metadata = match fs::metadata(&item.path) {
+            Ok(metadata) => Some(metadata),
+            Err(error) if strict => return Err(error),
+            Err(_) => None,
+        };
+        let size = metadata.as_ref().map_or(0, fs::Metadata::len);
         let last_modified = metadata
-            .modified()
-            .ok()
+            .as_ref()
+            .and_then(|metadata| metadata.modified().ok())
             .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|elapsed| elapsed.as_millis() as u64)
             .unwrap_or(0);
@@ -463,7 +463,7 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
             id: item.id.clone(),
             name: item.name.clone(),
             kind: item.kind,
-            size: metadata.len(),
+            size: size,
             last_modified,
             width: item.width,
             height: item.height,
@@ -471,9 +471,10 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
             fps: item.fps,
             has_audio: Some(item.has_audio),
             credit: project.credits.get(&item.id).cloned(),
+            origin: project.origins.get(&item.id).cloned(),
             file: entry.clone(),
         });
-        entries.push((entry, item.path.clone(), metadata.len()));
+        entries.push((entry, item.path.clone(), size));
     }
 
     let (overlay, main, audio) = web_tracks(project);
@@ -512,9 +513,49 @@ pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
         },
         media,
     };
-    let json = serde_json::to_vec_pretty(&bundle).map_err(io::Error::other)?;
+    Ok((bundle, entries))
+}
+
+/// The asset manifest of `project` as it would be bundled (see
+/// [`crate::asset_manifest`]); media files that are missing count as empty.
+pub fn project_asset_manifest(project: &Project, lookups: &crate::AssetLookups) -> Value {
+    match web_bundle(project, false).and_then(|(bundle, _)| serde_json::to_value(&bundle).map_err(io::Error::other)) {
+        Ok(value) => crate::asset_manifest(&value, lookups),
+        Err(_) => Value::Null,
+    }
+}
+
+/// Writes the project and copies of its media files as a bundle, with an
+/// asset manifest built without looked-up licences.
+pub fn export_bundle(project: &Project, path: &Path) -> io::Result<()> {
+    export_bundle_with(project, path, &crate::AssetLookups::default())
+}
+
+/// Writes the project and copies of its media files as a bundle, with
+/// `assets.json` (see [`crate::asset_manifest`]) built with `lookups`.
+pub fn export_bundle_with(project: &Project, path: &Path, lookups: &crate::AssetLookups) -> io::Result<()> {
+    let file = File::create(path)?;
+    let mut writer = zip::ZipWriter::new(file);
+    let deflated = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    // Media is already compressed, so it is stored. ZIP64 fields are only
+    // written for files that need them: fflate, which the web app reads
+    // bundles with, cannot read a local header with ZIP64 placeholders and
+    // would run every entry on to the end of the archive.
+    let stored = |size: u64| {
+        zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .large_file(size >= u32::MAX as u64)
+    };
+
+    let (bundle, entries) = web_bundle(project, true)?;
+    let value = serde_json::to_value(&bundle).map_err(io::Error::other)?;
+    let json = serde_json::to_vec_pretty(&value).map_err(io::Error::other)?;
     writer.start_file(PROJECT_ENTRY, deflated)?;
     writer.write_all(&json)?;
+    let manifest = crate::asset_manifest(&value, lookups);
+    writer.start_file(crate::ASSET_MANIFEST_ENTRY, deflated)?;
+    writer.write_all(&serde_json::to_vec_pretty(&manifest).map_err(io::Error::other)?)?;
     for (entry, source, size) in entries {
         writer.start_file(&entry, stored(size))?;
         let mut input = File::open(&source)?;
@@ -693,6 +734,8 @@ mod tests {
             attribution: "\"gloomy forest\" by gorchakov.artem is licensed under CC BY 2.0.".into(),
         };
         apply(&mut project, &Command::SetCredit { media_id: "img".into(), credit: Some(credit.clone()) }).unwrap();
+        let origin = crate::MediaOrigin::generated("picture", Some("img"), None);
+        apply(&mut project, &Command::SetOrigin { media_id: "img".into(), origin: Some(origin.clone()) }).unwrap();
         let mut image = Element::from_media(project.media_item("img").unwrap(), seconds(0.0));
         image.masks.push(crate::document::Mask::ellipse());
         apply(&mut project, &Command::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
@@ -733,6 +776,13 @@ mod tests {
         assert_eq!(value["project"]["scenes"][0]["bookmarks"][1]["duration"], 120_000);
         assert_eq!(value["media"][0]["file"], "media/img.png");
         assert_eq!(value["media"][0]["credit"]["license"], "CC BY 2.0", "credits travel on the media entry, as on the web");
+        let mut assets = String::new();
+        archive.by_name("assets.json").unwrap().read_to_string(&mut assets).unwrap();
+        let assets: Value = serde_json::from_str(&assets).unwrap();
+        assert_eq!(assets["format"], crate::ASSET_MANIFEST_FORMAT);
+        assert_eq!(assets["assets"][0]["license"], "CC BY 2.0");
+        assert_eq!(assets["assets"][0]["uses"], 1);
+        assert_eq!(assets["credits"][0], credit.attribution.as_str());
         assert_eq!(value["media"][0]["size"], 15);
         let entry = archive.by_name("media/img.png").unwrap();
         assert_eq!(entry.size(), 15);
@@ -749,6 +799,7 @@ mod tests {
         let imported = store.load(&report.project.id).unwrap();
         assert_eq!(imported.markers, project.markers);
         assert_eq!(imported.credits.get("img").map(|c| c.creator.as_str()), Some("gorchakov.artem"));
+        assert_eq!(imported.origins.get("img"), Some(&origin), "origins travel too");
         assert!(imported.tracks[0].locked);
         let imported = report.project;
         assert_eq!(imported.id, project.id, "a free id is kept");

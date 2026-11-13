@@ -101,7 +101,8 @@ import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions
 import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
 import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
 import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
-import { importStockItem, projectCredits, searchStock } from "@/stock/stock";
+import { importStockItem, searchStock } from "@/stock/stock";
+import { projectAssetManifest, projectCreditsText } from "@/project/project-assets";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -1648,7 +1649,14 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Import failed" });
 			}
 		},
-		"stock.credits": () => ({ text: projectCredits({ editor }) }),
+		"stock.credits": async () => {
+			requireProject();
+			return { text: await projectCreditsText({ editor }) };
+		},
+		"project.assets": async ({ lookUp }) => {
+			requireProject();
+			return projectAssetManifest({ editor, lookUp: lookUp ?? true });
+		},
 		"picture.cleanup": async ({ elementId, trackId, removeWhite, decontaminate, feather, tint, crop, trace }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
 			if (element.type !== "image") {

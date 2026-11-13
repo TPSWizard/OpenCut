@@ -38,10 +38,22 @@ describe("embedBundledSounds", () => {
 		const fetched: string[] = [];
 		const fetchImpl = (async (url: string) => {
 			fetched.push(url);
+			if (url === "/sounds/manifest.json") {
+				return new Response(
+					JSON.stringify({ packs: [{ id: "kenney-ui", name: "Kenney UI Audio", author: "Kenney", license: "CC0-1.0", url: "https://kenney.nl/assets/ui-audio" }] }),
+					{ status: 200 },
+				);
+			}
 			return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
 		}) as unknown as typeof fetch;
 		const added = await embedBundledSounds({ serialized, fetchImpl });
-		expect(fetched).toEqual(["/sounds/kenney-ui/click-1.ogg"]);
+		expect(fetched).toEqual(["/sounds/kenney-ui/click-1.ogg", "/sounds/manifest.json"]);
+		expect(added[0].data.origin).toEqual({ kind: "library", source: "/sounds/kenney-ui/click-1.ogg" });
+		expect(added[0].data.credit).toMatchObject({
+			provider: "kenney-ui",
+			license: "CC0-1.0",
+			attribution: '"click 1" from Kenney UI Audio by Kenney (CC0-1.0)',
+		});
 		expect(added).toHaveLength(1);
 		expect(added[0].data).toMatchObject({
 			id: "bundled-sound-kenney-ui-click-1-ogg",

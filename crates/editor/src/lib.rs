@@ -9,6 +9,7 @@
 //! so a project means the same thing on every front end.
 
 mod animation;
+mod assets;
 mod audio;
 mod beats;
 mod bundle;
@@ -47,7 +48,8 @@ pub use animation::{
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
-pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, import_bundle};
+pub use assets::{AssetEntry, AssetLookups, BrandInfo, IconSetInfo, MediaOrigin, ASSET_MANIFEST_ENTRY, ASSET_MANIFEST_FORMAT, SYSTEM_FONTS, asset_manifest, fontsource_slug, license_requires_credit, manifest_credits_text};
+pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, export_bundle_with, import_bundle, project_asset_manifest};
 pub use captions::{
     CaptionChunk, DEFAULT_WORDS_PER_CAPTION, GENERATED_CAPTION_HIGHLIGHT, MAX_CAPTION_WORD_GAP_SECONDS,
     MIN_CAPTION_DURATION_SECONDS, TimedWord, build_caption_chunks, caption_element,

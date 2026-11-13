@@ -8,6 +8,7 @@ use gpui::{
 use media::Ffmpeg;
 
 mod actions;
+mod assets;
 mod audio;
 mod beats;
 mod ducking;

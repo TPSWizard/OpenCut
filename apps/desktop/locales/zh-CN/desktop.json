@@ -589,5 +589,6 @@
   "{summary}; volume set to {volume} dB for {target} LUFS{limit}.": "{summary}；音量已设为 {volume} dB，以达到 {target} LUFS{limit}。",
   "{track} is locked; unlock it to edit its clips": "{track} 已锁定；解锁后才能编辑其中的片段",
   "‹ Previous": "‹ 上一个",
-  "← Projects": "← 项目"
+  "← Projects": "← 项目",
+  "Nothing in this project has a credit line yet.": "此项目中还没有需要署名的内容。"
 }

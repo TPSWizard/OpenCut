@@ -7,6 +7,8 @@
  *                      "project": SerializedProject,
  *                      "media": [MediaAssetData + {"file": "media/<id>.<ext>"}]}
  *   media/<id>.<ext>  the files
+ *   assets.json       the asset manifest (licences and credits; see ./assets.ts),
+ *                     written for people and tools, not read back
  */
 import { strFromU8, strToU8, unzip, zip, type Zippable } from "fflate";
 import type { MediaAsset } from "@/media/types";
@@ -14,8 +16,10 @@ import type { TProject } from "@/project/types";
 import type {
 	MediaAssetData,
 	SerializedProject,
+	StockCredit,
 } from "@/services/storage/types";
 import { getProjectDurationFromScenes } from "@/timeline/scenes";
+import { ASSET_MANIFEST_ENTRY, buildAssetManifest, type AssetLookups } from "./assets";
 
 export const PROJECT_BUNDLE_FORMAT = "opencut-project-bundle";
 export const PROJECT_BUNDLE_FORMAT_VERSION = 1;
@@ -158,6 +162,39 @@ export function bundleMediaEntryName({
 	return `media/${asset.id}${extension}`;
 }
 
+/** A media asset's entry in the bundle's media list. */
+function bundledMediaData({ asset }: { asset: MediaAsset }): BundledMediaData {
+	return {
+		id: asset.id,
+		name: asset.name,
+		type: asset.type,
+		size: asset.file.size,
+		lastModified: asset.file.lastModified,
+		width: asset.width,
+		height: asset.height,
+		duration: asset.duration,
+		fps: asset.fps,
+		hasAudio: asset.hasAudio,
+		...(asset.credit ? { credit: asset.credit } : {}),
+		...(asset.origin ? { origin: asset.origin } : {}),
+		file: bundleMediaEntryName({ asset }),
+	};
+}
+
+/**
+ * The `project.json` a bundle of the project would hold, without packing
+ * anything (bundled library sounds stay as library sounds), for building
+ * its asset manifest.
+ */
+export function projectBundleJson({ project, mediaAssets }: { project: TProject; mediaAssets: MediaAsset[] }): ProjectBundleManifest {
+	return {
+		format: PROJECT_BUNDLE_FORMAT,
+		formatVersion: PROJECT_BUNDLE_FORMAT_VERSION,
+		project: serializeProject({ project }),
+		media: mediaAssets.map((asset) => bundledMediaData({ asset })),
+	};
+}
+
 /**
  * Packs a project and its media into a bundle. Media is stored without
  * compression (it already is compressed); the project JSON is deflated.
@@ -165,29 +202,19 @@ export function bundleMediaEntryName({
 export async function buildProjectBundle({
 	project,
 	mediaAssets,
+	gatherLookups,
 }: {
 	project: TProject;
 	mediaAssets: MediaAsset[];
+	/** Licence lookups for the asset manifest (none when left out). */
+	gatherLookups?: (args: { bundle: ProjectBundleManifest }) => Promise<AssetLookups>;
 }): Promise<Blob> {
 	const files: Zippable = {};
 	const media: BundledMediaData[] = [];
 	for (const asset of mediaAssets) {
-		const entry = bundleMediaEntryName({ asset });
-		files[entry] = [new Uint8Array(await asset.file.arrayBuffer()), { level: 0 }];
-		media.push({
-			id: asset.id,
-			name: asset.name,
-			type: asset.type,
-			size: asset.file.size,
-			lastModified: asset.file.lastModified,
-			width: asset.width,
-			height: asset.height,
-			duration: asset.duration,
-			fps: asset.fps,
-			hasAudio: asset.hasAudio,
-			...(asset.credit ? { credit: asset.credit } : {}),
-			file: entry,
-		});
+		const data = bundledMediaData({ asset });
+		files[data.file] = [new Uint8Array(await asset.file.arrayBuffer()), { level: 0 }];
+		media.push(data);
 	}
 	const serialized = serializeProject({ project });
 	for (const embedded of await embedBundledSounds({ serialized })) {
@@ -204,12 +231,46 @@ export async function buildProjectBundle({
 		strToU8(JSON.stringify(manifest, null, 2)),
 		{ level: 6 },
 	];
+	const lookups = gatherLookups ? await gatherLookups({ bundle: manifest }).catch(() => ({})) : {};
+	files[ASSET_MANIFEST_ENTRY] = [
+		strToU8(JSON.stringify(buildAssetManifest({ bundle: manifest, lookups }), null, 2)),
+		{ level: 6 },
+	];
 	const bytes = await zipAsync(files);
 	return new Blob([bytes as BlobPart], { type: "application/zip" });
 }
 
 /** Where the editor's bundled CC0 sound packs are served from. */
 const BUNDLED_SOUNDS_PREFIX = "/sounds/";
+const BUNDLED_SOUNDS_MANIFEST_URL = "/sounds/manifest.json";
+
+interface SoundPackInfo {
+	id: string;
+	name: string;
+	author: string;
+	license: string;
+	url: string;
+}
+
+const LICENSE_URLS: Record<string, string> = {
+	"CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
+};
+
+/** The credit of a bundled sound, from its pack (the first folder of its path). */
+function bundledSoundCredit({ relative, name, packs }: { relative: string; name: string; packs: SoundPackInfo[] }): StockCredit | undefined {
+	const pack = packs.find((candidate) => relative.startsWith(`${candidate.id}/`));
+	if (!pack) return undefined;
+	return {
+		provider: pack.id,
+		id: relative,
+		title: name,
+		creator: pack.author,
+		license: pack.license,
+		licenseUrl: LICENSE_URLS[pack.license] ?? "",
+		sourceUrl: pack.url,
+		attribution: `"${name}" from ${pack.name} by ${pack.author} (${pack.license})`,
+	};
+}
 
 /**
  * Library sounds that come from the editor's bundled packs are copied into
@@ -227,6 +288,14 @@ export async function embedBundledSounds({
 	fetchImpl?: typeof fetch;
 }): Promise<Array<{ data: BundledMediaData; bytes: Uint8Array }>> {
 	const added = new Map<string, { data: BundledMediaData; bytes: Uint8Array }>();
+	let packs: Promise<SoundPackInfo[]> | null = null;
+	const loadPacks = () => {
+		packs ??= fetchImpl(BUNDLED_SOUNDS_MANIFEST_URL)
+			.then((response) => (response.ok ? response.json() : { packs: [] }))
+			.then((json: { packs?: unknown }) => (Array.isArray(json?.packs) ? (json.packs as SoundPackInfo[]) : []))
+			.catch(() => []);
+		return packs;
+	};
 	for (const scene of serialized.scenes) {
 		const tracks = scene.tracks as unknown as { audio?: Array<{ elements: Array<Record<string, unknown>> }> };
 		for (const track of tracks.audio ?? []) {
@@ -254,11 +323,13 @@ export async function embedBundledSounds({
 							: typeof element.duration === "number"
 								? element.duration / 120_000
 								: undefined;
+					const name = typeof element.name === "string" ? element.name : relative;
+					const credit = bundledSoundCredit({ relative, name, packs: await loadPacks() });
 					entry = {
 						bytes,
 						data: {
 							id: mediaId,
-							name: typeof element.name === "string" ? element.name : relative,
+							name,
 							type: "audio",
 							size: bytes.byteLength,
 							lastModified: 0,
@@ -267,6 +338,8 @@ export async function embedBundledSounds({
 							duration,
 							fps: undefined,
 							hasAudio: true,
+							origin: { kind: "library", source: sourceUrl },
+							...(credit ? { credit } : {}),
 							file: `media/${mediaId}${extension}`,
 						},
 					};

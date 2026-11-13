@@ -7,6 +7,8 @@
  * boundary; the editor converts them to its integer tick representation.
  */
 
+import type { AssetManifest } from "@/project/assets";
+
 export const EDITOR_API_VERSION = "1.0.0";
 
 export type ApiTrackType = "video" | "text" | "audio" | "graphic" | "effect";
@@ -639,8 +641,15 @@ export interface EditorApiMethods {
 	};
 	/** Downloads a search result into the project with its credit (and puts it at the playhead unless `addToTimeline` is false). */
 	"stock.import": { params: { item: ApiStockItem; addToTimeline?: boolean }; result: { mediaId: string; name: string } };
-	/** The credits of the project's stock media, one line each. */
+	/** The credit lines of everything in the project that has one (stock media, sounds, stickers), one per line. */
 	"stock.credits": { params: Record<string, never>; result: { text: string } };
+	/**
+	 * The project's asset manifest, as a bundle's `assets.json` would hold
+	 * it: every media file, library sound, sticker and font with its origin,
+	 * licence (null when not known), source, credit line and use count.
+	 * `lookUp: false` skips the online icon set and font licence lookups.
+	 */
+	"project.assets": { params: { lookUp?: boolean }; result: AssetManifest };
 	/**
 	 * Cleans up an image clip's picture on this device (for drawings on
 	 * white): flood-fill white paper away with a soft edge, remove the white
