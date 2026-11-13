@@ -221,3 +221,22 @@ its pack.
   is not included: those weight files have no stated licence.
 - Mattes are made from the user's own clips and stored in their project; the
   desktop editor renders them but cannot make them (no model there).
+
+## Caption translation (added 2026-11-12)
+
+- **Opus-MT translation models** (Helsinki-NLP, University of Helsinki;
+  ONNX conversions `Xenova/opus-mt-*` for Transformers.js). Not kept in this
+  repository: the browser fetches the 8-bit weights (about 110 MB per pair)
+  from huggingface.co when a pair is first used and caches them. The 62
+  models the editor can use (listed in `apps/web/src/translation/languages.ts`)
+  were checked on 2026-11-12: each Helsinki-NLP original is tagged
+  Apache-2.0 (58) or CC-BY-4.0 (4: en-de, zh-en, ru-en, tc-big-tr-en); the
+  Xenova conversions carry no licence tag of their own and name the
+  Helsinki-NLP model as `base_model`, so the base licence is taken to apply
+  (INFERRED). CC-BY-4.0 asks for credit: Jörg Tiedemann and Santhosh
+  Thottingal, "OPUS-MT — Building open translation services for the World"
+  (EAMT 2020), models from https://github.com/Helsinki-NLP/Opus-MT.
+- **Chrome's built-in Translator API** is used instead when the browser
+  offers the pair; Chrome manages and downloads its own language packs.
+- Desktop: English-only translation of speech uses whisper.cpp's own
+  `--translate` (see "Native transcription").

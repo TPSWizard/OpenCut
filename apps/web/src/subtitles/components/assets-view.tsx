@@ -50,6 +50,7 @@ import {
 } from "@/components/section";
 import { AlertCircleIcon, CloudUploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { TranslateCaptions } from "@/translation/components/translate-captions";
 import {
 	Tooltip,
 	TooltipContent,
@@ -468,6 +469,7 @@ export function Captions() {
 							{exportNote}
 						</p>
 					)}
+					<TranslateCaptions />
 
 					<Button
 						type="button"

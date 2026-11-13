@@ -2688,6 +2688,12 @@ impl EditorState {
     /// (fetching the model first when needed) and adds the captions as a
     /// text track in one undo step.
     pub(crate) fn transcribe_selected(&mut self, model_id: &str, cx: &mut Context<Self>) {
+        self.transcribe_selected_with(model_id, false, cx);
+    }
+
+    /// [`Self::transcribe_selected`]; with `translate`, the captions come
+    /// out in English whatever language is spoken (whisper translates).
+    pub(crate) fn transcribe_selected_with(&mut self, model_id: &str, translate: bool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let Some(clip) = crate::transcribe::clip_plan(self.project(), &element.id) else {
             self.set_status(t("Select a clip with audio to transcribe."), cx);
@@ -2711,14 +2717,27 @@ impl EditorState {
         };
         let models = crate::transcribe::models_dir(self.store.root());
         let canvas = self.project().settings.canvas;
-        self.set_status(tf("Transcribing with the {model} model…", &[("model", &model.id)]), cx);
+        if translate {
+            self.set_status(tf("Transcribing into English with the {model} model…", &[("model", &model.id)]), cx);
+        } else {
+            self.set_status(tf("Transcribing with the {model} model…", &[("model", &model.id)]), cx);
+        }
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
                 .spawn(async move {
                     let path = crate::transcribe::ensure_model(&models, model, &|_, _| {})?;
                     let samples = crate::transcribe::clip_samples(&ffmpeg, &clip)?;
-                    let words = crate::transcribe::transcribe(&cli, model, &path, &samples, None, clip.timeline_start.to_seconds_f64(), None)?;
+                    let words = crate::transcribe::transcribe_with(
+                        &cli,
+                        model,
+                        &path,
+                        &samples,
+                        None,
+                        clip.timeline_start.to_seconds_f64(),
+                        None,
+                        translate,
+                    )?;
                     let chunks = editor::build_caption_chunks(
                         &words,
                         editor::DEFAULT_WORDS_PER_CAPTION,

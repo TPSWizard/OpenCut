@@ -1187,15 +1187,36 @@ impl Render for InspectorPanel {
                         );
                     }
                     let model_id = self.transcribe_model;
-                    let transcribe_row = div().flex().items_center().gap(px(8.)).child({
-                        let state = self.state.clone();
-                        Button::new("transcribe", t("Transcribe to captions"))
-                            .size(ButtonSize::XSmall)
-                            .disabled(!has_ffmpeg)
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |state, cx| state.transcribe_selected(model_id, cx));
-                            })
-                    });
+                    let english_state = self.state.clone();
+                    let transcribe_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(8.))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("transcribe", t("Transcribe to captions"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.transcribe_selected(model_id, cx));
+                                })
+                        })
+                        .child(
+                            Button::new("transcribe-english", t("English captions (translated)"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    english_state.update(cx, |state, cx| state.transcribe_selected_with(model_id, true, cx));
+                                }),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(window.theme().colors.muted_foreground)
+                                .child(t("Whisper translates any spoken language into English captions. Translating existing captions into other languages is in the web editor.")),
+                        );
                     // Filler words: cut "um", "uh" and friends out of the clip
                     // from the captions' word timings, or a prompted transcription.
                     let mut language_row = div()

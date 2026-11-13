@@ -217,5 +217,20 @@
   "Shared with the end of the clip before ({name}), centred on the cut.": "与前一个片段（{name}）的结尾共用，以剪切点为中心。",
   "Nothing comes directly before this clip, so it comes in from nothing over its first moments.": "此片段前面没有紧邻的片段，因此它会在开头的片刻从无到有地入场。",
   "Plays out of this clip into the next one ({name}), centred on the cut.": "从此片段过渡到下一个片段（{name}），以剪切点为中心。",
-  "Nothing comes directly after this clip, so it goes out to nothing over its last moments.": "此片段后面没有紧邻的片段，因此它会在最后的片刻退场至无。"
+  "Nothing comes directly after this clip, so it goes out to nothing over its last moments.": "此片段后面没有紧邻的片段，因此它会在最后的片刻退场至无。",
+  "Translating...": "正在翻译…",
+  "Translating {done} of {total}": "正在翻译第 {done} / {total} 条",
+  "{count} caption(s) translated by the browser's built-in translator, on a new track above.": "已用浏览器内置翻译器翻译 {count} 条字幕，放在上方的新轨道上。",
+  "{count} caption(s) translated with {models}, on a new track above.": "已用 {models} 翻译 {count} 条字幕，放在上方的新轨道上。",
+  "Translation failed": "翻译失败",
+  "Translate captions": "翻译字幕",
+  "Generate or import captions first; a translated copy goes on a new track above them.": "请先生成或导入字幕；翻译后的副本会放在其上方的新轨道上。",
+  "Caption track": "字幕轨道",
+  "{name} ({count} captions)": "{name}（{count} 条字幕）",
+  "From": "从",
+  "To": "到",
+  "No translation model covers this pair; Chrome's built-in translator may, where it is available.": "没有翻译模型支持这对语言；在可用的情况下，Chrome 内置翻译器或许可以。",
+  "Goes through English (two models, about 110 MB each the first time), unless the browser translates it itself.": "经由英语中转（两个模型，首次各约 110 MB），除非浏览器自己就能翻译。",
+  "Runs on this device: the browser's built-in translator when it has the pair, else an Opus-MT model (about 110 MB the first time).": "在本设备上运行：浏览器内置翻译器支持该语言对时使用它，否则使用 Opus-MT 模型（首次约 110 MB）。",
+  "Translate": "翻译"
 }

@@ -192,6 +192,23 @@ pub(crate) fn transcribe(
     offset_seconds: f64,
     prompt: Option<&str>,
 ) -> Result<Vec<TimedWord>, String> {
+    transcribe_with(cli, model, model_file, samples, language, offset_seconds, prompt, false)
+}
+
+/// [`transcribe`], optionally translating the speech into English as it
+/// goes (whisper's own `--translate`; the words come out in English with
+/// their times).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn transcribe_with(
+    cli: &Path,
+    model: &ModelSpec,
+    model_file: &Path,
+    samples: &[f32],
+    language: Option<&str>,
+    offset_seconds: f64,
+    prompt: Option<&str>,
+    translate: bool,
+) -> Result<Vec<TimedWord>, String> {
     if samples.len() < WHISPER_SAMPLE_RATE as usize / 2 {
         return Ok(Vec::new());
     }
@@ -210,6 +227,9 @@ pub(crate) fn transcribe(
         .args(["-ojf", "-np", "-nt", "-nfa", "--dtw", model.id]);
     if let Some(prompt) = prompt {
         command.args(["--prompt", prompt]);
+    }
+    if translate {
+        command.arg("--translate");
     }
     let output = command
         .arg("-of")
@@ -443,6 +463,36 @@ mod tests {
             fs::write(dir.join("project.json"), serde_json::to_string_pretty(&project).unwrap()).unwrap();
             eprintln!("wrote {}", dir.join("project.json").display());
         }
+    }
+
+    /// `OPENCUT_TRANSLATE_CHECK=<speech in Spanish>` transcribes it with
+    /// whisper's translation into English and expects English words.
+    #[test]
+    fn translated_transcription_comes_out_in_english() {
+        let Ok(path) = std::env::var("OPENCUT_TRANSLATE_CHECK") else { return };
+        let Ok(ffmpeg) = Ffmpeg::locate() else { return };
+        let tools = tools_dir(&editor::ProjectStore::default_root());
+        let Some(cli) = whisper_cli(&tools) else { return };
+        let models = models_dir(&editor::ProjectStore::default_root());
+        let model = ensure_model(&models, model_spec("base").unwrap(), &|_, _| {}).expect("model");
+        let settings = media::AudioSettings { sample_rate: WHISPER_SAMPLE_RATE, channels: 1 };
+        let mut reader = media::AudioReader::open(&ffmpeg, Path::new(&path), 0.0, settings).expect("open");
+        let mut samples = Vec::new();
+        let mut buffer = vec![0.0f32; 16_000];
+        loop {
+            let got = reader.read(&mut buffer).expect("read");
+            if got == 0 {
+                break;
+            }
+            samples.extend_from_slice(&buffer[..got]);
+        }
+        let plain = transcribe_with(&cli, model_spec("base").unwrap(), &model, &samples, Some("es"), 0.0, None, false).expect("plain");
+        let english = transcribe_with(&cli, model_spec("base").unwrap(), &model, &samples, Some("es"), 0.0, None, true).expect("translated");
+        let text = |words: &[TimedWord]| words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ");
+        eprintln!("PLAIN {}\nENGLISH {}", text(&plain), text(&english));
+        assert!(!english.is_empty());
+        assert!(english.windows(2).all(|pair| pair[0].start <= pair[1].start), "times stay in order");
+        assert_ne!(text(&plain).to_lowercase(), text(&english).to_lowercase(), "translation changes the words");
     }
 
     #[test]

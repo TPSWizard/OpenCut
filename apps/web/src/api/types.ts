@@ -608,6 +608,17 @@ export interface EditorApiMethods {
 		result: ApiElementInfo;
 	};
 	/** Every transition the renderer can draw, with its parameters. */
+	/**
+	 * Translates a caption track (default: the top one with captions) on this
+	 * device into a new text track straight above it: the browser's built-in
+	 * translator when it has the pair (`engine` "auto"), else Opus-MT models
+	 * (through English when there is no direct one). Copies keep timing and
+	 * look; word timings are dropped.
+	 */
+	"captions.translate": {
+		params: { trackId?: string; from: string; to: string; engine?: "auto" | "browser" | "opus" };
+		result: { trackId: string; captions: number; engine: "browser" | "opus"; models: string[]; translations: string[] };
+	};
 	/** Inserts captions as a new text track at the top of the overlays. */
 	"captions.insert": {
 		params: { captions: ApiCaption[]; style?: ApiCaptionStyle };

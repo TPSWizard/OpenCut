@@ -97,6 +97,8 @@ import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
 import { REFRAME_CAMERAS } from "@/reframe/path";
+import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions";
+import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -1614,6 +1616,27 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				};
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto-reframe failed" });
+			}
+		},
+		"captions.translate": async ({ trackId, from, to, engine }) => {
+			for (const [key, value] of [["from", from], ["to", to]] as const) {
+				if (typeof value !== "string" || !TRANSLATION_LANGUAGE_CODES.includes(value)) {
+					throw new EditorApiError({
+						code: "invalid_params",
+						message: `${key} must be one of ${TRANSLATION_LANGUAGE_CODES.join(", ")}`,
+					});
+				}
+			}
+			if (engine !== undefined && !["auto", "browser", "opus"].includes(engine)) {
+				throw new EditorApiError({ code: "invalid_params", message: "engine must be auto, browser or opus" });
+			}
+			const target = trackId ?? listCaptionTracks({ editor })[0]?.track.id;
+			if (!target) throw new EditorApiError({ code: "invalid_params", message: "There are no captions to translate" });
+			try {
+				const result = await translateCaptionTrack({ editor, trackId: target, from, to, engine });
+				return { trackId: result.trackId, captions: result.captions, engine: result.engine, models: result.models, translations: result.translations };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Translation failed" });
 			}
 		},
 		"cutout.removeBackground": async ({ elementId, trackId, sampleFps }) => {
