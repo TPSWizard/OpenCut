@@ -526,6 +526,12 @@ export interface EditorApiMethods {
 	 * points at and adds it as a project. https only (http on localhost);
 	 * the bundle's server must allow this app to download it (CORS).
 	 */
+	/**
+	 * Uploads the open project and its media for 7 days and returns the
+	 * Open in ConzaCut link to give out. Needs the server's sharing passcode
+	 * (the one remembered in this browser when left out).
+	 */
+	"project.share": { params: { passcode?: string }; result: { link: string; bundleUrl: string; bytes: number; expiresAt: string } };
 	"project.openLink": { params: { link: string }; result: ApiProjectSummary & { bundleUrl: string } };
 	/** Starter templates (ConzaCut's own) and the ones saved in this browser. */
 	"templates.list": { params: Record<string, never>; result: { templates: TemplateInfo[] } };

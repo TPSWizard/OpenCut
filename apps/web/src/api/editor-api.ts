@@ -104,6 +104,7 @@ import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
 import { importStockItem, searchStock } from "@/stock/stock";
 import { projectAssetManifest, projectCreditsText } from "@/project/project-assets";
 import { bundleUrlFromLink, fetchLinkedBundle } from "@/project/open-link";
+import { rememberedPasscode, shareCurrentProject } from "@/project/share";
 import { createProjectFromTemplate, findTemplate, listMyTemplates, loadStarterTemplates, saveProjectAsTemplate } from "@/templates/templates";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
@@ -817,6 +818,16 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "invalid_params", message: "name must be non-empty text" });
 			}
 			return saveProjectAsTemplate({ editor, name, description });
+		},
+		"project.share": async ({ passcode }) => {
+			requireProject();
+			const key = typeof passcode === "string" && passcode ? passcode : rememberedPasscode();
+			if (!key) throw new EditorApiError({ code: "invalid_params", message: "passcode is required (none is remembered in this browser)" });
+			try {
+				return await shareCurrentProject({ editor, passcode: key });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"project.openLink": async ({ link }) => {
 			const bundleUrl = typeof link === "string" ? bundleUrlFromLink(link) : null;

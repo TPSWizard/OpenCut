@@ -60,11 +60,15 @@ pub(crate) struct Settings {
     pub auto_proxies: bool,
     /// Interface language: `auto`, `en` or `zh-CN`.
     pub locale: String,
+    /// Passcode for sharing projects by link (the API worker's
+    /// `SHARE_UPLOAD_KEY`); `OPENCUT_SHARE_KEY` overrides it.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub share_key: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { preview_quality: PreviewQuality::Auto, use_proxies: true, auto_proxies: true, locale: "auto".to_owned() }
+        Self { preview_quality: PreviewQuality::Auto, use_proxies: true, auto_proxies: true, locale: "auto".to_owned(), share_key: String::new() }
     }
 }
 

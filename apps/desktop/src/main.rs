@@ -25,6 +25,7 @@ mod reframe;
 mod voiceover;
 mod render_thread;
 mod settings;
+mod share;
 mod shell;
 mod state;
 mod stickers;

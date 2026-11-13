@@ -42,6 +42,17 @@ window.addEventListener("message", (event) => {
 The page only accepts a message from the window that opened it, shows that
 window's origin with the summary, and asks before adding the project.
 
+## Sharing from ConzaCut itself
+
+**Share by link…** in the editor's project menu (and **Share link** on the
+desktop, `project.share` in the Editor API) uploads the project and its
+media to the API worker in 32 MB parts (`apps/api/src/share.ts`): R2
+bucket `conzacut-shares`, kept 7 days (a lifecycle rule deletes them; the
+worker also refuses older ones), at most 2 GB. Uploading needs the passcode
+set with `wrangler secret put SHARE_UPLOAD_KEY` in `apps/api`; opening a
+share needs only its link, which is an Open in ConzaCut link to
+`<api>/share/<id>`.
+
 ## From a script or the MCP server
 
 `project.openLink { link }` downloads and adds the bundle a link points at

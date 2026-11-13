@@ -174,6 +174,40 @@ impl Shell {
         .detach();
     }
 
+    /// Uploads the project and its media for 7 days and copies the Open in
+    /// ConzaCut link to the clipboard.
+    fn share_link(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let Some(key) = crate::share::passcode() else {
+            state.update(cx, |state, cx| {
+                state.set_status(t("Sharing needs the passcode: set shareKey in ~/.opencut/settings.json or OPENCUT_SHARE_KEY."), cx)
+            });
+            return;
+        };
+        let project = state.update(cx, |state, cx| {
+            state.save_now(cx);
+            state.set_status(t("Uploading the project to share it…"), cx);
+            state.project().clone()
+        });
+        cx.spawn(async move |_, cx| {
+            let result = cx.background_executor().spawn(async move { crate::share::share(&project, &key) }).await;
+            cx.update(|cx| match result {
+                Ok(shared) => {
+                    cx.write_to_clipboard(gpui::ClipboardItem::new_string(shared.link.clone()));
+                    state.update(cx, |state, cx| {
+                        state.set_status(tf("Share link copied; it works until {date}.", &[("date", &shared.expires_at)]), cx)
+                    });
+                }
+                Err(error) => state.update(cx, |state, cx| state.set_status(tf("Not shared: {error}", &[("error", &error)]), cx)),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Saves the project, with copies of its media, as one of your
     /// templates (listed on the projects page).
     fn save_template(&mut self, cx: &mut Context<Self>) {
@@ -348,6 +382,12 @@ impl Render for Shell {
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.export_captions(cx))),
+            )
+            .child(
+                Button::new("share-link", t("Share link"))
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.share_link(cx))),
             )
             .child(
                 Button::new("save-template", t("Save as template"))

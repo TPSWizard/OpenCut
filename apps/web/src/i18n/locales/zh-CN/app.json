@@ -229,5 +229,19 @@
   "From {source}": "来自 {source}",
   "Add to my projects": "加入我的项目",
   "Adding the project…": "正在添加项目…",
-  "Go to projects": "前往项目"
+  "Go to projects": "前往项目",
+  "Share by link…": "通过链接分享…",
+  "Share by link": "通过链接分享",
+  "Uploads this project and its media for 7 days. Anyone with the link can open a copy in ConzaCut; they see what it is before it is added.": "上传此项目及其媒体，保留 7 天。任何拿到链接的人都可以在 ConzaCut 中打开一份副本；添加前会先看到项目内容。",
+  "Sharing passcode": "分享口令",
+  "Remember it in this browser": "在此浏览器中记住",
+  "Packing the project…": "正在打包项目…",
+  "Uploading… {percent}%": "正在上传… {percent}%",
+  "Link": "链接",
+  "Link copied": "链接已拷贝",
+  "Works until {date}.": "有效期至 {date}。",
+  "Shared from this browser": "从此浏览器分享的项目",
+  "Copy the link": "拷贝链接",
+  "until {date}": "至 {date}",
+  "Share": "分享"
 }

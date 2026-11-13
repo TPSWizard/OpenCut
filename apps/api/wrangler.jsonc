@@ -19,6 +19,12 @@
   // Per-IP rate limiting for the proxied endpoints:
   //   "ratelimits": [{ "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   //
+  // Project sharing: bundles in R2 (bucket conzacut-shares, lifecycle rule
+  // "expire-shares-7d" deletes shares/ after 7 days and aborts unfinished
+  // uploads after 1 day). Uploads need the passcode:
+  //   wrangler secret put SHARE_UPLOAD_KEY
+  "r2_buckets": [{ "binding": "SHARES", "bucket_name": "conzacut-shares" }],
+
   // Restrict CORS to the deployed web app by setting CORS_ORIGIN to its origin.
   "vars": {
     "CORS_ORIGIN": "https://conzacut.conzahub.com"

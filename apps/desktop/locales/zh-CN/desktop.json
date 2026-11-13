@@ -600,5 +600,13 @@
   "Importing the bundle…": "正在导入项目包…",
   "Open copied link": "打开已拷贝的链接",
   "Downloading the project from {host}…": "正在从 {host} 下载项目…",
-  "Could not open the link: {error}": "无法打开链接：{error}"
+  "Could not open the link: {error}": "无法打开链接：{error}",
+  "Wrong sharing passcode": "分享口令错误",
+  "Sharing is not set up on the server yet": "服务器尚未配置分享功能",
+  "The project is larger than 2 GB, the most a share can hold": "项目超过 2 GB，超出分享上限",
+  "Sharing needs the passcode: set shareKey in ~/.opencut/settings.json or OPENCUT_SHARE_KEY.": "分享需要口令：请在 ~/.opencut/settings.json 中设置 shareKey，或设置 OPENCUT_SHARE_KEY。",
+  "Uploading the project to share it…": "正在上传项目以便分享…",
+  "Share link copied; it works until {date}.": "分享链接已拷贝；有效期至 {date}。",
+  "Not shared: {error}": "未分享：{error}",
+  "Share link": "分享链接"
 }

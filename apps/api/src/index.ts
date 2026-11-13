@@ -12,6 +12,7 @@ import {
 	type PixabayImageHit,
 	type PixabayVideoHit,
 } from "./stock";
+import { handleShare, type ShareEnv } from "./share";
 
 /**
  * Bindings and variables the worker can use. Every one of them is optional:
@@ -29,7 +30,7 @@ type Env = {
 	RATE_LIMITER?: RateLimit;
 	/** Allowed browser origin for CORS; defaults to any origin. */
 	CORS_ORIGIN?: string;
-};
+} & ShareEnv;
 
 const bindings = env as Env;
 
@@ -91,8 +92,9 @@ function corsHeaders(request: Request): Record<string, string> {
 	}
 	return {
 		"Access-Control-Allow-Origin": allowOrigin,
-		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type",
+		"Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, OPTIONS",
+		"Access-Control-Allow-Headers": "Content-Type, X-Share-Key",
+		"Access-Control-Expose-Headers": "Content-Length, X-Share-Expires",
 		"Access-Control-Max-Age": "86400",
 		Vary: "Origin",
 	};
@@ -192,7 +194,7 @@ const soundsSearchQuery = t.Object({
 	commercial_only: t.Optional(t.String()),
 });
 
-export default new Elysia({ adapter: CloudflareAdapter })
+const app = new Elysia({ adapter: CloudflareAdapter })
 	.onAfterHandle(({ request, set }) => {
 		Object.assign(set.headers, corsHeaders(request));
 	})
@@ -414,3 +416,15 @@ export default new Elysia({ adapter: CloudflareAdapter })
 	)
 	// .compile() is required, it triggers AoT compilation at startup
 	.compile();
+
+export default {
+	fetch(request: Request): Response | Promise<Response> {
+		// Shares stream their bodies straight to and from R2, so they skip
+		// Elysia's body parsing.
+		const { pathname } = new URL(request.url);
+		if (request.method !== "OPTIONS" && (pathname === "/share" || pathname.startsWith("/share/"))) {
+			return handleShare(request, bindings, corsHeaders(request));
+		}
+		return app.fetch(request);
+	},
+};

@@ -14,6 +14,7 @@ import { RenameProjectDialog } from "@/project/components/rename-project-dialog"
 import { DeleteProjectDialog } from "@/project/components/delete-project-dialog";
 import { AssetLicencesDialog } from "@/project/components/asset-licences-dialog";
 import { SaveTemplateDialog } from "@/templates/components/save-template-dialog";
+import { ShareDialog } from "@/project/components/share-dialog";
 import { useRouter } from "@/compat/navigation";
 import { FaGithub } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
@@ -23,7 +24,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Link01Icon, Logout05Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "@/compat/image";
@@ -49,7 +50,7 @@ export function EditorHeader() {
 function ProjectDropdown() {
 	const t = useT();
 	const [openDialog, setOpenDialog] = useState<
-		"delete" | "rename" | "shortcuts" | "licences" | "template" | null
+		"delete" | "rename" | "shortcuts" | "licences" | "template" | "share" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
 	const [isExportingBundle, setIsExportingBundle] = useState(false);
@@ -175,6 +176,13 @@ function ProjectDropdown() {
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
+						onClick={() => setOpenDialog("share")}
+						icon={<HugeiconsIcon icon={Link01Icon} />}
+					>
+						{t("Share by link…")}
+					</DropdownMenuItem>
+
+					<DropdownMenuItem
 						onClick={() => setOpenDialog("licences")}
 						icon={<HugeiconsIcon icon={LicenseIcon} />}
 					>
@@ -216,6 +224,10 @@ function ProjectDropdown() {
 			<ShortcutsDialog
 				isOpen={openDialog === "shortcuts"}
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
+			/>
+			<ShareDialog
+				isOpen={openDialog === "share"}
+				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "share" : null)}
 			/>
 			<SaveTemplateDialog
 				isOpen={openDialog === "template"}

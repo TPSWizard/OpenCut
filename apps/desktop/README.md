@@ -385,3 +385,7 @@ dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
   (`opencut-desktop "<link>"`, which also takes a bundle path): the bundle
   is downloaded into `~/.opencut/downloads/`, imported and opened. See
   `apps/web/reference/open-in-conzacut.md`.
+- **Share link** in the header uploads the project and its media to the
+  API worker (R2, kept 7 days) and copies an Open in ConzaCut link. It
+  needs the server's sharing passcode in `shareKey` of
+  `~/.opencut/settings.json` or `OPENCUT_SHARE_KEY`.
