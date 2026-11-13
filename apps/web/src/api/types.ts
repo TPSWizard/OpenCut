@@ -8,6 +8,7 @@
  */
 
 import type { AssetManifest } from "@/project/assets";
+import type { TemplateInfo } from "@/templates/templates";
 
 export const EDITOR_API_VERSION = "1.0.0";
 
@@ -520,6 +521,12 @@ export interface EditorApiMethods {
 	};
 	/** Create a project from a bundle; open it by navigating to `/editor/<id>`. */
 	"project.importBundle": { params: { file: File }; result: ApiProjectSummary };
+	/** Starter templates (ConzaCut's own) and the ones saved in this browser. */
+	"templates.list": { params: Record<string, never>; result: { templates: TemplateInfo[] } };
+	/** Makes a new project from a template; open it by navigating to `/editor/<projectId>`. */
+	"templates.use": { params: { id: string; name?: string }; result: { projectId: string } };
+	/** Saves the open project (with its media) as a template in this browser. */
+	"templates.save": { params: { name: string; description?: string }; result: TemplateInfo };
 
 	"scenes.list": { params: Record<string, never>; result: ApiSceneInfo[] };
 	"scenes.switch": { params: { sceneId: string }; result: ApiSceneInfo[] };

@@ -198,5 +198,21 @@
   "Nothing in this project has a credit line yet.": "此项目中还没有需要署名的内容。",
   "Credits copied": "署名已拷贝",
   "Paste them into your video's description.": "请粘贴到视频的描述中。",
-  "The clipboard is not available here": "此处无法使用剪贴板"
+  "The clipboard is not available here": "此处无法使用剪贴板",
+  "Templates": "模板",
+  "Start from a template": "从模板开始",
+  "Pick one to make a new project from it; change the words, add your clips. Save any project as a template from its menu.": "选择一个模板来新建项目；改写文字，加入你的片段。任何项目都可以从其菜单另存为模板。",
+  "Your templates": "我的模板",
+  "Starter templates": "入门模板",
+  "The template could not be used": "无法使用此模板",
+  "Template deleted": "模板已删除",
+  "Save as template…": "另存为模板…",
+  "Save as template": "另存为模板",
+  "New projects can start from this one: its timeline, settings and media are copied. It stays in this browser.": "新项目可以从此项目开始：会复制其时间线、设置和媒体。模板保存在此浏览器中。",
+  "Template name": "模板名称",
+  "Saving…": "正在保存…",
+  "Save template": "保存模板",
+  "Saved as a template": "已另存为模板",
+  "{name} is under Templates on the projects page.": "{name} 位于项目页面的“模板”中。",
+  "The template could not be saved": "无法保存模板"
 }

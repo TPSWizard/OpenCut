@@ -268,7 +268,14 @@ export class ProjectManager {
 	 * already in storage gets a fresh one, so importing never overwrites.
 	 * Returns the new project's id.
 	 */
-	async importProjectBundle({ file }: { file: Blob }): Promise<string> {
+	async importProjectBundle({
+		file,
+		asNew,
+	}: {
+		file: Blob;
+		/** Always a new project (fresh id, dates now), optionally renamed: how a template is used. */
+		asNew?: { name?: string };
+	}): Promise<string> {
 		const { project, media } = await readProjectBundle({ file });
 		if (project.version > CURRENT_PROJECT_VERSION) {
 			throw new Error(
@@ -278,10 +285,20 @@ export class ProjectManager {
 		const existing = await storageService.loadProject({
 			id: project.metadata.id,
 		});
-		const id = existing ? generateUUID() : project.metadata.id;
+		const id = existing || asNew ? generateUUID() : project.metadata.id;
+		const now = new Date();
 		let imported: TProject = {
 			...project,
-			metadata: { ...project.metadata, id, updatedAt: new Date() },
+			metadata: asNew
+				? {
+						...project.metadata,
+						id,
+						name: asNew.name?.trim() || project.metadata.name,
+						thumbnail: undefined,
+						createdAt: now,
+						updatedAt: now,
+					}
+				: { ...project.metadata, id, updatedAt: now },
 		};
 		// Media first: migrations may look at it.
 		for (const { data, file: mediaFile } of media) {

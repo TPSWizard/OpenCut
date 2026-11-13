@@ -11,6 +11,9 @@ use crate::i18n::{t, tf};
 
 pub(crate) enum ProjectsEvent {
     Open(Project),
+    /// A project made from a template, with the template's fonts that are
+    /// not on disk yet (fetched from Fontsource once it is open).
+    OpenFromTemplate(Project, Vec<String>),
 }
 
 pub(crate) struct ProjectsView {
@@ -19,6 +22,8 @@ pub(crate) struct ProjectsView {
     error: Option<String>,
     /// Regenerable files in ~/.opencut/processed (proxies, retimed audio).
     cache: (usize, u64),
+    /// Your templates, then the starter ones.
+    templates: Vec<crate::templates::TemplateEntry>,
 }
 
 impl EventEmitter<ProjectsEvent> for ProjectsView {}
@@ -30,6 +35,7 @@ impl ProjectsView {
             projects: Vec::new(),
             error: None,
             cache: (0, 0),
+            templates: Vec::new(),
         };
         view.refresh();
         view
@@ -37,6 +43,9 @@ impl ProjectsView {
 
     pub(crate) fn refresh(&mut self) {
         self.cache = render::regenerable_cache(&render::default_cache_dir());
+        let dir = crate::templates::templates_dir(self.store.root());
+        self.templates = crate::templates::my_templates(&dir);
+        self.templates.extend(crate::templates::starter_templates());
         match self.store.list() {
             Ok(projects) => {
                 self.projects = projects;
@@ -114,6 +123,42 @@ impl ProjectsView {
             .ok();
         })
         .detach();
+    }
+
+    /// Makes a new project from a template and opens it.
+    fn use_template(&mut self, template: crate::templates::TemplateEntry, cx: &mut Context<Self>) {
+        let store = self.store.clone();
+        let dir = crate::templates::templates_dir(self.store.root());
+        let fonts_dir = crate::fonts::fonts_dir(self.store.root());
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { crate::templates::use_template(&template, &store, &dir).map(|report| (report, template.fonts)) })
+                .await;
+            this.update(cx, |view, cx| {
+                match result {
+                    Ok((report, fonts)) => {
+                        view.refresh();
+                        view.error = None;
+                        let missing = crate::templates::missing_fonts(&fonts, &fonts_dir);
+                        cx.emit(ProjectsEvent::OpenFromTemplate(report.project, missing));
+                    }
+                    Err(error) => view.error = Some(tf("The template could not be used: {error}", &[("error", &error)])),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn delete_template(&mut self, template: crate::templates::TemplateEntry, cx: &mut Context<Self>) {
+        let dir = crate::templates::templates_dir(self.store.root());
+        if let Err(error) = crate::templates::delete_template(&template, &dir) {
+            self.error = Some(error);
+        }
+        self.refresh();
+        cx.notify();
     }
 
     fn open(&mut self, id: &str, cx: &mut Context<Self>) {
@@ -263,6 +308,41 @@ impl Render for ProjectsView {
                     )
                     .when_some(self.error.clone(), |this, error| {
                         this.child(div().text_xs().text_color(colors.destructive).child(error))
+                    })
+                    .when(!self.templates.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap(px(6.))
+                                .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(t("Start from a template")))
+                                .child(div().flex().flex_wrap().gap(px(6.)).children(self.templates.iter().map(|template| {
+                                    let entry = template.clone();
+                                    let label = format!(
+                                        "{}  ·  {}×{}  ·  {}",
+                                        template.name,
+                                        template.width,
+                                        template.height,
+                                        short_duration(template.duration)
+                                    );
+                                    let mut row = div().flex().items_center().gap(px(2.)).child(
+                                        Button::new(eid("template", &template.id), label)
+                                            .variant(if template.mine { ButtonVariant::Secondary } else { ButtonVariant::Outline })
+                                            .size(ButtonSize::Small)
+                                            .on_click(cx.listener(move |this, _, _, cx| this.use_template(entry.clone(), cx))),
+                                    );
+                                    if template.mine {
+                                        let entry = template.clone();
+                                        row = row.child(
+                                            Button::new(eid("template-delete", &template.id), "×")
+                                                .variant(ButtonVariant::Ghost)
+                                                .size(ButtonSize::XSmall)
+                                                .on_click(cx.listener(move |this, _, _, cx| this.delete_template(entry.clone(), cx))),
+                                        );
+                                    }
+                                    row
+                                }))),
+                        )
                     })
                     .child(
                         div()

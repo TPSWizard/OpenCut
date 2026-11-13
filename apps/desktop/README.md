@@ -372,3 +372,10 @@ dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
   file, library sound, sticker and font with where it came from, its
   licence (or that none is recorded), source and credit line. *Copy
   credits* in the Stock tab copies its credit lines.
+- Templates are bundles too. The projects page lists five starter
+  templates (the same files the web app serves from `/templates/`, built
+  into the app; rebuild them with `cargo run -p editor --example
+  build_templates`) and your own: **Save as template** in the editor's
+  header writes the project and its media to `~/.opencut/templates/`.
+  Using one makes a new project from it and fetches its fonts from
+  Fontsource.

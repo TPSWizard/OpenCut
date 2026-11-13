@@ -13,6 +13,7 @@ import Link from "@/compat/link";
 import { RenameProjectDialog } from "@/project/components/rename-project-dialog";
 import { DeleteProjectDialog } from "@/project/components/delete-project-dialog";
 import { AssetLicencesDialog } from "@/project/components/asset-licences-dialog";
+import { SaveTemplateDialog } from "@/templates/components/save-template-dialog";
 import { useRouter } from "@/compat/navigation";
 import { FaGithub } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
@@ -22,7 +23,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Download01Icon, LicenseIcon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Logout05Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "@/compat/image";
@@ -48,7 +49,7 @@ export function EditorHeader() {
 function ProjectDropdown() {
 	const t = useT();
 	const [openDialog, setOpenDialog] = useState<
-		"delete" | "rename" | "shortcuts" | "licences" | null
+		"delete" | "rename" | "shortcuts" | "licences" | "template" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
 	const [isExportingBundle, setIsExportingBundle] = useState(false);
@@ -180,6 +181,13 @@ function ProjectDropdown() {
 						{t("Credits and licences")}
 					</DropdownMenuItem>
 
+					<DropdownMenuItem
+						onClick={() => setOpenDialog("template")}
+						icon={<HugeiconsIcon icon={LayoutTemplateIcon} />}
+					>
+						{t("Save as template…")}
+					</DropdownMenuItem>
+
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem asChild icon={<FaGithub className="size-4!" />}>
@@ -208,6 +216,10 @@ function ProjectDropdown() {
 			<ShortcutsDialog
 				isOpen={openDialog === "shortcuts"}
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
+			/>
+			<SaveTemplateDialog
+				isOpen={openDialog === "template"}
+				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "template" : null)}
 			/>
 			<AssetLicencesDialog
 				isOpen={openDialog === "licences"}

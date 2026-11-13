@@ -1,5 +1,6 @@
 "use client";
 
+import { TemplatesDialog } from "@/templates/components/templates-dialog";
 import Image from "@/compat/image";
 import Link from "@/compat/link";
 import { useRouter } from "@/compat/navigation";
@@ -195,6 +196,7 @@ function ProjectsHeader() {
 					<InstallAppButton />
 					<StorageStatusButton />
 					<ImportProjectButton />
+					<TemplatesButton />
 					<NewProjectButton />
 				</div>
 			</div>
@@ -585,6 +587,19 @@ function ImportProjectButton() {
 				</span>
 				<span className="text-sm font-medium block md:hidden">{t("Import")}</span>
 			</Button>
+		</>
+	);
+}
+
+function TemplatesButton() {
+	const t = useT();
+	const [open, setOpen] = useState(false);
+	return (
+		<>
+			<Button variant="outline" size="lg" className="flex px-5 md:px-6" onClick={() => setOpen(true)} data-testid="open-templates">
+				<span className="text-sm font-medium">{t("Templates")}</span>
+			</Button>
+			<TemplatesDialog isOpen={open} onOpenChange={setOpen} />
 		</>
 	);
 }

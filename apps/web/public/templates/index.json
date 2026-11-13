@@ -1,0 +1,107 @@
+{
+  "format": "opencut-templates",
+  "formatVersion": 1,
+  "note": "Built by `cargo run -p editor --example build_templates`; ConzaCut's own designs.",
+  "templates": [
+    {
+      "category": "Social",
+      "description": "A bold opening line, a one-line promise and a call to action for Shorts, Reels and TikTok.",
+      "duration": 6.0,
+      "file": "vertical-hook.opencut.zip",
+      "fonts": [
+        "Inter"
+      ],
+      "height": 1920,
+      "id": "vertical-hook",
+      "name": "Vertical hook",
+      "preview": {
+        "background": "#111827",
+        "box": "#facc15",
+        "color": "#111827",
+        "font": "Inter",
+        "title": "Your hook goes here"
+      },
+      "width": 1080
+    },
+    {
+      "category": "Titles",
+      "description": "A 16:9 title card with a subtitle that slides in, for YouTube intros and chapters.",
+      "duration": 4.0,
+      "file": "landscape-title.opencut.zip",
+      "fonts": [
+        "Inter"
+      ],
+      "height": 1080,
+      "id": "landscape-title",
+      "name": "Landscape title",
+      "preview": {
+        "background": "#0f172a",
+        "color": "#ffffff",
+        "font": "Inter",
+        "title": "Episode title"
+      },
+      "width": 1920
+    },
+    {
+      "category": "Social",
+      "description": "A square quote with its attribution, for posts and carousels.",
+      "duration": 5.0,
+      "file": "quote-card.opencut.zip",
+      "fonts": [
+        "Inter",
+        "Playfair Display"
+      ],
+      "height": 1080,
+      "id": "quote-card",
+      "name": "Quote card",
+      "preview": {
+        "background": "#f5f0e6",
+        "color": "#1f2937",
+        "font": "Playfair Display",
+        "italic": true,
+        "title": "“Make the thing you wish existed.”"
+      },
+      "width": 1080
+    },
+    {
+      "category": "Social",
+      "description": "Three, two, one, go: a vertical countdown to open a reveal or a challenge.",
+      "duration": 4.0,
+      "file": "countdown.opencut.zip",
+      "fonts": [
+        "Bebas Neue"
+      ],
+      "height": 1920,
+      "id": "countdown",
+      "name": "Countdown",
+      "preview": {
+        "background": "#000000",
+        "color": "#ffffff",
+        "font": "Bebas Neue",
+        "title": "3 2 1"
+      },
+      "width": 1080
+    },
+    {
+      "category": "Titles",
+      "description": "A name and role for interviews. Put your clip on the main track under it.",
+      "duration": 5.0,
+      "file": "lower-third.opencut.zip",
+      "fonts": [
+        "Inter"
+      ],
+      "height": 1080,
+      "id": "lower-third",
+      "name": "Lower third",
+      "preview": {
+        "background": "#334155",
+        "box": "#2563eb",
+        "color": "#ffffff",
+        "font": "Inter",
+        "lowerThird": true,
+        "title": "Alex Rivera"
+      },
+      "width": 1920
+    }
+  ]
+}

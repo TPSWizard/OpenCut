@@ -38,6 +38,17 @@ impl Shell {
         let projects = cx.new(|_| ProjectsView::new(store.clone()));
         cx.subscribe(&projects, |this, _, event: &ProjectsEvent, cx| match event {
             ProjectsEvent::Open(project) => this.open_project(project.clone(), cx),
+            ProjectsEvent::OpenFromTemplate(project, fonts) => {
+                this.open_project(project.clone(), cx);
+                if let Some(open) = &this.editor {
+                    let fonts = fonts.clone();
+                    open.state.update(cx, |state, cx| {
+                        for family in fonts {
+                            state.fetch_font(family, cx);
+                        }
+                    });
+                }
+            }
         })
         .detach();
         Self {
@@ -153,6 +164,36 @@ impl Shell {
                 .update(cx, |state, cx| match result {
                     Ok(()) => state.set_status(tf("Saved bundle {path}", &[("path", &shown)]), cx),
                     Err(error) => state.set_status(tf("Bundle not saved: {error}", &[("error", &error)]), cx),
+                })
+                .ok();
+        })
+        .detach();
+    }
+
+    /// Saves the project, with copies of its media, as one of your
+    /// templates (listed on the projects page).
+    fn save_template(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let (project, root) = state.update(cx, |state, cx| {
+            state.save_now(cx);
+            (state.project().clone(), state.projects_root())
+        });
+        cx.spawn(async move |_, cx| {
+            let name = project.name.clone();
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let lookups = crate::assets::lookups(&project, &root, true);
+                    crate::templates::save_template(&project, &crate::templates::templates_dir(&root), &lookups)
+                })
+                .await;
+            state
+                .update(cx, |state, cx| match result {
+                    Ok(_) => state.set_status(tf("Saved {name} as a template; it is on the projects page.", &[("name", &name)]), cx),
+                    Err(error) => state.set_status(tf("Template not saved: {error}", &[("error", &error)]), cx),
                 })
                 .ok();
         })
@@ -303,6 +344,12 @@ impl Render for Shell {
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.export_captions(cx))),
+            )
+            .child(
+                Button::new("save-template", t("Save as template"))
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.save_template(cx))),
             )
             .child(
                 Button::new("export-bundle", t("Save bundle…"))

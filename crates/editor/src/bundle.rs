@@ -155,6 +155,18 @@ fn invalid(message: impl Into<String>) -> io::Error {
 /// root and saves the project there. A project id already in the store gets
 /// a fresh one, so importing never overwrites.
 pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportReport> {
+    import_bundle_with(path, store, None)
+}
+
+/// Imports a bundle as a new project every time (fresh id, created now),
+/// named `name` when given: how a template is used.
+pub fn import_bundle_as_new(path: &Path, store: &ProjectStore, name: Option<&str>) -> io::Result<ImportReport> {
+    import_bundle_with(path, store, Some(name.map(str::trim).filter(|name| !name.is_empty())))
+}
+
+/// `as_new`: `None` keeps the bundle's id when it is free; `Some(name)`
+/// always takes a fresh id and, with a name, renames the project.
+fn import_bundle_with(path: &Path, store: &ProjectStore, as_new: Option<Option<&str>>) -> io::Result<ImportReport> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file).map_err(|error| invalid(error.to_string()))?;
     let bundle: Bundle = {
@@ -179,7 +191,7 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
     // The id names a directory under the store, so anything that is not a
     // plain single path component gets a fresh id; so does a taken one.
     let mut id = web.metadata.id.clone();
-    if !is_plain_id(&id) || store.load(&id).is_ok() {
+    if as_new.is_some() || !is_plain_id(&id) || store.load(&id).is_ok() {
         id = crate::new_id();
     }
     let media_dir = store.project_dir(&id).join("media");
@@ -267,10 +279,16 @@ pub fn import_bundle(path: &Path, store: &ProjectStore) -> io::Result<ImportRepo
         retain_with_media(&mut track.elements, &media, &mut skipped, 0);
     }
 
-    let mut project = Project::new(web.metadata.name.clone());
+    let name = match as_new {
+        Some(Some(name)) => name.to_owned(),
+        _ => web.metadata.name.clone(),
+    };
+    let mut project = Project::new(name);
     project.id = id;
-    project.created_at = parse_iso_millis(&web.metadata.created_at).unwrap_or(project.created_at);
-    project.updated_at = parse_iso_millis(&web.metadata.updated_at).unwrap_or(project.updated_at);
+    if as_new.is_none() {
+        project.created_at = parse_iso_millis(&web.metadata.created_at).unwrap_or(project.created_at);
+        project.updated_at = parse_iso_millis(&web.metadata.updated_at).unwrap_or(project.updated_at);
+    }
     project.settings = ProjectSettings {
         fps: web.settings.fps,
         canvas: web.settings.canvas_size,

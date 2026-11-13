@@ -103,6 +103,7 @@ import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
 import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
 import { importStockItem, searchStock } from "@/stock/stock";
 import { projectAssetManifest, projectCreditsText } from "@/project/project-assets";
+import { createProjectFromTemplate, findTemplate, listMyTemplates, loadStarterTemplates, saveProjectAsTemplate } from "@/templates/templates";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
@@ -796,6 +797,25 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					: bundle.fileName;
 			downloadBlob({ blob: bundle.blob, fileName: requested });
 			return { fileName: requested, bytes: bundle.blob.size };
+		},
+		"templates.list": async () => {
+			const [mine, starter] = await Promise.all([listMyTemplates(), loadStarterTemplates().catch(() => [])]);
+			return { templates: [...mine, ...starter] };
+		},
+		"templates.use": async ({ id, name }) => {
+			if (typeof id !== "string" || !id) {
+				throw new EditorApiError({ code: "invalid_params", message: "id must be a template id from templates.list" });
+			}
+			const template = await findTemplate({ id });
+			if (!template) throw new EditorApiError({ code: "not_found", message: `No template ${id}` });
+			return { projectId: await createProjectFromTemplate({ editor, template, name }) };
+		},
+		"templates.save": async ({ name, description }) => {
+			requireProject();
+			if (typeof name !== "string" || !name.trim()) {
+				throw new EditorApiError({ code: "invalid_params", message: "name must be non-empty text" });
+			}
+			return saveProjectAsTemplate({ editor, name, description });
 		},
 		"project.importBundle": async ({ file }) => {
 			if (!(file instanceof Blob)) {
