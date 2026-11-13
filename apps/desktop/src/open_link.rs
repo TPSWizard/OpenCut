@@ -114,6 +114,21 @@ mod tests {
         assert_eq!(host_of("https://a.example:8443/x?y"), "a.example:8443");
     }
 
+    /// `OPENCUT_LINK_CHECK=<open link>` downloads and imports a real link
+    /// (one network request) into a temporary store.
+    #[test]
+    fn opens_a_real_link() {
+        let Ok(link) = std::env::var("OPENCUT_LINK_CHECK") else {
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let store = editor::ProjectStore::new(dir.path().join("projects"));
+        let target = target_from(&link).expect("a link the desktop opens");
+        let report = open(&target, &store).unwrap();
+        eprintln!("LINK {} -> {} ({} track(s))", link, report.project.name, report.project.tracks.len());
+        assert!(std::fs::read_dir(downloads_dir(store.root())).unwrap().next().is_none(), "the download is removed");
+    }
+
     #[test]
     fn imports_a_bundle_on_disk() {
         let dir = tempfile::tempdir().unwrap();
