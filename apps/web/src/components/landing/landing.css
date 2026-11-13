@@ -1,0 +1,225 @@
+/*
+ * Landing page. The page borrows the editor's own shapes: ruler ticks, clips
+ * and a playhead. Yellow is the trim handle (what you grab); blue is the
+ * playhead (what moves). Nothing else gets an accent colour.
+ */
+
+@property --landing-frame {
+	syntax: "<integer>";
+	inherits: true;
+	initial-value: 0;
+}
+@property --landing-seconds {
+	syntax: "<integer>";
+	inherits: true;
+	initial-value: 0;
+}
+@property --landing-frames {
+	syntax: "<integer>";
+	inherits: true;
+	initial-value: 0;
+}
+
+.landing {
+	--trim: var(--color-yellow-500, #f0b100);
+	--trim-ink: #a16207;
+	--playhead: var(--primary);
+	--clip-text: #4fae95;
+	--clip-audio: #8b5fb5;
+}
+.dark .landing {
+	--trim-ink: #facc15;
+}
+
+/* Vertical timeline grid behind the hero, fading out towards the edges. */
+.landing-grid {
+	background-image:
+		linear-gradient(
+			to right,
+			color-mix(in srgb, var(--foreground) 11%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to right,
+			color-mix(in srgb, var(--foreground) 4.5%, transparent) 1px,
+			transparent 1px
+		);
+	background-size:
+		160px 100%,
+		32px 100%;
+	background-position: center top;
+	-webkit-mask-image: radial-gradient(
+		ellipse 80% 75% at 50% 30%,
+		#000 5%,
+		transparent 70%
+	);
+	mask-image: radial-gradient(
+		ellipse 80% 75% at 50% 30%,
+		#000 5%,
+		transparent 70%
+	);
+}
+
+/* Ruler ticks: a tall tick every 80px, short ones every 16px. */
+.landing-ticks {
+	background-image:
+		linear-gradient(
+			to right,
+			color-mix(in srgb, var(--foreground) 38%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to right,
+			color-mix(in srgb, var(--foreground) 18%, transparent) 1px,
+			transparent 1px
+		);
+	background-size:
+		80px 100%,
+		16px 40%;
+	background-repeat: repeat-x;
+	background-position: left bottom;
+}
+
+/* Warm light behind the product shot, like a monitor in a dark room. */
+.landing-glow {
+	background:
+		radial-gradient(
+			ellipse 50% 100% at 30% 100%,
+			color-mix(in srgb, var(--trim) 26%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			ellipse 45% 100% at 72% 100%,
+			color-mix(in srgb, var(--playhead) 22%, transparent),
+			transparent 70%
+		);
+	filter: blur(40px);
+}
+
+.landing-word-static {
+	background: var(--trim);
+	color: #111;
+}
+
+@keyframes landing-rise {
+	from {
+		opacity: 0;
+		translate: 0 28px;
+	}
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+@keyframes landing-sweep {
+	from {
+		left: 5%;
+	}
+	to {
+		left: 95%;
+	}
+}
+@keyframes landing-word {
+	0% {
+		background: var(--trim);
+		color: #111;
+	}
+	25%,
+	100% {
+		background: transparent;
+		color: inherit;
+	}
+}
+@keyframes landing-wipe {
+	from {
+		clip-path: polygon(0 0, 34% 0, 22% 100%, 0 100%);
+	}
+	to {
+		clip-path: polygon(0 0, 90% 0, 78% 100%, 0 100%);
+	}
+}
+@keyframes landing-follow {
+	from {
+		left: 24%;
+	}
+	to {
+		left: 76%;
+	}
+}
+@keyframes landing-scrub {
+	from {
+		left: 0%;
+	}
+	to {
+		left: 100%;
+	}
+}
+@keyframes landing-count {
+	from {
+		--landing-frame: 0;
+	}
+	to {
+		--landing-frame: 600;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.landing-playhead {
+		animation: landing-sweep 9s cubic-bezier(0.45, 0, 0.55, 1) infinite
+			alternate;
+	}
+	.landing-word {
+		animation: landing-word 2.8s step-end infinite;
+		animation-delay: calc(var(--i) * 0.7s);
+	}
+	.landing-wipe {
+		animation: landing-wipe 3.6s cubic-bezier(0.65, 0, 0.35, 1) infinite
+			alternate;
+	}
+	.landing-follow {
+		animation: landing-follow 5s cubic-bezier(0.45, 0, 0.55, 1) infinite
+			alternate;
+	}
+
+	/* Sections rise into place as they scroll into view. Browsers without
+	   scroll-driven animations simply show them. */
+	@supports (animation-timeline: view()) {
+		.landing-reveal {
+			animation: landing-rise linear both;
+			animation-timeline: view();
+			animation-range: entry 0% cover 18%;
+		}
+	}
+}
+
+/*
+ * The scrubber: the page itself as a twenty second timeline. The playhead
+ * follows the scroll position and the timecode counts frames at 30 fps.
+ */
+.landing-scrubber {
+	display: none;
+}
+@supports (animation-timeline: scroll()) and (line-height: mod(3, 2)) {
+	@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+		.landing-scrubber {
+			display: block;
+			animation: landing-count linear both;
+			animation-timeline: scroll(root block);
+			--landing-seconds: calc(round(down, var(--landing-frame) / 30, 1));
+			--landing-frames: calc(mod(var(--landing-frame), 30));
+		}
+		.landing-scrubber-head {
+			animation: landing-scrub linear both;
+			animation-timeline: scroll(root block);
+		}
+		.landing-timecode::after {
+			counter-reset: seconds var(--landing-seconds) frames
+				var(--landing-frames);
+			content: "00:00:" counter(seconds, decimal-leading-zero) ":"
+				counter(frames, decimal-leading-zero);
+		}
+		.landing-scrubber-space {
+			padding-bottom: 1.75rem;
+		}
+	}
+}

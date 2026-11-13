@@ -158,6 +158,8 @@ export interface ApiElementInfo {
 	params: ApiParamValues;
 	/** The transition the clip leads out of (visual elements only). */
 	transition?: ApiTransition;
+	/** The transition it plays in with from nothing (none when a clip sits directly before it). */
+	transitionIn?: ApiTransition;
 	/** A caption's words, seconds from the element's start (text elements). */
 	words?: ApiCaptionWord[];
 	/** Effects on a visual element, in the order they apply. */
@@ -593,9 +595,15 @@ export interface EditorApiMethods {
 		result: ApiElementInfo;
 	};
 	/** Sets, or with `transition: null` removes, the transition a clip leads out of. */
+	/**
+	 * `side` "end" (default) is the transition the clip leads out of; "start"
+	 * is the one it comes in with: the previous clip's when one sits directly
+	 * before it (one transition per cut), else its own, in from nothing.
+	 */
 	"timeline.setTransition": {
 		params: ApiElementLocator & {
 			transition: Omit<ApiTransition, "duration"> & { duration?: number } | null;
+			side?: "start" | "end";
 		};
 		result: ApiElementInfo;
 	};

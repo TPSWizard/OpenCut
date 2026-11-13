@@ -84,7 +84,8 @@ pub use frame::{
     TextBackground, TextDecoration, TextHighlight, TextStyle, TransitionPlan, active_word, caption_highlight, fit_contain, parse_hex_color, plan_frame,
 };
 pub use transition::{
-    ADJACENCY_TOLERANCE, TransitionWindow, is_adjacent, next_adjacent, transition_window, window_into, window_of,
+    ADJACENCY_TOLERANCE, TransitionWindow, in_window, is_adjacent, next_adjacent, previous_adjacent, transition_window,
+    window_into, window_of,
 };
 pub use params::{ParamValue, Params, audio_defaults, text_defaults, visual_defaults};
 pub use compound::{CompoundTrack, clip_element, compound_child_count, compound_children, expand_compounds, group_members, has_compounds};

@@ -2079,6 +2079,48 @@ impl EditorState {
         );
     }
 
+    /// Where the selected clip's start transition lives: the previous
+    /// clip's out-transition when one sits directly before it (one
+    /// transition per cut), else the clip's own in-transition. Returns the
+    /// owner's id, whether it is shared, and the transition there now.
+    pub(crate) fn start_transition_target(&self) -> Option<(String, bool, Option<Transition>)> {
+        let element = self.selected_element()?;
+        let (track, element) = self.project().element(&element.id)?;
+        Some(match editor::previous_adjacent(track, element) {
+            Some(previous) => (previous.id.clone(), true, previous.transition.clone()),
+            None => (element.id.clone(), false, element.transition_in.clone()),
+        })
+    }
+
+    /// Sets the selected clip's start transition: a kind (keeping the
+    /// duration there) and/or a duration; `kind` `Some("")` removes it.
+    pub(crate) fn set_start_transition(&mut self, kind: Option<&str>, duration: Option<MediaTime>, cx: &mut Context<Self>) {
+        let Some((owner, shared, current)) = self.start_transition_target() else { return };
+        let transition = match kind {
+            Some("") => None,
+            Some(kind) => Some(Transition {
+                kind: kind.to_owned(),
+                duration: duration.or(current.as_ref().map(|t| t.duration)).unwrap_or(DEFAULT_TRANSITION_DURATION),
+                params: Params::new(),
+            }),
+            None => match current {
+                Some(mut transition) => {
+                    if let Some(duration) = duration {
+                        transition.duration = duration;
+                    }
+                    Some(transition)
+                }
+                None => return,
+            },
+        };
+        let command = if shared {
+            Command::SetTransition { element_id: owner, transition }
+        } else {
+            Command::SetTransitionIn { element_id: owner, transition }
+        };
+        self.execute(command, cx);
+    }
+
     pub(crate) fn remove_transition(&mut self, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();

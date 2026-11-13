@@ -60,6 +60,31 @@ pub fn next_adjacent<'a>(track: &'a Track, element: &Element) -> Option<&'a Elem
         .min_by_key(|candidate| candidate.start_time)
 }
 
+/// The last visible element on the track that ends where `element` starts.
+pub fn previous_adjacent<'a>(track: &'a Track, element: &Element) -> Option<&'a Element> {
+    track
+        .elements
+        .iter()
+        .filter(|candidate| candidate.id != element.id && !candidate.hidden && candidate.kind.is_visual())
+        .filter(|candidate| is_adjacent(candidate, element))
+        .max_by_key(|candidate| candidate.start_time)
+}
+
+/// The window of `element`'s own in-transition: from nothing over its first
+/// moments (at most its whole length). `None` without one, or when a clip
+/// sits directly before it (that cut is the previous clip's transition).
+pub fn in_window(track: &Track, element: &Element) -> Option<TransitionWindow> {
+    let transition = element.transition_in.as_ref()?;
+    if transition.duration <= MediaTime::ZERO || element.duration <= MediaTime::ZERO {
+        return None;
+    }
+    if previous_adjacent(track, element).is_some() {
+        return None;
+    }
+    let length = transition.duration.min(element.duration);
+    Some(TransitionWindow { start: element.start_time, end: element.start_time + length, to: Some(element.id.clone()) })
+}
+
 /// The window of `element`'s transition, given the clip after it; a `next`
 /// that is not adjacent counts as none. `None` when the element has no
 /// transition or it would be empty.
@@ -114,6 +139,41 @@ pub fn window_into(track: &Track, element: &Element) -> Option<TransitionWindow>
 }
 
 #[cfg(test)]
+mod in_tests {
+    use super::*;
+    use crate::document::{ElementKind, Transition};
+    use crate::params::Params;
+
+    fn clip(id: &str, start: f64, length: f64) -> Element {
+        let mut element = Element::text(id, MediaTime::from_seconds_f64(start).unwrap());
+        element.id = id.to_owned();
+        element.duration = MediaTime::from_seconds_f64(length).unwrap();
+        element
+    }
+
+    #[test]
+    fn in_transitions_play_from_nothing_unless_a_clip_comes_before() {
+        let fade = Transition { kind: "Fade".into(), duration: MediaTime::from_seconds_f64(1.0).unwrap(), params: Params::new() };
+        let mut first = clip("a", 0.0, 3.0);
+        first.transition_in = Some(fade.clone());
+        let mut second = clip("b", 3.0, 0.5);
+        second.transition_in = Some(fade.clone());
+        let mut after_gap = clip("c", 5.0, 2.0);
+        after_gap.transition_in = Some(fade);
+        let mut track = Track::new(crate::TrackKind::Video, crate::document::Lane::Main, "Main");
+        track.elements = vec![first.clone(), second.clone(), after_gap.clone()];
+        let window = in_window(&track, &first).unwrap();
+        assert_eq!((window.start, window.end), (MediaTime::ZERO, MediaTime::from_seconds_f64(1.0).unwrap()));
+        assert_eq!(window.to.as_deref(), Some("a"));
+        assert_eq!(in_window(&track, &second), None, "a clip ends where it starts");
+        assert_eq!(previous_adjacent(&track, &second).map(|e| e.id.as_str()), Some("a"));
+        let gap = in_window(&track, &after_gap).unwrap();
+        assert_eq!(gap.end - gap.start, MediaTime::from_seconds_f64(1.0).unwrap());
+        assert!(matches!(after_gap.kind, ElementKind::Text));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::document::{ElementKind, Lane, Transition, TrackKind};
@@ -141,6 +201,7 @@ mod tests {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            transition_in: None,
             cutout: None,
             words: Vec::new(),
             retime: None,

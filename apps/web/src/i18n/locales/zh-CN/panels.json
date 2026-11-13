@@ -206,5 +206,16 @@
   "Removing {percent}%": "正在移除 {percent}%",
   "Redo background removal": "重新移除背景",
   "Show whole clip": "显示整个片段",
-  "The whole clip shows again; the matte stays in the media.": "已重新显示整个片段；遮罩仍保留在素材中。"
+  "The whole clip shows again; the matte stays in the media.": "已重新显示整个片段；遮罩仍保留在素材中。",
+  "Select a clip first, then pick where the transition goes: its start, its end or both.": "请先选择一个片段，再选择转场放在哪里：开头、结尾或两者。",
+  "Apply to": "应用于",
+  "Start": "开头",
+  "End": "结尾",
+  "Both": "两者",
+  "Select a clip, then pick a transition for its start, its end or both.": "选择一个片段，然后为它的开头、结尾或两者选择转场。",
+  "Transition in: {type}": "入场转场：{type}",
+  "Shared with the end of the clip before ({name}), centred on the cut.": "与前一个片段（{name}）的结尾共用，以剪切点为中心。",
+  "Nothing comes directly before this clip, so it comes in from nothing over its first moments.": "此片段前面没有紧邻的片段，因此它会在开头的片刻从无到有地入场。",
+  "Plays out of this clip into the next one ({name}), centred on the cut.": "从此片段过渡到下一个片段（{name}），以剪切点为中心。",
+  "Nothing comes directly after this clip, so it goes out to nothing over its last moments.": "此片段后面没有紧邻的片段，因此它会在最后的片刻退场至无。"
 }

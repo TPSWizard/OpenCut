@@ -12,16 +12,20 @@ import {
 	searchTransitions,
 	type TransitionInfo,
 } from "@/transitions";
-import { getSelectedVisualClips, setElementTransition } from "@/transitions/apply";
+import { getClipTransition, getSelectedVisualClips, setClipTransition, type TransitionSide } from "@/transitions/apply";
 import { cn } from "@/utils/ui";
+
+type ApplyTo = TransitionSide | "both";
 
 /**
  * The transitions catalogue. Clicking an entry gives every selected visual
- * clip that transition out of its end (keeping a duration it already has).
+ * clip that transition at its start, its end or both (keeping a duration
+ * one already has there).
  */
 export function TransitionsView() {
 	const t = useT();
 	const [query, setQuery] = useState("");
+	const [applyTo, setApplyTo] = useState<ApplyTo>("end");
 	const editor = useEditor();
 	// A primitive key, so a fresh snapshot object cannot re-render us forever.
 	useEditor((e) =>
@@ -31,9 +35,10 @@ export function TransitionsView() {
 			.join(","),
 	);
 	const selected = getSelectedVisualClips({ editor });
+	const sides: TransitionSide[] = applyTo === "both" ? ["start", "end"] : [applyTo];
 	const activeTypes = new Set(
 		selected
-			.map(({ element }) => ("transition" in element ? element.transition?.type : undefined))
+			.flatMap(({ track, element }) => sides.map((side) => getClipTransition({ track, element, side })?.type))
 			.filter((type): type is string => Boolean(type)),
 	);
 	const results = useMemo(() => searchTransitions({ query }), [query]);
@@ -42,20 +47,27 @@ export function TransitionsView() {
 	const apply = (info: TransitionInfo) => {
 		const clips = getSelectedVisualClips({ editor });
 		if (clips.length === 0) {
-			toast.info(t("Select a clip first; the transition plays out of its end."));
+			toast.info(t("Select a clip first, then pick where the transition goes: its start, its end or both."));
 			return;
 		}
-		for (const { track, element } of clips) {
-			const current = "transition" in element ? element.transition : undefined;
-			setElementTransition({
-				editor,
-				trackId: track.id,
-				elementId: element.id,
-				transition: {
-					type: info.name,
-					duration: current?.duration ?? DEFAULT_TRANSITION_DURATION,
-				},
-			});
+		for (const side of sides) {
+			for (const { element } of clips) {
+				// Re-read the track each time: an earlier change may have touched it.
+				const tracks = editor.scenes.getActiveScene().tracks;
+				const track = [...tracks.overlay, tracks.main, ...tracks.audio].find((candidate) =>
+					candidate.elements.some((item) => item.id === element.id),
+				);
+				const current = track ? track.elements.find((item) => item.id === element.id) : undefined;
+				if (!track || !current) continue;
+				const existing = getClipTransition({ track, element: current, side });
+				setClipTransition({
+					editor,
+					track,
+					element: current,
+					side,
+					transition: { type: info.name, duration: existing?.duration ?? DEFAULT_TRANSITION_DURATION },
+				});
+			}
 		}
 	};
 
@@ -72,9 +84,28 @@ export function TransitionsView() {
 				/>
 			}
 		>
+			<div className="mb-2 flex items-center gap-1" role="radiogroup" aria-label={t("Apply to")}>
+				<span className="text-muted-foreground mr-1 text-xs">{t("Apply to")}</span>
+				{(["start", "end", "both"] as const).map((side) => (
+					<button
+						key={side}
+						type="button"
+						role="radio"
+						aria-checked={applyTo === side}
+						data-testid={`transition-apply-${side}`}
+						className={cn(
+							"rounded-md border px-2 py-0.5 text-xs",
+							applyTo === side ? "bg-accent border-foreground/30" : "text-muted-foreground",
+						)}
+						onClick={() => setApplyTo(side)}
+					>
+						{side === "start" ? t("Start") : side === "end" ? t("End") : t("Both")}
+					</button>
+				))}
+			</div>
 			<p className="text-muted-foreground mb-3 text-xs">
 				{selected.length === 0
-					? t("Select a clip, then pick a transition to play out of its end into the next clip.")
+					? t("Select a clip, then pick a transition for its start, its end or both.")
 					: selected.length === 1
 						? t("Applies to 1 selected clip.")
 						: t("Applies to {count} selected clips.", { count: selected.length })}

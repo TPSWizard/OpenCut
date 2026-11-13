@@ -23,14 +23,22 @@ import {
 	type TransitionParamInfo,
 	type TransitionParamValue,
 } from "@/transitions";
-import { setElementTransition } from "@/transitions/apply";
+import {
+	getClipTransition,
+	setClipTransition,
+	transitionTarget,
+	type TransitionSide,
+} from "@/transitions/apply";
+import { getNextAdjacent } from "@/transitions/window";
 import { spaced } from "./assets-view";
 
 const NONE = "__none__";
 
 /**
- * The transition a clip leads out of: which one, how long, and its
+ * The transitions at a clip's start and end: which one, how long, and its
  * parameters (read from the catalogue, so a new shader needs no UI work).
+ * The start is shared with the clip before when one sits directly before
+ * it; otherwise the clip comes in from nothing.
  */
 export function TransitionTab({
 	element,
@@ -41,47 +49,86 @@ export function TransitionTab({
 }) {
 	const t = useT();
 	const editor = useEditor();
-	const catalogue = getTransitionCatalogue();
-	const transition = element.transition ?? null;
-	const info = transition ? getTransitionInfo({ name: transition.type }) : null;
+	const track = useEditor((e) => {
+		const { tracks } = e.scenes.getActiveScene();
+		return [...tracks.overlay, tracks.main, ...tracks.audio].find((candidate) => candidate.id === trackId) ?? null;
+	});
+	if (!track) return null;
+	const startTarget = transitionTarget({ track, element, side: "start" });
+	const nextClip = getNextAdjacent({ track, element });
+	const startNote = startTarget.sharedWith
+		? t("Shared with the end of the clip before ({name}), centred on the cut.", {
+				name: startTarget.sharedWith.name,
+			})
+		: t("Nothing comes directly before this clip, so it comes in from nothing over its first moments.");
+	const endNote = nextClip
+		? t("Plays out of this clip into the next one ({name}), centred on the cut.", { name: nextClip.name })
+		: t("Nothing comes directly after this clip, so it goes out to nothing over its last moments.");
+	return (
+		<div className="flex flex-col gap-5 p-3.5" data-testid="transition-tab">
+			{(["start", "end"] as const).map((side) => (
+				<TransitionEditor
+					key={side}
+					side={side}
+					title={side === "start" ? t("Start") : t("End")}
+					note={side === "start" ? startNote : endNote}
+					transition={getClipTransition({ track, element, side })}
+					onChange={(next) => setClipTransition({ editor, track, element, side, transition: next })}
+				/>
+			))}
+		</div>
+	);
+}
 
-	const update = (next: ElementTransition | null) =>
-		setElementTransition({
-			editor,
-			trackId,
-			elementId: element.id,
-			transition: next,
-		});
+function TransitionEditor({
+	side,
+	title,
+	note,
+	transition,
+	onChange,
+}: {
+	side: TransitionSide;
+	title: string;
+	note: string;
+	transition: ElementTransition | null;
+	onChange: (next: ElementTransition | null) => void;
+}) {
+	const t = useT();
+	const catalogue = getTransitionCatalogue();
+	const info = transition ? getTransitionInfo({ name: transition.type }) : null;
 
 	const setType = (type: string) => {
 		if (type === NONE) {
-			update(null);
+			onChange(null);
 			return;
 		}
-		update({
-			type,
-			duration: transition?.duration ?? DEFAULT_TRANSITION_DURATION,
-		});
+		onChange({ type, duration: transition?.duration ?? DEFAULT_TRANSITION_DURATION });
 	};
 
 	const setDuration = (seconds: number) => {
 		if (!transition || !Number.isFinite(seconds) || seconds <= 0) return;
-		update({ ...transition, duration: mediaTimeFromSeconds({ seconds }) });
+		onChange({ ...transition, duration: mediaTimeFromSeconds({ seconds }) });
 	};
 
 	const setParam = (name: string, value: TransitionParamValue) => {
 		if (!transition) return;
-		update({
-			...transition,
-			params: { ...(transition.params ?? {}), [name]: value },
-		});
+		onChange({ ...transition, params: { ...(transition.params ?? {}), [name]: value } });
 	};
 
 	return (
-		<div className="flex flex-col gap-4 p-3.5">
+		<section className="flex flex-col gap-3" data-testid={`transition-${side}`}>
+			<div className="flex items-center justify-between">
+				<h3 className="text-sm font-medium">{title}</h3>
+				{transition ? (
+					<Button variant="ghost" size="sm" onClick={() => onChange(null)}>
+						{t("Remove transition")}
+					</Button>
+				) : null}
+			</div>
+			<p className="text-muted-foreground text-xs">{note}</p>
 			<Field label={t("Transition")}>
 				<Select value={transition?.type ?? NONE} onValueChange={setType}>
-					<SelectTrigger className="w-full">
+					<SelectTrigger className="w-full" data-testid={`transition-${side}-type`}>
 						<SelectValue placeholder={t("None")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -95,25 +142,12 @@ export function TransitionTab({
 				</Select>
 			</Field>
 			{!transition ? (
-				<div className="flex flex-col gap-2">
-					<p className="text-muted-foreground text-xs">
-						{t(
-							"A transition plays out of this clip's end into the next clip on the track, centred on the cut. With nothing after it, the clip fades out.",
-						)}
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setType(DEFAULT_TRANSITION_TYPE)}
-					>
-						{t("Add {name}", { name: spaced(DEFAULT_TRANSITION_TYPE).toLowerCase() })}
-					</Button>
-				</div>
+				<Button variant="outline" size="sm" onClick={() => setType(DEFAULT_TRANSITION_TYPE)}>
+					{t("Add {name}", { name: spaced(DEFAULT_TRANSITION_TYPE).toLowerCase() })}
+				</Button>
 			) : (
 				<>
-					{info?.description && (
-						<p className="text-muted-foreground text-xs">{info.description}</p>
-					)}
+					{info?.description && <p className="text-muted-foreground text-xs">{info.description}</p>}
 					<Field label={t("Duration (s)")}>
 						<Input
 							type="number"
@@ -138,12 +172,9 @@ export function TransitionTab({
 							onChange={(value) => setParam(param.name, value)}
 						/>
 					))}
-					<Button variant="ghost" size="sm" onClick={() => update(null)}>
-						{t("Remove transition")}
-					</Button>
 				</>
 			)}
-		</div>
+		</section>
 	);
 }
 

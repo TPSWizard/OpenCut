@@ -5,7 +5,7 @@ import {
 	isVisualElement,
 	type ElementTransition,
 } from "@/transitions";
-import { setElementTransition } from "@/transitions/apply";
+import { setClipTransition } from "@/transitions/apply";
 import { generateCaptions, insertGeneratedCaptions } from "@/captions/generate";
 import { isCaptionHighlight, type CaptionStyle } from "@/captions";
 import { insertCaptionChunksAsTextTrack } from "@/subtitles/insert";
@@ -215,6 +215,14 @@ function toElementInfo({
 						type: element.transition.type,
 						duration: seconds(element.transition.duration),
 						...(element.transition.params && { params: element.transition.params }),
+					}
+				: undefined,
+		transitionIn:
+			"transitionIn" in element && element.transitionIn
+				? {
+						type: element.transitionIn.type,
+						duration: seconds(element.transitionIn.duration),
+						...(element.transitionIn.params && { params: element.transitionIn.params }),
 					}
 				: undefined,
 		retime: "retime" in element && element.retime ? { ...element.retime } : undefined,
@@ -1384,7 +1392,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			};
 		},
 		"transitions.list": () => getTransitionCatalogue(),
-		"timeline.setTransition": ({ elementId, trackId, transition }) => {
+		"timeline.setTransition": ({ elementId, trackId, transition, side }) => {
 			const { track, element } = resolveElement({ elementId, trackId });
 			if (!isVisualElement(element)) {
 				throw new EditorApiError({
@@ -1422,12 +1430,10 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					...(transition.params && { params: transition.params }),
 				};
 			}
-			setElementTransition({
-				editor,
-				trackId: track.id,
-				elementId: element.id,
-				transition: next,
-			});
+			if (side !== undefined && side !== "start" && side !== "end") {
+				throw new EditorApiError({ code: "invalid_params", message: "side must be start or end" });
+			}
+			setClipTransition({ editor, track, element, side: side ?? "end", transition: next });
 			const updated = resolveElement({ elementId: element.id, trackId: track.id });
 			return toElementInfo({ element: updated.element, trackId: track.id });
 		},

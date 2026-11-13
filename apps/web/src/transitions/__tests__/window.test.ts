@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ImageElement, TimelineTrack } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
+import { getClipTransition, transitionTarget } from "../apply";
 import {
+	getInTransitionWindow,
 	getIncomingTransitionWindow,
+	getPreviousAdjacent,
 	getNextAdjacent,
 	getOutgoingTransitionWindow,
 	getTransitionProgress,
@@ -103,5 +106,32 @@ describe("transition windows", () => {
 	it("gives no window without a transition or with a zero length", () => {
 		expect(getTransitionWindow({ element: clip({ id: "a", start: 0, duration: 4 }), next: null })).toBeNull();
 		expect(getTransitionWindow({ element: clip({ id: "a", start: 0, duration: 4, transition: 0 }), next: null })).toBeNull();
+	});
+
+	it("plays a clip's own start transition only when nothing sits right before it", () => {
+		const fade = { type: "Fade", duration: seconds(1) };
+		const a = { ...clip({ id: "a", start: 0, duration: 3, transition: 0.5 }), transitionIn: fade };
+		const b = { ...clip({ id: "b", start: 3, duration: 0.6 }), transitionIn: fade };
+		const c = { ...clip({ id: "c", start: 5, duration: 2 }), transitionIn: fade };
+		const t = track([a, b, c]);
+		expect(getInTransitionWindow({ track: t, element: a })).toEqual({ start: seconds(0), end: seconds(1), toElementId: "a" });
+		expect(getInTransitionWindow({ track: t, element: b })).toBeNull();
+		expect(getPreviousAdjacent({ track: t, element: b })?.id).toBe("a");
+		expect(getInTransitionWindow({ track: t, element: c })).toEqual({ start: seconds(5), end: seconds(6), toElementId: "c" });
+		// A short clip caps the window at its length.
+		const short = { ...clip({ id: "s", start: 9, duration: 0.4 }), transitionIn: fade };
+		expect(getInTransitionWindow({ track: track([short]), element: short })?.end).toBe(seconds(9.4));
+	});
+
+	it("routes a clip's start to the clip before it when they touch", () => {
+		const a = clip({ id: "a", start: 0, duration: 3, transition: 0.5 });
+		const b = { ...clip({ id: "b", start: 3, duration: 2 }), transitionIn: { type: "Wipe", duration: seconds(1) } };
+		const c = { ...clip({ id: "c", start: 6, duration: 2 }), transitionIn: { type: "Cube", duration: seconds(1) } };
+		const t = track([a, b, c]);
+		expect(transitionTarget({ track: t, element: b, side: "start" })).toMatchObject({ elementId: "a", field: "transition" });
+		expect(getClipTransition({ track: t, element: b, side: "start" })?.type).toBe("Fade");
+		expect(transitionTarget({ track: t, element: c, side: "start" })).toMatchObject({ elementId: "c", field: "transitionIn" });
+		expect(getClipTransition({ track: t, element: c, side: "start" })?.type).toBe("Cube");
+		expect(getClipTransition({ track: t, element: b, side: "end" })).toBeNull();
 	});
 });

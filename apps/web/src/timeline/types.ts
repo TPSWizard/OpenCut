@@ -138,6 +138,8 @@ export interface VideoElement extends BaseTimelineElement {
 	retime?: RetimeConfig;
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
+	/** The transition it plays in with from nothing; see `getInTransitionWindow`. */
+	transitionIn?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 	/** Background removal; see `@/cutout`. */
@@ -163,6 +165,8 @@ export interface ImageElement extends BaseTimelineElement {
 	hidden?: boolean;
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
+	/** The transition it plays in with from nothing; see `getInTransitionWindow`. */
+	transitionIn?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 }
@@ -178,6 +182,8 @@ export interface TextElement extends BaseTimelineElement {
 	words?: CaptionWord[];
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
+	/** The transition it plays in with from nothing; see `getInTransitionWindow`. */
+	transitionIn?: ElementTransition;
 	effects?: Effect[];
 }
 
@@ -190,6 +196,8 @@ export interface StickerElement extends BaseTimelineElement {
 	hidden?: boolean;
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
+	/** The transition it plays in with from nothing; see `getInTransitionWindow`. */
+	transitionIn?: ElementTransition;
 	effects?: Effect[];
 }
 
@@ -199,6 +207,8 @@ export interface GraphicElement extends BaseTimelineElement {
 	hidden?: boolean;
 	/** The transition this clip leads out of; see `@/transitions`. */
 	transition?: ElementTransition;
+	/** The transition it plays in with from nothing; see `getInTransitionWindow`. */
+	transitionIn?: ElementTransition;
 	effects?: Effect[];
 	masks?: Mask[];
 }

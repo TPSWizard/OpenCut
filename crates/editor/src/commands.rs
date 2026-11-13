@@ -233,6 +233,12 @@ pub enum Command {
         element_id: String,
         transition: Option<Transition>,
     },
+    /// Sets (or removes) the transition a clip plays in with from nothing;
+    /// see [`crate::Element::transition_in`].
+    SetTransitionIn {
+        element_id: String,
+        transition: Option<Transition>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -311,7 +317,8 @@ fn check_locks(project: &Project, command: &Command) -> Result<(), EditorError> 
         | Command::AddMask { element_id, .. }
         | Command::UpdateMask { element_id, .. }
         | Command::RemoveMask { element_id, .. }
-        | Command::SetTransition { element_id, .. } => element(element_id),
+        | Command::SetTransition { element_id, .. }
+        | Command::SetTransitionIn { element_id, .. } => element(element_id),
         Command::RippleDelete { element_ids } => element_ids.iter().find_map(element),
         Command::DeleteElements(ids) | Command::DuplicateElements(ids) => ids.iter().find_map(element),
         Command::CreateCompound { element_ids, .. } => element_ids.iter().find_map(element),
@@ -1151,6 +1158,24 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 }
             }
             element.transition = transition.clone();
+            Outcome::Elements(vec![reference])
+        }
+        Command::SetTransitionIn { element_id, transition } => {
+            let (reference, element) = element_mut(project, element_id)?;
+            if !element.kind.is_visual() {
+                return Err(EditorError::InvalidParams(
+                    "only video, image and text clips can have a transition".into(),
+                ));
+            }
+            if let Some(transition) = transition {
+                if transition.kind.trim().is_empty() {
+                    return Err(EditorError::InvalidParams("transition type is empty".into()));
+                }
+                if transition.duration <= MediaTime::ZERO {
+                    return Err(EditorError::InvalidParams("transition duration must be positive".into()));
+                }
+            }
+            element.transition_in = transition.clone();
             Outcome::Elements(vec![reference])
         }
         Command::RenameProject(name) => {

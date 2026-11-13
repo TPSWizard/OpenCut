@@ -500,6 +500,11 @@ pub struct Element {
     /// The transition this clip leads out of, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transition: Option<Transition>,
+    /// The transition this clip plays in with, from nothing, over its first
+    /// moments. Only when no clip sits directly before it on the track: that
+    /// cut belongs to the previous clip's `transition`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transition_in: Option<Transition>,
     /// Background removal; see [`Cutout`]. Video clips only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cutout: Option<Cutout>,
@@ -541,6 +546,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            transition_in: None,
             cutout: None,
             words: Vec::new(),
             retime: None,
@@ -566,6 +572,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            transition_in: None,
             cutout: None,
             words: Vec::new(),
             retime: None,
@@ -627,6 +634,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            transition_in: None,
             cutout: None,
             words: Vec::new(),
             retime: None,
@@ -652,6 +660,7 @@ impl Element {
             effects: Vec::new(),
             masks: Vec::new(),
             transition: None,
+            transition_in: None,
             cutout: None,
             words: Vec::new(),
             retime: None,

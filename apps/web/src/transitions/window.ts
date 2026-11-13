@@ -71,6 +71,49 @@ export function getNextAdjacent({
 	return best;
 }
 
+/** The last visible visual element on the track that ends where `element` starts. */
+export function getPreviousAdjacent({
+	track,
+	element,
+}: {
+	track: TimelineTrack;
+	element: TimelineElement;
+}): VisualElement | null {
+	let best: VisualElement | null = null;
+	for (const candidate of track.elements) {
+		if (candidate.id === element.id || !isVisualElement(candidate)) continue;
+		if (candidate.hidden) continue;
+		if (!isAdjacent({ element: candidate, next: element })) continue;
+		if (!best || candidate.startTime > best.startTime) best = candidate;
+	}
+	return best;
+}
+
+/**
+ * The window of `element`'s own in-transition: from nothing over its first
+ * moments (at most its whole length). Null without one, or when a clip sits
+ * directly before it, since that cut is the previous clip's transition.
+ * Mirrors `in_window` in `crates/editor/src/transition.rs`.
+ */
+export function getInTransitionWindow({
+	track,
+	element,
+}: {
+	track: TimelineTrack;
+	element: TimelineElement;
+}): TransitionWindow | null {
+	if (!isVisualElement(element) || !element.transitionIn) return null;
+	const transition = element.transitionIn;
+	if (transition.duration <= 0 || element.duration <= 0) return null;
+	if (getPreviousAdjacent({ track, element })) return null;
+	const length = Math.min(transition.duration, element.duration);
+	return {
+		start: element.startTime as MediaTime,
+		end: (element.startTime + length) as MediaTime,
+		toElementId: element.id,
+	};
+}
+
 /**
  * The window of `element`'s transition, given the clip after it; a `next`
  * that is not adjacent counts as none. Null when the element has no

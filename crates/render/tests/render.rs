@@ -551,3 +551,65 @@ fn cutout_mattes_hide_the_background() {
     assert!(left[2] < 30, "inverted hides the left: {left:?}");
     assert!(right[2] > 200, "inverted keeps the right: {right:?}");
 }
+
+/// A clip's own start transition fades it in from nothing, rising steadily
+/// to full. Known: a fade to or from an empty side currently follows
+/// progress squared (the transition mixes straight-alpha colours, so the
+/// empty side's black darkens the picture as well as fading it); the end
+/// fade out to nothing does the same.
+#[test]
+fn start_transitions_fade_in_from_nothing() {
+    let Ok(ffmpeg) = Ffmpeg::locate() else {
+        eprintln!("ffmpeg not installed; skipping");
+        return;
+    };
+    let Some(mut renderer) = renderer(Some(ffmpeg.clone())) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let clip = dir.path().join("red.mp4");
+    lavfi_clip(&ffmpeg, &clip, "color=c=red:size=128x72:rate=30:duration=3");
+    let info = probe(&ffmpeg, &clip).unwrap();
+    let mut project = Project::new("Start fade");
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "red".to_owned(),
+            name: "red.mp4".to_owned(),
+            kind: MediaKind::Video,
+            path: clip,
+            duration: info.duration,
+            width: info.width,
+            height: info.height,
+            fps: info.fps,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let element = Element::from_media(project.media_item("red").unwrap(), seconds(0.0));
+    let element_id = element.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+    apply(
+        &mut project,
+        &EditorCommand::SetTransitionIn {
+            element_id,
+            transition: Some(editor::Transition {
+                kind: "Fade".to_owned(),
+                duration: seconds(1.0),
+                params: editor::Params::new(),
+            }),
+        },
+    )
+    .unwrap();
+    let red_at = |renderer: &mut Renderer, project: &Project, time: f64| pixel(&renderer.render(project, seconds(time), 192, 108).unwrap(), 96, 54)[2];
+    let half = red_at(&mut renderer, &project, 0.5);
+    let full = red_at(&mut renderer, &project, 1.5);
+    let quarter = red_at(&mut renderer, &project, 0.25);
+    let three = red_at(&mut renderer, &project, 0.75);
+    let id = project.tracks.iter().flat_map(|t| t.elements.iter()).next().unwrap().id.clone();
+    apply(&mut project, &EditorCommand::SetTransitionIn { element_id: id.clone(), transition: None }).unwrap();
+    apply(&mut project, &EditorCommand::SetTransition { element_id: id, transition: Some(editor::Transition { kind: "Fade".to_owned(), duration: seconds(1.0), params: editor::Params::new() }) }).unwrap();
+    let out_half = red_at(&mut renderer, &project, 2.5);
+    assert!(full > 220, "after the fade: {full}");
+    assert!(quarter < half && half < three && three < full, "rises: {quarter} {half} {three} {full}");
+    assert!(quarter < 40, "starts from nothing: {quarter}");
+    assert_eq!(half, out_half, "the start fade mirrors the end fade");
+}

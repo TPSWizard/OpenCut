@@ -213,6 +213,67 @@ impl InspectorPanel {
     /// The clip's transition out: pick one of the catalogue by name (a
     /// field that accepts a prefix, Previous/Next, a few common picks),
     /// set its length in seconds and its parameters, or remove it.
+    /// The transition a clip comes in with: shared with the clip before
+    /// when one touches it, else its own, in from nothing.
+    fn start_transition_section<C: ParentElement>(&mut self, mut content: C, window: &mut Window, cx: &mut Context<Self>) -> C {
+        let colors = window.theme().colors;
+        let Some((_, shared, current)) = self.state.read(cx).start_transition_target() else { return content };
+        content = content.child(Separator::horizontal()).child(self.heading(t("Start transition"), window));
+        content = content.child(div().text_xs().text_color(colors.muted_foreground).child(if shared {
+            t("Shared with the end of the clip before, centred on the cut.")
+        } else {
+            t("Nothing comes directly before this clip, so it comes in from nothing over its first moments.")
+        }));
+        let mut picks = div().flex().flex_wrap().items_center().gap(px(4.));
+        for (id, label, name) in [
+            ("start-none", t("None"), ""),
+            ("start-fade", t("Fade"), "Fade"),
+            ("start-wipe", t("Wipe"), "DirectionalWipe"),
+            ("start-zoom", t("Zoom"), "CrossZoom"),
+            ("start-cube", t("Cube"), "Cube"),
+            ("start-slide", t("Slide"), "Directional"),
+        ] {
+            let state = self.state.clone();
+            let active = match &current {
+                Some(transition) => transition.kind == name,
+                None => name.is_empty(),
+            };
+            picks = picks.child(
+                Button::new(id, label)
+                    .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.set_start_transition(Some(name), None, cx))),
+            );
+        }
+        content = content.child(picks);
+        if let Some(transition) = current {
+            let mut lengths = div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(4.))
+                .child(Self::label_cell(t("Duration"), window));
+            for seconds in [0.25, 0.5, 1.0, 2.0] {
+                let state = self.state.clone();
+                let duration = MediaTime::from_seconds_f64(seconds).expect("valid");
+                let active = transition.duration == duration;
+                lengths = lengths.child(
+                    Button::new(eid("start-length", &format!("{seconds}")), format!("{seconds} s"))
+                        .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::XSmall)
+                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.set_start_transition(None, Some(duration), cx))),
+                );
+            }
+            content = content.child(lengths).child(
+                div().text_xs().text_color(colors.muted_foreground).child(tf(
+                    "{name}, {seconds} s. Other transitions and their settings: pick them on the clip before (or type the name below for this clip's end).",
+                    &[("name", &transition.kind), ("seconds", &format!("{:.2}", transition.duration.to_seconds_f64()))],
+                )),
+            );
+        }
+        content
+    }
+
     fn transition_section<C: ParentElement>(
         &mut self,
         mut content: C,
@@ -227,7 +288,7 @@ impl InspectorPanel {
             .flex()
             .items_center()
             .justify_between()
-            .child(self.heading(t("Transition"), window));
+            .child(self.heading(t("End transition"), window));
         if current.is_some() {
             let state = self.state.clone();
             header = header.child(
@@ -1466,6 +1527,7 @@ impl Render for InspectorPanel {
                 }
 
                 if has_picture {
+                    content = self.start_transition_section(content, window, cx);
                     content = self.transition_section(content, &element, window, cx);
                 }
 

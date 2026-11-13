@@ -12,6 +12,7 @@ import { EffectLayerNode } from "./nodes/effect-layer-node";
 import { TransitionNode } from "./nodes/transition-node";
 import { expandCompounds } from "@/timeline/compound";
 import {
+	getInTransitionWindow,
 	getIncomingTransitionWindow,
 	getOutgoingTransitionWindow,
 	isVisualElement,
@@ -207,7 +208,8 @@ function buildTrackNodes({
 			// the previous clip's), never by its regular node.
 			const outgoing = getOutgoingTransitionWindow({ track, element });
 			const incoming = getIncomingTransitionWindow({ track, element });
-			const suppressedWindows = [outgoing, incoming]
+			const intro = getInTransitionWindow({ track, element });
+			const suppressedWindows = [outgoing, incoming, intro]
 				.filter((window): window is NonNullable<typeof window> => window !== null)
 				.map((window) => ({ start: window.start, end: window.end }));
 
@@ -220,6 +222,25 @@ function buildTrackNodes({
 			});
 			if (node) {
 				nodes.push(node);
+			}
+
+			if (intro && isVisualElement(element) && element.transitionIn) {
+				nodes.push(
+					new TransitionNode({
+						name: element.transitionIn.type,
+						params: element.transitionIn.params ?? {},
+						windowStart: intro.start,
+						windowEnd: intro.end,
+						from: null,
+						to: buildElementNode({
+							element,
+							mediaMap,
+							canvasSize,
+							isPreview,
+							options: { extended: true },
+						}),
+					}),
+				);
 			}
 
 			if (outgoing && isVisualElement(element) && element.transition) {

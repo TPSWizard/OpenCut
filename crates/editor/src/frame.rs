@@ -4,7 +4,7 @@ use time::MediaTime;
 
 use crate::document::{Background, CaptionWord, Element, ElementKind, Project, Track};
 use crate::params::Params;
-use crate::transition::{next_adjacent, transition_window, window_into};
+use crate::transition::{in_window, next_adjacent, transition_window, window_into};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FramePlan {
@@ -407,6 +407,22 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
             // of: as the incoming side of the previous clip's transition,
             // or as the outgoing side of its own.
             if window_into(track, element).is_some_and(|window| window.contains(time)) {
+                continue;
+            }
+            // Its own in-transition: from nothing into the clip.
+            if let Some(window) = in_window(track, element)
+                && window.contains(time)
+            {
+                let transition = element.transition_in.as_ref().expect("has a window");
+                items.push(FrameItemPlan::Transition(TransitionPlan {
+                    element_id: element.id.clone(),
+                    track_id: track.id.clone(),
+                    kind: transition.kind.clone(),
+                    progress: window.progress(time),
+                    params: transition.params.clone(),
+                    from: None,
+                    to: layer_plan(track, element, time, canvas.height as f32, false),
+                }));
                 continue;
             }
             let next = next_adjacent(track, element);
