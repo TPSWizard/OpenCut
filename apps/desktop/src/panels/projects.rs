@@ -161,6 +161,46 @@ impl ProjectsView {
         cx.notify();
     }
 
+    /// Opens an "Open in ConzaCut" link or a bundle path (from the
+    /// clipboard or the command line): downloads it when it is a link,
+    /// imports it and opens the project.
+    pub(crate) fn open_text(&mut self, text: &str, cx: &mut Context<Self>) {
+        let Some(target) = crate::open_link::target_from(text) else {
+            self.error = Some(t("That is not a project link or bundle ConzaCut can open (https links and .zip bundles).").to_owned());
+            cx.notify();
+            return;
+        };
+        self.error = Some(match &target {
+            crate::open_link::Target::Url(url) => tf("Downloading the project from {host}…", &[("host", &crate::open_link::host_of(url))]),
+            crate::open_link::Target::File(_) => t("Importing the bundle…").to_owned(),
+        });
+        cx.notify();
+        let store = self.store.clone();
+        cx.spawn(async move |this, cx| {
+            let result = cx.background_executor().spawn(async move { crate::open_link::open(&target, &store) }).await;
+            this.update(cx, |view, cx| {
+                match result {
+                    Ok(report) => {
+                        view.refresh();
+                        view.error = (!report.skipped.is_empty()).then(|| {
+                            tf("Imported without: {items}", &[("items", &report.skipped.join("; "))])
+                        });
+                        cx.emit(ProjectsEvent::Open(report.project));
+                    }
+                    Err(error) => view.error = Some(tf("Could not open the link: {error}", &[("error", &error)])),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn open_clipboard_link(&mut self, cx: &mut Context<Self>) {
+        let text = cx.read_from_clipboard().and_then(|item| item.text()).unwrap_or_default();
+        self.open_text(&text, cx);
+    }
+
     fn open(&mut self, id: &str, cx: &mut Context<Self>) {
         match self.store.load(id) {
             Ok(project) => cx.emit(ProjectsEvent::Open(project)),
@@ -295,6 +335,11 @@ impl Render for ProjectsView {
                                 div()
                                     .flex()
                                     .gap(px(8.))
+                                    .child(
+                                        Button::new("open-link", t("Open copied link"))
+                                            .variant(ButtonVariant::Outline)
+                                            .on_click(cx.listener(|this, _, _, cx| this.open_clipboard_link(cx))),
+                                    )
                                     .child(
                                         Button::new("import-bundle", t("Import bundle…"))
                                             .variant(ButtonVariant::Outline)

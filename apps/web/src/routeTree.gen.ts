@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as OpenRouteImport } from './routes/open'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as EditorIndexRouteImport } from './routes/editor.index'
 import { Route as EditorProjectIdRouteImport } from './routes/editor.$projectId'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenRoute = OpenRouteImport.update({
+  id: '/open',
+  path: '/open',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -44,6 +50,7 @@ const EditorProjectIdRoute = EditorProjectIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/open': typeof OpenRoute
   '/projects': typeof ProjectsRoute
   '/editor/$projectId': typeof EditorProjectIdRoute
   '/editor/': typeof EditorIndexRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/open': typeof OpenRoute
   '/projects': typeof ProjectsRoute
   '/editor/$projectId': typeof EditorProjectIdRoute
   '/editor': typeof EditorIndexRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/open': typeof OpenRoute
   '/projects': typeof ProjectsRoute
   '/editor/$projectId': typeof EditorProjectIdRoute
   '/editor/': typeof EditorIndexRoute
@@ -66,13 +75,25 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/changelog' | '/projects' | '/editor/$projectId' | '/editor/'
+    | '/'
+    | '/changelog'
+    | '/open'
+    | '/projects'
+    | '/editor/$projectId'
+    | '/editor/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/changelog' | '/projects' | '/editor/$projectId' | '/editor'
+  to:
+    | '/'
+    | '/changelog'
+    | '/open'
+    | '/projects'
+    | '/editor/$projectId'
+    | '/editor'
   id:
     | '__root__'
     | '/'
     | '/changelog'
+    | '/open'
     | '/projects'
     | '/editor/$projectId'
     | '/editor/'
@@ -81,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChangelogRoute: typeof ChangelogRoute
+  OpenRoute: typeof OpenRoute
   ProjectsRoute: typeof ProjectsRoute
   EditorProjectIdRoute: typeof EditorProjectIdRoute
   EditorIndexRoute: typeof EditorIndexRoute
@@ -100,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/open': {
+      id: '/open'
+      path: '/open'
+      fullPath: '/open'
+      preLoaderRoute: typeof OpenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -129,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChangelogRoute: ChangelogRoute,
+  OpenRoute: OpenRoute,
   ProjectsRoute: ProjectsRoute,
   EditorProjectIdRoute: EditorProjectIdRoute,
   EditorIndexRoute: EditorIndexRoute,

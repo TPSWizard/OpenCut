@@ -11,6 +11,7 @@ import type { EditorCore } from "@/core";
 import { IndexedDBAdapter } from "@/services/storage/indexeddb-adapter";
 import { OPFSAdapter } from "@/services/storage/opfs-adapter";
 import { generateUUID } from "@/utils/id";
+import { mediaTimeToSeconds } from "@/wasm";
 
 export const TEMPLATES_BASE = "/templates/";
 export const TEMPLATES_INDEX_FORMAT = "opencut-templates";
@@ -126,7 +127,8 @@ export async function saveProjectAsTemplate({
 		category: "Yours",
 		width,
 		height,
-		duration: saved.metadata.duration ?? 0,
+		// Metadata keeps the duration in timeline ticks.
+		duration: saved.metadata.duration === undefined ? 0 : mediaTimeToSeconds({ time: saved.metadata.duration }),
 		fonts: [],
 		preview: {
 			background: background?.type === "color" ? background.color : "#000000",

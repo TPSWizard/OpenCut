@@ -34,8 +34,12 @@ pub(crate) struct Shell {
 }
 
 impl Shell {
-    pub(crate) fn new(store: ProjectStore, ffmpeg: Option<Arc<Ffmpeg>>, cx: &mut Context<Self>) -> Self {
+    /// `startup`: a link or bundle path from the command line, opened at once.
+    pub(crate) fn new(store: ProjectStore, ffmpeg: Option<Arc<Ffmpeg>>, startup: Option<String>, cx: &mut Context<Self>) -> Self {
         let projects = cx.new(|_| ProjectsView::new(store.clone()));
+        if let Some(text) = startup {
+            projects.update(cx, |view, cx| view.open_text(&text, cx));
+        }
         cx.subscribe(&projects, |this, _, event: &ProjectsEvent, cx| match event {
             ProjectsEvent::Open(project) => this.open_project(project.clone(), cx),
             ProjectsEvent::OpenFromTemplate(project, fonts) => {

@@ -595,5 +595,10 @@
   "Saved {name} as a template; it is on the projects page.": "已将 {name} 另存为模板，可在项目页面找到。",
   "Template not saved: {error}": "模板未保存：{error}",
   "Start from a template": "从模板开始",
-  "The template could not be used: {error}": "无法使用此模板：{error}"
+  "The template could not be used: {error}": "无法使用此模板：{error}",
+  "That is not a project link or bundle ConzaCut can open (https links and .zip bundles).": "这不是 ConzaCut 可以打开的项目链接或项目包（https 链接和 .zip 项目包）。",
+  "Importing the bundle…": "正在导入项目包…",
+  "Open copied link": "打开已拷贝的链接",
+  "Downloading the project from {host}…": "正在从 {host} 下载项目…",
+  "Could not open the link: {error}": "无法打开链接：{error}"
 }

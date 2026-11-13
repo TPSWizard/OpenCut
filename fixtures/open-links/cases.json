@@ -1,0 +1,101 @@
+{
+  "note": "Shared by crates/editor/src/open_link.rs and apps/web/src/project/open-link.ts: each input and the bundle URL it gives (null when refused).",
+  "cases": [
+    {
+      "input": "https://example.com/promo.opencut.zip",
+      "url": "https://example.com/promo.opencut.zip"
+    },
+    {
+      "input": "  https://example.com/a/b.zip?sig=abc&exp=1  ",
+      "url": "https://example.com/a/b.zip?sig=abc&exp=1"
+    },
+    {
+      "input": "HTTPS://Example.com:8443/x.zip",
+      "url": "HTTPS://Example.com:8443/x.zip"
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open?bundle=https%3A%2F%2Fstudio.example.com%2Fb%2F1.opencut.zip",
+      "url": "https://studio.example.com/b/1.opencut.zip"
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open?name=x&bundle=https%3A%2F%2Fcdn.example.com%2Fp.zip%3Fsig%3D1%26e%3D2",
+      "url": "https://cdn.example.com/p.zip?sig=1&e=2"
+    },
+    {
+      "input": "conzacut://open?bundle=https%3A%2F%2Fexample.com%2Fp.zip",
+      "url": "https://example.com/p.zip"
+    },
+    {
+      "input": "http://localhost:3101/api/bundle.zip",
+      "url": "http://localhost:3101/api/bundle.zip"
+    },
+    {
+      "input": "http://127.0.0.1/x.zip",
+      "url": "http://127.0.0.1/x.zip"
+    },
+    {
+      "input": "http://[::1]:8080/x.zip",
+      "url": "http://[::1]:8080/x.zip"
+    },
+    {
+      "input": "https://[2001:db8::1]/x.zip",
+      "url": "https://[2001:db8::1]/x.zip"
+    },
+    {
+      "input": "http://example.com/x.zip",
+      "url": null
+    },
+    {
+      "input": "ftp://example.com/x.zip",
+      "url": null
+    },
+    {
+      "input": "file:///C:/x.zip",
+      "url": null
+    },
+    {
+      "input": "javascript:alert(1)",
+      "url": null
+    },
+    {
+      "input": "https://user:pass@example.com/x.zip",
+      "url": null
+    },
+    {
+      "input": "https:///x.zip",
+      "url": null
+    },
+    {
+      "input": "https://exa mple.com/x.zip",
+      "url": null
+    },
+    {
+      "input": "https://example.com/x y.zip",
+      "url": null
+    },
+    {
+      "input": "https://example.com:abc/x.zip",
+      "url": null
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open?bundle=http%3A%2F%2Fexample.com%2Fp.zip",
+      "url": null
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open?bundle=%ZZ",
+      "url": null
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open?bundle=https%3A%2F%2Fa.example%2Fopen%3Fbundle%3Dhttps%253A%252F%252Fb.example%252Fx.zip",
+      "url": null
+    },
+    {
+      "input": "https://conzacut.conzahub.com/open",
+      "url": null
+    },
+    {
+      "input": "",
+      "url": null
+    }
+  ]
+}

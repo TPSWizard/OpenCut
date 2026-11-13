@@ -8,6 +8,7 @@ use gpui::{
 use media::Ffmpeg;
 
 mod actions;
+mod open_link;
 mod assets;
 mod audio;
 mod beats;
@@ -55,6 +56,10 @@ fn main() {
         }
     }
 
+    // `opencut-desktop <link or bundle>` opens an "Open in ConzaCut" link or a
+    // bundle file at start.
+    let startup = std::env::args().nth(1).filter(|arg| !arg.starts_with("--"));
+
     // Projects live in ~/.opencut/projects unless OPENCUT_PROJECTS says otherwise.
     let store = std::env::var_os("OPENCUT_PROJECTS")
         .map(ProjectStore::new)
@@ -79,6 +84,7 @@ fn main() {
         let bounds = Bounds::centered(None, size(px(1280.), px(800.)), cx);
         let store = store.clone();
         let ffmpeg = ffmpeg.clone();
+        let startup = startup.clone();
         cx.open_window(
             WindowOptions {
                 titlebar: Some(TitlebarOptions {
@@ -95,7 +101,7 @@ fn main() {
                         window.refresh();
                     })
                     .detach();
-                    Shell::new(store, ffmpeg, cx)
+                    Shell::new(store, ffmpeg, startup, cx)
                 })
             },
         )

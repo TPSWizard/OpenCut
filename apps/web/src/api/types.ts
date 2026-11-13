@@ -521,6 +521,12 @@ export interface EditorApiMethods {
 	};
 	/** Create a project from a bundle; open it by navigating to `/editor/<id>`. */
 	"project.importBundle": { params: { file: File }; result: ApiProjectSummary };
+	/**
+	 * Downloads the bundle an "Open in ConzaCut" link (or a bundle URL)
+	 * points at and adds it as a project. https only (http on localhost);
+	 * the bundle's server must allow this app to download it (CORS).
+	 */
+	"project.openLink": { params: { link: string }; result: ApiProjectSummary & { bundleUrl: string } };
 	/** Starter templates (ConzaCut's own) and the ones saved in this browser. */
 	"templates.list": { params: Record<string, never>; result: { templates: TemplateInfo[] } };
 	/** Makes a new project from a template; open it by navigating to `/editor/<projectId>`. */

@@ -103,6 +103,7 @@ import { KOKORO_VOICES, generateVoiceover } from "@/voiceover/generate";
 import { cleanUpPicture, restoreOriginalPicture } from "@/picture/apply";
 import { importStockItem, searchStock } from "@/stock/stock";
 import { projectAssetManifest, projectCreditsText } from "@/project/project-assets";
+import { bundleUrlFromLink, fetchLinkedBundle } from "@/project/open-link";
 import { createProjectFromTemplate, findTemplate, listMyTemplates, loadStarterTemplates, saveProjectAsTemplate } from "@/templates/templates";
 import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
@@ -816,6 +817,28 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "invalid_params", message: "name must be non-empty text" });
 			}
 			return saveProjectAsTemplate({ editor, name, description });
+		},
+		"project.openLink": async ({ link }) => {
+			const bundleUrl = typeof link === "string" ? bundleUrlFromLink(link) : null;
+			if (!bundleUrl) {
+				throw new EditorApiError({ code: "invalid_params", message: "link must be an https bundle URL or an Open in ConzaCut link" });
+			}
+			let blob: Blob;
+			try {
+				blob = await fetchLinkedBundle({ url: bundleUrl });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
+			const id = await editor.project.importProjectBundle({ file: blob });
+			const metadata = editor.project.getSavedProjects().find((item) => item.id === id);
+			return {
+				id,
+				bundleUrl,
+				name: metadata?.name ?? "Imported project",
+				duration: metadata ? seconds(metadata.duration) : 0,
+				createdAt: new Date(metadata?.createdAt ?? Date.now()).toISOString(),
+				updatedAt: new Date(metadata?.updatedAt ?? Date.now()).toISOString(),
+			};
 		},
 		"project.importBundle": async ({ file }) => {
 			if (!(file instanceof Blob)) {

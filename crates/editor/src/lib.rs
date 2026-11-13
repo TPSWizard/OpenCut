@@ -28,6 +28,7 @@ mod freeform;
 mod loudness;
 mod luts;
 mod markers;
+mod open_link;
 mod params;
 mod platforms;
 mod relink;
@@ -48,6 +49,7 @@ pub use animation::{
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
+pub use open_link::bundle_url_from_link;
 pub use assets::{AssetEntry, AssetLookups, BrandInfo, IconSetInfo, MediaOrigin, ASSET_MANIFEST_ENTRY, ASSET_MANIFEST_FORMAT, SYSTEM_FONTS, asset_manifest, fontsource_slug, license_requires_credit, manifest_credits_text};
 pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, export_bundle_with, import_bundle, import_bundle_as_new, project_asset_manifest};
 pub use captions::{

@@ -214,5 +214,20 @@
   "Save template": "保存模板",
   "Saved as a template": "已另存为模板",
   "{name} is under Templates on the projects page.": "{name} 位于项目页面的“模板”中。",
-  "The template could not be saved": "无法保存模板"
+  "The template could not be saved": "无法保存模板",
+  "Open in ConzaCut": "在 ConzaCut 中打开",
+  "Nothing was handed over: open this page from the app that made the project.": "没有收到项目：请从制作该项目的应用中打开此页面。",
+  "What was handed over is not a project bundle.": "收到的内容不是项目包。",
+  "Waiting for the project…": "正在等待项目…",
+  "This link does not point at a project bundle ConzaCut can open (https only).": "此链接指向的不是 ConzaCut 可以打开的项目包（仅支持 https）。",
+  "A link asks to open a project from {host}.": "一个链接请求打开来自 {host} 的项目。",
+  "It is downloaded into this browser and checked; you choose whether to add it to your projects.": "项目会下载到此浏览器并检查；由你决定是否加入你的项目。",
+  "Download and look": "下载并查看",
+  "Downloading {done} of {total}": "正在下载 {done} / {total}",
+  "Downloading {done}": "正在下载 {done}",
+  "{width}×{height} · {seconds} s · {count} media file(s) · {size}": "{width}×{height} · {seconds} 秒 · {count} 个媒体文件 · {size}",
+  "From {source}": "来自 {source}",
+  "Add to my projects": "加入我的项目",
+  "Adding the project…": "正在添加项目…",
+  "Go to projects": "前往项目"
 }

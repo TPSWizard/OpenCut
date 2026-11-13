@@ -379,3 +379,9 @@ dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
   header writes the project and its media to `~/.opencut/templates/`.
   Using one makes a new project from it and fetches its fonts from
   Fontsource.
+- "Open in ConzaCut" links (`https://…/open?bundle=<url>`,
+  `conzacut://open?bundle=<url>` or a bundle URL) open from **Open copied
+  link** on the projects page or as the first command-line argument
+  (`opencut-desktop "<link>"`, which also takes a bundle path): the bundle
+  is downloaded into `~/.opencut/downloads/`, imported and opened. See
+  `apps/web/reference/open-in-conzacut.md`.
