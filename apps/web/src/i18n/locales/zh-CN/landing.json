@@ -9,7 +9,6 @@
   "See what it can do": "看看它能做什么",
   "The ConzaCut editor: a media bin, a preview with a highlighted caption, an inspector, and a timeline with caption, video and audio tracks.": "ConzaCut 编辑器：素材库、带高亮字幕的预览、检查器，以及包含字幕、视频和音频轨道的时间线。",
   "The real editor, mid-project. Every clip on this timeline was generated for this page.": "真实的编辑器，正在剪辑中。时间线上的每个片段都是为本页生成的。",
-
   "What it does": "功能",
   "Everything happens on the timeline.": "一切都在时间线上完成。",
   "Cut, caption, grade and mix in one place. Nothing below is a mock-up: every tool here ships today.": "剪辑、字幕、调色、混音，一处完成。下面没有一张示意图是画饼：每个工具现在就能用。",
@@ -30,10 +29,9 @@
   "Reframe to vertical with face tracking, remove backgrounds, find shot changes and drop filler words. All of it runs on your device.": "人脸跟踪重构为竖屏、移除背景、检测镜头切换、去掉口头禅。全部在你的设备上运行。",
   "Export for every platform": "为每个平台导出",
   "Presets set the canvas, frame rate and limits for each platform, with safe-area guides so nothing hides behind the buttons. Export MP4 or WebM.": "预设会为每个平台设置画布、帧率和限制，并提供安全区参考线，内容不会被按钮挡住。可导出 MP4 或 WebM。",
-
   "Private by design": "为隐私而设计",
-  "Your footage never leaves your device.": "你的素材从不离开你的设备。",
-  "ConzaCut edits right in the browser. Media and projects are stored on your device, and captions, cut-outs and reframing run there too. There is no account and nothing to upload.": "ConzaCut 直接在浏览器里剪辑。素材和项目保存在你的设备上，字幕、抠像和画面重构也在本机运行。没有账号，也不需要上传任何东西。",
+  "Your footage stays on your device.": "你的素材留在你的设备上。",
+  "ConzaCut edits right in the browser. Media and projects are stored on your device, and captions, cut-outs and reframing run there too. There is no account, and nothing is uploaded unless you choose to share a link.": "ConzaCut 直接在浏览器里剪辑。素材和项目保存在你的设备上，字幕、抠像和画面重构也在本机运行。没有账号；除非你主动分享链接，否则不会上传任何内容。",
   "No account": "无需账号",
   "Open the editor and start cutting.": "打开编辑器就能开剪。",
   "Works offline": "离线可用",
@@ -42,8 +40,7 @@
   "Back up a project as one file and open it anywhere.": "把项目备份成一个文件，在任何地方打开。",
   "Your device": "你的设备",
   "Our servers": "我们的服务器",
-  "empty, by design": "空的，本就如此",
-
+  "nothing, unless you share a link": "什么都没有，除非你分享链接",
   "Works where you are": "随处可用",
   "In a tab today. On your desktop when you want it.": "今天在标签页里用，想要时装到桌面上。",
   "In the browser": "在浏览器里",
@@ -54,7 +51,6 @@
   "A native editor on the same core that opens the same projects. There is no installer yet, so today you build it from source.": "基于同一内核的原生编辑器，可以打开同样的项目。目前还没有安装包，需要从源码构建。",
   "Read the desktop guide": "阅读桌面版指南",
   "Editing needs a laptop-size screen for now. Phones are not supported yet.": "目前剪辑需要笔记本大小的屏幕，暂不支持手机。",
-
   "Programmable": "可编程",
   "Script it. Automate it. Hand it to an agent.": "写脚本，做自动化，或者交给智能体。",
   "Everything the editor does is reachable from code, so the same project can be cut by hand or built by a pipeline.": "编辑器能做的一切都可以用代码调用，同一个项目既能手工剪辑，也能由流水线生成。",
@@ -70,17 +66,17 @@
   "Render CLI": "渲染命令行工具",
   "Turn a project into a video, stills or a contact sheet, natively.": "原生地把项目渲染成视频、静帧或联系表。",
   "A job file goes in. A finished video comes out.": "输入一个任务文件，输出一条成片。",
-
   "Open source": "开源",
   "Make the first cut.": "剪下第一刀。",
   "ConzaCut is free and MIT licensed. Read the code, fork it, or just start editing.": "ConzaCut 免费，并采用 MIT 许可证。阅读代码、分叉它，或者直接开始剪辑。",
   "View the source": "查看源码",
-
   "The privacy-first video editor that feels simple to use.": "隐私优先、用起来简单的视频编辑器。",
   "Free and open source under the MIT licence.": "免费开源，采用 MIT 许可证。",
   "Resources": "资源",
   "Changelog": "更新日志",
   "About": "关于",
   "License": "许可证",
-  "Projects": "项目"
+  "Projects": "项目",
+  "Open menu": "打开菜单",
+  "Close menu": "关闭菜单"
 }

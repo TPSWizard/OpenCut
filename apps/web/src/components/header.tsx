@@ -91,11 +91,14 @@ export function Header() {
 
 					<nav className="hidden items-center gap-4 md:flex">
 						{links.map((link) => (
-							<Link key={link.href} href={link.href}>
-								<Button variant="text" className="p-0 text-sm">
-									{t(link.label)}
-								</Button>
-							</Link>
+							<Button
+								key={link.href}
+								asChild
+								variant="text"
+								className="h-9 px-0 text-sm"
+							>
+								<Link href={link.href}>{t(link.label)}</Link>
+							</Button>
 						))}
 					</nav>
 				</div>
@@ -105,39 +108,42 @@ export function Header() {
 						<Button
 							variant="text"
 							size="icon"
-							className="flex items-center justify-center p-0"
+							className="flex size-10 items-center justify-center p-0"
+							aria-label={isMenuOpen ? t("Close menu") : t("Open menu")}
+							aria-expanded={isMenuOpen}
 							onClick={() => setIsMenuOpen(!isMenuOpen)}
 						>
 							<HugeiconsIcon icon={Menu02Icon} size={30} />
 						</Button>
 					</div>
 					<div className="hidden items-center gap-3 md:flex">
-						<Link href={SOCIAL_LINKS.github}>
-							<Button className="bg-background text-sm" variant="outline">
+						<Button asChild className="bg-background text-sm" variant="outline">
+							<Link href={SOCIAL_LINKS.github}>
 								<HugeiconsIcon icon={GithubIcon} className="size-4" />
 								GitHub
-							</Button>
-						</Link>
-						<Link href="/projects">
-							<Button className="text-sm">
+							</Link>
+						</Button>
+						<Button asChild className="text-sm">
+							<Link href="/projects">
 								{t("Projects")}
 								<ArrowRight className="size-4" />
-							</Button>
-						</Link>
+							</Link>
+						</Button>
 						<ThemeToggle />
 					</div>
 				</div>
 				<div
 					className={cn(
-						"bg-background/20 pointer-events-none fixed inset-0 opacity-0 backdrop-blur-3xl",
+						"bg-background/85 pointer-events-none fixed inset-0 opacity-0 backdrop-blur-3xl",
 						"transition-opacity duration-150",
 						isMenuOpen && "pointer-events-auto opacity-100",
 					)}
+					inert={!isMenuOpen}
 				>
 					<div className="relative h-full">
 						<button
 							type="button"
-							aria-label="Close menu"
+							aria-label={t("Close menu")}
 							className="absolute inset-0"
 							onClick={closeMenu}
 							onKeyDown={(event) => {
@@ -168,7 +174,7 @@ export function Header() {
 								>
 									<Link
 										href={link.href}
-										className="text-2xl font-semibold"
+										className="block py-1.5 text-2xl font-semibold"
 										onClick={() => setIsMenuOpen(false)}
 									>
 										{t(link.label)}

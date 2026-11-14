@@ -59,9 +59,9 @@ export function Privacy() {
 				<div className="min-w-0">
 					<SectionHeading
 						kicker={t("Private by design")}
-						title={t("Your footage never leaves your device.")}
+						title={t("Your footage stays on your device.")}
 						body={t(
-							"ConzaCut edits right in the browser. Media and projects are stored on your device, and captions, cut-outs and reframing run there too. There is no account and nothing to upload.",
+							"ConzaCut edits right in the browser. Media and projects are stored on your device, and captions, cut-outs and reframing run there too. There is no account, and nothing is uploaded unless you choose to share a link.",
 						)}
 					/>
 					<div className="mt-10 grid gap-7 sm:grid-cols-3 lg:grid-cols-1">
@@ -86,7 +86,7 @@ export function Privacy() {
 					<PrivacyTracks
 						deviceLabel={t("Your device")}
 						serverLabel={t("Our servers")}
-						emptyLabel={t("empty, by design")}
+						emptyLabel={t("nothing, unless you share a link")}
 					/>
 				</div>
 			</div>
@@ -152,7 +152,7 @@ export function Platforms() {
 							href={DESKTOP_GUIDE_URL}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+							className="mt-3 inline-flex min-h-10 items-center gap-1.5 self-start text-sm font-medium underline-offset-4 hover:underline"
 						>
 							{t("Read the desktop guide")}
 							<ArrowRight aria-hidden="true" className="size-4" />
