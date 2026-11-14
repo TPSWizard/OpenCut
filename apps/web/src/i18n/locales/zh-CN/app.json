@@ -84,7 +84,6 @@
   "Limits come from third-party guides, not {platform}'s own pages.": "这些限制来自第三方指南，而非 {platform} 官方页面。",
   "List view": "列表视图",
   "Low - Smallest file size": "低 - 文件最小",
-  "MP4 (H.264) - Better compatibility": "MP4 (H.264) - 兼容性更好",
   "MP4, H.264 High profile at {bitrate} with a half-second closed GOP and the index first, about {size}. Target {width}×{height} ({aspect}) at {fps} fps, up to {minutes} min.": "MP4，H.264 High 档次，码率 {bitrate}，半秒封闭 GOP，索引前置，约 {size}。目标 {width}×{height}（{aspect}），{fps} fps，最长 {minutes} 分钟。",
   "MP4, H.264 High profile at {bitrate} with a half-second closed GOP and the index first, about {size}. Target {width}×{height} ({aspect}) at {fps} fps.": "MP4，H.264 High 档次，码率 {bitrate}，半秒封闭 GOP，索引前置，约 {size}。目标 {width}×{height}（{aspect}），{fps} fps。",
   "Media": "素材",
@@ -169,7 +168,6 @@
   "Very high - Largest file size": "极高 - 文件最大",
   "Video": "视频",
   "Warning": "警告",
-  "WebM (VP9) - Smaller file size": "WebM (VP9) - 文件更小",
   "Welcome to ConzaCut Beta! 🎉": "欢迎使用 ConzaCut 测试版！🎉",
   "Where your projects are kept and how safe they are": "你的项目存放在哪里，以及它们有多安全",
   "You made it in early. ConzaCut is a free, open source video editor that lives in your browser: no account, and your footage stays on your device unless you choose to share it.": "你来得正是时候。ConzaCut 是一款免费、开源的视频编辑器，直接在浏览器里运行：无需账号；除非你主动分享，素材始终留在自己的设备上。",
@@ -243,5 +241,16 @@
   "Shared from this browser": "从此浏览器分享的项目",
   "Copy the link": "拷贝链接",
   "until {date}": "至 {date}",
-  "Share": "分享"
+  "Share": "分享",
+  "MP4 - Plays everywhere": "MP4 - 随处可播放",
+  "WebM - Open format for the web": "WebM - 面向网页的开放格式",
+  "Video codec: {codec}": "视频编码：{codec}",
+  "Smaller files, plays on Apple devices": "文件更小，可在 Apple 设备上播放",
+  "Smallest files, slowest to encode": "文件最小，编码最慢",
+  "not in this browser": "此浏览器不支持",
+  "Prefer the hardware encoder (faster)": "优先使用硬件编码器（更快）",
+  "Target bitrate": "目标码率",
+  "Target bitrate in Mbps": "目标码率（Mbps）",
+  "Enter a number from {min} to {max}": "请输入 {min} 到 {max} 之间的数字",
+  "This browser cannot encode {codec}. Choose another codec, or export from the desktop app.": "此浏览器无法编码 {codec}。请选择其他编码，或在桌面应用中导出。"
 }

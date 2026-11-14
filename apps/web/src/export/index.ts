@@ -1,5 +1,6 @@
 import type { FrameRate } from "opencut-wasm";
 import type { PlatformEncodeSettings } from "@/platforms/catalogue";
+import type { ExportVideoCodec } from "./codecs";
 import { EXPORT_MIME_TYPES } from "./mime-types";
 
 export const EXPORT_QUALITY_VALUES = [
@@ -25,6 +26,15 @@ export interface ExportOptions {
 	 * 384 kbps audio. Only MP4 takes it; `quality` is ignored.
 	 */
 	platform?: PlatformEncodeSettings;
+	/**
+	 * Video codec; one the container does not take falls back to its
+	 * default (MP4: H.264, WebM: VP9). Ignored with `platform`.
+	 */
+	videoCodec?: ExportVideoCodec;
+	/** Target video bitrate in bits per second; replaces `quality` for the picture. */
+	videoBitrate?: number;
+	/** Ask the browser for a hardware encoder (faster; quality varies by GPU). */
+	hardware?: boolean;
 }
 
 export interface ExportResult {

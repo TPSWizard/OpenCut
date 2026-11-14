@@ -6,9 +6,9 @@ use editor::{
     platform_preset,
 };
 use gpui::{Context, Entity, FontWeight, Window, div, prelude::*, px};
-use media::{EncodeFormat, EncodeQuality, PlatformEncode};
+use media::{EncodeFormat, EncodeQuality, PlatformEncode, VideoCodec, codecs_for, parse_bitrate_mbps, resolve_codec};
 
-use crate::components::{Button, ButtonSize, ButtonVariant, eid};
+use crate::components::{Button, ButtonSize, ButtonVariant, TextInput, eid};
 use crate::render_thread::ExportSettings;
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
@@ -28,6 +28,15 @@ pub(crate) struct ExportDialog {
     include_audio: bool,
     /// Platform preset the export is for; forces MP4 with its encoder settings.
     platform: Option<&'static PlatformPreset>,
+    /// The codec asked for; the container's default when it does not take it.
+    codec: Option<VideoCodec>,
+    /// Codecs this FFmpeg can encode; `None` until it has been asked.
+    available: Option<Vec<VideoCodec>>,
+    hardware: bool,
+    /// Encode at a target bitrate instead of `quality`.
+    use_bitrate: bool,
+    bitrate_text: String,
+    bitrate_input: Option<Entity<TextInput>>,
 }
 
 impl ExportDialog {
@@ -40,6 +49,17 @@ impl ExportDialog {
             .map(|home| home.join("Videos"))
             .filter(|dir| dir.is_dir());
         let output = default_dir.map(|dir| dir.join(format!("{}.mp4", safe_file_name(&name))));
+        if let Some(ffmpeg) = state.read(cx).ffmpeg() {
+            cx.spawn(async move |this, cx| {
+                let codecs = cx.background_executor().spawn(async move { media::available_codecs(&ffmpeg) }).await;
+                this.update(cx, |dialog, cx| {
+                    dialog.available = Some(codecs);
+                    cx.notify();
+                })
+                .ok();
+            })
+            .detach();
+        }
         Self {
             state,
             output,
@@ -47,7 +67,26 @@ impl ExportDialog {
             quality: EncodeQuality::High,
             include_audio: true,
             platform: None,
+            codec: None,
+            available: None,
+            hardware: false,
+            use_bitrate: false,
+            bitrate_text: "8".to_owned(),
+            bitrate_input: None,
         }
+    }
+
+    fn chosen_codec(&self) -> VideoCodec {
+        resolve_codec(self.format, self.codec)
+    }
+
+    fn video_bitrate(&self) -> Option<u64> {
+        self.use_bitrate.then(|| parse_bitrate_mbps(&self.bitrate_text)).flatten()
+    }
+
+    fn codec_missing(&self) -> bool {
+        self.platform.is_none()
+            && self.available.as_ref().is_some_and(|codecs| !codecs.contains(&self.chosen_codec()))
     }
 
     fn choose_platform(&mut self, id: Option<&str>, cx: &mut Context<Self>) {
@@ -100,12 +139,18 @@ impl ExportDialog {
                 gop_frames: encode.gop_frames,
             }
         });
+        if self.platform.is_none() && self.use_bitrate && self.video_bitrate().is_none() {
+            return;
+        }
         let settings = ExportSettings {
             output,
             format: self.format,
             quality: self.quality,
             include_audio: self.include_audio,
             platform,
+            codec: Some(self.chosen_codec()),
+            video_bitrate: if platform.is_some() { None } else { self.video_bitrate() },
+            hardware: platform.is_none() && self.hardware,
         };
         self.state
             .update(cx, |state, cx| state.start_export(settings, cx));
@@ -336,7 +381,7 @@ impl Render for ExportDialog {
             let mut format_row = div().flex().items_center().gap(px(6.)).child(
                 div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Format")),
             );
-            for (label, format) in [("MP4 (H.264)", EncodeFormat::Mp4), ("WebM (VP9)", EncodeFormat::Webm)] {
+            for (label, format) in [("MP4", EncodeFormat::Mp4), ("WebM", EncodeFormat::Webm)] {
                 let active = self.format == format;
                 format_row = format_row.child(
                     Button::new(eid("format", label), label)
@@ -360,17 +405,122 @@ impl Render for ExportDialog {
                 ("High", EncodeQuality::High),
                 ("Best", EncodeQuality::VeryHigh),
             ] {
-                let active = self.quality == quality;
+                let active = !self.use_bitrate && self.quality == quality;
                 quality_row = quality_row.child(
                     Button::new(eid("quality", label), t(label))
                         .variant(if active { ButtonVariant::Default } else { ButtonVariant::Outline })
                         .size(ButtonSize::Small)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.quality = quality;
+                            this.use_bitrate = false;
                             cx.notify();
                         })),
                 );
             }
+            quality_row = quality_row.child(
+                Button::new("quality-bitrate", t("Bitrate"))
+                    .variant(if self.use_bitrate { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.use_bitrate = true;
+                        cx.notify();
+                    })),
+            );
+            let chosen = self.chosen_codec();
+            let mut codec_row = div().flex().items_center().gap(px(6.)).child(
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Codec")),
+            );
+            for &codec in codecs_for(self.format) {
+                let missing = self.available.as_ref().is_some_and(|codecs| !codecs.contains(&codec));
+                codec_row = codec_row.child(
+                    Button::new(eid("codec", codec.id()), codec.label())
+                        .variant(if chosen == codec { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .disabled(missing)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.codec = Some(codec);
+                            cx.notify();
+                        })),
+                );
+            }
+            let codec_note = match chosen {
+                VideoCodec::H264 => t("Plays everywhere."),
+                VideoCodec::Hevc => t("About a third smaller than H.264; plays on Apple devices and most new TVs."),
+                VideoCodec::Av1 => t("The smallest files; slow to encode in software, and older devices cannot play it."),
+                VideoCodec::Vp9 => t("Smaller than H.264; plays in every browser."),
+            };
+            let hardware = self.hardware;
+            let encoder_row = div()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Encoder")))
+                .child(
+                    Button::new("encoder-software", t("Software"))
+                        .variant(if hardware { ButtonVariant::Outline } else { ButtonVariant::Default })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.hardware = false;
+                            cx.notify();
+                        })),
+                )
+                .child(
+                    Button::new("encoder-hardware", t("Hardware if it works"))
+                        .variant(if hardware { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.hardware = true;
+                            cx.notify();
+                        })),
+                );
+            let bitrate_row = if self.use_bitrate {
+                let input = match &self.bitrate_input {
+                    Some(input) => input.clone(),
+                    None => {
+                        let this = cx.entity().clone();
+                        let text = self.bitrate_text.clone();
+                        let input = cx.new(|cx| {
+                            let mut input = TextInput::new(window, cx, "8").on_commit(move |text, _, cx| {
+                                let text = text.to_owned();
+                                this.update(cx, |dialog, cx| {
+                                    dialog.bitrate_text = text;
+                                    cx.notify();
+                                });
+                            });
+                            input.set_text(text, window, cx);
+                            input
+                        });
+                        self.bitrate_input = Some(input.clone());
+                        input
+                    }
+                };
+                let invalid = self.video_bitrate().is_none();
+                Some(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Target")))
+                                .child(div().w(px(80.)).child(input))
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(t("Mbps, then Enter"))),
+                        )
+                        .when(invalid, |this| {
+                            this.child(div().text_xs().text_color(colors.destructive).child(tf(
+                                "Enter a number from {min} to {max}",
+                                &[("min", &media::MIN_BITRATE_MBPS), ("max", &media::MAX_BITRATE_MBPS)],
+                            )))
+                        }),
+                )
+            } else {
+                None
+            };
+            let codec_missing = self.codec_missing();
+            let bitrate_invalid = self.platform.is_none() && self.use_bitrate && self.video_bitrate().is_none();
             let include_audio = self.include_audio;
             let audio_row = div().flex().items_center().gap(px(6.)).child(
                 div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Audio")),
@@ -409,7 +559,20 @@ impl Render for ExportDialog {
                 )
                 .child(platform_row)
                 .child(platform_notes)
-                .when(platform.is_none(), |this| this.child(format_row).child(quality_row))
+                .when(platform.is_none(), |this| {
+                    this.child(format_row)
+                        .child(codec_row)
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(codec_note))
+                        .child(encoder_row)
+                        .child(quality_row)
+                        .children(bitrate_row)
+                })
+                .when(codec_missing, |this| {
+                    this.child(div().text_xs().text_color(colors.destructive).child(tf(
+                        "This FFmpeg cannot encode {codec}.",
+                        &[("codec", &chosen.label())],
+                    )))
+                })
                 .child(audio_row)
                 .when(!has_ffmpeg, |this| {
                     this.child(
@@ -439,7 +602,13 @@ impl Render for ExportDialog {
                         )
                         .child(
                             Button::new("start", t("Export"))
-                                .disabled(self.output.is_none() || !has_ffmpeg || duration <= 0.0)
+                                .disabled(
+                                    self.output.is_none()
+                                        || !has_ffmpeg
+                                        || duration <= 0.0
+                                        || codec_missing
+                                        || bitrate_invalid,
+                                )
                                 .on_click(cx.listener(|this, _, _, cx| this.start(cx))),
                         ),
                 );

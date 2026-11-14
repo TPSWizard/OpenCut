@@ -265,6 +265,10 @@ impl EditorState {
         self.ffmpeg.is_some()
     }
 
+    pub(crate) fn ffmpeg(&self) -> Option<Arc<Ffmpeg>> {
+        self.ffmpeg.clone()
+    }
+
     // ---- editing -----------------------------------------------------
 
     /// Runs an undoable command. Errors become a status message.

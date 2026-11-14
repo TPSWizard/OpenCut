@@ -131,6 +131,7 @@ methods answer with the error code `no_project` before that.
 | `audio.clearDucking` | `{ element }` | `ApiElementInfo` — drops the clip's volume keys |
 | `audio.detectSilence` | `{ element, thresholdDb?, minSilenceSeconds?, paddingSeconds? }` | `{ intervals, removedSeconds, clipStart, clipDuration }` — the clip's silent stretches (under −40 dBFS for 0.5 s or more by default, keeping 0.1 s next to speech), in timeline seconds |
 | `audio.cutSilence` | `{ element, ripple?, thresholdDb?, minSilenceSeconds?, paddingSeconds? }` | `{ intervals, removedSeconds, clipStart, clipDuration, pieces }` — cuts those stretches out in one undo step; `ripple` "all" (default) or "track" closes the gaps, "none" leaves them |
+| `export.codecs` | `{ format?, hardware? }` | `{ format, default, codecs: [{ id, label, encodable }] }` — the video codecs a container takes (MP4: h264, hevc, av1; WebM: vp9, av1) and which this browser can encode at the canvas size. Pass `codec`, `videoBitrate` (bits per second) and `hardware` to `export.render` / `export.download` |
 | `export.presets` | – | `ApiPlatformPreset[]` — platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) with canvas, fps, limits, safe area and the encoder settings for the open project |
 | `export.check` | `{ preset, includeAudio? }` | `{ preset, issues, estimatedBytes }` — what the platform would object to (canvas, fps, length, size), each with a `fix` where a project setting clears it |
 

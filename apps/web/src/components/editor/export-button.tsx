@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TransitionTopIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/utils/ui";
 import {
 	getExportMimeType,
@@ -34,6 +35,17 @@ import {
 } from "@/components/section";
 import { useEditor } from "@/editor/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/export/defaults";
+import {
+	CODECS_BY_FORMAT,
+	CODEC_LABELS,
+	type ExportVideoCodec,
+	MAX_BITRATE_MBPS,
+	MIN_BITRATE_MBPS,
+	encodableCodecs,
+	isExportVideoCodec,
+	parseBitrateMbps,
+	resolveVideoCodec,
+} from "@/export/codecs";
 import {
 	CUSTOM_PLATFORM,
 	PlatformExportSection,
@@ -122,6 +134,28 @@ function ExportPopover({
 	);
 	const [platform, setPlatform] = useState<PlatformChoice>(CUSTOM_PLATFORM);
 	const platformPreset = getPlatformPreset({ id: platform });
+	const [codecChoice, setCodecChoice] = useState<ExportVideoCodec | null>(null);
+	const codec = resolveVideoCodec({ format, codec: codecChoice });
+	const [hardware, setHardware] = useState(false);
+	const [useBitrate, setUseBitrate] = useState(false);
+	const [bitrateText, setBitrateText] = useState("8");
+	const videoBitrate = useBitrate ? parseBitrateMbps(bitrateText) : null;
+	const bitrateInvalid = useBitrate && videoBitrate === null;
+	// What this browser can encode at the canvas size; null while checking.
+	const [encodable, setEncodable] = useState<ExportVideoCodec[] | null>(null);
+	const canvasWidth = activeProject?.settings.canvasSize.width ?? 1920;
+	const canvasHeight = activeProject?.settings.canvasSize.height ?? 1080;
+	useEffect(() => {
+		let current = true;
+		setEncodable(null);
+		void encodableCodecs({ format, width: canvasWidth, height: canvasHeight, hardware }).then((codecs) => {
+			if (current) setEncodable(codecs);
+		});
+		return () => {
+			current = false;
+		};
+	}, [format, canvasWidth, canvasHeight, hardware]);
+	const codecUnavailable = !platformPreset && encodable !== null && !encodable.includes(codec);
 
 	const handleExport = async () => {
 		if (!activeProject) return;
@@ -139,6 +173,9 @@ function ExportPopover({
 							fps: frameRateToFloat(activeProject.settings.fps),
 						})
 					: undefined,
+				videoCodec: platformPreset ? undefined : codec,
+				videoBitrate: platformPreset ? undefined : (videoBitrate ?? undefined),
+				hardware: !platformPreset && hardware,
 			},
 		});
 
@@ -208,16 +245,58 @@ function ExportPopover({
 												<div className="flex items-center space-x-2">
 													<RadioGroupItem value="mp4" id="mp4" />
 													<Label htmlFor="mp4">
-														{t("MP4 (H.264) - Better compatibility")}
+														{t("MP4 - Plays everywhere")}
 													</Label>
 												</div>
 												<div className="flex items-center space-x-2">
 													<RadioGroupItem value="webm" id="webm" />
 													<Label htmlFor="webm">
-														{t("WebM (VP9) - Smaller file size")}
+														{t("WebM - Open format for the web")}
 													</Label>
 												</div>
 											</RadioGroup>
+										</SectionContent>
+									</Section>
+									)}
+
+									{!platformPreset && (
+									<Section collapsible defaultOpen={false}>
+										<SectionHeader>
+											<SectionTitle>
+												{t("Video codec: {codec}", { codec: CODEC_LABELS[codec] })}
+											</SectionTitle>
+										</SectionHeader>
+										<SectionContent>
+											<RadioGroup
+												value={codec}
+												onValueChange={(value) => {
+													if (isExportVideoCodec(value)) setCodecChoice(value);
+												}}
+												data-testid="export-codec"
+											>
+												{CODECS_BY_FORMAT[format].map((id) => {
+													const missing = encodable !== null && !encodable.includes(id);
+													return (
+														<div key={id} className="flex items-center space-x-2">
+															<RadioGroupItem value={id} id={`codec-${id}`} />
+															<Label htmlFor={`codec-${id}`} className={cn(missing && "text-muted-foreground")}>
+																{CODEC_LABELS[id]}
+																{id === "hevc" && ` - ${t("Smaller files, plays on Apple devices")}`}
+																{id === "av1" && ` - ${t("Smallest files, slowest to encode")}`}
+																{missing && ` (${t("not in this browser")})`}
+															</Label>
+														</div>
+													);
+												})}
+											</RadioGroup>
+											<div className="mt-3 flex items-center space-x-2">
+												<Checkbox
+													id="export-hardware"
+													checked={hardware}
+													onCheckedChange={(checked) => setHardware(!!checked)}
+												/>
+												<Label htmlFor="export-hardware">{t("Prefer the hardware encoder (faster)")}</Label>
+											</div>
 										</SectionContent>
 									</Section>
 									)}
@@ -229,9 +308,12 @@ function ExportPopover({
 										</SectionHeader>
 										<SectionContent>
 											<RadioGroup
-												value={quality}
+												value={useBitrate ? "bitrate" : quality}
 												onValueChange={(value) => {
-													if (isExportQuality(value)) {
+													if (value === "bitrate") {
+														setUseBitrate(true);
+													} else if (isExportQuality(value)) {
+														setUseBitrate(false);
 														setQuality(value);
 													}
 												}}
@@ -254,7 +336,34 @@ function ExportPopover({
 														{t("Very high - Largest file size")}
 													</Label>
 												</div>
+												<div className="flex items-center space-x-2">
+													<RadioGroupItem value="bitrate" id="bitrate" />
+													<Label htmlFor="bitrate">{t("Target bitrate")}</Label>
+												</div>
 											</RadioGroup>
+											{useBitrate && (
+												<div className="mt-2 flex flex-col gap-1">
+													<div className="flex items-center gap-2">
+														<Input
+															aria-label={t("Target bitrate in Mbps")}
+															inputMode="decimal"
+															className="h-8 w-24"
+															value={bitrateText}
+															onChange={(event) => setBitrateText(event.target.value)}
+															data-testid="export-bitrate"
+														/>
+														<span className="text-muted-foreground text-xs">Mbps</span>
+													</div>
+													{bitrateInvalid && (
+														<p className="text-destructive text-xs">
+															{t("Enter a number from {min} to {max}", {
+																min: MIN_BITRATE_MBPS,
+																max: MAX_BITRATE_MBPS,
+															})}
+														</p>
+													)}
+												</div>
+											)}
 										</SectionContent>
 									</Section>
 									)}
@@ -280,8 +389,19 @@ function ExportPopover({
 									</Section>
 								</div>
 
-								<div className="p-3 pt-0">
-									<Button onClick={handleExport} className="w-full gap-2">
+								<div className="flex flex-col gap-2 p-3 pt-0">
+									{codecUnavailable && (
+										<p className="text-destructive text-xs" role="alert">
+											{t("This browser cannot encode {codec}. Choose another codec, or export from the desktop app.", {
+												codec: CODEC_LABELS[codec],
+											})}
+										</p>
+									)}
+									<Button
+										onClick={handleExport}
+										className="w-full gap-2"
+										disabled={(!platformPreset && bitrateInvalid) || codecUnavailable}
+									>
 										<Download className="size-4" />
 										{t("Export")}
 									</Button>

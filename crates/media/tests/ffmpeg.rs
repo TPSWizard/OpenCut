@@ -102,6 +102,9 @@ fn probes_decodes_and_encodes() {
         format: EncodeFormat::Mp4,
         quality: EncodeQuality::Medium,
         platform: None,
+        codec: None,
+        video_bitrate: None,
+        hardware: false,
         duration_seconds: 1.0,
         audio: vec![AudioMixClip {
             path: clip.clone(),

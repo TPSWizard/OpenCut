@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use editor::{Channel, Project, Segment, plan_audio};
-use media::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode};
+use media::{
+    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode, VideoCodec,
+};
 use time::MediaTime;
 
 use crate::renderer::Renderer;
@@ -19,6 +21,12 @@ pub struct ExportJob {
     pub quality: EncodeQuality,
     /// Platform upload settings; replace `quality` for MP4.
     pub platform: Option<PlatformEncode>,
+    /// Video codec; `None` is the container's default. Ignored with `platform`.
+    pub codec: Option<VideoCodec>,
+    /// Target video bitrate in bits per second, instead of `quality`.
+    pub video_bitrate: Option<u64>,
+    /// Use a hardware encoder when one works.
+    pub hardware: bool,
     pub include_audio: bool,
     /// Where retimed audio is rendered to (`default_cache_dir()` when none).
     pub cache_dir: Option<PathBuf>,
@@ -81,6 +89,9 @@ pub fn export_project(
         format: job.format,
         quality: job.quality,
         platform: job.platform,
+        codec: job.codec,
+        video_bitrate: job.video_bitrate,
+        hardware: job.hardware,
         duration_seconds: duration.to_seconds_f64(),
         audio,
     };

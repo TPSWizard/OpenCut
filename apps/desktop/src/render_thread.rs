@@ -28,6 +28,12 @@ pub(crate) struct ExportSettings {
     pub include_audio: bool,
     /// Platform upload settings; replace `quality` for MP4.
     pub platform: Option<PlatformEncode>,
+    /// Video codec; `None` is the container's default.
+    pub codec: Option<media::VideoCodec>,
+    /// Target video bitrate in bits per second, instead of `quality`.
+    pub video_bitrate: Option<u64>,
+    /// Use a hardware encoder when one works.
+    pub hardware: bool,
 }
 
 pub(crate) enum RenderRequest {
@@ -350,6 +356,9 @@ fn export(
         format: settings.format,
         quality: settings.quality,
         platform: settings.platform,
+        codec: settings.codec,
+        video_bitrate: settings.video_bitrate,
+        hardware: settings.hardware,
         include_audio: settings.include_audio,
         cache_dir: None,
     };
@@ -483,6 +492,9 @@ mod tests {
                 quality: EncodeQuality::Low,
                 include_audio: true,
                 platform: None,
+                codec: None,
+                video_bitrate: None,
+                hardware: false,
             },
             &cancel,
             &events,
@@ -510,7 +522,7 @@ mod tests {
         let cancel = AtomicBool::new(true);
         let result = export(
             &project,
-            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None },
+            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false },
             &cancel,
             &events,
             Some(ffmpeg),
@@ -563,6 +575,9 @@ mod tests {
                 quality: EncodeQuality::High,
                 include_audio: true,
                 platform,
+                codec: None,
+                video_bitrate: None,
+                hardware: false,
             },
             &cancel,
             &events,

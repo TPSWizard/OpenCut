@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Stdio};
 
+use crate::codecs::{VideoCodec, is_hardware_encoder, pick_encoder, resolve_codec};
 use crate::error::MediaError;
 use crate::ffmpeg::{Ffmpeg, last_stderr_line};
 
@@ -32,7 +33,7 @@ impl EncodeFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EncodeQuality {
     Low,
     Medium,
@@ -41,6 +42,43 @@ pub enum EncodeQuality {
 }
 
 impl EncodeQuality {
+    /// The constant-quality value for a software encoder.
+    fn crf_for(self, encoder: &str, format: EncodeFormat) -> u32 {
+        let index = match self {
+            Self::Low => 0,
+            Self::Medium => 1,
+            Self::High => 2,
+            Self::VeryHigh => 3,
+        };
+        let table: [u32; 4] = match encoder {
+            "libx265" => [32, 28, 24, 20],
+            "libsvtav1" => [45, 38, 32, 26],
+            "libaom-av1" => [44, 36, 30, 24],
+            "libvpx-vp9" => [40, 32, 26, 20],
+            _ => return self.crf(format),
+        };
+        table[index]
+    }
+
+    /// A bitrate for encoders without a constant-quality mode that behaves
+    /// the same everywhere (the hardware ones): bits per pixel per frame,
+    /// less for the newer codecs.
+    pub fn bitrate(self, codec: VideoCodec, width: u32, height: u32, fps: f64) -> u64 {
+        let bits_per_pixel = match self {
+            Self::Low => 0.05,
+            Self::Medium => 0.08,
+            Self::High => 0.12,
+            Self::VeryHigh => 0.18,
+        };
+        let efficiency = match codec {
+            VideoCodec::H264 => 1.0,
+            VideoCodec::Hevc | VideoCodec::Vp9 => 0.65,
+            VideoCodec::Av1 => 0.55,
+        };
+        let pixels_per_second = width as f64 * height as f64 * fps.max(1.0);
+        (pixels_per_second * bits_per_pixel * efficiency).round().max(200_000.0) as u64
+    }
+
     fn crf(self, format: EncodeFormat) -> u32 {
         match (format, self) {
             (EncodeFormat::Mp4, Self::Low) => 30,
@@ -156,8 +194,15 @@ pub struct EncodeSettings {
     pub format: EncodeFormat,
     pub quality: EncodeQuality,
     /// Encode for a platform upload instead of at `quality`. MP4 only; WebM
-    /// ignores it.
+    /// ignores it. Platform uploads are always H.264 from libx264.
     pub platform: Option<PlatformEncode>,
+    /// Video codec; `None`, or one the container does not take, is the
+    /// container's default (MP4: H.264, WebM: VP9).
+    pub codec: Option<VideoCodec>,
+    /// Target video bitrate in bits per second, instead of `quality`.
+    pub video_bitrate: Option<u64>,
+    /// Use a hardware encoder when one works, else software.
+    pub hardware: bool,
     /// Total length, so audio can be padded or cut to the picture.
     pub duration_seconds: f64,
     pub audio: Vec<AudioMixClip>,
@@ -180,7 +225,8 @@ impl Encoder {
                 "encode size and frame rate must be positive".to_owned(),
             ));
         }
-        let args = build_args(settings);
+        let encoder = video_encoder(ffmpeg, settings)?;
+        let args = build_args_with(settings, &encoder);
         if std::env::var_os("OPENCUT_FFMPEG_TRACE").is_some() {
             eprintln!("ffmpeg {}", args.join(" "));
         }
@@ -268,8 +314,96 @@ impl Drop for Encoder {
     }
 }
 
-/// The complete argument list after `ffmpeg -hide_banner -nostdin -loglevel error`.
+/// The codec the settings encode with.
+pub fn settings_codec(settings: &EncodeSettings) -> VideoCodec {
+    if settings.platform.is_some() && settings.format == EncodeFormat::Mp4 {
+        return VideoCodec::H264;
+    }
+    resolve_codec(settings.format, settings.codec)
+}
+
+/// The FFmpeg encoder the settings use on this build.
+pub fn video_encoder(ffmpeg: &Ffmpeg, settings: &EncodeSettings) -> Result<String, MediaError> {
+    let platform = settings.platform.is_some() && settings.format == EncodeFormat::Mp4;
+    pick_encoder(ffmpeg, settings_codec(settings), settings.hardware && !platform)
+}
+
+/// The argument list with the default software encoder for the codec.
+#[cfg(test)]
 pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
+    let encoder = match settings_codec(settings) {
+        VideoCodec::H264 => "libx264",
+        VideoCodec::Hevc => "libx265",
+        VideoCodec::Av1 => "libsvtav1",
+        VideoCodec::Vp9 => "libvpx-vp9",
+    };
+    build_args_with(settings, encoder)
+}
+
+/// The video encoder's arguments: the rate (platform settings, a target
+/// bitrate, or constant quality) and the pixel format.
+fn video_args(settings: &EncodeSettings, encoder: &str) -> Vec<String> {
+    let codec = settings_codec(settings);
+    let mut args: Vec<String> = vec!["-c:v".into(), encoder.into()];
+    let platform = settings.platform.filter(|_| settings.format == EncodeFormat::Mp4 && encoder == "libx264");
+    let hardware = is_hardware_encoder(encoder);
+    let push = |args: &mut Vec<String>, items: &[&str]| args.extend(items.iter().map(|item| (*item).to_owned()));
+
+    // Speed settings that do not change the rate.
+    match encoder {
+        "libx264" | "libx265" => push(&mut args, &["-preset", "medium"]),
+        "libsvtav1" => push(&mut args, &["-preset", "8"]),
+        "libaom-av1" => push(&mut args, &["-cpu-used", "6", "-row-mt", "1"]),
+        "libvpx-vp9" => push(&mut args, &["-row-mt", "1", "-deadline", "good", "-cpu-used", "2"]),
+        _ => {}
+    }
+    if encoder == "libx265" {
+        push(&mut args, &["-x265-params", "log-level=error"]);
+    }
+
+    if let Some(platform) = platform {
+        let gop = platform.gop_frames.max(1).to_string();
+        let rate = platform.video_bitrate.to_string();
+        let max_rate = (platform.video_bitrate * 3 / 2).to_string();
+        let buffer = (platform.video_bitrate * 2).to_string();
+        push(
+            &mut args,
+            &[
+                "-profile:v", "high", "-bf", "2", "-coder", "1", "-b:v", &rate, "-maxrate", &max_rate, "-bufsize",
+                &buffer, "-g", &gop, "-keyint_min", &gop, "-sc_threshold", "0", "-flags", "+cgop",
+            ],
+        );
+    } else if let Some(rate) = settings
+        .video_bitrate
+        .or_else(|| hardware.then(|| settings.quality.bitrate(codec, settings.width, settings.height, settings.fps)))
+    {
+        let target = rate.to_string();
+        push(&mut args, &["-b:v", &target]);
+        // SVT-AV1 and libaom take a plain average; the rest also get a
+        // ceiling so a busy scene cannot spike far past it.
+        if !matches!(encoder, "libsvtav1" | "libaom-av1" | "libvpx-vp9") {
+            let max_rate = (rate * 3 / 2).to_string();
+            let buffer = (rate * 2).to_string();
+            push(&mut args, &["-maxrate", &max_rate, "-bufsize", &buffer]);
+        }
+    } else {
+        let crf = settings.quality.crf_for(encoder, settings.format).to_string();
+        if matches!(encoder, "libvpx-vp9" | "libaom-av1") {
+            push(&mut args, &["-b:v", "0"]);
+        }
+        push(&mut args, &["-crf", &crf]);
+    }
+
+    push(&mut args, &["-pix_fmt", if hardware { "nv12" } else { "yuv420p" }]);
+    if codec == VideoCodec::Hevc && settings.format == EncodeFormat::Mp4 {
+        // `hvc1` is the tag Apple's players need to play HEVC in MP4.
+        push(&mut args, &["-tag:v", "hvc1"]);
+    }
+    args
+}
+
+/// The complete argument list after `ffmpeg -hide_banner -nostdin -loglevel error`.
+pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<String> {
     let mut args: Vec<String> = vec![
         "-y".into(),
         "-f".into(),
@@ -330,29 +464,10 @@ pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
         args.push("-an".into());
     }
 
-    let crf = settings.quality.crf(settings.format);
+    args.extend(video_args(settings, encoder));
     match settings.format {
         EncodeFormat::Mp4 => {
-            args.extend(["-c:v", "libx264", "-preset", "medium"].into_iter().map(String::from));
-            match settings.platform {
-                Some(platform) => {
-                    let gop = platform.gop_frames.max(1).to_string();
-                    let rate = platform.video_bitrate.to_string();
-                    let max_rate = (platform.video_bitrate * 3 / 2).to_string();
-                    let buffer = (platform.video_bitrate * 2).to_string();
-                    args.extend(
-                        [
-                            "-profile:v", "high", "-bf", "2", "-coder", "1", "-b:v", &rate, "-maxrate", &max_rate,
-                            "-bufsize", &buffer, "-g", &gop, "-keyint_min", &gop, "-sc_threshold", "0", "-flags",
-                            "+cgop",
-                        ]
-                        .into_iter()
-                        .map(String::from),
-                    );
-                }
-                None => args.extend(["-crf".to_owned(), crf.to_string()]),
-            }
-            args.extend(["-pix_fmt", "yuv420p", "-movflags", "+faststart"].into_iter().map(String::from));
+            args.extend(["-movflags", "+faststart"].into_iter().map(String::from));
             if has_audio {
                 let audio_rate = settings
                     .platform
@@ -362,26 +477,6 @@ pub(crate) fn build_args(settings: &EncodeSettings) -> Vec<String> {
             }
         }
         EncodeFormat::Webm => {
-            args.extend(
-                [
-                    "-c:v",
-                    "libvpx-vp9",
-                    "-b:v",
-                    "0",
-                    "-crf",
-                    &crf.to_string(),
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-row-mt",
-                    "1",
-                    "-deadline",
-                    "good",
-                    "-cpu-used",
-                    "2",
-                ]
-                .into_iter()
-                .map(String::from),
-            );
             if has_audio {
                 args.extend(["-c:a", "libopus", "-b:a", "128k"].into_iter().map(String::from));
             }
@@ -406,6 +501,9 @@ mod tests {
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
             platform: None,
+            codec: None,
+            video_bitrate: None,
+            hardware: false,
             duration_seconds: 10.0,
             audio: vec![
                 AudioMixClip {
@@ -477,6 +575,9 @@ mod tests {
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::Low,
             platform: None,
+            codec: None,
+            video_bitrate: None,
+            hardware: false,
             duration_seconds: 4.0,
             audio: vec![clip],
         };
@@ -496,6 +597,9 @@ mod tests {
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::Low,
             platform: Some(PlatformEncode { video_bitrate: 8_000_000, audio_bitrate: 384_000, gop_frames: 15 }),
+            codec: None,
+            video_bitrate: None,
+            hardware: false,
             duration_seconds: 2.0,
             audio: vec![AudioMixClip {
                 path: PathBuf::from("a.wav"),
@@ -523,6 +627,9 @@ mod tests {
             format: EncodeFormat::Webm,
             quality: EncodeQuality::Medium,
             platform: None,
+            codec: None,
+            video_bitrate: None,
+            hardware: false,
             duration_seconds: 2.0,
             audio: vec![],
         };
@@ -530,5 +637,75 @@ mod tests {
         assert!(joined.contains("-map 0:v -an -c:v libvpx-vp9"));
         assert!(joined.contains("-crf 32"));
         assert!(!joined.contains("filter_complex"));
+    }
+
+    fn silent(format: EncodeFormat, codec: Option<VideoCodec>) -> EncodeSettings {
+        EncodeSettings {
+            output: PathBuf::from(format!("out.{}", format.extension())),
+            width: 1920,
+            height: 1080,
+            fps: 30.0,
+            format,
+            quality: EncodeQuality::High,
+            platform: None,
+            codec,
+            video_bitrate: None,
+            hardware: false,
+            duration_seconds: 2.0,
+            audio: vec![],
+        }
+    }
+
+    #[test]
+    fn each_codec_gets_its_encoder_and_quality_scale() {
+        let hevc = build_args(&silent(EncodeFormat::Mp4, Some(VideoCodec::Hevc))).join(" ");
+        assert!(hevc.contains("-c:v libx265 -preset medium -x265-params log-level=error -crf 24 -pix_fmt yuv420p -tag:v hvc1"), "{hevc}");
+        assert!(hevc.contains("-movflags +faststart"), "{hevc}");
+
+        let av1 = build_args(&silent(EncodeFormat::Mp4, Some(VideoCodec::Av1))).join(" ");
+        assert!(av1.contains("-c:v libsvtav1 -preset 8 -crf 32 -pix_fmt yuv420p"), "{av1}");
+        let aom = build_args_with(&silent(EncodeFormat::Webm, Some(VideoCodec::Av1)), "libaom-av1").join(" ");
+        assert!(aom.contains("-c:v libaom-av1 -cpu-used 6 -row-mt 1 -b:v 0 -crf 30"), "{aom}");
+        assert!(!aom.contains("movflags"), "{aom}");
+
+        // A codec the container does not take falls back to its default.
+        let webm = build_args(&silent(EncodeFormat::Webm, Some(VideoCodec::H264))).join(" ");
+        assert!(webm.contains("-c:v libvpx-vp9"), "{webm}");
+    }
+
+    #[test]
+    fn a_target_bitrate_replaces_constant_quality() {
+        let mut settings = silent(EncodeFormat::Mp4, None);
+        settings.video_bitrate = Some(6_000_000);
+        let x264 = build_args(&settings).join(" ");
+        assert!(x264.contains("-b:v 6000000 -maxrate 9000000 -bufsize 12000000"), "{x264}");
+        assert!(!x264.contains("-crf"), "{x264}");
+
+        settings.codec = Some(VideoCodec::Av1);
+        let av1 = build_args(&settings).join(" ");
+        assert!(av1.contains("-b:v 6000000"), "{av1}");
+        assert!(!av1.contains("-maxrate") && !av1.contains("-crf"), "{av1}");
+    }
+
+    #[test]
+    fn hardware_encoders_get_a_bitrate_and_nv12() {
+        let settings = silent(EncodeFormat::Mp4, Some(VideoCodec::Hevc));
+        let qsv = build_args_with(&settings, "hevc_qsv").join(" ");
+        // 1080p30 at High: 62.2 Mpx/s x 0.12 bits x 0.65 for HEVC.
+        let rate = EncodeQuality::High.bitrate(VideoCodec::Hevc, 1920, 1080, 30.0);
+        assert_eq!(rate, 4_852_224);
+        assert!(qsv.contains(&format!("-c:v hevc_qsv -b:v {rate} -maxrate")), "{qsv}");
+        assert!(qsv.contains("-pix_fmt nv12 -tag:v hvc1"), "{qsv}");
+        assert!(!qsv.contains("-crf") && !qsv.contains("-preset"), "{qsv}");
+    }
+
+    #[test]
+    fn platform_uploads_stay_h264() {
+        let mut settings = silent(EncodeFormat::Mp4, Some(VideoCodec::Av1));
+        settings.platform = Some(PlatformEncode { video_bitrate: 8_000_000, audio_bitrate: 384_000, gop_frames: 15 });
+        settings.hardware = true;
+        assert_eq!(settings_codec(&settings), VideoCodec::H264);
+        let joined = build_args(&settings).join(" ");
+        assert!(joined.contains("-c:v libx264 -preset medium -profile:v high"), "{joined}");
     }
 }

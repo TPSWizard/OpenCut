@@ -36,6 +36,14 @@ describe("parseHeadlessJob", () => {
 		).toThrow(/format/);
 	});
 
+	test("reads the export codec, bitrate and hardware choice", () => {
+		const job = parseHeadlessJob({
+			export: { output: "x.mp4", codec: "av1", videoBitrate: 6_000_000, hardware: true },
+		});
+		expect(job.export).toMatchObject({ codec: "av1", videoBitrate: 6_000_000, hardware: true });
+		expect(() => parseHeadlessJob({ export: { output: "x", codec: "prores" } })).toThrow(/codec/);
+	});
+
 	test("rejects empty jobs and non-objects", () => {
 		expect(() => parseHeadlessJob({})).toThrow(/empty/);
 		expect(() => parseHeadlessJob("nope")).toThrow(HeadlessSpecError);

@@ -11,6 +11,7 @@
 //! GPU compositor's native texture format and GPUI's images both want.
 
 mod audio;
+mod codecs;
 mod denoise;
 mod encode;
 mod error;
@@ -23,7 +24,14 @@ mod video;
 
 pub use audio::{AudioReader, AudioSettings};
 pub use denoise::denoise_to_wav;
-pub use encode::{AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode};
+pub use codecs::{
+    MAX_BITRATE_MBPS, MIN_BITRATE_MBPS, VideoCodec, available_codecs, codecs_for, default_codec, is_hardware_encoder,
+    listed_encoders, parse_bitrate_mbps, pick_encoder, resolve_codec,
+};
+pub use encode::{
+    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode, settings_codec,
+    video_encoder,
+};
 pub use error::MediaError;
 pub use ffmpeg::Ffmpeg;
 pub use image_decode::{decode_image, is_image_path};

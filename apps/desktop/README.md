@@ -344,7 +344,8 @@ burn an exported `.ass` onto a finished video yourself
 `apps/render-cli` builds `opencut-render`, the same renderer without the
 window: it takes a project directory (`--project ~/.opencut/projects/<id>`)
 or a bundle (`--bundle promo.opencut.zip`) and writes a video (`--out
-promo.mp4`, `--format`, `--quality`, `--no-audio`), applies a platform
+promo.mp4`, `--format`, `--quality`, `--codec h264|hevc|av1|vp9`,
+`--bitrate <Mbps>`, `--hardware`, `--no-audio`), applies a platform
 preset (`--preset youtube-shorts`, which sets the canvas and frame rate and
 encodes H.264 High with a closed GOP and faststart), overrides the canvas
 and rate (`--size 1080x1920`, `--fps 30`), writes one still (`--frame-at

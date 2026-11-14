@@ -608,5 +608,17 @@
   "Uploading the project to share it…": "正在上传项目以便分享…",
   "Share link copied; it works until {date}.": "分享链接已拷贝；有效期至 {date}。",
   "Not shared: {error}": "未分享：{error}",
-  "Share link": "分享链接"
+  "Share link": "分享链接",
+  "Bitrate": "码率",
+  "Codec": "编码",
+  "Plays everywhere.": "随处可播放。",
+  "About a third smaller than H.264; plays on Apple devices and most new TVs.": "比 H.264 小约三分之一；可在 Apple 设备和大多数新电视上播放。",
+  "The smallest files; slow to encode in software, and older devices cannot play it.": "文件最小；软件编码较慢，旧设备无法播放。",
+  "Smaller than H.264; plays in every browser.": "比 H.264 小；所有浏览器都能播放。",
+  "Encoder": "编码器",
+  "Software": "软件",
+  "Hardware if it works": "可用时使用硬件",
+  "Mbps, then Enter": "Mbps，然后按 Enter",
+  "Enter a number from {min} to {max}": "请输入 {min} 到 {max} 之间的数字",
+  "This FFmpeg cannot encode {codec}.": "此 FFmpeg 无法编码 {codec}。"
 }

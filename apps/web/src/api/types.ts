@@ -275,6 +275,15 @@ export interface ApiPlaybackState {
 
 export type ApiExportFormat = "mp4" | "webm";
 export type ApiExportQuality = "low" | "medium" | "high" | "very_high";
+export type ApiVideoCodec = "h264" | "hevc" | "av1" | "vp9";
+
+export interface ApiExportCodecs {
+	format: ApiExportFormat;
+	/** The container's default codec. */
+	default: ApiVideoCodec;
+	/** Every codec the container takes, and whether this browser can encode it at the canvas size. */
+	codecs: Array<{ id: ApiVideoCodec; label: string; encodable: boolean }>;
+}
 
 export interface ApiExportOptions {
 	format?: ApiExportFormat;
@@ -290,6 +299,16 @@ export interface ApiExportOptions {
 	 * canvas and frame rate are not changed: run `export.check` first.
 	 */
 	preset?: string;
+	/**
+	 * Video codec. MP4 takes h264 (default), hevc and av1; WebM takes vp9
+	 * (default) and av1. Browsers differ in what they can encode: ask
+	 * `export.codecs` first. Ignored with `preset`.
+	 */
+	codec?: ApiVideoCodec;
+	/** Target video bitrate in bits per second (0.2 to 400 Mbps); replaces `quality` for the picture. */
+	videoBitrate?: number;
+	/** Prefer a hardware encoder (faster; quality depends on the GPU). */
+	hardware?: boolean;
 }
 
 export interface ApiDuckOptions {
@@ -1098,6 +1117,8 @@ export interface EditorApiMethods {
 	};
 	/** Platform presets with the encoder settings for the open project. */
 	"export.presets": { params: Record<string, never>; result: ApiPlatformPreset[] };
+	/** The video codecs a container takes and which of them this browser can encode at the canvas size. */
+	"export.codecs": { params: { format?: ApiExportFormat; hardware?: boolean }; result: ApiExportCodecs };
 	/** What the platform would object to in the project as it is. */
 	"export.check": {
 		params: { preset: string; includeAudio?: boolean };

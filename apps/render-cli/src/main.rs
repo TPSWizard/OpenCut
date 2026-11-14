@@ -27,6 +27,10 @@ opencut-render: render a ConzaCut project from the command line
   --out <file>             the video (.mp4 or .webm) or, with --frame-at, a .png
   --format mp4|webm        container when --out has no telling extension
   --quality low|medium|high|very_high   encoder quality (default high)
+  --codec h264|hevc|av1|vp9  video codec: mp4 takes h264 (default), hevc, av1;
+                           webm takes vp9 (default), av1
+  --bitrate <Mbps>         target video bitrate (0.2 to 400) instead of --quality
+  --hardware               use a hardware encoder when one works here
   --preset <id>            platform preset: youtube, youtube-shorts, tiktok,
                            instagram-reels, linkedin, x (MP4, H.264 High, closed GOP,
                            faststart); sets the canvas and fps to the platform's
@@ -57,6 +61,9 @@ struct Args {
     out: Option<PathBuf>,
     format: Option<EncodeFormat>,
     quality: EncodeQuality,
+    codec: Option<media::VideoCodec>,
+    video_bitrate: Option<u64>,
+    hardware: bool,
     preset: Option<String>,
     fps: Option<f64>,
     size: Option<(u32, u32)>,
@@ -79,6 +86,9 @@ fn parse_args() -> Result<Args, String> {
         out: None,
         format: None,
         quality: EncodeQuality::High,
+        codec: None,
+        video_bitrate: None,
+        hardware: false,
         preset: None,
         fps: None,
         size: None,
@@ -126,6 +136,18 @@ fn parse_args() -> Result<Args, String> {
                     h.parse().map_err(|_| "--size needs numbers".to_owned())?,
                 ));
             }
+            "--codec" => {
+                let text = value()?;
+                args.codec = Some(media::VideoCodec::parse(&text).ok_or_else(|| format!("unknown codec {text}"))?);
+            }
+            "--bitrate" => {
+                let text = value()?;
+                args.video_bitrate = Some(
+                    media::parse_bitrate_mbps(&text)
+                        .ok_or_else(|| format!("--bitrate needs Mbps from {} to {}", media::MIN_BITRATE_MBPS, media::MAX_BITRATE_MBPS))?,
+                );
+            }
+            "--hardware" => args.hardware = true,
             "--no-audio" => args.include_audio = false,
             "--frame-at" => args.frame_at = Some(value()?.parse().map_err(|_| "--frame-at needs seconds".to_owned())?),
             "--stills" => {
@@ -387,6 +409,10 @@ fn run() -> Result<(), String> {
     if let Some(out) = &args.out {
         let ffmpeg = ffmpeg.ok_or_else(|| media::MediaError::FfmpegNotFound.to_string())?;
         let format = args.format.unwrap_or_else(|| EncodeFormat::from_path(out));
+        if let Some(codec) = args.codec.filter(|codec| !media::codecs_for(format).contains(codec)) {
+            let takes: Vec<&str> = media::codecs_for(format).iter().map(|codec| codec.id()).collect();
+            return Err(format!("{} takes {}, not {}", format.extension(), takes.join(", "), codec.id()));
+        }
         let mut output = out.clone();
         if output.extension().is_none() {
             output.set_extension(format.extension());
@@ -401,6 +427,9 @@ fn run() -> Result<(), String> {
             format,
             quality: args.quality,
             platform: platform.filter(|_| format == EncodeFormat::Mp4),
+            codec: args.codec,
+            video_bitrate: args.video_bitrate,
+            hardware: args.hardware,
             include_audio: args.include_audio,
             cache_dir: None,
         };

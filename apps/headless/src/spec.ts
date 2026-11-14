@@ -57,6 +57,12 @@ export interface HeadlessExportSpec {
 	fps?: number;
 	/** Platform preset id (`export.presets`): forces MP4 with the platform's encoder settings. */
 	preset?: string;
+	/** Video codec: mp4 takes h264 (default), hevc, av1; webm takes vp9 (default), av1. */
+	codec?: "h264" | "hevc" | "av1" | "vp9";
+	/** Target video bitrate in bits per second; replaces `quality` for the picture. */
+	videoBitrate?: number;
+	/** Prefer a hardware encoder. */
+	hardware?: boolean;
 	/** Output file path; the extension is added when missing. */
 	output: string;
 }
@@ -208,11 +214,19 @@ export function parseHeadlessJob(value: unknown): HeadlessJob {
 			throw new HeadlessSpecError("export.quality must be low, medium, high or very_high");
 		}
 		const preset = optionalString(value.export.preset, "export.preset");
+		const codec = optionalString(value.export.codec, "export.codec");
+		if (codec !== undefined && !["h264", "hevc", "av1", "vp9"].includes(codec)) {
+			throw new HeadlessSpecError("export.codec must be h264, hevc, av1 or vp9");
+		}
+		const videoBitrate = optionalNumber(value.export.videoBitrate, "export.videoBitrate");
 		job.export = {
 			output: value.export.output,
 			format: format as HeadlessExportFormat | undefined,
 			quality: quality as HeadlessExportQuality | undefined,
 			preset,
+			codec: codec as HeadlessExportSpec["codec"],
+			videoBitrate,
+			hardware: typeof value.export.hardware === "boolean" ? value.export.hardware : undefined,
 			includeAudio:
 				typeof value.export.includeAudio === "boolean"
 					? value.export.includeAudio

@@ -1,0 +1,46 @@
+{
+  "comment": "Which video codecs each export container takes, the default, and how a target bitrate typed in Mbps is read. Both editors test against this file: apps/web/src/export/__tests__/codecs.test.ts and crates/media/src/codecs.rs.",
+  "formats": {
+    "mp4": { "default": "h264", "codecs": ["h264", "hevc", "av1"] },
+    "webm": { "default": "vp9", "codecs": ["vp9", "av1"] }
+  },
+  "labels": { "h264": "H.264", "hevc": "HEVC (H.265)", "av1": "AV1", "vp9": "VP9" },
+  "resolve": [
+    { "format": "mp4", "codec": null, "expect": "h264" },
+    { "format": "mp4", "codec": "hevc", "expect": "hevc" },
+    { "format": "mp4", "codec": "av1", "expect": "av1" },
+    { "format": "mp4", "codec": "vp9", "expect": "h264" },
+    { "format": "webm", "codec": null, "expect": "vp9" },
+    { "format": "webm", "codec": "av1", "expect": "av1" },
+    { "format": "webm", "codec": "h264", "expect": "vp9" },
+    { "format": "webm", "codec": "hevc", "expect": "vp9" }
+  ],
+  "parseCodec": [
+    { "text": "h264", "expect": "h264" },
+    { "text": "AVC", "expect": "h264" },
+    { "text": "h.265", "expect": "hevc" },
+    { "text": "H265", "expect": "hevc" },
+    { "text": "hevc", "expect": "hevc" },
+    { "text": "av1", "expect": "av1" },
+    { "text": "vp9", "expect": "vp9" },
+    { "text": "vp8", "expect": null },
+    { "text": "", "expect": null }
+  ],
+  "bitrateMbps": {
+    "min": 0.2,
+    "max": 400,
+    "cases": [
+      { "text": "8", "expect": 8000000 },
+      { "text": " 12.5 ", "expect": 12500000 },
+      { "text": "0.2", "expect": 200000 },
+      { "text": "400", "expect": 400000000 },
+      { "text": "2,5", "expect": 2500000 },
+      { "text": "0.1", "expect": null },
+      { "text": "401", "expect": null },
+      { "text": "", "expect": null },
+      { "text": "fast", "expect": null },
+      { "text": "-3", "expect": null },
+      { "text": "1e3", "expect": null }
+    ]
+  }
+}

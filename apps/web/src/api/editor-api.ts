@@ -20,6 +20,15 @@ import type { MediaAsset } from "@/media/types";
 import { floatToFrameRate, frameRateToFloat } from "@/fps/utils";
 import { getExportFileExtension, getExportMimeType } from "@/export";
 import {
+	CODECS_BY_FORMAT,
+	CODEC_LABELS,
+	DEFAULT_CODEC,
+	MAX_BITRATE_MBPS,
+	MIN_BITRATE_MBPS,
+	encodableCodecs,
+	isExportVideoCodec,
+} from "@/export/codecs";
+import {
 	buildElementFromMedia,
 	buildTextElement,
 } from "@/timeline/element-utils";
@@ -731,6 +740,28 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				message: `Unknown export format ${String(format)}`,
 			});
 		}
+		if (options.codec !== undefined && !isExportVideoCodec(options.codec)) {
+			throw new EditorApiError({ code: "invalid_params", message: "codec is h264, hevc, av1 or vp9" });
+		}
+		if (!preset && options.codec !== undefined && !CODECS_BY_FORMAT[format].includes(options.codec)) {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: `${format.toUpperCase()} takes ${CODECS_BY_FORMAT[format].join(", ")}, not ${options.codec}`,
+			});
+		}
+		const bitrate = options.videoBitrate;
+		if (
+			bitrate !== undefined &&
+			(typeof bitrate !== "number" ||
+				!Number.isFinite(bitrate) ||
+				bitrate < MIN_BITRATE_MBPS * 1e6 ||
+				bitrate > MAX_BITRATE_MBPS * 1e6)
+		) {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: `videoBitrate is bits per second, ${MIN_BITRATE_MBPS * 1e6} to ${MAX_BITRATE_MBPS * 1e6}`,
+			});
+		}
 		const exportFps = options.fps
 			? floatToFrameRate(options.fps)
 			: project.settings.fps;
@@ -740,6 +771,9 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				quality,
 				includeAudio: options.includeAudio ?? true,
 				fps: exportFps,
+				videoCodec: options.codec,
+				videoBitrate: bitrate,
+				hardware: options.hardware === true,
 				platform: preset
 					? platformEncodeSettings({
 							canvas: project.settings.canvasSize,
@@ -2348,6 +2382,22 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			return elementInfoById({ trackId: track.id, elementId: music.id });
 		},
 		"export.presets": () => PLATFORM_PRESETS.map(platformPresetInfo),
+		"export.codecs": async ({ format = "mp4", hardware }) => {
+			if (format !== "mp4" && format !== "webm") {
+				throw new EditorApiError({ code: "invalid_params", message: "format is mp4 or webm" });
+			}
+			const { width, height } = requireProject().settings.canvasSize;
+			const encodable = await encodableCodecs({ format, width, height, hardware: hardware === true });
+			return {
+				format,
+				default: DEFAULT_CODEC[format],
+				codecs: CODECS_BY_FORMAT[format].map((id) => ({
+					id,
+					label: CODEC_LABELS[id],
+					encodable: encodable.includes(id),
+				})),
+			};
+		},
 		"export.check": (params) => checkPlatform(params),
 		"export.download": async (options) => {
 			const rendered = await renderExport(options);

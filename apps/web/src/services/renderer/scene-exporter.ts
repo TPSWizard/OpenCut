@@ -12,6 +12,7 @@ import {
 	QUALITY_HIGH,
 	QUALITY_VERY_HIGH,
 	Quality,
+	canEncodeVideo,
 } from "mediabunny";
 import type { FrameRate } from "opencut-wasm";
 import { mediaTimeToSeconds } from "opencut-wasm";
@@ -20,6 +21,7 @@ import { frameRateToFloat } from "@/fps/utils";
 import type { RootNode } from "./nodes/root-node";
 import type { ExportFormat, ExportQuality } from "@/export";
 import type { PlatformEncodeSettings } from "@/platforms/catalogue";
+import { CODEC_LABELS, type ExportVideoCodec, mediabunnyCodec, resolveVideoCodec } from "@/export/codecs";
 import { CanvasRenderer } from "./canvas-renderer";
 
 type ExportParams = {
@@ -29,6 +31,9 @@ type ExportParams = {
 	format: ExportFormat;
 	quality: ExportQuality;
 	platform?: PlatformEncodeSettings;
+	videoCodec?: ExportVideoCodec;
+	videoBitrate?: number;
+	hardware?: boolean;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
 };
@@ -52,6 +57,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private format: ExportFormat;
 	private quality: ExportQuality;
 	private platform: PlatformEncodeSettings | null;
+	private videoCodec: ExportVideoCodec;
+	private videoBitrate: number | null;
+	private hardware: boolean;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
 
@@ -64,6 +72,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		format,
 		quality,
 		platform,
+		videoCodec,
+		videoBitrate,
+		hardware,
 		shouldIncludeAudio,
 		audioBuffer,
 	}: ExportParams) {
@@ -77,6 +88,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		this.format = format;
 		this.quality = quality;
 		this.platform = format === "mp4" ? (platform ?? null) : null;
+		// Platform uploads are H.264 at the platform's bitrate.
+		this.videoCodec = this.platform ? "h264" : resolveVideoCodec({ format, codec: videoCodec });
+		this.videoBitrate = this.platform ? null : videoBitrate && videoBitrate > 0 ? videoBitrate : null;
+		this.hardware = !this.platform && !!hardware;
 		this.shouldIncludeAudio = shouldIncludeAudio ?? false;
 		this.audioBuffer = audioBuffer;
 	}
@@ -111,8 +126,25 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			target: new BufferTarget(),
 		});
 
+		const codec = mediabunnyCodec(this.videoCodec);
+		const hardwareAcceleration = this.hardware ? ("prefer-hardware" as const) : ("no-preference" as const);
+		const bitrate = this.videoBitrate ?? qualityMap[this.quality];
+		if (
+			!platform &&
+			!(await canEncodeVideo(codec, {
+				width: this.renderer.width,
+				height: this.renderer.height,
+				bitrate,
+				hardwareAcceleration,
+			}).catch(() => false))
+		) {
+			throw new Error(
+				`This browser cannot encode ${CODEC_LABELS[this.videoCodec]} at ${this.renderer.width}×${this.renderer.height}. Choose another codec, or export from the desktop app.`,
+			);
+		}
+
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
-			codec: this.format === "webm" ? "vp9" : "avc",
+			codec,
 			...(platform
 				? {
 						quality: new Quality({ bitrate: platform.videoBitrate }),
@@ -127,7 +159,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 							? { fullCodecString: platform.codec }
 							: {}),
 					}
-				: { bitrate: qualityMap[this.quality] }),
+				: { bitrate, hardwareAcceleration }),
 		});
 
 		output.addVideoTrack(videoSource, { frameRate: fpsFloat });

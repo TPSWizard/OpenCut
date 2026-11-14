@@ -218,6 +218,17 @@ export function createOpenCutMcpServer({
 					.describe(
 						"Platform preset id (youtube, youtube-shorts, tiktok, instagram-reels, linkedin, x): MP4 with the platform's H.264 settings; run opencut_call export.check first",
 					),
+				codec: z
+					.enum(["h264", "hevc", "av1", "vp9"])
+					.optional()
+					.describe("Video codec: mp4 takes h264 (default), hevc, av1; webm takes vp9 (default), av1. opencut_call export.codecs says what the browser can encode"),
+				videoBitrate: z
+					.number()
+					.min(200_000)
+					.max(400_000_000)
+					.optional()
+					.describe("Target video bitrate in bits per second; replaces quality for the picture"),
+				hardware: z.boolean().optional().describe("Prefer a hardware encoder"),
 			},
 		},
 		async (params) => {
@@ -301,7 +312,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - playback.getState / playback.play / playback.pause / playback.seek { time }
 - selection.get / selection.set { elements } / selection.clear
 - history.undo / history.redo / history.state
-- export.render { format?, quality?, includeAudio?, fps?, fileName?, preset? } → bytes (in-page only)
+- export.render { format?, quality?, includeAudio?, fps?, fileName?, preset?, codec?: h264|hevc|av1|vp9, videoBitrate? (bits/s), hardware? } → bytes (in-page only)
 - export.download { same } → triggers a file download (used by the headless runner)
 - fonts.list { query?, limit? } → [{ id, family, category, license, weights, styles, variable }] (Fontsource, open licences)
 - fonts.load { family } → { family, license, faces }
@@ -335,6 +346,7 @@ Times are seconds. Elements are addressed by { elementId, trackId? }.
 - audio.clearDucking { element } → ApiElementInfo
 - audio.detectSilence { element, thresholdDb?, minSilenceSeconds?, paddingSeconds? } → { intervals, removedSeconds, clipStart, clipDuration }
 - audio.cutSilence { element, ripple? ("all" | "track" | "none"), thresholdDb?, minSilenceSeconds?, paddingSeconds? } → { intervals, removedSeconds, clipStart, clipDuration, pieces } (one undo step; closes the gaps)
+- export.codecs { format?: mp4|webm, hardware? } → { format, default, codecs: [{ id, label, encodable }] }
 - export.presets {} → [{ id, label, canvas, fps, maxDurationSeconds, maxFileBytes, safeArea, verified, source, encode }]
 - export.check { preset, includeAudio? } → { preset, issues: [{ kind, severity, message, fix? }], estimatedBytes }
 
