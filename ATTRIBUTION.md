@@ -325,6 +325,16 @@ this repository. Templates you save stay in your browser or in
 - The test clips in `crates/media/tests/motion.rs` are made at test time
   from FFmpeg's built-in `testsrc2`, `color` and `sine` sources.
 
+## Script to B-roll (added 2026-11-15)
+
+- The shot planner (`crates/editor/src/broll.rs`, `apps/web/src/broll/plan.ts`)
+  is own code; the pattern of script, shot list, then stock search follows
+  ShortGPT and MoneyPrinter (MIT), whose code is not used.
+- Optional search words come from Claude through the API worker with the
+  official `@anthropic-ai/sdk` (MIT). Pictures and videos are ordinary stock
+  results (Openverse, Pixabay) and carry their credits as other stock does.
+- `fixtures/broll/cases.json` is written for the tests here.
+
 ## AI upscaling (Real-ESRGAN, added 2026-11-15)
 
 - `scripts/get-realesrgan.sh` downloads, at the user's request,

@@ -1,0 +1,33 @@
+{
+  "about": "Script to B-roll: the same shot lists from crates/editor/src/broll.rs and apps/web/src/broll/plan.ts. Queries keep a line's three longest uncommon words in order; shots follow the voice-over's lines and pauses, timed at the given words a second (at least 1.5 s).",
+  "queries": [
+    { "text": "Welcome back to the channel!", "query": "welcome channel" },
+    { "text": "Today we cook rice.", "query": "cook rice" },
+    { "text": "First, wash the rice three times...", "query": "wash three times" },
+    { "text": "The city's skyline glows at night.", "query": "skyline glows night" },
+    { "text": "Mount Everest-like peaks, rock-solid!", "query": "mount everest-like rock-solid" },
+    { "text": "It is what it is.", "query": "It is what it is." },
+    { "text": "我们今天在东京的鱼市场买金枪鱼。", "query": "我们今天在东京的鱼市场买金枪鱼" }
+  ],
+  "plans": [
+    {
+      "script": "Welcome back to the channel!  Today we cook rice.\n\nFirst, wash the rice three times.",
+      "wordsPerSecond": 2.5,
+      "shots": [
+        { "text": "Welcome back to the channel!", "query": "welcome channel", "start": 0, "duration": 2 },
+        { "text": "Today we cook rice.", "query": "cook rice", "start": 2.25, "duration": 1.6 },
+        { "text": "First, wash the rice three times.", "query": "wash three times", "start": 4.45, "duration": 2.4 }
+      ]
+    },
+    {
+      "script": "Go.",
+      "wordsPerSecond": 2,
+      "shots": [{ "text": "Go.", "query": "Go.", "start": 0, "duration": 1.5 }]
+    },
+    {
+      "script": "我们今天在东京的鱼市场买金枪鱼。",
+      "wordsPerSecond": 2.5,
+      "shots": [{ "text": "我们今天在东京的鱼市场买金枪鱼。", "query": "我们今天在东京的鱼市场买金枪鱼", "start": 0, "duration": 2.133 }]
+    }
+  ]
+}

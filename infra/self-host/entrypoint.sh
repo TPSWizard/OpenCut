@@ -9,7 +9,7 @@ cd /app/infra/self-host
 vars=api/.dev.vars
 : > "$vars"
 chmod 600 "$vars"
-for name in SHARE_UPLOAD_KEY FREESOUND_API_KEY PIXABAY_API_KEY CORS_ORIGIN; do
+for name in SHARE_UPLOAD_KEY FREESOUND_API_KEY PIXABAY_API_KEY ANTHROPIC_API_KEY CORS_ORIGIN; do
   eval "value=\${$name:-}"
   if [ -n "$value" ]; then
     # .dev.vars is dotenv, which has no escapes: quote with whichever quote

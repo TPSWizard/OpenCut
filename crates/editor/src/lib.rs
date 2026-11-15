@@ -12,6 +12,7 @@ mod animation;
 mod assets;
 mod audio;
 mod beats;
+mod broll;
 mod bundle;
 mod captions;
 mod commands;
@@ -49,6 +50,7 @@ pub use animation::{
 };
 pub use audio::{AudioClipPlan, plan_audio};
 pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
+pub use broll::{MIN_SHOT_SECONDS, Shot, WORDS_PER_SECOND, plan_shots, query_for, shot_seconds};
 pub use open_link::bundle_url_from_link;
 pub use assets::{AssetEntry, AssetLookups, BrandInfo, IconSetInfo, MediaOrigin, ASSET_MANIFEST_ENTRY, ASSET_MANIFEST_FORMAT, SYSTEM_FONTS, asset_manifest, fontsource_slug, license_requires_credit, manifest_credits_text};
 pub use bundle::{BUNDLE_FORMAT, BUNDLE_FORMAT_VERSION, ImportReport, WEB_PROJECT_VERSION, export_bundle, export_bundle_with, import_bundle, import_bundle_as_new, project_asset_manifest};

@@ -15,6 +15,8 @@ import { isTranscriptionModelId } from "@/transcription/models";
 import type { TranscriptionLanguage } from "@/transcription/types";
 import type { EditorCore } from "@/core";
 import { processMediaAssets } from "@/media/processing";
+import { planShots } from "@/broll/plan";
+import { assembleBroll, improveQueries } from "@/broll/assemble";
 import { PROJECT_BUNDLE_EXTENSION } from "@/project/bundle";
 import type { MediaAsset } from "@/media/types";
 import { floatToFrameRate, frameRateToFloat } from "@/fps/utils";
@@ -1725,6 +1727,53 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Search failed" });
 			}
+		},
+		"broll.plan": async ({ script, wordsPerSecond, claude, passcode }) => {
+			if (typeof script !== "string" || !script.trim()) {
+				throw new EditorApiError({ code: "invalid_params", message: "script must be non-empty text" });
+			}
+			if (wordsPerSecond !== undefined && !(typeof wordsPerSecond === "number" && wordsPerSecond > 0 && wordsPerSecond <= 10)) {
+				throw new EditorApiError({ code: "invalid_params", message: "wordsPerSecond must be a number from 0 to 10" });
+			}
+			const shots = planShots({ script, wordsPerSecond });
+			if (!claude) return { shots };
+			try {
+				return await improveQueries({ shots, passcode: passcode ?? rememberedPasscode() });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Claude search words failed" });
+			}
+		},
+		"broll.assemble": async ({ shots, provider, kind, at }) => {
+			requireProject();
+			const valid =
+				Array.isArray(shots) &&
+				shots.length > 0 &&
+				shots.length <= 200 &&
+				shots.every(
+					(shot) =>
+						shot &&
+						typeof shot.query === "string" &&
+						shot.query.trim().length > 0 &&
+						typeof shot.text === "string" &&
+						Number.isFinite(shot.start) &&
+						shot.start >= 0 &&
+						Number.isFinite(shot.duration) &&
+						shot.duration > 0,
+				);
+			if (!valid) {
+				throw new EditorApiError({ code: "invalid_params", message: "shots must be 1 to 200 shots from broll.plan" });
+			}
+			if (provider !== undefined && provider !== "openverse" && provider !== "pixabay") {
+				throw new EditorApiError({ code: "invalid_params", message: "provider must be openverse or pixabay" });
+			}
+			if (kind !== undefined && kind !== "image" && kind !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "kind must be image or video" });
+			}
+			if (at !== undefined && !(Number.isFinite(at) && at >= 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be seconds from 0" });
+			}
+			const results = await assembleBroll({ editor, shots, provider: provider ?? "openverse", kind: kind ?? "image", at });
+			return { results };
 		},
 		"stock.import": async ({ item, addToTimeline }) => {
 			requireProject();

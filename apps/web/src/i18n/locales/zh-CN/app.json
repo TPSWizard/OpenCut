@@ -257,5 +257,19 @@
   "Lottie": "Lottie",
   "That file is not a Lottie animation": "该文件不是 Lottie 动画",
   "Animated stickers from your own Lottie files": "使用你自己的 Lottie 文件制作动态贴纸",
-  "Add Lottie file": "添加 Lottie 文件"
+  "Add Lottie file": "添加 Lottie 文件",
+  "Write or paste a script first.": "请先写入或粘贴脚本。",
+  "Asking Claude for search words…": "正在向 Claude 获取搜索词…",
+  "Claude's search words are not available": "无法使用 Claude 的搜索词",
+  "The editor's own search words are used.": "改用编辑器自己的搜索词。",
+  "Finding pictures…": "正在查找图片…",
+  "{count} B-roll clips added": "已添加 {count} 个空镜片段",
+  "{count} shots found nothing": "{count} 个镜头没有找到结果",
+  "B-roll from a script": "根据脚本生成空镜",
+  "One shot per sentence, timed for reading aloud; each gets the first search result.": "每句话一个镜头，按朗读速度计时；每个镜头使用第一个搜索结果。",
+  "Paste the script here": "在此粘贴脚本",
+  "Better search words from Claude (uses the server's key and passcode)": "用 Claude 生成更好的搜索词（使用服务器的密钥和口令）",
+  "Server passcode": "服务器口令",
+  "Plan shots": "规划镜头",
+  "Add B-roll at the playhead": "在播放头处添加空镜"
 }

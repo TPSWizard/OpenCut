@@ -148,6 +148,14 @@ pub enum Command {
     AddTrack {
         kind: TrackKind,
     },
+    /// Makes a track of `kind` called `name` and puts `elements` on it (in
+    /// their own times; they must not overlap), such as B-roll laid out
+    /// from a script.
+    InsertOnNewTrack {
+        kind: TrackKind,
+        name: String,
+        elements: Vec<Element>,
+    },
     RemoveTrack {
         track_id: String,
     },
@@ -828,6 +836,34 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             project.tracks[track_index].sort_elements();
             Outcome::Elements(vec![reference])
+        }
+        Command::InsertOnNewTrack { kind, name, elements } => {
+            let mut track = new_track(project, *kind);
+            if !name.trim().is_empty() {
+                track.name = name.trim().to_owned();
+            }
+            for element in elements {
+                validate_element(project, element)?;
+                if !track.accepts(&element.kind) {
+                    return Err(EditorError::TrackKindMismatch {
+                        element: element.kind.label().to_owned(),
+                        track: track.kind.label().to_owned(),
+                    });
+                }
+                if !track.is_free(element.start_time, element.end_time(), None) {
+                    return Err(EditorError::Overlap);
+                }
+                track.elements.push(element.clone());
+                track.sort_elements();
+            }
+            let references = track
+                .elements
+                .iter()
+                .map(|element| ElementRef { track_id: track.id.clone(), element_id: element.id.clone() })
+                .collect();
+            let index = insertion_index(project, *kind);
+            project.tracks.insert(index, track);
+            Outcome::Elements(references)
         }
         Command::AddTrack { kind } => {
             let track = new_track(project, *kind);
@@ -2135,6 +2171,33 @@ mod tests {
         assert_eq!(clip.source_duration, MediaTime::from_seconds_f64(4.0));
         assert_eq!(clip.duration, MediaTime::from_seconds_f64(4.0).unwrap(), "the clip keeps its length");
         assert_eq!(clip.source_time(MediaTime::from_seconds_f64(1.0).unwrap()), MediaTime::from_seconds_f64(1.0).unwrap());
+    }
+
+    #[test]
+    fn clips_go_on_a_new_named_track_in_one_step() {
+        let mut project = Project::new("New track");
+        let mut first = Element::text("one", MediaTime::from_seconds_f64(5.0).unwrap());
+        first.duration = MediaTime::from_seconds_f64(3.0).unwrap();
+        let mut second = Element::text("two", MediaTime::from_seconds_f64(9.0).unwrap());
+        second.duration = MediaTime::from_seconds_f64(2.0).unwrap();
+        let tracks_before = project.tracks.len();
+        let outcome = apply(
+            &mut project,
+            &Command::InsertOnNewTrack { kind: TrackKind::Text, name: "B-roll".into(), elements: vec![first, second] },
+        )
+        .unwrap();
+        assert_eq!(project.tracks.len(), tracks_before + 1);
+        assert_eq!(outcome.element_refs().len(), 2);
+        let track = project.tracks.iter().find(|track| track.name == "B-roll").unwrap();
+        let starts: Vec<f64> = track.elements.iter().map(|element| element.start_time.to_seconds_f64()).collect();
+        assert_eq!(starts, vec![5.0, 9.0], "times kept, not pulled to the start");
+        let main = project.main_track_index();
+        assert!(project.tracks[main].elements.is_empty());
+        let clash = vec![Element::text("a", MediaTime::ZERO), Element::text("b", MediaTime::from_seconds_f64(1.0).unwrap())];
+        assert!(matches!(
+            apply(&mut project, &Command::InsertOnNewTrack { kind: TrackKind::Text, name: String::new(), elements: clash }),
+            Err(EditorError::Overlap)
+        ));
     }
 
     #[test]

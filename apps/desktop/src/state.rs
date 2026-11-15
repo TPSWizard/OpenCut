@@ -1024,6 +1024,122 @@ impl EditorState {
         self.set_status(t("Path copied"), cx);
     }
 
+    /// Script to B-roll: one shot per line of `script` (timed for reading,
+    /// shared with the web app), Claude's search words when `claude` and the
+    /// passcode are set, the first stock result for each shot downloaded,
+    /// and all of them placed from the playhead on a new "B-roll" track
+    /// with their credits, in one undo step.
+    pub(crate) fn broll_from_script(
+        &mut self,
+        script: String,
+        claude: bool,
+        provider: &'static str,
+        kind: &'static str,
+        cx: &mut Context<Self>,
+    ) {
+        let shots = editor::plan_shots(&script, editor::WORDS_PER_SECOND);
+        if shots.is_empty() {
+            self.set_status(t("Type a script first."), cx);
+            return;
+        }
+        let passcode = crate::share::passcode();
+        if claude && passcode.is_none() {
+            self.set_status(t("Claude search words need the server passcode: set shareKey in ~/.opencut/settings.json."), cx);
+            return;
+        }
+        let ffmpeg = self.ffmpeg.clone();
+        let dir = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("stock"))
+            .unwrap_or_else(|| std::path::PathBuf::from("stock"));
+        let start = self.playhead();
+        self.set_status(tf("Finding B-roll for {count} shots…", &[("count", &shots.len())]), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let mut shots = shots;
+                    let mut note = None;
+                    if let (true, Some(passcode)) = (claude, passcode) {
+                        match crate::broll::claude_queries(&shots, &passcode) {
+                            Ok(queries) => {
+                                for (shot, query) in shots.iter_mut().zip(queries) {
+                                    shot.query = query;
+                                }
+                            }
+                            Err(error) => note = Some(error),
+                        }
+                    }
+                    let found = crate::broll::fetch(&shots, provider, kind, &dir);
+                    let placed: Vec<(editor::Shot, Result<(editor::StockItem, editor::MediaItem), String>)> = shots
+                        .into_iter()
+                        .zip(found)
+                        .map(|(shot, found)| {
+                            let media = match found {
+                                crate::broll::Found::File(item, path) => {
+                                    probe_media(ffmpeg.as_deref(), path).map(|media| (item, media))
+                                }
+                                crate::broll::Found::Problem(problem) => Err(problem),
+                            };
+                            (shot, media)
+                        })
+                        .collect();
+                    (placed, note)
+                })
+                .await;
+            this.update(cx, |state, cx| {
+                let (placed, note) = produced;
+                let mut commands = Vec::new();
+                let mut elements = Vec::new();
+                let mut problems = Vec::new();
+                for (shot, result) in placed {
+                    match result {
+                        Ok((item, mut media)) => {
+                            media.name = format!("{} ({})", item.title, item.provider);
+                            let at = start + MediaTime::from_seconds_f64(shot.start).unwrap_or(MediaTime::ZERO);
+                            let mut element = editor::Element::from_media(&media, at);
+                            let wanted = MediaTime::from_seconds_f64(shot.duration).unwrap_or(element.duration);
+                            // A video shorter than its shot is used whole.
+                            element.duration = match media.duration {
+                                Some(length) if media.kind == MediaKind::Video => wanted.min(length),
+                                _ => wanted,
+                            };
+                            element.name = shot.query.clone();
+                            commands.push(Command::AddMedia(media.clone()));
+                            commands.push(Command::SetCredit { media_id: media.id.clone(), credit: Some(item.credit()) });
+                            elements.push(element);
+                            state.render.send(RenderRequest::Thumbnail { media });
+                        }
+                        Err(problem) => problems.push(format!("{}: {problem}", shot.query)),
+                    }
+                }
+                let count = elements.len();
+                if count > 0 {
+                    commands.push(Command::InsertOnNewTrack {
+                        kind: editor::TrackKind::Video,
+                        name: t("B-roll").to_owned(),
+                        elements,
+                    });
+                    if state.execute(Command::Batch(commands), cx).is_none() {
+                        return;
+                    }
+                }
+                let mut message = tf("{count} B-roll clips added.", &[("count", &count)]);
+                if !problems.is_empty() {
+                    message.push(' ');
+                    message.push_str(&tf("Nothing for: {shots}", &[("shots", &problems.join("; "))]));
+                }
+                if let Some(note) = note {
+                    message.push(' ');
+                    message.push_str(&note);
+                }
+                state.set_status(message, cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Downloads a stock result into `~/.opencut/stock/`, adds it with its
     /// credit, and puts it at the playhead; one undo step.
     pub(crate) fn import_stock(&mut self, item: editor::StockItem, cx: &mut Context<Self>) {

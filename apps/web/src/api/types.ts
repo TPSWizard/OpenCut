@@ -275,6 +275,14 @@ export interface ApiPlaybackState {
 
 export type ApiExportFormat = "mp4" | "webm";
 export type ApiExportQuality = "low" | "medium" | "high" | "very_high";
+/** A B-roll shot: the script line, its search query, and when it plays (seconds from the B-roll's start). */
+export interface ApiShot {
+	text: string;
+	query: string;
+	start: number;
+	duration: number;
+}
+
 export type ApiVideoCodec = "h264" | "hevc" | "av1" | "vp9";
 
 export interface ApiExportCodecs {
@@ -681,6 +689,26 @@ export interface EditorApiMethods {
 	"stock.import": { params: { item: ApiStockItem; addToTimeline?: boolean }; result: { mediaId: string; name: string } };
 	/** The credit lines of everything in the project that has one (stock media, sounds, stickers), one per line. */
 	"stock.credits": { params: Record<string, never>; result: { text: string } };
+	/**
+	 * Script to B-roll, step 1: one shot per line of the script (the
+	 * voice-over's lines), timed at `wordsPerSecond` (default 2.5, at least
+	 * 1.5 s a shot) with the editor's own search words. With `claude: true`
+	 * the API worker asks Claude for better words for the same lines (needs
+	 * the server's ANTHROPIC_API_KEY and the passcode).
+	 */
+	"broll.plan": {
+		params: { script: string; wordsPerSecond?: number; claude?: boolean; passcode?: string };
+		result: { shots: ApiShot[]; model?: string };
+	};
+	/**
+	 * Script to B-roll, step 2: for each shot, the first stock result for
+	 * its query, imported with its credit and placed at `at` (seconds,
+	 * default the playhead) + the shot's start, in one undo step.
+	 */
+	"broll.assemble": {
+		params: { shots: ApiShot[]; provider?: "openverse" | "pixabay"; kind?: "image" | "video"; at?: number };
+		result: { results: Array<{ shot: ApiShot; placed?: string; problem?: string }> };
+	};
 	/**
 	 * The project's asset manifest, as a bundle's `assets.json` would hold
 	 * it: every media file, library sound, sticker and font with its origin,

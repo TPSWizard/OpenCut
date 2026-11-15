@@ -292,6 +292,21 @@ with the same settings is reused. Both live in `crates/media/src/motion.rs`.
 
 The whole source file is processed, not only the part on the timeline.
 
+## B-roll from a script
+
+**B-roll for this script** in the media panel's voice-over section lays out
+one stock picture per line of the script from the playhead, on a new
+"B-roll" track with each picture's credit, in one undo step. The shot list
+is `editor::plan_shots` (`crates/editor/src/broll.rs`), the same planner as
+the web editor's Stock tab (`fixtures/broll/cases.json`): the voice-over's
+lines and pauses, timed at 2.5 words a second (at least 1.5 s), each with
+the line's three longest uncommon words as the search query. The source is
+the Stock tab's choice (Openverse pictures, or Pixabay pictures or videos
+when the server has a key). **Claude search words: on** asks the API worker
+to have Claude choose the words instead (`POST /broll/plan`); it needs the
+server's `ANTHROPIC_API_KEY` and the sharing passcode (`shareKey`), and the
+timings stay the same.
+
 ## AI upscaling
 
 The **AI upscale** section (video and image clips) runs Real-ESRGAN's

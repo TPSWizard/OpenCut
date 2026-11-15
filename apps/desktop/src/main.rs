@@ -12,6 +12,7 @@ mod open_link;
 mod assets;
 mod audio;
 mod beats;
+mod broll;
 mod ducking;
 mod fonts;
 mod components;

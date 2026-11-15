@@ -25,6 +25,11 @@
   //   wrangler secret put SHARE_UPLOAD_KEY
   "r2_buckets": [{ "binding": "SHARES", "bucket_name": "conzacut-shares" }],
 
+  // Claude's search words for script-to-B-roll (POST /broll/plan; Claude
+  // Opus 5.5 at low effort, with server-side refusal fallbacks). Spends the
+  // owner's credit, so it also needs the sharing passcode:
+  //   wrangler secret put ANTHROPIC_API_KEY
+
   // Restrict CORS to the deployed web app by setting CORS_ORIGIN to its origin.
   "vars": {
     "CORS_ORIGIN": "https://conzacut.conzahub.com"

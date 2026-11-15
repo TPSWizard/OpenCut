@@ -31,6 +31,8 @@ pub(crate) struct MediaPanel {
     stock_note: Option<String>,
     stock_busy: bool,
     voice_script: String,
+    /// Ask the server for Claude's B-roll search words.
+    broll_claude: bool,
     voice_input: Option<Entity<TextInput>>,
     /// The computer's voices, once listed (`None` while loading).
     voices: Option<Vec<String>>,
@@ -69,6 +71,7 @@ impl MediaPanel {
             stock_note: None,
             stock_busy: false,
             voice_script: String::new(),
+            broll_claude: false,
             voice_input: None,
             voices: None,
             voice: 0,
@@ -406,6 +409,47 @@ impl MediaPanel {
                 .text_xs()
                 .text_color(colors.muted_foreground)
                 .child(t("Uses this computer's own voices. The web editor speaks with Kokoro's natural voices instead."))
+                .into_any_element(),
+        );
+        // B-roll for the same script: one picture per line from the stock
+        // search, timed for reading, on a new track from the playhead.
+        let state = self.state.clone();
+        let script = self.voice_script.clone();
+        let claude = self.broll_claude;
+        let (provider, kind) = (self.stock_provider, self.stock_kind);
+        rows.push(
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(4.))
+                .p(px(4.))
+                .child(
+                    Button::new("broll-add", t("B-roll for this script"))
+                        .size(ButtonSize::Small)
+                        .disabled(lines == 0)
+                        .on_click(move |_, _, cx| {
+                            let script = script.clone();
+                            state.update(cx, |state, cx| state.broll_from_script(script, claude, provider, kind, cx));
+                        }),
+                )
+                .child(
+                    Button::new("broll-claude", if claude { t("Claude search words: on") } else { t("Claude search words: off") })
+                        .variant(if claude { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::XSmall)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.broll_claude = !claude;
+                            cx.notify();
+                        })),
+                )
+                .into_any_element(),
+        );
+        rows.push(
+            div()
+                .px(px(4.))
+                .text_xs()
+                .text_color(colors.muted_foreground)
+                .child(t("B-roll takes the first result for each line from the Stock tab's source (Openverse pictures unless you chose Pixabay). Claude's words use the server's key and the sharing passcode."))
                 .into_any_element(),
         );
         rows

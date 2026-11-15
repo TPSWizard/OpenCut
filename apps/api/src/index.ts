@@ -13,6 +13,7 @@ import {
 	type PixabayVideoHit,
 } from "./stock";
 import { handleShare, type ShareEnv } from "./share";
+import { handleBroll, type BrollEnv } from "./broll";
 
 /**
  * Bindings and variables the worker can use. Every one of them is optional:
@@ -30,7 +31,8 @@ type Env = {
 	RATE_LIMITER?: RateLimit;
 	/** Allowed browser origin for CORS; defaults to any origin. */
 	CORS_ORIGIN?: string;
-} & ShareEnv;
+} & ShareEnv &
+	BrollEnv;
 
 const bindings = env as Env;
 
@@ -424,6 +426,9 @@ export default {
 		const { pathname } = new URL(request.url);
 		if (request.method !== "OPTIONS" && (pathname === "/share" || pathname.startsWith("/share/"))) {
 			return handleShare(request, bindings, corsHeaders(request));
+		}
+		if (request.method !== "OPTIONS" && pathname.startsWith("/broll/")) {
+			return handleBroll(request, bindings, corsHeaders(request));
 		}
 		return app.fetch(request);
 	},

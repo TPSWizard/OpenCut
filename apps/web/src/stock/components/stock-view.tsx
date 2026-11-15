@@ -10,6 +10,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useT } from "@/i18n";
 import { cn } from "@/utils/ui";
 import { copyProjectCredits } from "@/project/components/copy-credits";
+import { BrollSection } from "@/broll/components/broll-section";
 import {
 	StockUnavailableError,
 	importStockItem,
@@ -184,6 +185,7 @@ export function StockView() {
 						{provider === "openverse" ? t("Results from Openverse (openverse.org).") : t("Results from Pixabay (pixabay.com).")}
 					</p>
 				)}
+				<BrollSection provider={provider} kind={kind} />
 			</div>
 		</PanelView>
 	);

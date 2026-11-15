@@ -654,5 +654,15 @@
   "AI upscale": "AI 放大",
   "Real-ESRGAN on the GPU, up to 3840 px. Fast suits animation, screen recordings and most video; Photo is sharper on real footage but takes seconds a frame. A video clip has only the part it plays upscaled.": "在 GPU 上运行 Real-ESRGAN，最大 3840 像素。“快速”适合动画、录屏和大多数视频；“照片”对实拍画面更清晰，但每帧需要数秒。视频片段只放大实际播放的部分。",
   "Real-ESRGAN is not installed; run scripts/get-realesrgan.sh, then restart.": "未安装 Real-ESRGAN；请运行 scripts/get-realesrgan.sh，然后重启。",
-  "Upscale clip": "放大片段"
+  "Upscale clip": "放大片段",
+  "Claude search words need the server passcode: set shareKey in ~/.opencut/settings.json.": "Claude 搜索词需要服务器口令：请在 ~/.opencut/settings.json 中设置 shareKey。",
+  "Finding B-roll for {count} shots…": "正在为 {count} 个镜头查找空镜…",
+  "B-roll": "空镜",
+  "{count} B-roll clips added.": "已添加 {count} 个空镜片段。",
+  "Nothing for: {shots}": "没有结果：{shots}",
+  "B-roll for this script": "为此脚本生成空镜",
+  "Claude search words: on": "Claude 搜索词：开",
+  "Claude search words: off": "Claude 搜索词：关",
+  "B-roll takes the first result for each line from the Stock tab's source (Openverse pictures unless you chose Pixabay). Claude's words use the server's key and the sharing passcode.": "空镜为每行使用“素材”标签所选来源的第一个结果（默认 Openverse 图片，除非你选择了 Pixabay）。Claude 搜索词使用服务器的密钥和分享口令。",
+  "No results": "没有结果"
 }
