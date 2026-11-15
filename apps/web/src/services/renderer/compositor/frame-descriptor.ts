@@ -210,7 +210,7 @@ async function collectNode({
 			transform: fullCanvasTransform(renderer),
 			opacity: 1,
 			blendMode: "normal",
-			effectPassGroups: [passes],
+			effectPassGroups: passes.length > 0 ? [passes] : [],
 			mask: null,
 		});
 		return;

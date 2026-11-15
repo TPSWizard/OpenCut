@@ -111,7 +111,7 @@ async function resolveNode({
 	);
 }
 
-function resolveEffectPassGroups({
+export function resolveEffectPassGroups({
 	effects,
 	animations,
 	localTime,
@@ -141,7 +141,9 @@ function resolveEffectPassGroups({
 				height,
 				timeSeconds: localTime / TICKS_PER_SECOND,
 			});
-		});
+		})
+		// An effect at a strength that does nothing (a blur at 0) has no passes; leave it out.
+		.filter((passes) => passes.length > 0);
 }
 
 /**

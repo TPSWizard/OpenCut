@@ -583,7 +583,9 @@ impl Compositor {
         effect_pass_groups: &[Vec<EffectPassDescriptor>],
     ) -> Result<wgpu::Texture, CompositorError> {
         let mut current = self.copy_texture(context, encoder, source, width, height);
-        for group in effect_pass_groups {
+        // An effect at a strength that does nothing (a blur at 0) has no
+        // passes; it is skipped rather than failing the frame.
+        for group in effect_pass_groups.iter().filter(|group| !group.is_empty()) {
             let passes = map_effect_passes(group);
             current = self.effects.apply_with_encoder(
                 context,

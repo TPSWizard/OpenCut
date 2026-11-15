@@ -139,6 +139,8 @@ class EffectPreviewService {
 		height: number;
 		passes: ReturnType<typeof resolveEffectPasses>;
 	}): OffscreenCanvas {
+		// A strength that does nothing (a blur at 0) has no passes: the picture as it is.
+		if (passes.length === 0) return source;
 		return gpuRenderer.applyEffect({
 			source,
 			width,
