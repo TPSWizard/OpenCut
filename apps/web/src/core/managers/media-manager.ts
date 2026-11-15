@@ -192,7 +192,8 @@ export class MediaManager {
 		const [processed] = await processMediaAssets({ files: [file] });
 		if (!processed) throw new Error(`${file.name} could not be read`);
 		if (processed.type !== current.type) {
-			const kind = (type: string) => (type === "image" ? "an image" : type === "audio" ? "an audio file" : "a video");
+			const kind = (type: string) =>
+				type === "image" ? "an image" : type === "audio" ? "an audio file" : type === "lottie" ? "a Lottie animation" : "a video";
 			throw new Error(`${file.name} is ${kind(processed.type)}; ${current.name} was ${kind(current.type)}`);
 		}
 		const asset: MediaAsset = { ...processed, id: mediaId };

@@ -10,6 +10,7 @@ members = [
   'crates/editor',
   'crates/effects',
   'crates/gpu',
+  'crates/lottie',
   'crates/masks',
   'crates/media',
   'crates/render',
@@ -29,6 +30,7 @@ compositor = { path = "crates/compositor" }
 editor = { path = "crates/editor" }
 effects = { path = "crates/effects" }
 gpu = { path = "crates/gpu" }
+lottie = { path = "crates/lottie" }
 masks = { path = "crates/masks" }
 media = { path = "crates/media" }
 render = { path = "crates/render" }

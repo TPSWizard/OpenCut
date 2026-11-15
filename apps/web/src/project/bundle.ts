@@ -62,6 +62,8 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 	".webp": "image/webp",
 	".bmp": "image/bmp",
 	".svg": "image/svg+xml",
+	".json": "application/json",
+	".lottie": "application/zip",
 };
 
 function extensionOf({ name }: { name: string }): string {
@@ -423,7 +425,7 @@ export async function readProjectBundle({
 			typeof item.id !== "string" ||
 			typeof item.name !== "string" ||
 			typeof item.file !== "string" ||
-			(item.type !== "video" && item.type !== "image" && item.type !== "audio")
+			(item.type !== "video" && item.type !== "image" && item.type !== "audio" && item.type !== "lottie")
 		) {
 			throw new ProjectBundleError(
 				"A media entry in the bundle is incomplete (id, name, type and file are required)",

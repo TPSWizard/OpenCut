@@ -3,6 +3,7 @@ import type { MediaAsset } from "@/media/types";
 import { RootNode } from "./nodes/root-node";
 import { VideoNode, type VideoNodeParams } from "./nodes/video-node";
 import { ImageNode } from "./nodes/image-node";
+import { LottieNode } from "./nodes/lottie-node";
 import { TextNode } from "./nodes/text-node";
 import { StickerNode } from "./nodes/sticker-node";
 import { GraphicNode } from "./nodes/graphic-node";
@@ -28,6 +29,8 @@ import {
 } from "@/rendering";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
+/** Lottie frames are drawn on the CPU every frame, so the preview keeps them smaller. */
+const PREVIEW_MAX_LOTTIE_SIZE = 1024;
 
 function getVisibleSortedElements({ track }: { track: TimelineTrack }) {
 	return track.elements
@@ -96,6 +99,24 @@ function buildElementNode({
 				effects: element.effects ?? [],
 				masks: element.masks ?? [],
 				cutout: cutoutParams({ cutout: element.cutout, mediaMap }),
+				...extra,
+			});
+		}
+		if (element.type === "image" && mediaAsset.type === "lottie") {
+			return new LottieNode({
+				mediaId: mediaAsset.id,
+				file: mediaAsset.file,
+				duration: element.duration,
+				timeOffset: element.startTime,
+				trimStart: element.trimStart,
+				trimEnd: element.trimEnd,
+				transform: buildTransformFromParams({ params: element.params }),
+				animations: element.animations,
+				opacity: readOpacityFromParams({ params: element.params }),
+				blendMode: readBlendModeFromParams({ params: element.params }),
+				effects: element.effects ?? [],
+				masks: element.masks ?? [],
+				...(isPreview && { maxRasterSize: PREVIEW_MAX_LOTTIE_SIZE }),
 				...extra,
 			});
 		}

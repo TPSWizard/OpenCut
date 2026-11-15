@@ -119,6 +119,14 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   is shown, sized by the intrinsic size the web app stored. Bundle import
   keeps sticker elements, including those on graphic tracks (which land on
   the video lane); shapes and other graphics stay web-only and are reported.
+- **Lottie animations** (`.json` or dotLottie `.lottie` files) import like
+  other media and go on the timeline as image clips one animation long; a
+  longer clip loops. Frames are drawn on the CPU by `crates/lottie` (velato
+  and vello_cpu), the same code the web editor runs through `opencut-wasm`,
+  at the size they are shown (256 to 2048 px on the longer side, in 64 px
+  steps). Text layers, embedded images, time remapping, dashes and layer
+  effects are not drawn; files over 32 MB or outside the other limits are
+  refused with the reason.
 - **Waveforms** on audio and video clips in the timeline: peaks are read
   through FFmpeg (8 kHz mono, one peak per 20 ms) on the render thread the
   first time a clip is shown, drawn as bars scaled by the clip's gain, with

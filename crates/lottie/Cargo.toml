@@ -1,0 +1,16 @@
+[package]
+name = "lottie"
+description = "Lottie and dotLottie animations parsed, checked and rasterised on the CPU (velato + vello_cpu), for both editors"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+velato = { version = "0.12.0", default-features = false }
+vello_cpu = { version = "0.4.0", default-features = false, features = ["std", "u8_pipeline"] }
+zip = { version = "9.3.0", default-features = false, features = ["deflate"] }

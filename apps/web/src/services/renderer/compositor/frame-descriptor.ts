@@ -14,6 +14,7 @@ import {
 import { ImageNode } from "../nodes/image-node";
 import { RootNode } from "../nodes/root-node";
 import { StickerNode } from "../nodes/sticker-node";
+import { LottieNode } from "../nodes/lottie-node";
 import { renderTextToContext, TextNode } from "../nodes/text-node";
 import { VideoNode } from "../nodes/video-node";
 import { TransitionNode } from "../nodes/transition-node";
@@ -218,6 +219,7 @@ async function collectNode({
 	if (
 		node instanceof VideoNode ||
 		node instanceof ImageNode ||
+		node instanceof LottieNode ||
 		node instanceof StickerNode ||
 		node instanceof GraphicNode
 	) {
@@ -249,7 +251,7 @@ async function collectVisualSourceNode({
 	items,
 	textures,
 }: {
-	node: VideoNode | ImageNode | StickerNode | GraphicNode;
+	node: VideoNode | ImageNode | LottieNode | StickerNode | GraphicNode;
 	renderer: CanvasRenderer;
 	path: string;
 	items: FrameItemDescriptor[];
@@ -413,7 +415,7 @@ function buildMaskArtifacts({
 	transform,
 	textures,
 }: {
-	node: VideoNode | ImageNode | StickerNode | GraphicNode;
+	node: VideoNode | ImageNode | LottieNode | StickerNode | GraphicNode;
 	renderer: CanvasRenderer;
 	path: string;
 	transform: QuadTransformDescriptor;

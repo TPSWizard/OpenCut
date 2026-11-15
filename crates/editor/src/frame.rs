@@ -112,6 +112,9 @@ pub enum LayerSource {
     },
     Image {
         media_id: String,
+        /// Time within the source, which animated images (Lottie) use;
+        /// still images ignore it.
+        time: MediaTime,
     },
     Text(TextStyle),
     /// A sticker by id, with the intrinsic size the web app stored (SVG
@@ -382,6 +385,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                     },
                     ElementKind::Image { media_id } => LayerSource::Image {
                         media_id: media_id.clone(),
+                        time: element.source_time(time),
                     },
                     _ => continue,
                 };
@@ -483,6 +487,11 @@ fn layer_plan(
         },
         ElementKind::Image { media_id } => LayerSource::Image {
             media_id: media_id.clone(),
+            time: if extended {
+                element.source_time(time.clamp(element.start_time, element.end_time() - MediaTime::ONE_TICK))
+            } else {
+                element.source_time(time)
+            },
         },
         ElementKind::Sticker { sticker_id, intrinsic_width, intrinsic_height } => LayerSource::Sticker {
             sticker_id: sticker_id.clone(),
@@ -576,6 +585,38 @@ mod tests {
     }
 
     #[test]
+    fn lottie_clips_run_for_one_loop_and_plan_their_source_time() {
+        let mut project = Project::new("Lottie");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "anim".to_owned(),
+                name: "bounce.json".to_owned(),
+                kind: MediaKind::Lottie,
+                path: "bounce.json".into(),
+                duration: Some(seconds(2.0)),
+                width: Some(200),
+                height: Some(200),
+                fps: Some(30.0),
+                has_audio: false,
+            }),
+        )
+        .unwrap();
+        let mut clip = Element::from_media(project.media_item("anim").unwrap(), seconds(1.0));
+        assert!(matches!(&clip.kind, ElementKind::Image { media_id } if media_id == "anim"));
+        assert_eq!(clip.duration, seconds(2.0), "one run of the animation");
+        clip.trim_start = seconds(0.5);
+        apply(&mut project, &Command::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+        let plan = plan_frame(&project, seconds(1.25));
+        assert!(
+            matches!(&plan.layers()[0].source, LayerSource::Image { media_id, time } if media_id == "anim" && *time == seconds(0.75)),
+            "{:?}",
+            plan.layers()[0].source
+        );
+        assert!(project.media_item("anim").unwrap().is_visual());
+    }
+
+    #[test]
     fn blur_background_plans_main_track_backdrops() {
         let mut project = Project::new("Backdrop");
         apply(
@@ -626,11 +667,10 @@ mod tests {
         assert_eq!(plan.backdrops.len(), 1);
         assert_eq!(plan.backdrops[0].element_id, image_id);
         assert_eq!(plan.backdrops[0].blur_intensity, 200.0);
-        assert_eq!(
-            plan.backdrops[0].source,
-            LayerSource::Image {
-                media_id: "img".to_owned()
-            }
+        assert!(
+            matches!(&plan.backdrops[0].source, LayerSource::Image { media_id, .. } if media_id == "img"),
+            "{:?}",
+            plan.backdrops[0].source
         );
         assert_eq!(plan.layers().len(), 2, "the backdrop does not replace the layers");
 

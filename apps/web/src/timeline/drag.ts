@@ -1,3 +1,4 @@
+import type { MediaType } from "@/media/types";
 import type { MaskableElement, VisualElement } from "./types";
 import type { ParamValues } from "@/params";
 
@@ -8,7 +9,7 @@ interface BaseDragData {
 
 export interface MediaDragData extends BaseDragData {
 	type: "media";
-	mediaType: "image" | "video" | "audio";
+	mediaType: MediaType;
 	targetElementTypes?: MaskableElement["type"][];
 }
 

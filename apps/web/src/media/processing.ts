@@ -6,6 +6,7 @@ import type { MediaAsset } from "@/media/types";
 import { readVideoFile } from "./mediabunny";
 import type { VideoFileData } from "./mediabunny";
 import { renderThumbnailDataUrl } from "./thumbnail";
+import { drawLottieFrame, isLottieFile, loadLottie, lottieThumbnailFrame } from "@/lottie";
 
 export interface ProcessedMediaAsset extends Omit<MediaAsset, "id"> {}
 
@@ -96,7 +97,7 @@ export async function processMediaAssets({
 	let completed = 0;
 
 	for (const file of fileArray) {
-		const fileType = getMediaTypeFromFile({ file });
+		const fileType = (await isLottieFile({ file })) ? "lottie" : getMediaTypeFromFile({ file });
 
 		if (!fileType) {
 			toast.error(`Unsupported file type: ${file.name}`);
@@ -162,6 +163,28 @@ export async function processMediaAssets({
 				}
 			} else if (fileType === "audio") {
 				duration = await getMediaDuration({ file });
+			} else if (fileType === "lottie") {
+				let animation: Awaited<ReturnType<typeof loadLottie>>;
+				try {
+					animation = await loadLottie({ file });
+				} catch (error) {
+					toast.error(`Can't use ${file.name}`, {
+						description: error instanceof Error ? error.message : String(error),
+					});
+					URL.revokeObjectURL(url);
+					continue;
+				}
+				width = animation.width;
+				height = animation.height;
+				duration = animation.durationSeconds;
+				const frame = lottieThumbnailFrame({ animation });
+				thumbnailUrl = renderThumbnailDataUrl({
+					width,
+					height,
+					draw: ({ context, width: drawWidth, height: drawHeight }) => {
+						context.drawImage(drawLottieFrame({ animation, frame, width: drawWidth, height: drawHeight }), 0, 0);
+					},
+				});
 			}
 
 			processedAssets.push({

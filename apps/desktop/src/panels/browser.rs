@@ -787,6 +787,7 @@ impl Render for MediaPanel {
                     MediaKind::Video => t("video"),
                     MediaKind::Image => t("image"),
                     MediaKind::Audio => t("audio"),
+                    MediaKind::Lottie => t("Lottie"),
                 };
                 let detail = match media.kind {
                     MediaKind::Image => format!(

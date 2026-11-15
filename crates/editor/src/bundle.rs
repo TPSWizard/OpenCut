@@ -229,7 +229,7 @@ fn import_bundle_with(path: &Path, store: &ProjectStore, as_new: Option<Option<&
             width: item.width,
             height: item.height,
             fps: item.fps,
-            has_audio: item.has_audio.unwrap_or(item.kind != MediaKind::Image),
+            has_audio: item.has_audio.unwrap_or(matches!(item.kind, MediaKind::Video | MediaKind::Audio)),
         });
     }
 
@@ -846,6 +846,61 @@ mod tests {
         assert!(is_plain_id(&report.project.id));
         assert!(report.project.media[0].path.starts_with(store.root()));
         assert!(!dir.path().join("escaped").exists() && !dir.path().parent().unwrap().join("escaped").exists());
+    }
+
+    #[test]
+    fn lottie_media_travels_both_ways() {
+        let dir = tempfile::tempdir().unwrap();
+        let bundle_path = dir.path().join("lottie.opencut.zip");
+        let animation = std::fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/lottie/bounce.json")).unwrap();
+        let project = json!({
+            "format": BUNDLE_FORMAT,
+            "formatVersion": 1,
+            "project": {
+                "metadata": {"id": "l1", "name": "Lottie", "duration": 240000,
+                              "createdAt": "2026-11-15T00:00:00.000Z", "updatedAt": "2026-11-15T00:00:00.000Z"},
+                "scenes": [{
+                    "id": "s1", "name": "Main scene", "isMain": true, "bookmarks": [],
+                    "createdAt": "2026-11-15T00:00:00.000Z", "updatedAt": "2026-11-15T00:00:00.000Z",
+                    "tracks": {
+                        "overlay": [],
+                        "main": {"id": "m", "name": "Main", "type": "video", "muted": false, "hidden": false, "elements": [
+                            {"id": "e", "name": "bounce.json", "type": "image", "mediaId": "anim", "startTime": 0, "duration": 480000, "trimStart": 0, "trimEnd": 0, "params": {}}
+                        ]},
+                        "audio": []
+                    }
+                }],
+                "currentSceneId": "s1",
+                "settings": {"fps": {"numerator": 30, "denominator": 1}, "canvasSize": {"width": 200, "height": 200},
+                             "canvasSizeMode": "preset", "background": {"type": "color", "color": "#000000"}},
+                "version": 31
+            },
+            "media": [{"id": "anim", "name": "bounce.json", "type": "lottie", "file": "media/anim.json",
+                       "size": animation.len(), "width": 200, "height": 200, "duration": 2}]
+        });
+        let mut writer = zip::ZipWriter::new(File::create(&bundle_path).unwrap());
+        writer.start_file("project.json", zip::write::SimpleFileOptions::default()).unwrap();
+        writer.write_all(project.to_string().as_bytes()).unwrap();
+        writer.start_file("media/anim.json", zip::write::SimpleFileOptions::default()).unwrap();
+        writer.write_all(&animation).unwrap();
+        writer.finish().unwrap();
+
+        let store = ProjectStore::new(dir.path().join("projects"));
+        let report = import_bundle(&bundle_path, &store).unwrap();
+        let media = report.project.media_item("anim").unwrap();
+        assert_eq!(media.kind, MediaKind::Lottie);
+        assert!(!media.has_audio, "Lottie files have no sound");
+        assert_eq!(std::fs::read(&media.path).unwrap(), animation);
+        let main = report.project.tracks.iter().find(|track| track.lane == Lane::Main).unwrap();
+        assert!(matches!(&main.elements[0].kind, ElementKind::Image { media_id } if media_id == "anim"));
+
+        let again = dir.path().join("again.opencut.zip");
+        export_bundle(&report.project, &again).unwrap();
+        let mut archive = zip::ZipArchive::new(File::open(&again).unwrap()).unwrap();
+        let mut text = String::new();
+        archive.by_name("project.json").unwrap().read_to_string(&mut text).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(value["media"][0]["type"], "lottie");
     }
 
     #[test]

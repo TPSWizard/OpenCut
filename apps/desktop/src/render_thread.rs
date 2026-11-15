@@ -329,6 +329,20 @@ fn thumbnail(media: &MediaItem, ffmpeg: &Option<Arc<Ffmpeg>>) -> Option<Arc<Rend
             .ok()?
         }
         MediaKind::Audio => return None,
+        // The frame halfway through, which shows more than the first.
+        MediaKind::Lottie => {
+            let bytes = std::fs::read(&media.path).ok()?;
+            let mut animation = lottie::Animation::from_bytes(&bytes).ok()?;
+            let info = animation.info();
+            let scale = THUMBNAIL_WIDTH as f64 / f64::from(info.width.max(info.height));
+            let width = ((f64::from(info.width) * scale).round() as u32).max(1);
+            let height = ((f64::from(info.height) * scale).round() as u32).max(1);
+            let mut bgra = animation.render_rgba(info.frame_at(info.duration_seconds() / 2.0), width, height);
+            for pixel in bgra.chunks_exact_mut(4) {
+                pixel.swap(0, 2);
+            }
+            media::Frame { width, height, time_seconds: 0.0, bgra }
+        }
     };
     let (width, height, bgra) = downscale_bgra(frame.width, frame.height, &frame.bgra, THUMBNAIL_WIDTH);
     image_from_bgra(width, height, bgra)

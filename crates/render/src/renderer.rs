@@ -85,6 +85,11 @@ pub struct Renderer {
     proxy_dir: Option<std::path::PathBuf>,
     /// Media id → its proxy file and that file's frame size, once looked up.
     proxies: HashMap<String, Option<(std::path::PathBuf, (u32, u32))>>,
+    /// Lottie animations by media id, read once; `None` when the file
+    /// could not be used (so it is not read again every frame).
+    lotties: HashMap<String, Option<lottie::Animation>>,
+    /// Element id → the Lottie frame and pixel size its texture holds.
+    lottie_frames: HashMap<String, (u64, u32, u32)>,
 }
 
 impl Renderer {
@@ -112,6 +117,8 @@ impl Renderer {
             stickers: HashMap::new(),
             proxy_dir: options.proxy_dir,
             proxies: HashMap::new(),
+            lotties: HashMap::new(),
+            lottie_frames: HashMap::new(),
         })
     }
 
@@ -398,8 +405,11 @@ impl Renderer {
                 self.stickers.insert(texture_id.clone(), (pixel_width, pixel_height));
                 Ok(Some((texture_id, natural_width.round() as u32, natural_height.round() as u32)))
             }
-            LayerSource::Image { media_id } => {
+            LayerSource::Image { media_id, time } => {
                 let media = media_item(project, media_id)?;
+                if media.kind == editor::MediaKind::Lottie {
+                    return Ok(self.prepare_lottie(project, element_id, media, *time, output_scale));
+                }
                 let texture_id = format!("media:{media_id}");
                 if let Some(&(width, height)) = self.images.get(media_id) {
                     return Ok(Some((texture_id, width, height)));
@@ -631,6 +641,54 @@ impl Renderer {
             None
         };
         (descriptor, stroke)
+    }
+
+    /// A Lottie frame drawn at the size it is shown (the animation fitted to
+    /// the canvas, times the output and element scale), in 64 px steps
+    /// between 256 and 2048 on the longer side, as the web app draws it.
+    /// The texture is per element, so two clips of one file can show
+    /// different frames. Returns the animation's own size for layout.
+    fn prepare_lottie(
+        &mut self,
+        project: &Project,
+        element_id: &str,
+        media: &editor::MediaItem,
+        time: time::MediaTime,
+        output_scale: f32,
+    ) -> Option<(String, u32, u32)> {
+        let animation = self
+            .lotties
+            .entry(media.id.clone())
+            .or_insert_with(|| {
+                std::fs::read(&media.path)
+                    .map_err(|error| error.to_string())
+                    .and_then(|bytes| lottie::Animation::from_bytes(&bytes).map_err(|error| error.to_string()))
+                    .map_err(|error| eprintln!("render: {}: {error}", media.name))
+                    .ok()
+            })
+            .as_mut()?;
+        let info = animation.info();
+        let canvas = project.settings.canvas;
+        let (fit_width, fit_height) =
+            fit_contain(info.width as f32, info.height as f32, canvas.width as f32, canvas.height as f32);
+        let shown = (fit_width.max(fit_height) * output_scale).clamp(256.0, 2048.0);
+        let longest = ((shown / 64.0).ceil() * 64.0).min(2048.0);
+        let scale = longest / info.width.max(info.height) as f32;
+        let pixel_width = (info.width as f32 * scale).round().max(1.0) as u32;
+        let pixel_height = (info.height as f32 * scale).round().max(1.0) as u32;
+        let frame = info.frame_at(time.to_seconds_f64());
+        let texture_id = format!("lottie:{element_id}");
+        let key = (frame.to_bits(), pixel_width, pixel_height);
+        if self.lottie_frames.get(element_id) != Some(&key) || !self.slots.contains_key(&texture_id) {
+            let mut pixels = animation.render_rgba(frame, pixel_width, pixel_height);
+            // Straight RGBA → straight BGRA, as every other source.
+            for pixel in pixels.chunks_exact_mut(4) {
+                pixel.swap(0, 2);
+            }
+            self.upload(&texture_id, pixel_width, pixel_height, &pixels);
+            self.lottie_frames.insert(element_id.to_owned(), key);
+        }
+        Some((texture_id, info.width, info.height))
     }
 
     fn upload(&mut self, texture_id: &str, width: u32, height: u32, bgra: &[u8]) {

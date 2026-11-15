@@ -37,6 +37,8 @@ import {
 	type ResolvedGraphicNodeState,
 } from "./nodes/graphic-node";
 import { ImageNode, loadImageSource } from "./nodes/image-node";
+import { LottieNode } from "./nodes/lottie-node";
+import { loadLottie, lottieFrameAt, lottieRasterSize, MAX_LOTTIE_RASTER } from "@/lottie";
 import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
 import type { TextElement } from "@/timeline/types";
@@ -90,6 +92,8 @@ async function resolveNode({
 		node.resolved = await resolveImageNode({ node, context });
 	} else if (node instanceof StickerNode) {
 		node.resolved = await resolveStickerNode({ node, context });
+	} else if (node instanceof LottieNode) {
+		node.resolved = await resolveLottieNode({ node, context });
 	} else if (node instanceof GraphicNode) {
 		node.resolved = resolveGraphicNode({ node, context });
 	} else if (node instanceof TextNode) {
@@ -401,6 +405,59 @@ async function resolveImageNode({
 		source: source.source,
 		sourceWidth: source.width,
 		sourceHeight: source.height,
+	};
+}
+
+/**
+ * A Lottie frame drawn at the size it is shown: fitted to the output,
+ * times the element's scale, in 64 px steps so a slow zoom does not draw
+ * every size (as the desktop does).
+ */
+async function resolveLottieNode({
+	node,
+	context,
+}: {
+	node: LottieNode;
+	context: ResolveContext;
+}): Promise<ResolvedVisualSourceNodeState | null> {
+	const animation = await loadLottie({ file: node.params.file });
+	const visualState = resolveVisualState({
+		params: node.params,
+		context,
+		sourceWidth: animation.width,
+		sourceHeight: animation.height,
+	});
+	if (!visualState) {
+		return null;
+	}
+	const scale = Math.max(Math.abs(visualState.transform.scaleX), Math.abs(visualState.transform.scaleY), 0.01);
+	const maxSide = node.params.maxRasterSize ?? MAX_LOTTIE_RASTER;
+	const fitted = lottieRasterSize({
+		width: animation.width,
+		height: animation.height,
+		bounds: { width: context.renderer.width * scale, height: context.renderer.height * scale },
+		maxSide,
+	});
+	const bucket = Math.min(Math.ceil(Math.max(fitted.width, fitted.height) / 64) * 64, maxSide);
+	const size = lottieRasterSize({
+		width: animation.width,
+		height: animation.height,
+		bounds: { width: bucket, height: bucket },
+		maxSide,
+	});
+	const seconds = (visualState.localTime + node.params.trimStart) / TICKS_PER_SECOND;
+	const source = lottieFrameAt({
+		key: node.params.mediaId,
+		animation,
+		seconds,
+		width: size.width,
+		height: size.height,
+	});
+	return {
+		...visualState,
+		source,
+		sourceWidth: size.width,
+		sourceHeight: size.height,
 	};
 }
 

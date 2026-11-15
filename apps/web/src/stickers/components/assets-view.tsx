@@ -26,6 +26,11 @@ import type {
 	StickerItem as StickerData,
 } from "@/stickers";
 import { useStickersStore } from "@/stickers/stickers-store";
+import { useFileUpload } from "@/media/use-file-upload";
+import { processMediaAssets } from "@/media/processing";
+import { LOTTIE_ACCEPT } from "@/lottie";
+import { buildElementFromMedia } from "@/timeline/element-utils";
+import { mediaTimeFromSeconds } from "@/wasm";
 import { cn } from "@/utils/ui";
 import {
 	HappyIcon,
@@ -67,6 +72,64 @@ function sectionTitle(title: string, t: Translate): string {
 	}
 }
 
+/**
+ * Animated stickers from the user's own Lottie files (`.json` or
+ * `.lottie`): imported as media and placed at the playhead. LottieFiles has
+ * no public search, so there is no catalogue here.
+ */
+function LottieImport() {
+	const t = useT();
+	const editor = useEditor();
+	const [busy, setBusy] = useState(false);
+	const { openFilePicker, fileInputProps } = useFileUpload({
+		accept: LOTTIE_ACCEPT,
+		multiple: false,
+		onFilesSelected: (files) => {
+			const project = editor.project.getActive();
+			if (!project) return;
+			setBusy(true);
+			void (async () => {
+				try {
+					const processed = await processMediaAssets({ files });
+					const lotties = processed.filter((asset) => asset.type === "lottie");
+					if (lotties.length === 0) {
+						if (processed.length > 0 || files.length > 0) {
+							toast.error(t("That file is not a Lottie animation"));
+						}
+						return;
+					}
+					for (const asset of lotties) {
+						const saved = await editor.media.addMediaAsset({ projectId: project.metadata.id, asset });
+						if (!saved) continue;
+						editor.timeline.insertElement({
+							element: buildElementFromMedia({
+								mediaId: saved.id,
+								mediaType: saved.type,
+								name: saved.name,
+								duration: mediaTimeFromSeconds({ seconds: saved.duration ?? 2 }),
+								startTime: editor.playback.getCurrentTime(),
+							}),
+							placement: { mode: "auto" },
+						});
+					}
+				} finally {
+					setBusy(false);
+				}
+			})();
+		},
+	});
+	return (
+		<div className="flex items-center justify-between gap-2 px-2 pb-2 text-xs text-muted-foreground">
+			<span>{t("Animated stickers from your own Lottie files")}</span>
+			<Button size="sm" variant="outline" disabled={busy} onClick={openFilePicker} data-testid="lottie-import">
+				{busy ? <Spinner className="size-3" /> : null}
+				{t("Add Lottie file")}
+			</Button>
+			<input {...fileInputProps} />
+		</div>
+	);
+}
+
 export function StickersView() {
 	const t = useT();
 	const {
@@ -88,6 +151,7 @@ export function StickersView() {
 
 	return (
 		<div className="flex h-full flex-col py-2">
+			<LottieImport />
 			<div className="px-2">
 				<Input
 					size="sm"

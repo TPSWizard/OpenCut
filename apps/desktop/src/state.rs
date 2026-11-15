@@ -3403,11 +3403,43 @@ fn fit_size(width: u32, height: u32, canvas_width: u32, canvas_height: u32) -> (
     (w, h)
 }
 
+/// `.json` and `.lottie` files are read as Lottie animations.
+fn is_lottie_path(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("json") || ext.eq_ignore_ascii_case("lottie"))
+}
+
+/// A Lottie animation as media: its size, one run's length and frame rate
+/// (`crates/lottie` checks the file the way the web app does).
+fn probe_lottie(name: String, path: PathBuf) -> Result<MediaItem, String> {
+    let size = std::fs::metadata(&path).map_err(|error| format!("{name}: {error}"))?.len();
+    if size > lottie::MAX_FILE_BYTES as u64 {
+        return Err(format!("{name}: {}", lottie::LottieError::TooLarge));
+    }
+    let bytes = std::fs::read(&path).map_err(|error| format!("{name}: {error}"))?;
+    let info = lottie::Animation::from_bytes(&bytes).map_err(|error| format!("{name}: {error}"))?.info();
+    Ok(MediaItem {
+        id: editor::new_id(),
+        name,
+        kind: MediaKind::Lottie,
+        path,
+        duration: MediaTime::from_seconds_f64(info.duration_seconds()),
+        width: Some(info.width),
+        height: Some(info.height),
+        fps: Some(info.frame_rate),
+        has_audio: false,
+    })
+}
+
 fn probe_media(ffmpeg: Option<&Ffmpeg>, path: PathBuf) -> Result<MediaItem, String> {
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.display().to_string());
+    if is_lottie_path(&path) {
+        return probe_lottie(name, path);
+    }
     if is_image_path(&path) {
         let (width, height) =
             image::image_dimensions(&path).map_err(|error| format!("{name}: {error}"))?;
@@ -3448,3 +3480,26 @@ fn probe_media(ffmpeg: Option<&Ffmpeg>, path: PathBuf) -> Result<MediaItem, Stri
     })
 }
 
+
+#[cfg(test)]
+mod lottie_import_tests {
+    use super::*;
+
+    #[test]
+    fn imports_lottie_files_and_refuses_other_json() {
+        let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/lottie");
+        for file in ["bounce.json", "bounce.lottie"] {
+            let item = probe_media(None, fixtures.join(file)).unwrap_or_else(|error| panic!("{error}"));
+            assert_eq!(item.kind, MediaKind::Lottie, "{file}");
+            assert_eq!((item.width, item.height), (Some(200), Some(200)));
+            assert_eq!(item.duration, MediaTime::from_seconds_f64(2.0));
+            assert_eq!(item.fps, Some(30.0));
+            assert!(!item.has_audio);
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let other = dir.path().join("package.json");
+        std::fs::write(&other, r#"{"name":"not an animation"}"#).unwrap();
+        let error = probe_media(None, other).unwrap_err();
+        assert!(error.starts_with("package.json: Not a Lottie animation"), "{error}");
+    }
+}

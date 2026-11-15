@@ -97,7 +97,8 @@ function elementTypeFromDrag({
 		case "effect":
 			return "effect";
 		case "media":
-			return dragData.mediaType;
+			// A Lottie file is placed as an image element.
+			return dragData.mediaType === "lottie" ? "image" : dragData.mediaType;
 	}
 }
 
@@ -547,7 +548,7 @@ export class DragDropController {
 					}
 
 					const dropTarget = computeDropTarget({
-						elementType: createdAsset.type,
+						elementType: createdAsset.type === "lottie" ? "image" : createdAsset.type,
 						mouseX,
 						mouseY,
 						tracks: sceneTracks,

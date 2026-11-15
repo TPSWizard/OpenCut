@@ -613,3 +613,49 @@ fn start_transitions_fade_in_from_nothing() {
     assert!(quarter < 40, "starts from nothing: {quarter}");
     assert_eq!(half, out_half, "the start fade mirrors the end fade");
 }
+
+/// The shared Lottie fixture through the whole desktop pipeline: fitted to
+/// the canvas, animated by the clip's time, looping past its 2 seconds.
+#[test]
+fn draws_lottie_frames_by_clip_time() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let mut project = Project::new("Lottie");
+    project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/lottie/bounce.json");
+    let media = MediaItem {
+        id: "anim".to_owned(),
+        name: "bounce.json".to_owned(),
+        kind: MediaKind::Lottie,
+        path,
+        duration: Some(seconds(2.0)),
+        width: Some(200),
+        height: Some(200),
+        fps: Some(30.0),
+        has_audio: false,
+    };
+    apply(&mut project, &EditorCommand::AddMedia(media)).unwrap();
+    let mut clip = Element::from_media(project.media_item("anim").unwrap(), seconds(0.0));
+    clip.duration = seconds(4.0);
+    apply(&mut project, &EditorCommand::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+
+    // 200 × 200 fitted into 320 × 180 is 180 × 180 from x = 70: Lottie
+    // point (x, y) lands at (70 + 0.9x, 0.9y).
+    let at = |x: f64, y: f64| ((70.0 + 0.9 * x).round() as u32, (0.9 * y).round() as u32);
+    let near = |got: [u8; 4], want: [u8; 4]| got.iter().zip(want).all(|(&g, w)| (g as i32 - w as i32).abs() <= 40);
+    let (red, blue, black) = ([0, 0, 255, 255], [255, 0, 0, 255], [0, 0, 0, 255]);
+
+    let frame = renderer.render(&project, seconds(0.0), 320, 180).unwrap();
+    let (x, y) = at(100.0, 100.0);
+    assert!(near(pixel(&frame, x, y), red), "square centre: {:?}", pixel(&frame, x, y));
+    let (x, y) = at(30.0, 30.0);
+    assert!(near(pixel(&frame, x, y), blue), "dot at its start: {:?}", pixel(&frame, x, y));
+    assert!(near(pixel(&frame, 10, 90), black), "outside the animation is background");
+
+    for time in [1.0, 3.0] {
+        let frame = renderer.render(&project, seconds(time), 320, 180).unwrap();
+        let (x, y) = at(30.0, 30.0);
+        assert!(near(pixel(&frame, x, y), black), "{time}s: the dot has left: {:?}", pixel(&frame, x, y));
+        let (x, y) = at(100.0, 30.0);
+        assert!(near(pixel(&frame, x, y), blue), "{time}s: dot halfway: {:?}", pixel(&frame, x, y));
+    }
+}

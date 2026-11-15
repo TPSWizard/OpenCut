@@ -71,7 +71,7 @@ export interface ApiSceneInfo {
 export interface ApiMediaInfo {
 	id: string;
 	name: string;
-	type: "image" | "video" | "audio";
+	type: "image" | "video" | "audio" | "lottie";
 	duration?: number;
 	width?: number;
 	height?: number;
@@ -123,7 +123,7 @@ export interface ApiProjectStorage {
 export interface ApiMissingMedia {
 	id: string;
 	name: string;
-	type: "image" | "video" | "audio";
+	type: "image" | "video" | "audio" | "lottie";
 	size: number;
 }
 

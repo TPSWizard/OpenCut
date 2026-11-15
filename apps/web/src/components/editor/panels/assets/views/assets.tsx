@@ -121,7 +121,7 @@ export function MediaView() {
 
 	const { isDragOver, dragProps, openFilePicker, fileInputProps } =
 		useFileUpload({
-			accept: "image/*,video/*,audio/*",
+			accept: "image/*,video/*,audio/*,.json,.lottie",
 			multiple: true,
 			onFilesSelected: (files) => processFiles({ files }),
 		});
@@ -491,6 +491,25 @@ function MediaPreview({
 }) {
 	const t = useT();
 	const shouldShowDurationBadge = variant === "grid";
+
+	if (item.type === "lottie") {
+		return (
+			<div className="relative flex size-full items-center justify-center bg-muted">
+				{item.thumbnailUrl ? (
+					<Image
+						src={item.thumbnailUrl}
+						alt={item.name}
+						fill
+						sizes="100vw"
+						className="object-contain"
+						loading="lazy"
+						unoptimized
+					/>
+				) : null}
+				<span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[10px] text-white">{t("Lottie")}</span>
+			</div>
+		);
+	}
 
 	if (item.type === "image") {
 		return (

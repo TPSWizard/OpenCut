@@ -52,7 +52,7 @@ export function MissingMediaSection() {
 				ref={bulkInput}
 				type="file"
 				multiple
-				accept="image/*,video/*,audio/*"
+				accept="image/*,video/*,audio/*,.json,.lottie"
 				className="hidden"
 				onChange={(event) => {
 					const files = Array.from(event.target.files ?? []);
@@ -63,7 +63,7 @@ export function MissingMediaSection() {
 			<input
 				ref={singleInput}
 				type="file"
-				accept="image/*,video/*,audio/*"
+				accept="image/*,video/*,audio/*,.json,.lottie"
 				className="hidden"
 				onChange={(event) => {
 					const file = event.target.files?.[0];
@@ -94,7 +94,9 @@ export function MissingMediaSection() {
 									? t("Video")
 									: item.type === "image"
 										? t("Image")
-										: t("Audio")}{" "}
+										: item.type === "lottie"
+											? t("Lottie animation")
+											: t("Audio")}{" "}
 								· {formatStorageBytes({ bytes: item.size })}
 							</span>
 						</span>

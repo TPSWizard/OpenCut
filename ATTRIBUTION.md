@@ -314,3 +314,18 @@ Playfair Display and Bebas Neue (all SIL OFL 1.1), which each editor
 fetches from Fontsource when a template is used; no font files are kept in
 this repository. Templates you save stay in your browser or in
 `~/.opencut/templates/`.
+
+## Lottie animations (`crates/lottie`, added 2026-11-15)
+
+- Lottie and dotLottie files are parsed and turned into vector drawing
+  commands by [velato](https://github.com/linebender/velato) 0.12
+  (Apache-2.0 OR MIT) and rasterised on the CPU by
+  [vello_cpu](https://github.com/linebender/vello) 0.4 (Apache-2.0 OR MIT),
+  both from the Linebender project, used as Cargo dependencies. dotLottie
+  archives are read with the `zip` crate (MIT). The desktop links the crate
+  directly; the web editor gets it through `opencut-wasm`.
+- No Lottie animations are bundled: users bring their own files. Files from
+  LottieFiles carry the Lottie Simple License, which is the user's to follow.
+- `fixtures/lottie/bounce.json`, `bounce.lottie` and `features.json` were
+  written for the tests in this repository (a square, a dot, a matte, a ring
+  and a gradient) and are covered by the repository's MIT licence.

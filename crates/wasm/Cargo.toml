@@ -17,6 +17,7 @@ console_error_panic_hook = { workspace = true }
 effects = { workspace = true }
 gpu = { workspace = true, features = ["wasm"] }
 js-sys = { workspace = true }
+lottie = { workspace = true }
 masks = { workspace = true }
 num-traits = { workspace = true }
 serde = { workspace = true }

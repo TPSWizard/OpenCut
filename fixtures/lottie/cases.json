@@ -1,0 +1,263 @@
+{
+  "about": "Shared Lottie cases: crates/lottie tests read them natively, the web tests through opencut-wasm. bounce.json is made for these tests (a red 80 px square turning 0 to 90 degrees under a blue 30 px dot sliding from x 30 to 170, 60 frames at 30 fps); bounce.lottie is the same animation as a dotLottie archive. features.json (also made for these tests) checks a track matte (a green rectangle shown only through a 100 px circle), a 10 px yellow ring stroke and a black-to-white gradient bar.",
+  "files": [
+    "bounce.json",
+    "bounce.lottie"
+  ],
+  "info": {
+    "width": 200,
+    "height": 200,
+    "frameRate": 30,
+    "inFrame": 0,
+    "outFrame": 60,
+    "durationSeconds": 2
+  },
+  "frameAt": [
+    {
+      "seconds": 0,
+      "frame": 0
+    },
+    {
+      "seconds": 1,
+      "frame": 30
+    },
+    {
+      "seconds": 1.5,
+      "frame": 45
+    },
+    {
+      "seconds": 2,
+      "frame": 0
+    },
+    {
+      "seconds": 2.5,
+      "frame": 15
+    },
+    {
+      "seconds": -1,
+      "frame": 0
+    }
+  ],
+  "render": {
+    "width": 200,
+    "height": 200
+  },
+  "pixels": [
+    {
+      "frame": 0,
+      "x": 100,
+      "y": 100,
+      "rgba": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "note": "square centre"
+    },
+    {
+      "frame": 0,
+      "x": 65,
+      "y": 65,
+      "rgba": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "note": "square corner, unturned"
+    },
+    {
+      "frame": 30,
+      "x": 65,
+      "y": 65,
+      "rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "note": "turned 45 degrees, the corner has moved away"
+    },
+    {
+      "frame": 30,
+      "x": 100,
+      "y": 100,
+      "rgba": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "note": "square centre, turned"
+    },
+    {
+      "frame": 0,
+      "x": 30,
+      "y": 30,
+      "rgba": [
+        0,
+        0,
+        255,
+        255
+      ],
+      "note": "dot at its start"
+    },
+    {
+      "frame": 30,
+      "x": 30,
+      "y": 30,
+      "rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "note": "dot has left"
+    },
+    {
+      "frame": 30,
+      "x": 100,
+      "y": 30,
+      "rgba": [
+        0,
+        0,
+        255,
+        255
+      ],
+      "note": "dot halfway"
+    },
+    {
+      "frame": 0,
+      "x": 10,
+      "y": 190,
+      "rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "note": "empty corner"
+    }
+  ],
+  "tolerance": 8,
+  "scaled": {
+    "width": 100,
+    "height": 50,
+    "frame": 0,
+    "x": 50,
+    "y": 25,
+    "rgba": [
+      255,
+      0,
+      0,
+      255
+    ],
+    "note": "drawn at another size, the square still fills the centre"
+  },
+  "rejects": [
+    {
+      "json": "{\"a\":1}",
+      "kind": "notLottie"
+    },
+    {
+      "json": "[]",
+      "kind": "notLottie"
+    },
+    {
+      "json": "{\"v\":\"5.7\",\"fr\":30,\"ip\":0,\"op\":0,\"w\":10,\"h\":10,\"layers\":[]}",
+      "kind": "limits",
+      "note": "no frames"
+    },
+    {
+      "json": "{\"v\":\"5.7\",\"fr\":30,\"ip\":0,\"op\":10,\"w\":100000,\"h\":10,\"layers\":[]}",
+      "kind": "limits",
+      "note": "canvas too wide"
+    },
+    {
+      "json": "{\"v\":\"5.7\",\"fr\":30,\"ip\":0,\"op\":10,\"w\":10,\"h\":10,\"layers\":[{\"ty\":4,\"shapes\":[{\"ty\":\"rp\",\"c\":{\"a\":0,\"k\":50}},{\"ty\":\"gr\",\"it\":[{\"ty\":\"rp\",\"c\":{\"a\":1,\"k\":[{\"t\":0,\"s\":[5]},{\"t\":5,\"s\":[40]}]}}]}]}]}",
+      "kind": "limits",
+      "note": "50 x 40 repeater copies"
+    },
+    {
+      "json": "{\"v\":\"5.7\",\"fr\":30,\"ip\":0,\"op\":10,\"w\":10,\"h\":10,\"assets\":[{\"id\":\"a\",\"layers\":[{\"ty\":0,\"refId\":\"b\"}]},{\"id\":\"b\",\"layers\":[{\"ty\":0,\"refId\":\"a\"}]}],\"layers\":[{\"ty\":0,\"refId\":\"a\"}]}",
+      "kind": "limits",
+      "note": "precompositions that contain each other"
+    }
+  ],
+  "features": {
+    "file": "features.json",
+    "frame": 0,
+    "width": 200,
+    "height": 200,
+    "tolerance": 16,
+    "pixels": [
+      {
+        "x": 100,
+        "y": 100,
+        "rgba": [
+          0,
+          255,
+          0,
+          255
+        ],
+        "note": "inside the matte"
+      },
+      {
+        "x": 100,
+        "y": 40,
+        "rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "note": "outside the matte, the rectangle is hidden"
+      },
+      {
+        "x": 100,
+        "y": 10,
+        "rgba": [
+          255,
+          255,
+          0,
+          255
+        ],
+        "note": "on the ring"
+      },
+      {
+        "x": 20,
+        "y": 20,
+        "rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "note": "outside the ring"
+      },
+      {
+        "x": 25,
+        "y": 185,
+        "rgba": [
+          8,
+          8,
+          8,
+          255
+        ],
+        "note": "gradient start"
+      },
+      {
+        "x": 175,
+        "y": 185,
+        "rgba": [
+          247,
+          247,
+          247,
+          255
+        ],
+        "note": "gradient end"
+      }
+    ]
+  }
+}

@@ -45,6 +45,7 @@ methods answer with the error code `no_project` before that.
 | `media.list` | – | `ApiMediaInfo[]` |
 | `media.importUrl` | `{ url, name? }` | `ApiMediaInfo` |
 | `media.importFiles` | `{ files: File[] }` | `ApiMediaInfo[]` (in page / structured clone only) |
+| | | Lottie animations (`.json` or `.lottie` files) import as media `type: "lottie"` with their size and length; `timeline.addClip` places them as image elements that loop for the clip's length. Files outside the limits (32 MB, sides up to 8192, an hour, 1000 repeater copies, 16 nested precompositions) are refused with the reason |
 | `media.remove` | `{ mediaId }` | `{ removed: true }` |
 | `media.makeProxy` | `{ mediaId }` | `ApiMediaInfo` — makes a small proxy of a video (longer side 960 px, H.264 in MP4 or VP9 in WebM, no audio) that the preview decodes instead of the original; export always reads the original. `ApiMediaInfo.proxy` reports its size, `proxyPending` is true while one is made. Videos above 1080p get one on import while auto proxies are on |
 | `media.removeProxy` | `{ mediaId }` | `ApiMediaInfo` — deletes the proxy; the preview decodes the original again |

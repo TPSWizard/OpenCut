@@ -329,6 +329,7 @@ export function buildElementFromMedia({
 		case "video":
 			return buildVideoElement({ mediaId, name, duration, startTime });
 		case "image":
+		case "lottie":
 			return buildImageElement({ mediaId, name, duration, startTime });
 	}
 }

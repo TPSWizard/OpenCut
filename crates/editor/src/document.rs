@@ -76,6 +76,9 @@ pub enum MediaKind {
     Video,
     Image,
     Audio,
+    /// A Lottie animation (`.json` or `.lottie`), drawn by `crates/lottie`.
+    /// It is placed as an image element and loops for the clip's length.
+    Lottie,
 }
 
 /// Where a stock picture or video came from and how to credit it (the web
@@ -117,7 +120,7 @@ pub struct MediaItem {
 
 impl MediaItem {
     pub fn is_visual(&self) -> bool {
-        matches!(self.kind, MediaKind::Video | MediaKind::Image)
+        matches!(self.kind, MediaKind::Video | MediaKind::Image | MediaKind::Lottie)
     }
 }
 
@@ -621,6 +624,15 @@ impl Element {
                     media_id: media.id.clone(),
                 },
                 still,
+                None,
+                visual_defaults(),
+            ),
+            // One run of the animation; the clip can be made longer and it loops.
+            MediaKind::Lottie => (
+                ElementKind::Image {
+                    media_id: media.id.clone(),
+                },
+                media.duration.filter(|duration| *duration > MediaTime::ZERO).unwrap_or(still),
                 None,
                 visual_defaults(),
             ),
