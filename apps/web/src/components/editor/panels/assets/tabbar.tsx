@@ -20,7 +20,7 @@ import { t, useT } from "@/i18n";
 import { useEnabledPlugins } from "@/plugins/plugins-store";
 import { pluginTabKey } from "@/plugins/types";
 
-const TAB_LABELS: Record<BuiltinTab, () => string> = {
+export const TAB_LABELS: Record<BuiltinTab, () => string> = {
 	media: () => t("Media"),
 	sounds: () => t("Sounds"),
 	text: () => t("Text"),

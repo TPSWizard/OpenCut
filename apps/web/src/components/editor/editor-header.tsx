@@ -24,7 +24,8 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Link01Icon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, ComputerIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Link01Icon, Logout05Icon, SmartPhone01Icon } from "@hugeicons/core-free-icons";
+import { usePhoneLayout } from "@/mobile/use-phone-layout";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "@/compat/image";
@@ -47,7 +48,7 @@ export function EditorHeader() {
 	);
 }
 
-function ProjectDropdown() {
+export function ProjectDropdown() {
 	const t = useT();
 	const [openDialog, setOpenDialog] = useState<
 		"delete" | "rename" | "shortcuts" | "licences" | "template" | "share" | null
@@ -57,6 +58,7 @@ function ProjectDropdown() {
 	const router = useRouter();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
+	const { phone, setPreference } = usePhoneLayout();
 
 	const handleExportBundle = async () => {
 		if (isExportingBundle) return;
@@ -166,6 +168,15 @@ function ProjectDropdown() {
 					>
 						{t("Shortcuts")}
 					</DropdownMenuItem>
+
+					{phone !== null && (
+						<DropdownMenuItem
+							onClick={() => setPreference(phone ? "desktop" : "phone")}
+							icon={<HugeiconsIcon icon={phone ? ComputerIcon : SmartPhone01Icon} />}
+						>
+							{phone ? t("Desktop layout") : t("Phone layout")}
+						</DropdownMenuItem>
+					)}
 
 					<DropdownMenuItem
 						onClick={handleExportBundle}

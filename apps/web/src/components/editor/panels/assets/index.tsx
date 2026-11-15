@@ -23,6 +23,19 @@ import { TransitionsView } from "@/transitions/components/assets-view";
 import { MarkersView } from "@/timeline/bookmarks/components/markers-view";
 
 export function AssetsPanel() {
+	return (
+		<div className="panel bg-background flex h-full rounded-sm border overflow-hidden">
+			<TabBar />
+			<Separator orientation="vertical" />
+			<div className="flex-1 overflow-hidden">
+				<AssetsTabContent />
+			</div>
+		</div>
+	);
+}
+
+/** The active assets tab's view, without the tab bar (the phone editor shows it in a sheet). */
+export function AssetsTabContent() {
 	const { activeTab } = useAssetsPanelStore();
 	const plugins = useEnabledPlugins();
 
@@ -55,11 +68,5 @@ export function AssetsPanel() {
 		view = viewMap[activeTab];
 	}
 
-	return (
-		<div className="panel bg-background flex h-full rounded-sm border overflow-hidden">
-			<TabBar />
-			<Separator orientation="vertical" />
-			<div className="flex-1 overflow-hidden">{view}</div>
-		</div>
-	);
+	return <>{view}</>;
 }

@@ -121,7 +121,7 @@ export function DraggableItem({
 							{preview}
 							{!isDragging && (
 								<PlusButton
-									className="opacity-0 group-hover:opacity-100"
+									className="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
 									onClick={handleAddToTimeline}
 								/>
 							)}

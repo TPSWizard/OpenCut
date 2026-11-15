@@ -14,7 +14,9 @@ import { Onboarding } from "@/components/editor/onboarding";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
-import { MobileGate } from "@/components/editor/mobile-gate";
+import { PhoneEditor } from "@/mobile/components/phone-editor";
+import { usePhoneLayout } from "@/mobile/use-phone-layout";
+import { SharedMediaImport } from "@/pwa/use-shared-media";
 import { PluginHost } from "@/plugins/plugin-host";
 import { useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
@@ -36,10 +38,20 @@ import {
 } from "@/timeline/bookmarks/index";
 
 export function EditorPage({ projectId }: { projectId: string }) {
+	const { phone } = usePhoneLayout();
+	// Wait for the screen size, so a phone never mounts the desktop layout.
+	if (phone === null) return null;
 
 	return (
-		<MobileGate>
-			<EditorProvider projectId={projectId}>
+		<EditorProvider projectId={projectId}>
+			<SharedMediaImport />
+			{phone ? (
+				<>
+					<PhoneLayout />
+					<PluginHost />
+					<MigrationDialog />
+				</>
+			) : (
 				<div className="bg-background flex h-screen w-screen flex-col overflow-hidden">
 					<DegradedRendererBanner />
 					<EditorHeader />
@@ -51,8 +63,24 @@ export function EditorPage({ projectId }: { projectId: string }) {
 					<MigrationDialog />
 					<ChangelogNotification />
 				</div>
-			</EditorProvider>
-		</MobileGate>
+			)}
+		</EditorProvider>
+	);
+}
+
+function PhoneLayout() {
+	usePasteMedia();
+	const overlays = usePreviewOverlays();
+	return (
+		<PhoneEditor
+			preview={
+				<PreviewPanel
+					overlayControls={overlays.controls}
+					overlayInstances={overlays.instances}
+					onOverlayVisibilityChange={overlays.setVisibility}
+				/>
+			}
+		/>
 	);
 }
 
@@ -78,9 +106,8 @@ function DegradedRendererBanner() {
 	);
 }
 
-function EditorLayout() {
-	usePasteMedia();
-	const { panels, setPanel } = usePanelStore();
+/** The preview's overlays (guides, bookmark notes) and their toggles. */
+function usePreviewOverlays() {
 	const activeScene = useEditor((editor) =>
 		editor.scenes.getActiveSceneOrNull(),
 	);
@@ -124,6 +151,18 @@ function EditorLayout() {
 			),
 		[overlaySource.definitions, overlays],
 	);
+
+	return {
+		controls: overlayControls,
+		instances: overlaySource.instances,
+		setVisibility: setOverlayVisibility,
+	};
+}
+
+function EditorLayout() {
+	usePasteMedia();
+	const { panels, setPanel } = usePanelStore();
+	const overlays = usePreviewOverlays();
 
 	return (
 		<ResizablePanelGroup
@@ -175,9 +214,9 @@ function EditorLayout() {
 						className="min-h-0 min-w-0 flex-1"
 					>
 						<PreviewPanel
-							overlayControls={overlayControls}
-							overlayInstances={overlaySource.instances}
-							onOverlayVisibilityChange={setOverlayVisibility}
+							overlayControls={overlays.controls}
+							overlayInstances={overlays.instances}
+							onOverlayVisibilityChange={overlays.setVisibility}
 						/>
 					</ResizablePanel>
 

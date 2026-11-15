@@ -6,6 +6,7 @@ import Link from "@/compat/link";
 import { useRouter } from "@/compat/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useShareLanding } from "@/pwa/use-shared-media";
 import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/project/components/migration-dialog";
@@ -97,6 +98,7 @@ export function ProjectsPage() {
 	const editor = useEditor();
 	const sortOption: TProjectSortOption = `${sortKey}-${sortOrder}`;
 
+	useShareLanding();
 	const isLoading = useEditor((e) => e.project.getIsLoading());
 	const isInitialized = useEditor((e) => e.project.getIsInitialized());
 	const projectsToDisplay = useEditor((e) =>

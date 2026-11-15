@@ -5,13 +5,16 @@
  * shapes, icons, effects) are cached on first use and served from the
  * cache after that. The cache is named after the build, so a new deploy
  * installs a new worker, the page offers a reload, and the old cache goes
- * when the new worker takes over.
+ * when the new worker takes over. Files shared from another app's share
+ * sheet arrive as a POST to /share-target (see receiveShare).
  */
 const BUILD_ID = "__BUILD_ID__";
 const CACHE = `conzacut-${BUILD_ID}`;
 const SHELL = "/projects";
 const STATIC = /^\/(assets|effects|flags|fonts|icons|logos|shapes|sounds|platform-guides|plugin-sdk|plugins|open-graph)\//;
 const ALWAYS = new Set(["/manifest.json", "/favicon.ico"]);
+/** Files shared to the installed app; `src/pwa/share-inbox.ts` reads them. */
+const SHARE_INBOX = "share-inbox";
 
 self.addEventListener("install", (event) => {
 	event.waitUntil(
@@ -44,8 +47,12 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
 	const { request } = event;
-	if (request.method !== "GET") return;
 	const url = new URL(request.url);
+	if (request.method === "POST" && url.origin === self.location.origin && url.pathname === "/share-target") {
+		event.respondWith(receiveShare(request));
+		return;
+	}
+	if (request.method !== "GET") return;
 	if (url.origin !== self.location.origin) return;
 	if (request.mode === "navigate") {
 		event.respondWith(networkFirst(request));
@@ -55,6 +62,37 @@ self.addEventListener("fetch", (event) => {
 		event.respondWith(cacheFirst(request));
 	}
 });
+
+/**
+ * The manifest's share target: keeps the shared files in the inbox (in
+ * order, with their names) and opens the projects page, which makes a
+ * project for them. Text and links on their own are not media.
+ */
+async function receiveShare(request) {
+	try {
+		const form = await request.formData();
+		const files = form.getAll("media").filter((item) => typeof item === "object" && item && "size" in item && item.size > 0);
+		await caches.delete(SHARE_INBOX);
+		const inbox = await caches.open(SHARE_INBOX);
+		await Promise.all(
+			files.map((file, index) =>
+				inbox.put(
+					new Request(`/share-inbox/file?i=${index}`),
+					new Response(file, {
+						headers: {
+							"Content-Type": file.type || "application/octet-stream",
+							"X-File-Name": encodeURIComponent(file.name || `shared-${index + 1}`),
+							"X-Last-Modified": String(file.lastModified || Date.now()),
+						},
+					}),
+				),
+			),
+		);
+		return Response.redirect(`/projects?shared=${files.length}`, 303);
+	} catch {
+		return Response.redirect("/projects?shared=error", 303);
+	}
+}
 
 async function cacheFirst(request) {
 	const cache = await caches.open(CACHE);
