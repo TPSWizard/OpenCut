@@ -64,12 +64,57 @@ pub(crate) struct Settings {
     /// `SHARE_UPLOAD_KEY`); `OPENCUT_SHARE_KEY` overrides it.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub share_key: String,
+    /// The API worker to use instead of the hosted one, such as
+    /// `https://cut.example.com/api` for a self-hosted server
+    /// (`infra/self-host`); `OPENCUT_API_URL` overrides it.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub api_url: String,
+    /// The web app that share links open in, such as
+    /// `https://cut.example.com`; `OPENCUT_WEB_URL` overrides it.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub web_url: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { preview_quality: PreviewQuality::Auto, use_proxies: true, auto_proxies: true, locale: "auto".to_owned(), share_key: String::new() }
+        Self {
+            preview_quality: PreviewQuality::Auto,
+            use_proxies: true,
+            auto_proxies: true,
+            locale: "auto".to_owned(),
+            share_key: String::new(),
+            api_url: String::new(),
+            web_url: String::new(),
+        }
     }
+}
+
+/// The hosted web app, used when no other is set.
+pub(crate) const DEFAULT_WEB_URL: &str = "https://conzacut.conzahub.com";
+
+/// The first of the environment variable and the saved setting that is an
+/// `http://` or `https://` address (trailing slashes removed), else `default`.
+fn server_url(from_env: Option<String>, saved: &str, default: &str) -> String {
+    [from_env.as_deref(), Some(saved)]
+        .into_iter()
+        .flatten()
+        .map(|value| value.trim().trim_end_matches('/'))
+        .find(|value| {
+            let rest = value.strip_prefix("https://").or_else(|| value.strip_prefix("http://"));
+            rest.is_some_and(|rest| !rest.is_empty() && !rest.chars().any(char::is_whitespace))
+        })
+        .unwrap_or(default)
+        .to_owned()
+}
+
+/// The API worker: `OPENCUT_API_URL`, else `apiUrl` in settings, else the hosted one.
+pub(crate) fn api_url() -> String {
+    server_url(std::env::var("OPENCUT_API_URL").ok(), &load().api_url, editor::DEFAULT_API_URL)
+}
+
+/// The web app links open in: `OPENCUT_WEB_URL`, else `webUrl` in settings, else the hosted one.
+pub(crate) fn web_url() -> String {
+    server_url(std::env::var("OPENCUT_WEB_URL").ok(), &load().web_url, DEFAULT_WEB_URL)
 }
 
 fn path() -> Option<PathBuf> {
@@ -96,6 +141,21 @@ pub(crate) fn save(settings: &Settings) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn server_urls_come_from_env_then_settings() {
+        let default = "https://hosted.example";
+        assert_eq!(server_url(None, "", default), default);
+        assert_eq!(server_url(None, " https://cut.example/api/ ", default), "https://cut.example/api");
+        assert_eq!(server_url(Some("http://localhost:8080/api".into()), "https://cut.example/api", default), "http://localhost:8080/api");
+        assert_eq!(server_url(Some(String::new()), "https://cut.example/api", default), "https://cut.example/api");
+        for bad in ["cut.example", "ftp://cut.example", "https://", "https://a b"] {
+            assert_eq!(server_url(None, bad, default), default, "{bad}");
+        }
+        let saved: Settings = serde_json::from_str(r#"{"apiUrl":"https://cut.example/api","webUrl":"https://cut.example"}"#).unwrap();
+        assert_eq!((saved.api_url.as_str(), saved.web_url.as_str()), ("https://cut.example/api", "https://cut.example"));
+        assert!(!serde_json::to_string(&Settings::default()).unwrap().contains("apiUrl"));
+    }
 
     #[test]
     fn targets_scale_the_fitted_size() {

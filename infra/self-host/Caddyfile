@@ -1,0 +1,8 @@
+# HTTPS in front of the container, with a certificate from Let's Encrypt.
+# CONZACUT_DOMAIN must point at this machine, with ports 80 and 443 open.
+# Caddy sends X-Forwarded-Proto and X-Forwarded-Host, which the gateway uses
+# to build share links on your domain.
+{$CONZACUT_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy conzacut:8080
+}

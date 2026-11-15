@@ -11,10 +11,7 @@ use editor::StockItem;
 /// Files larger than this are refused.
 const MAX_STOCK_BYTES: u64 = 200 * 1024 * 1024;
 
-/// The API worker: `OPENCUT_API_URL`, else the deployed one.
-fn api_url() -> String {
-    std::env::var("OPENCUT_API_URL").unwrap_or_else(|_| editor::DEFAULT_API_URL.to_owned())
-}
+use crate::settings::api_url;
 
 fn get_text(url: &str) -> Result<String, ureq::Error> {
     let response = ureq::get(url).header("User-Agent", "ConzaCut desktop").call()?;

@@ -37,6 +37,7 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | Rust core | `crates/` – time, editor (document, commands, undo, frame/audio planning), media (FFmpeg over pipes), render, compositor, effects, masks, gpu, bridge and the `opencut-wasm` package built from this repo; consumed by the web app (wasm) and the desktop app (native) |
 | Desktop | `apps/desktop` – native GPUI editor on the Rust core: projects, media import, multi-track timeline, GPU-composited preview with audio, inspector, undo/redo, MP4/WebM export; [README](apps/desktop/README.md) |
 | API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
+| Self-hosting | `infra/self-host` – container image and Compose file running the web app and API worker on one port; [guide](infra/self-host/README.md) |
 
 Not there yet: a mobile app (the core crates compile for mobile targets, but
 no mobile UI exists), most effects, stickers and speech transcription on the
@@ -104,6 +105,21 @@ The web app talks to the API worker for sound search and feedback. Without the
 worker, or without its `FREESOUND_API_KEY` secret and `FEEDBACK` KV binding,
 those two features report that they are unavailable and everything else works.
 See `apps/web/README.md` and `apps/api/wrangler.jsonc`.
+
+## Self-hosting
+
+`infra/self-host` builds one container that serves the web editor and its
+API worker on a single port, with shares stored in a Docker volume:
+
+```sh
+cd infra/self-host
+cp .env.example .env
+docker compose up -d --build   # http://localhost:8080
+```
+
+It covers HTTPS with Caddy, the settings, where data is stored, and pointing
+the desktop app at your server: see
+[`infra/self-host/README.md`](infra/self-host/README.md).
 
 ## Contributing
 

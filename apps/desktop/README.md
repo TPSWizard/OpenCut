@@ -389,4 +389,7 @@ dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
 - **Share link** in the header uploads the project and its media to the
   API worker (R2, kept 7 days) and copies an Open in ConzaCut link. It
   needs the server's sharing passcode in `shareKey` of
-  `~/.opencut/settings.json` or `OPENCUT_SHARE_KEY`.
+  `~/.opencut/settings.json` or `OPENCUT_SHARE_KEY`. To use a self-hosted
+  server (`infra/self-host`), set `apiUrl` (for example
+  `https://cut.example.com/api`) and `webUrl` (the site links open in) in
+  the same file, or `OPENCUT_API_URL` and `OPENCUT_WEB_URL`.

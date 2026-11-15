@@ -18,6 +18,13 @@ tasks:
     outputs:
       - 'dist'
 
+  test:
+    # The worker's helpers and the self-hosted container's gateway.
+    command: 'bun test ./src ../../infra/self-host/gateway'
+    inputs:
+      - 'src/**/*'
+      - '/infra/self-host/gateway/**/*'
+
   typecheck:
     command: 'bun run typecheck'
     inputs:

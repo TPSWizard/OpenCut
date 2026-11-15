@@ -24,6 +24,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type ShareEnv = {
 	SHARES?: R2Bucket;
 	SHARE_UPLOAD_KEY?: string;
+	/**
+	 * "true" deletes expired shares whenever a new one starts. For storage
+	 * without lifecycle rules (the self-hosted container's local R2); the
+	 * hosted bucket's lifecycle rule does this instead.
+	 */
+	PRUNE_EXPIRED_SHARES?: string;
 };
 
 export function newShareId(): string {
@@ -37,6 +43,17 @@ export function isShareId(id: string): boolean {
 
 export function shareKey(id: string): string {
 	return `${SHARE_PREFIX}${id}.opencut.zip`;
+}
+
+/**
+ * Where this worker is reached from outside: its origin plus the path
+ * prefix a gateway put it under (`X-Forwarded-Prefix: /api` when
+ * self-hosted, see `infra/self-host`), so share URLs point back through it.
+ */
+export function publicBase(request: Request): string {
+	const prefix = request.headers.get("X-Forwarded-Prefix") ?? "";
+	const valid = /^(\/[A-Za-z0-9._-]+)+$/.test(prefix) && !prefix.split("/").some((part) => part === "." || part === "..");
+	return new URL(request.url).origin + (valid ? prefix : "");
 }
 
 export function partCount(size: number): number {
@@ -69,6 +86,20 @@ export function bundleFileName(name: string | undefined): string {
 
 export function isExpired(uploaded: Date, now = Date.now()): boolean {
 	return now - uploaded.getTime() > SHARE_DAYS * DAY_MS;
+}
+
+/** Deletes shares older than 7 days, a page of 1000 at a time; returns how many. */
+export async function pruneExpired(bucket: Pick<R2Bucket, "list" | "delete">, now = Date.now()): Promise<number> {
+	let removed = 0;
+	let cursor: string | undefined;
+	do {
+		const page = await bucket.list({ prefix: SHARE_PREFIX, limit: 1000, cursor });
+		const expired = page.objects.filter((object) => isExpired(object.uploaded, now)).map((object) => object.key);
+		if (expired.length > 0) await bucket.delete(expired);
+		removed += expired.length;
+		cursor = page.truncated ? page.cursor : undefined;
+	} while (cursor);
+	return removed;
 }
 
 function json(body: unknown, status: number, headers: Record<string, string>): Response {
@@ -124,6 +155,7 @@ export async function handleShare(request: Request, env: ShareEnv, cors: Record<
 		if (!Number.isInteger(size) || size <= 0) return json({ error: "size must be the bundle's byte count" }, 400, cors);
 		if (size > MAX_SHARE_BYTES) return json({ error: "The bundle is larger than 2 GB" }, 413, cors);
 		const name = typeof body?.name === "string" ? body.name.slice(0, 120) : "";
+		if (env.PRUNE_EXPIRED_SHARES === "true") await pruneExpired(bucket);
 		const id = newShareId();
 		const upload = await bucket.createMultipartUpload(shareKey(id), {
 			httpMetadata: { contentType: "application/zip" },
@@ -176,7 +208,7 @@ export async function handleShare(request: Request, env: ShareEnv, cors: Record<
 		return json(
 			{
 				id,
-				url: `${url.origin}/share/${id}`,
+				url: `${publicBase(request)}/share/${id}`,
 				bytes: object.size,
 				expiresAt: new Date(object.uploaded.getTime() + SHARE_DAYS * DAY_MS).toISOString(),
 			},

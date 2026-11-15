@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build": "wrangler deploy --dry-run",
+    "test": "bun test ./src ../../infra/self-host/gateway",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

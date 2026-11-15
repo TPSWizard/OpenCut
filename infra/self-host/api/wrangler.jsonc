@@ -1,0 +1,13 @@
+{
+  // The API worker as the self-hosted container runs it: same code as
+  // apps/api, with sharing stored on the container's disk (wrangler's local
+  // R2, under /data) instead of a Cloudflare bucket. Secrets come from
+  // environment variables, written to .dev.vars here by entrypoint.sh.
+  "name": "opencut-api",
+  "main": "../../../apps/api/src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "r2_buckets": [{ "binding": "SHARES", "bucket_name": "conzacut-shares" }],
+  // Local R2 has no lifecycle rules, so the worker deletes expired shares
+  // itself whenever a new one starts.
+  "vars": { "PRUNE_EXPIRED_SHARES": "true" }
+}

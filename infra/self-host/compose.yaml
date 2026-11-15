@@ -1,0 +1,45 @@
+# Self-hosted ConzaCut. From this folder:
+#
+#   cp .env.example .env        # then fill in what you want
+#   docker compose up -d --build
+#
+# Opens at http://localhost:8080. For a domain with HTTPS (needed to use it
+# from other computers), set CONZACUT_DOMAIN in .env and add the Caddy
+# service:  docker compose --profile https up -d --build
+services:
+  conzacut:
+    build:
+      context: ../..
+      dockerfile: infra/self-host/Dockerfile
+    image: conzacut:local
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      # Only this computer by default: browsers allow the editor's video
+      # encoding, offline storage and service worker on localhost or HTTPS.
+      - "127.0.0.1:${CONZACUT_PORT:-8080}:8080"
+    volumes:
+      - conzacut-data:/data
+
+  caddy:
+    profiles: [https]
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [conzacut]
+    environment:
+      CONZACUT_DOMAIN: ${CONZACUT_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  conzacut-data:
+  caddy-data:
+  caddy-config:

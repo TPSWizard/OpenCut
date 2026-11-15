@@ -1,0 +1,12 @@
+{
+  // The front door of the self-hosted container: the only worker with a
+  // port. Runs with the web app and the API worker in one `wrangler dev`
+  // session (see entrypoint.sh), which connects these service bindings.
+  "name": "conzacut-gateway",
+  "main": "gateway/index.js",
+  "compatibility_date": "2025-09-02",
+  "services": [
+    { "binding": "WEB", "service": "opencut-web" },
+    { "binding": "API", "service": "opencut-api" }
+  ]
+}

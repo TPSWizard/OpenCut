@@ -11,14 +11,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-/// The web app the link opens in: `OPENCUT_WEB_URL`, else the deployed one.
-fn web_origin() -> String {
-    std::env::var("OPENCUT_WEB_URL").unwrap_or_else(|_| "https://conzacut.conzahub.com".to_owned())
-}
-
-fn api_url() -> String {
-    std::env::var("OPENCUT_API_URL").unwrap_or_else(|_| editor::DEFAULT_API_URL.to_owned())
-}
+use crate::settings::{api_url, web_url as web_origin};
 
 /// The sharing passcode, if one is set.
 pub(crate) fn passcode() -> Option<String> {

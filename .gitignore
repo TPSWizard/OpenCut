@@ -17,3 +17,6 @@ crates/wasm/pkg/
 
 # pinned FFmpeg build (moon run media:setup) and local fixtures
 .cache/
+
+# wrangler secrets for local runs (infra/self-host writes one at start)
+.dev.vars

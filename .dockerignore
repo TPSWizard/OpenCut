@@ -1,0 +1,16 @@
+# Docker build context for infra/self-host/Dockerfile: sources only.
+.git
+**/node_modules
+**/dist
+**/.wrangler
+**/.dev.vars
+**/.env
+target
+.cache
+.moon/cache
+crates/wasm/pkg
+docs
+prompts
+scripts
+apps/headless
+apps/mcp
