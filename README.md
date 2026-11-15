@@ -30,6 +30,7 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | Editor | `apps/web` – installable PWA that works offline, projects, media import, multi-track timeline, GPU-composited preview, text (open-licence fonts from Fontsource), stickers (flags, shapes, licence-filtered icon sets from Iconify, and animated stickers from your own Lottie or dotLottie files, drawn by the shared Rust renderer in `crates/lottie` on both editors), effects (colour correction, lift/gamma/gain, curves, levels, shadows/highlights, LUTs from .cube/.3dl/HALD files, vignette, grain, RGB split, pixelate, sharpen, mirror, glitch, kaleidoscope, blur), masks, keyframes, captions, auto-ducking, silence auto-cut, EBU R128 loudness measurement and normalisation, shot detection to bookmarks or splits, beat markers that cuts snap to, noise reduction, filler-word removal, sounds (663 bundled CC0 effects plus Freesound), B-roll from a script (stock pictures laid out line by line, optionally with Claude choosing the search words), keyboard shortcut presets (Premiere, Final Cut, Resolve) with in/out marks, ripple delete and edit-point navigation, MP4/WebM export with platform presets (YouTube, Shorts, TikTok, Reels, LinkedIn, X) and safe-area guides |
 | Render CLI | `apps/render-cli` – `opencut-render`: renders a project directory or bundle to a video, a still or QA stills with a contact sheet, with platform presets; shares its export loop with the desktop; also writes captions as SRT, WebVTT or ASS (`--captions`) |
 | Phone editor | `apps/web/src/mobile` – the same web editor laid out for phones and touch tablets: preview on top, a touch timeline (swipe to scrub under a fixed playhead, pinch to zoom, tap to select, drag to move, handles to trim) and a bottom toolbar, with the assets and properties panels in bottom sheets; installed to the home screen it takes videos and photos from the phone's share sheet into a new project (`apps/web/src/pwa`) |
+| Android app | `apps/android` – the web editor as an installable Android app (a Trusted Web Activity, `com.conzahub.conzacut`) that takes shares from other apps; GitHub Actions builds a signed APK and a Play Store bundle; [README](apps/android/README.md) |
 | Editor API | `apps/web/src/api` – one typed, JSON surface (`window.opencut`) over the editor; [reference](apps/web/reference/editor-api.md) |
 | Plugins | `apps/web/src/plugins` – manifest-based plugins with sandboxed panels and background workers, installed from Settings → Plugins; [guide](apps/web/reference/plugins.md) |
 | Scripting tab | `apps/web/src/scripting` – CodeMirror editor in the assets panel; scripts run in a Worker against the Editor API |
@@ -40,9 +41,9 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
 | Self-hosting | `infra/self-host` – container image and Compose file running the web app and API worker on one port; [guide](infra/self-host/README.md) |
 
-Not there yet: a store-listed native mobile app (phones use the installable web
-editor; the core crates compile for mobile targets, but GPUI has no mobile
-UI), most effects, stickers and speech transcription on the
+Not there yet: a Play Store listing or an iPhone app (on iOS, add the site to
+the home screen), a native mobile UI on the Rust core (GPUI has none), most
+effects, stickers and speech transcription on the
 desktop (they live in the web editor; captions made there render on both).
 
 [opencut.app](https://opencut.app) still runs the classic version. The rewrite
