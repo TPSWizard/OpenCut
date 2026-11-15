@@ -87,6 +87,30 @@
     },
     {
       "creditRequired": false,
+      "file": "media/anim.json",
+      "id": "anim",
+      "kind": "media",
+      "license": null,
+      "name": "Bouncing logo.json",
+      "note": "Added from your own files: the rights are yours to check.",
+      "origin": "imported",
+      "uses": 1
+    },
+    {
+      "creditRequired": false,
+      "derivedFrom": "vid",
+      "file": "media/big.mp4",
+      "id": "big",
+      "kind": "media",
+      "license": null,
+      "name": "my-holiday (upscaled 2×).mp4",
+      "note": "Made by the upscale tool from another item (model: realesr-animevideov3); it keeps that item's rights.",
+      "origin": "generated",
+      "provider": "upscale",
+      "uses": 1
+    },
+    {
+      "creditRequired": false,
       "file": "media/unused.wav",
       "id": "unused",
       "kind": "media",
@@ -302,8 +326,8 @@
     "name": "Manifest check"
   },
   "summary": {
-    "assets": 23,
+    "assets": 25,
     "creditRequired": 4,
-    "licenseUnknown": 12
+    "licenseUnknown": 14
   }
 }

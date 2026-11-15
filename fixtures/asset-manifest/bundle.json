@@ -36,7 +36,9 @@
               "masks": [ { "id": "m1", "type": "text", "params": { "content": "M", "fontFamily": "Inter" } } ] },
             { "id": "v2", "type": "image", "name": "Photo", "mediaId": "stock1", "params": {} },
             { "id": "v3", "type": "image", "name": "Photo cut out", "mediaId": "cut", "params": {} },
-            { "id": "v4", "type": "video", "name": "Waves", "mediaId": "pix", "params": {} }
+            { "id": "v4", "type": "video", "name": "Waves", "mediaId": "pix", "params": {} },
+            { "id": "v5", "type": "image", "name": "Logo", "mediaId": "anim", "params": {} },
+            { "id": "v6", "type": "video", "name": "Clip, sharper", "mediaId": "big", "params": {} }
           ] },
           "audio": [
             { "id": "t-audio", "type": "audio", "elements": [
@@ -65,6 +67,9 @@
     { "id": "bundled-sound-kenney-ui-click-1-ogg", "name": "click 1", "type": "audio", "size": 10, "lastModified": 0, "file": "media/bundled-sound-kenney-ui-click-1-ogg.ogg",
       "origin": { "kind": "library", "source": "/sounds/kenney-ui/click-1.ogg" },
       "credit": { "provider": "kenney-ui", "id": "kenney-ui/click-1.ogg", "title": "click 1", "creator": "Kenney", "license": "CC0-1.0", "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/", "sourceUrl": "https://kenney.nl/assets/ui-audio", "attribution": "\"click 1\" from Kenney UI Audio by Kenney (CC0-1.0)" } },
+    { "id": "anim", "name": "Bouncing logo.json", "type": "lottie", "size": 10, "lastModified": 0, "file": "media/anim.json" },
+    { "id": "big", "name": "my-holiday (upscaled 2×).mp4", "type": "video", "size": 10, "lastModified": 0, "file": "media/big.mp4",
+      "origin": { "kind": "generated", "tool": "upscale", "from": "vid", "model": "realesr-animevideov3" } },
     { "id": "unused", "name": "old.wav", "type": "audio", "size": 10, "lastModified": 0, "file": "media/unused.wav", "origin": { "kind": "library", "source": "/sounds/x/y.ogg" } }
   ]
 }
