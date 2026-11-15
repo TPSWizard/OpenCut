@@ -315,6 +315,16 @@ fetches from Fontsource when a template is used; no font files are kept in
 this repository. Templates you save stay in your browser or in
 `~/.opencut/templates/`.
 
+## Desktop stabilising and in-between frames (added 2026-11-15)
+
+- Stabilising calls the vid.stab filters (`vidstabdetect`,
+  `vidstabtransform`; vid.stab is LGPL-2.1+, and FFmpeg only builds it into
+  GPL builds) and in-between frames call FFmpeg's `minterpolate`, in
+  whatever FFmpeg the user has installed. Nothing from either is copied
+  into this repository or shipped with the app.
+- The test clips in `crates/media/tests/motion.rs` are made at test time
+  from FFmpeg's built-in `testsrc2`, `color` and `sine` sources.
+
 ## Lottie animations (`crates/lottie`, added 2026-11-15)
 
 - Lottie and dotLottie files are parsed and turned into vector drawing

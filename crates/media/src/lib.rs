@@ -17,6 +17,7 @@ mod encode;
 mod error;
 mod ffmpeg;
 mod image_decode;
+mod motion;
 mod scenes;
 mod probe;
 mod proxy;
@@ -35,6 +36,10 @@ pub use encode::{
 pub use error::MediaError;
 pub use ffmpeg::Ffmpeg;
 pub use image_decode::{decode_image, is_image_path};
+pub use motion::{
+    StabiliseStrength, can_interpolate, can_stabilise, interpolate_filter, interpolate_video, listed_filters, stabilise_filters,
+    stabilise_video,
+};
 pub use probe::{MediaInfo, MediaKind, probe};
 pub use proxy::{AUTO_PROXY_PIXELS, PROXY_LONG_EDGE, existing_proxy, make_proxy, proxy_path, proxy_size, wants_proxy};
 pub use scenes::{SceneScore, parse_scdet, scene_scores};

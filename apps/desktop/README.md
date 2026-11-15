@@ -265,6 +265,36 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
+## Stabilising and smooth slow motion
+
+Two inspector sections on video clips rewrite the clip's file through
+FFmpeg into `~/.opencut/processed/` and point the clip at the copy, in one
+undo step (undo plays the original again). The copy is the same length,
+with the audio, so trims, speed and keyframes carry over; it is ordinary
+media, so bundles carry it and the web editor plays it. A copy already made
+with the same settings is reused. Both live in `crates/media/src/motion.rs`.
+
+- **Stabilise** runs vid.stab in two passes (`vidstabdetect`, then
+  `vidstabtransform` with `optzoom=1`, which zooms just enough to hide the
+  moving edges, and a light sharpen). Strength sets the smoothing window:
+  Light 10, Medium 20, Strong 40 frames. vid.stab is only in GPL FFmpeg
+  builds (gyan.dev's full build has it); with another build the button says
+  so. FFmpeg's own `deshake` was measured as a fallback and left out: on the
+  synthetic test clips it did not reduce the shake (28.3 to 24.9 px of
+  camera movement a frame, against vid.stab's 6.1; and 5.1 to 5.3 px on a
+  gentler shake, against 0.2).
+- **Smooth slow motion** makes in-between frames with `minterpolate`
+  (motion-compensated, bidirectional) at 2× or 4× the frame rate. Slow the
+  clip under Speed afterwards and it plays smoothly instead of repeating
+  frames. It is slow to make on the CPU: on the development PC a 720p clip
+  took about 6 seconds per second of footage at 2× (stabilising took less
+  than the clip's own length).
+
+The whole source file is processed, not only the part on the timeline.
+AI upscaling (Real-ESRGAN) and stem separation (demucs) are not here: both
+need programs or model weights downloaded, and the demucs weights' licence
+is not stated.
+
 ## Filler words
 
 **Remove filler words** in the inspector's Captions section cuts "um",

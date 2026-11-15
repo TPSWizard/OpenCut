@@ -1134,6 +1134,100 @@ impl EditorState {
         cx.notify();
     }
 
+    /// Rewrites the selected video clip's media through an FFmpeg motion
+    /// tool (stabilising, or in-between frames) on a background thread into
+    /// ~/.opencut/processed, then points the clip at the new file: same
+    /// length, so trims, speed and keyframes carry over. One undo step;
+    /// undo plays the original again. A file already made with the same
+    /// settings is reused.
+    pub(crate) fn rewrite_video_selected(&mut self, tool: VideoTool, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Video { .. }) {
+            self.set_status(t("This needs a video clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed for this."), cx);
+            return;
+        };
+        let source_fps = media.fps.filter(|fps| *fps > 0.0);
+        if matches!(tool, VideoTool::Interpolate(_)) && source_fps.is_none() {
+            self.set_status(t("The clip's frame rate is unknown, so frames cannot be added."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let (suffix, name, tool_id, working) = match tool {
+            VideoTool::Stabilise(strength) => (
+                format!("stabilised-{}", strength.id()),
+                tf("{name} (stabilised)", &[("name", &media.name)]),
+                "stabilise",
+                t("Stabilising: two passes over the whole file…"),
+            ),
+            VideoTool::Interpolate(factor) => (
+                format!("frames-{factor}x"),
+                tf("{name} ({factor}× frames)", &[("name", &media.name), ("factor", &factor)]),
+                "interpolate",
+                t("Making in-between frames; this is slow, minutes for a long clip…"),
+            ),
+        };
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-{suffix}.mp4", media.id));
+        let source_id = media.id.clone();
+        self.set_status(working, cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    if !output.exists() {
+                        match tool {
+                            VideoTool::Stabilise(strength) => media::stabilise_video(&ffmpeg, &media.path, &output, strength)
+                                .map_err(|error| error.to_string())?,
+                            VideoTool::Interpolate(factor) => {
+                                media::interpolate_video(&ffmpeg, &media.path, &output, source_fps.unwrap_or(30.0), factor)
+                                    .map(|_| ())
+                                    .map_err(|error| error.to_string())?
+                            }
+                        }
+                    }
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    item.name = name;
+                    let media_id = item.id.clone();
+                    let commands = vec![
+                        Command::AddMedia(item),
+                        Command::SetOrigin {
+                            media_id: media_id.clone(),
+                            origin: Some(editor::MediaOrigin::generated(tool_id, Some(&source_id), None)),
+                        },
+                        Command::ReplaceMedia { element_id, media_id },
+                    ];
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(
+                            match tool {
+                                VideoTool::Stabilise(_) => t("The clip now plays its stabilised copy; undo puts the original back."),
+                                VideoTool::Interpolate(_) => {
+                                    t("The clip now plays a copy with in-between frames; slow it down in Speed for smooth slow motion.")
+                                }
+                            }
+                            .to_owned(),
+                            cx,
+                        );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Scans the selected video clip for shot changes with FFmpeg's scdet
     /// on a background thread and splits it at the cuts in one undo step.
     pub(crate) fn split_at_shots_selected(&mut self, threshold: f64, cx: &mut Context<Self>) {
@@ -3401,6 +3495,15 @@ fn fit_size(width: u32, height: u32, canvas_width: u32, canvas_height: u32) -> (
     let w = (fit_w.round() as u32).min(canvas_width).max(2) & !1;
     let h = (fit_h.round() as u32).min(canvas_height).max(2) & !1;
     (w, h)
+}
+
+/// A motion tool that rewrites a video clip's file.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum VideoTool {
+    /// vid.stab, two passes.
+    Stabilise(media::StabiliseStrength),
+    /// minterpolate to this many times the frames.
+    Interpolate(u32),
 }
 
 /// `.json` and `.lottie` files are read as Lottie animations.

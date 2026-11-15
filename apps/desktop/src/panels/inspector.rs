@@ -39,6 +39,8 @@ pub(crate) struct InspectorPanel {
     reframe_reset_at_shots: bool,
     beats_every: usize,
     denoise_db: f64,
+    stabilise_strength: media::StabiliseStrength,
+    frames_factor: u32,
     filler_language: &'static str,
     silence_ripple: editor::RippleScope,
 }
@@ -116,6 +118,8 @@ impl InspectorPanel {
             reframe_reset_at_shots: true,
             beats_every: 1,
             denoise_db: 12.0,
+            stabilise_strength: media::StabiliseStrength::Medium,
+            frames_factor: 2,
             filler_language: "auto",
             silence_ripple: editor::RippleScope::All,
         }
@@ -1592,6 +1596,89 @@ impl Render for InspectorPanel {
                                 .disabled(!has_ffmpeg)
                                 .on_click(move |_, _, cx| {
                                     state.update(cx, |state, cx| state.split_at_shots_selected(threshold, cx));
+                                }),
+                        );
+
+                    // Stabilising (vid.stab) and in-between frames
+                    // (minterpolate): a rewritten copy the clip then plays.
+                    let mut strength_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Strength"), window));
+                    for (label, strength) in [
+                        ("Light", media::StabiliseStrength::Light),
+                        ("Medium", media::StabiliseStrength::Medium),
+                        ("Strong", media::StabiliseStrength::Strong),
+                    ] {
+                        strength_row = strength_row.child(
+                            Button::new(eid("stabilise-strength", label), t(label))
+                                .variant(if self.stabilise_strength == strength { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.stabilise_strength = strength;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let strength = self.stabilise_strength;
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading(t("Stabilise"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Smooths a shaky camera (vid.stab, two passes over the whole file) and zooms in just enough to hide the moving edges. Needs an FFmpeg build with vid.stab.")),
+                        )
+                        .child(strength_row)
+                        .child(
+                            Button::new("stabilise", t("Stabilise clip"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| {
+                                        state.rewrite_video_selected(crate::state::VideoTool::Stabilise(strength), cx)
+                                    });
+                                }),
+                        );
+                    let mut factor_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Frames"), window));
+                    for factor in [2u32, 4] {
+                        factor_row = factor_row.child(
+                            Button::new(eid("frames-factor", &factor.to_string()), format!("{factor}×"))
+                                .variant(if self.frames_factor == factor { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.frames_factor = factor;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let factor = self.frames_factor;
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading(t("Smooth slow motion"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Makes in-between frames from the motion (FFmpeg minterpolate) so a slowed clip does not stutter; then set the rate under Speed. Slow to make.")),
+                        )
+                        .child(factor_row)
+                        .child(
+                            Button::new("make-frames", t("Make in-between frames"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| {
+                                        state.rewrite_video_selected(crate::state::VideoTool::Interpolate(factor), cx)
+                                    });
                                 }),
                         );
                 }
