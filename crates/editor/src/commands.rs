@@ -99,6 +99,16 @@ pub enum Command {
         element_id: String,
         media_id: String,
     },
+    /// Points a video element at a media item that holds only the source
+    /// span the element plays (made from its trim start onwards, such as an
+    /// upscaled copy of just that part): the trims are reset so the span
+    /// starts at the new file's beginning, and `source_duration` is the new
+    /// file's length.
+    ReplaceMediaSpan {
+        element_id: String,
+        media_id: String,
+        source_duration: MediaTime,
+    },
     /// Sets (or clears) the stock credit of a media item.
     SetCredit {
         media_id: String,
@@ -314,6 +324,7 @@ fn check_locks(project: &Project, command: &Command) -> Result<(), EditorError> 
         | Command::SplitElement { element_id, .. }
         | Command::RemoveRanges { element_id, .. }
         | Command::ReplaceMedia { element_id, .. }
+        | Command::ReplaceMediaSpan { element_id, .. }
         | Command::SplitElementAtTimes { element_id, .. }
         | Command::UpdateElement { element_id, .. }
         | Command::SetKeyframe { element_id, .. }
@@ -672,6 +683,16 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 }
                 _ => return Err(EditorError::InvalidParams("only video, audio and image elements show media".to_owned())),
             }
+            Outcome::None
+        }
+        Command::ReplaceMediaSpan { element_id, media_id, source_duration } => {
+            apply(project, &Command::ReplaceMedia { element_id: element_id.clone(), media_id: media_id.clone() })?;
+            let (track_index, element_index) = locate(project, element_id)?;
+            let element = &mut project.tracks[track_index].elements[element_index];
+            let span = MediaTime::from_seconds_f64(element.source_span_seconds()).unwrap_or(*source_duration);
+            element.trim_start = MediaTime::ZERO;
+            element.trim_end = if *source_duration > span { *source_duration - span } else { MediaTime::ZERO };
+            element.source_duration = Some(*source_duration);
             Outcome::None
         }
         Command::SplitElementAtTimes { element_id, times } => {
@@ -2070,6 +2091,50 @@ mod tests {
         apply(&mut project, &Command::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
         apply(&mut project, &Command::ReplaceMedia { element_id: image_id.clone(), media_id: "cleaned".to_owned() }).unwrap();
         assert_eq!(project.element(&image_id).unwrap().1.media_id(), Some("cleaned"));
+    }
+
+    #[test]
+    fn replacing_with_a_span_resets_the_trims() {
+        let mut project = Project::new("Span");
+        for (id, seconds) in [("long", 60.0), ("span", 4.0)] {
+            apply(
+                &mut project,
+                &Command::AddMedia(MediaItem {
+                    id: id.to_owned(),
+                    name: format!("{id}.mp4"),
+                    kind: MediaKind::Video,
+                    path: format!("{id}.mp4").into(),
+                    duration: MediaTime::from_seconds_f64(seconds),
+                    width: Some(640),
+                    height: Some(360),
+                    fps: Some(30.0),
+                    has_audio: true,
+                }),
+            )
+            .unwrap();
+        }
+        let mut clip = Element::from_media(project.media_item("long").unwrap(), MediaTime::ZERO);
+        clip.trim_start = MediaTime::from_seconds_f64(10.0).unwrap();
+        clip.duration = MediaTime::from_seconds_f64(4.0).unwrap();
+        clip.trim_end = MediaTime::from_seconds_f64(46.0).unwrap();
+        let id = clip.id.clone();
+        apply(&mut project, &Command::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+        apply(
+            &mut project,
+            &Command::ReplaceMediaSpan {
+                element_id: id.clone(),
+                media_id: "span".to_owned(),
+                source_duration: MediaTime::from_seconds_f64(4.0).unwrap(),
+            },
+        )
+        .unwrap();
+        let clip = project.tracks.iter().flat_map(|track| &track.elements).find(|element| element.id == id).unwrap();
+        assert_eq!(clip.media_id(), Some("span"));
+        assert_eq!(clip.trim_start, MediaTime::ZERO);
+        assert_eq!(clip.trim_end, MediaTime::ZERO);
+        assert_eq!(clip.source_duration, MediaTime::from_seconds_f64(4.0));
+        assert_eq!(clip.duration, MediaTime::from_seconds_f64(4.0).unwrap(), "the clip keeps its length");
+        assert_eq!(clip.source_time(MediaTime::from_seconds_f64(1.0).unwrap()), MediaTime::from_seconds_f64(1.0).unwrap());
     }
 
     #[test]

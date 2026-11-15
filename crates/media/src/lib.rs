@@ -21,6 +21,7 @@ mod motion;
 mod scenes;
 mod probe;
 mod proxy;
+mod upscale;
 mod video;
 
 pub use audio::{AudioReader, AudioSettings};
@@ -43,4 +44,5 @@ pub use motion::{
 pub use probe::{MediaInfo, MediaKind, probe};
 pub use proxy::{AUTO_PROXY_PIXELS, PROXY_LONG_EDGE, existing_proxy, make_proxy, proxy_path, proxy_size, wants_proxy};
 pub use scenes::{SceneScore, parse_scdet, scene_scores};
+pub use upscale::{MAX_UPSCALED_SIDE, UpscaleModel, locate_realesrgan, upscale_image, upscale_video, upscaled_size};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

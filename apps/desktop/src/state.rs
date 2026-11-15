@@ -92,6 +92,9 @@ pub(crate) struct EditorState {
     pub editor: Editor,
     store: ProjectStore,
     ffmpeg: Option<Arc<Ffmpeg>>,
+    /// Real-ESRGAN's program for AI upscaling, when installed
+    /// (scripts/get-realesrgan.sh).
+    realesrgan: Option<std::path::PathBuf>,
     pub selection: Vec<String>,
     pub playing: bool,
     play_anchor: Option<(Instant, MediaTime)>,
@@ -195,6 +198,7 @@ impl EditorState {
             editor: Editor::new(project),
             store,
             ffmpeg,
+            realesrgan: media::locate_realesrgan(),
             selection: Vec::new(),
             playing: false,
             play_anchor: None,
@@ -263,6 +267,10 @@ impl EditorState {
 
     pub(crate) fn has_ffmpeg(&self) -> bool {
         self.ffmpeg.is_some()
+    }
+
+    pub(crate) fn has_realesrgan(&self) -> bool {
+        self.realesrgan.is_some()
     }
 
     pub(crate) fn ffmpeg(&self) -> Option<Arc<Ffmpeg>> {
@@ -1219,6 +1227,121 @@ impl EditorState {
                             .to_owned(),
                             cx,
                         );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// AI upscaling of the selected video or image clip with Real-ESRGAN on
+    /// a background thread into ~/.opencut/processed. A video clip has only
+    /// the source span it plays upscaled, and is pointed at that copy with
+    /// its trims reset; an image clip gets the upscaled picture. One undo
+    /// step; the same settings over the same span reuse the file.
+    pub(crate) fn upscale_selected(&mut self, model: media::UpscaleModel, scale: u32, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
+        if !(is_video || matches!(element.kind, editor::ElementKind::Image { .. })) {
+            self.set_status(t("Upscaling needs a video or image clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        if media.kind == editor::MediaKind::Lottie {
+            self.set_status(t("Lottie animations are drawn at any size already."), cx);
+            return;
+        }
+        let Some(program) = self.realesrgan.clone() else {
+            self.set_status(t("Real-ESRGAN is not installed; run scripts/get-realesrgan.sh."), cx);
+            return;
+        };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed for this."), cx);
+            return;
+        };
+        let (Some(width), Some(height)) = (media.width, media.height) else {
+            self.set_status(t("The clip's picture size is unknown."), cx);
+            return;
+        };
+        if let Err(error) = media::upscaled_size(width, height, scale) {
+            self.set_status(error.to_string(), cx);
+            return;
+        }
+        let fps = media.fps.filter(|fps| *fps > 0.0).unwrap_or(30.0);
+        let start = element.trim_start.to_seconds_f64();
+        let span = element.source_span_seconds();
+        let element_id = element.id.clone();
+        let source_id = media.id.clone();
+        let dir = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"));
+        let output = if is_video {
+            dir.join(format!(
+                "{}-upscaled-{}-{scale}x-{}-{}.mp4",
+                media.id,
+                model.id(),
+                (start * 1000.0).round() as i64,
+                (span * 1000.0).round() as i64
+            ))
+        } else {
+            dir.join(format!("{}-upscaled-{}-{scale}x.png", media.id, model.id()))
+        };
+        let name = tf("{name} (upscaled {scale}×)", &[("name", &media.name), ("scale", &scale)]);
+        if is_video {
+            let frames = (span * fps).round() as i64;
+            self.set_status(tf("Upscaling {frames} frames with Real-ESRGAN…", &[("frames", &frames)]), cx);
+        } else {
+            self.set_status(t("Upscaling the picture with Real-ESRGAN…"), cx);
+        }
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    if !output.exists() {
+                        std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+                        if is_video {
+                            media::upscale_video(
+                                &program,
+                                &ffmpeg,
+                                &media.path,
+                                &output,
+                                (width, height),
+                                fps,
+                                Some((start, span)),
+                                model,
+                                scale,
+                            )
+                        } else {
+                            media::upscale_image(&program, &ffmpeg, &media.path, &output, (width, height), model, scale)
+                        }
+                        .map_err(|error| error.to_string())?;
+                    }
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    item.name = name;
+                    let media_id = item.id.clone();
+                    let source_duration = item.duration;
+                    let mut commands = vec![
+                        Command::AddMedia(item),
+                        Command::SetOrigin {
+                            media_id: media_id.clone(),
+                            origin: Some(editor::MediaOrigin::generated("upscale", Some(&source_id), Some(model.program_name()))),
+                        },
+                    ];
+                    match (is_video, source_duration) {
+                        (true, Some(source_duration)) => {
+                            commands.push(Command::ReplaceMediaSpan { element_id, media_id, source_duration })
+                        }
+                        _ => commands.push(Command::ReplaceMedia { element_id, media_id }),
+                    }
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(t("The clip now plays its upscaled copy; undo puts the original back.").to_owned(), cx);
                     }
                 }
                 Err(message) => state.set_status(message, cx),

@@ -35,7 +35,7 @@ stack (Vite, TanStack Start, Cloudflare Workers). See `changelog/` and
 | Headless mode | `apps/headless` – CLI and library that drive the editor in headless Chromium: job files, scripts, batch rendering |
 | MCP server | `apps/mcp` – Model Context Protocol server so AI agents can open projects, import media, edit and render |
 | Rust core | `crates/` – time, editor (document, commands, undo, frame/audio planning), media (FFmpeg over pipes), render, compositor, effects, masks, gpu, bridge and the `opencut-wasm` package built from this repo; consumed by the web app (wasm) and the desktop app (native) |
-| Desktop | `apps/desktop` – native GPUI editor on the Rust core: projects, media import, multi-track timeline, GPU-composited preview with audio, inspector, undo/redo, MP4/WebM export; [README](apps/desktop/README.md) |
+| Desktop | `apps/desktop` – native GPUI editor on the Rust core: projects, media import, multi-track timeline, GPU-composited preview with audio, inspector, undo/redo, MP4/WebM export, stabilising (vid.stab), smooth slow motion (in-between frames) and AI upscaling (Real-ESRGAN, fetched by `scripts/get-realesrgan.sh`); [README](apps/desktop/README.md) |
 | API worker | `apps/api` – Cloudflare Worker (Elysia) with `/health`, `/sounds/search`, `/feedback`; integrations are optional bindings |
 | Self-hosting | `infra/self-host` – container image and Compose file running the web app and API worker on one port; [guide](infra/self-host/README.md) |
 

@@ -41,6 +41,8 @@ pub(crate) struct InspectorPanel {
     denoise_db: f64,
     stabilise_strength: media::StabiliseStrength,
     frames_factor: u32,
+    upscale_model: media::UpscaleModel,
+    upscale_scale: u32,
     filler_language: &'static str,
     silence_ripple: editor::RippleScope,
 }
@@ -120,6 +122,8 @@ impl InspectorPanel {
             denoise_db: 12.0,
             stabilise_strength: media::StabiliseStrength::Medium,
             frames_factor: 2,
+            upscale_model: media::UpscaleModel::Animation,
+            upscale_scale: 2,
             filler_language: "auto",
             silence_ripple: editor::RippleScope::All,
         }
@@ -534,6 +538,10 @@ impl Render for InspectorPanel {
             .and_then(|element| project.media_for(element))
             .map(|media| media.has_audio)
             .unwrap_or(false);
+        let state_media_is_lottie = selected
+            .as_ref()
+            .and_then(|element| project.media_for(element))
+            .is_some_and(|media| media.kind == editor::MediaKind::Lottie);
         let project_name = project.name.clone();
         let (background, blur_intensity) = match &project.settings.background {
             Background::Color { color } => (color.clone(), None),
@@ -541,6 +549,7 @@ impl Render for InspectorPanel {
         };
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
+        let has_realesrgan = state.has_realesrgan();
         let loudness = state.loudness.clone();
         let beats = state.beats;
         let marker_count = state.markers.len();
@@ -1679,6 +1688,69 @@ impl Render for InspectorPanel {
                                     state.update(cx, |state, cx| {
                                         state.rewrite_video_selected(crate::state::VideoTool::Interpolate(factor), cx)
                                     });
+                                }),
+                        );
+                }
+
+                let is_lottie = state_media_is_lottie;
+                if matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. }) && !is_lottie {
+                    // AI upscaling with Real-ESRGAN: a copy the clip then plays.
+                    let mut model_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Model"), window));
+                    for (label, model) in [("Fast (animation)", media::UpscaleModel::Animation), ("Photo (slow)", media::UpscaleModel::Photo)] {
+                        model_row = model_row.child(
+                            Button::new(eid("upscale-model", label), t(label))
+                                .variant(if self.upscale_model == model { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.upscale_model = model;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let mut scale_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Scale"), window));
+                    for scale in [2u32, 4] {
+                        scale_row = scale_row.child(
+                            Button::new(eid("upscale-scale", &scale.to_string()), format!("{scale}×"))
+                                .variant(if self.upscale_scale == scale { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.upscale_scale = scale;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let (model, scale) = (self.upscale_model, self.upscale_scale);
+                    let state = self.state.clone();
+                    content = content
+                        .child(self.heading(t("AI upscale"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(if has_realesrgan {
+                                    t("Real-ESRGAN on the GPU, up to 3840 px. Fast suits animation, screen recordings and most video; Photo is sharper on real footage but takes seconds a frame. A video clip has only the part it plays upscaled.")
+                                } else {
+                                    t("Real-ESRGAN is not installed; run scripts/get-realesrgan.sh, then restart.")
+                                }),
+                        )
+                        .child(model_row)
+                        .child(scale_row)
+                        .child(
+                            Button::new("upscale", t("Upscale clip"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg || !has_realesrgan)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.upscale_selected(model, scale, cx));
                                 }),
                         );
                 }

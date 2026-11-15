@@ -291,9 +291,33 @@ with the same settings is reused. Both live in `crates/media/src/motion.rs`.
   than the clip's own length).
 
 The whole source file is processed, not only the part on the timeline.
-AI upscaling (Real-ESRGAN) and stem separation (demucs) are not here: both
-need programs or model weights downloaded, and the demucs weights' licence
-is not stated.
+
+## AI upscaling
+
+The **AI upscale** section (video and image clips) runs Real-ESRGAN's
+ncnn/Vulkan program on the GPU, which `scripts/get-realesrgan.sh` fetches
+from the project's own release into `~/.opencut/tools/realesrgan/`
+(about 45 MB with its models; `OPENCUT_REALESRGAN` points at it elsewhere).
+The app looks for it at start-up, so restart after installing.
+
+- **Fast (animation)** uses `realesr-animevideov3` at 2× or 4×. It is made
+  for animation but is also the practical choice for video: about 0.2 s a
+  frame at 640×360 on the development PC (Intel Arc 140V).
+- **Photo (slow)** uses `realesrgan-x4plus`, the general model, which only
+  works at 4× (2× is its result scaled down). It is sharper on real footage
+  but took about 6.5 s a frame at 640×360 here, so it suits pictures and
+  short clips.
+
+A video clip has only the source span it plays upscaled: FFmpeg writes those
+frames out as PNG at the clip's frame rate (they need disk space for a
+moment, about 1 MB a frame at 1080p), the program upscales the folder, and
+FFmpeg encodes them back with the same span of audio. The clip is then
+pointed at the copy with its trims reset (`ReplaceMediaSpan`), in one undo
+step. Outputs larger than 3840 px are refused before anything runs. An image
+clip gets an upscaled PNG.
+
+Stem separation (demucs) is not here: its model weights' licence is not
+stated.
 
 ## Filler words
 
