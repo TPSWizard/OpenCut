@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.conzahub.conzacut",
+      "sha256_cert_fingerprints": ["75:04:E4:93:04:70:22:84:C6:39:8E:DD:B8:32:4F:0E:9E:06:11:86:A5:DE:E9:22:8E:43:3B:E8:7F:5B:74:63"]
+    }
+  }
+]

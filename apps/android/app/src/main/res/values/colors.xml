@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The web app's theme_color and background_color (manifest.json). -->
+    <color name="background">#0D0D0D</color>
+</resources>

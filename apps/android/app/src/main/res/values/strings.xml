@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ConzaCut</string>
+    <string name="launch_url">https://conzacut.conzahub.com/projects</string>
+    <string name="asset_statements" translatable="false">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {\"namespace\": \"web\", \"site\": \"https://conzacut.conzahub.com\"}
+        }]
+    </string>
+    <!-- The share_target from apps/web/public/manifest.json, with the action as a full URL. -->
+    <string name="share_target" translatable="false">
+        {
+            \"action\": \"https://conzacut.conzahub.com/share-target\",
+            \"method\": \"POST\",
+            \"enctype\": \"multipart/form-data\",
+            \"params\": {
+                \"title\": \"title\",
+                \"text\": \"text\",
+                \"files\": [{\"name\": \"media\", \"accept\": [\"video/*\", \"image/*\", \"audio/*\"]}]
+            }
+        }
+    </string>
+</resources>
