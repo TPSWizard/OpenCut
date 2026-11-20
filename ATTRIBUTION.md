@@ -325,6 +325,19 @@ this repository. Templates you save stay in your browser or in
 - The test clips in `crates/media/tests/motion.rs` are made at test time
   from FFmpeg's built-in `testsrc2`, `color` and `sine` sources.
 
+## Face swap (added 2026-11-20)
+
+- Swapping runs on Segmind's hosted API (https://www.segmind.com) with
+  FaceFusion Labs' HyperSwap models (`video-faceswap-by-facefusion-labs`,
+  `hyperswap-image-faceswap-by-facefusion-labs`). No model weights are in
+  this repository or downloaded by it; their licence is FaceFusion Labs'
+  and the service's terms are Segmind's.
+- The route (`apps/api/src/faceswap.ts`) and the editor code
+  (`apps/web/src/faceswap`) are own code. Swapped media is recorded as
+  generated (tool `faceswap`, model "HyperSwap (FaceFusion Labs) via
+  Segmind") in the project's credits, and exports showing it carry a
+  disclosure in their metadata.
+
 ## Script to B-roll (added 2026-11-15)
 
 - The shot planner (`crates/editor/src/broll.rs`, `apps/web/src/broll/plan.ts`)

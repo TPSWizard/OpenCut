@@ -75,6 +75,7 @@ the editor says so where you would use it.
 | `SHARE_UPLOAD_KEY` | Sharing projects by link. Uploading a share needs this passcode; opening one needs only the link. Use a long random value. |
 | `FREESOUND_API_KEY` | Sound search through Freesound ([get a key](https://freesound.org/apiv2/apply)). The 663 bundled sound effects work without one. |
 | `PIXABAY_API_KEY` | Stock images and video from Pixabay ([API docs](https://pixabay.com/api/docs/)). Openverse images work without a key. |
+| `SEGMIND_API_KEY` | Face swap through Segmind's hosted HyperSwap. Each swap spends your Segmind credit, so it also needs `SHARE_UPLOAD_KEY`. Segmind fetches the clip from this server's `/api/faceswap/files/` links, so the server must be reachable from the internet. |
 | `ANTHROPIC_API_KEY` | Claude's search words for script-to-B-roll. Each use spends your API credit, so it also needs `SHARE_UPLOAD_KEY` (the editor sends the passcode). Without it the editor's own search words are used. |
 | `CONZACUT_PORT` | The port on this computer (default `8080`). |
 | `CONZACUT_DOMAIN` | Your domain, for the Caddy HTTPS service. |

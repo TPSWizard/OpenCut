@@ -1,3 +1,4 @@
+import { FACE_SWAP_EXPORT_NOTE, usesFaceSwap } from "@/faceswap/disclosure";
 import type { EditorCore } from "@/core";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import type { ExportOptions, ExportResult } from "@/export";
@@ -195,6 +196,16 @@ export class RendererManager {
 				hardware,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
+				disclosure: usesFaceSwap({
+					assets: mediaAssets,
+					mediaIds: [tracks.main, ...tracks.overlay].flatMap((track) =>
+						track.elements.flatMap((element) =>
+							"mediaId" in element && typeof element.mediaId === "string" ? [element.mediaId] : [],
+						),
+					),
+				})
+					? FACE_SWAP_EXPORT_NOTE
+					: undefined,
 			});
 
 			exporter.on("progress", (progress) => {

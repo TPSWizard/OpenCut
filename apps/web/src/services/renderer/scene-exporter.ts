@@ -36,6 +36,8 @@ type ExportParams = {
 	hardware?: boolean;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
+	/** Written into the file's metadata (comment and description), e.g. that it contains a swapped face. */
+	disclosure?: string;
 };
 
 const qualityMap = {
@@ -62,6 +64,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private hardware: boolean;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
+	private disclosure: string | null;
 
 	private isCancelled = false;
 
@@ -77,8 +80,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		hardware,
 		shouldIncludeAudio,
 		audioBuffer,
+		disclosure,
 	}: ExportParams) {
 		super();
+		this.disclosure = disclosure?.trim() || null;
 		this.renderer = new CanvasRenderer({
 			width,
 			height,
@@ -187,6 +192,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			output.addAudioTrack(audioSource);
 		}
 
+		if (this.disclosure) {
+			output.setMetadataTags({ comment: this.disclosure, description: this.disclosure });
+		}
 		await output.start();
 
 		if (audioSource && this.audioBuffer) {

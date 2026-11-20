@@ -30,6 +30,12 @@
   // owner's credit, so it also needs the sharing passcode:
   //   wrangler secret put ANTHROPIC_API_KEY
 
+  // Face swap (POST /faceswap/jobs …) through Segmind's hosted HyperSwap
+  // models; inputs go through the SHARES bucket under faceswap/ and are
+  // deleted when a job ends. Spends the owner's Segmind credit, so it also
+  // needs the sharing passcode:
+  //   wrangler secret put SEGMIND_API_KEY
+
   // Restrict CORS to the deployed web app by setting CORS_ORIGIN to its origin.
   "vars": {
     "CORS_ORIGIN": "https://conzacut.conzahub.com"

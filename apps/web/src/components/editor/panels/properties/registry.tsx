@@ -5,6 +5,7 @@ import { ShotsSection } from "@/shots/components/shots-section";
 import { ReframeSection } from "@/reframe/components/reframe-section";
 import { PictureCleanupSection } from "@/picture/components/picture-cleanup-section";
 import { CutoutSection } from "@/cutout/components/cutout-section";
+import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
 import { BeatsSection } from "@/beats/components/beats-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
 import { FillersSection } from "@/fillers/components/fillers-section";
@@ -142,6 +143,9 @@ function buildTransformTab({
 				{element.type === "video" && <ReframeSection element={element} trackId={trackId} />}
 				{element.type === "video" && <CutoutSection element={element} trackId={trackId} />}
 				{element.type === "image" && <PictureCleanupSection element={element} trackId={trackId} />}
+				{(element.type === "video" || element.type === "image") && (
+					<FaceSwapSection element={element} trackId={trackId} />
+				)}
 			</>
 		),
 	};

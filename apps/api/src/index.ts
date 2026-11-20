@@ -14,6 +14,7 @@ import {
 } from "./stock";
 import { handleShare, type ShareEnv } from "./share";
 import { handleBroll, type BrollEnv } from "./broll";
+import { handleFaceSwap, type FaceSwapEnv } from "./faceswap";
 
 /**
  * Bindings and variables the worker can use. Every one of them is optional:
@@ -32,7 +33,8 @@ type Env = {
 	/** Allowed browser origin for CORS; defaults to any origin. */
 	CORS_ORIGIN?: string;
 } & ShareEnv &
-	BrollEnv;
+	BrollEnv &
+	FaceSwapEnv;
 
 const bindings = env as Env;
 
@@ -429,6 +431,9 @@ export default {
 		}
 		if (request.method !== "OPTIONS" && pathname.startsWith("/broll/")) {
 			return handleBroll(request, bindings, corsHeaders(request));
+		}
+		if (request.method !== "OPTIONS" && pathname.startsWith("/faceswap/")) {
+			return handleFaceSwap(request, bindings, corsHeaders(request));
 		}
 		return app.fetch(request);
 	},
