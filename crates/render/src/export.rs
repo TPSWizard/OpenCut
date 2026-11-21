@@ -94,6 +94,7 @@ pub fn export_project(
         hardware: job.hardware,
         duration_seconds: duration.to_seconds_f64(),
         audio,
+        disclosure: project.face_swap_disclosure().map(str::to_owned),
     };
     let mut encoder = Encoder::start(ffmpeg, &encode).map_err(|error| error.to_string())?;
 

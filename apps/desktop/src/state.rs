@@ -95,6 +95,8 @@ pub(crate) struct EditorState {
     /// Real-ESRGAN's program for AI upscaling, when installed
     /// (scripts/get-realesrgan.sh).
     realesrgan: Option<std::path::PathBuf>,
+    /// FaceFusion for local face swap, when the user installed it.
+    facefusion: Option<media::FaceFusion>,
     pub selection: Vec<String>,
     pub playing: bool,
     play_anchor: Option<(Instant, MediaTime)>,
@@ -199,6 +201,7 @@ impl EditorState {
             store,
             ffmpeg,
             realesrgan: media::locate_realesrgan(),
+            facefusion: media::locate_facefusion(),
             selection: Vec::new(),
             playing: false,
             play_anchor: None,
@@ -271,6 +274,10 @@ impl EditorState {
 
     pub(crate) fn has_realesrgan(&self) -> bool {
         self.realesrgan.is_some()
+    }
+
+    pub(crate) fn has_facefusion(&self) -> bool {
+        self.facefusion.is_some()
     }
 
     pub(crate) fn ffmpeg(&self) -> Option<Arc<Ffmpeg>> {
@@ -1458,6 +1465,119 @@ impl EditorState {
                     }
                     if state.execute(Command::Batch(commands), cx).is_some() {
                         state.set_status(t("The clip now plays its upscaled copy; undo puts the original back.").to_owned(), cx);
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Local face swap with the user's FaceFusion: asks for the face photo,
+    /// swaps it onto the chosen face in the part of the clip it plays (a
+    /// picture whole) on a background thread, and the clip then plays the
+    /// result, in one undo step. The result is marked as generated (tool
+    /// "faceswap"), so the credits list it and exports carry the
+    /// disclosure.
+    pub(crate) fn face_swap_selected(&mut self, options: media::SwapOptions, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
+        if !(is_video || matches!(element.kind, editor::ElementKind::Image { .. })) {
+            self.set_status(t("Face swap needs a video or picture clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        if media.kind == editor::MediaKind::Lottie {
+            self.set_status(t("Face swap needs a video or picture clip."), cx);
+            return;
+        }
+        let Some(facefusion) = self.facefusion.clone() else {
+            self.set_status(t("FaceFusion is not installed."), cx);
+            return;
+        };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed for this."), cx);
+            return;
+        };
+        let start = element.trim_start.to_seconds_f64();
+        let span = element.source_span_seconds();
+        let element_id = element.id.clone();
+        let receiver = cx.prompt_for_paths(gpui::PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some(t("Choose the face photo").into()),
+        });
+        cx.spawn(async move |this, cx| {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            let Some(face) = paths.into_iter().next() else {
+                return;
+            };
+            let dir = editor::ProjectStore::default_root()
+                .parent()
+                .map(|root| root.join("processed"))
+                .unwrap_or_else(|| std::path::PathBuf::from("processed"));
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_millis())
+                .unwrap_or_default();
+            let output = dir.join(format!(
+                "{}-faceswap-{}-{stamp}.{}",
+                media.id,
+                options.model.program_name(),
+                if is_video { "mp4" } else { "png" }
+            ));
+            let name = tf("{name} (face swap)", &[("name", &media.name)]);
+            let source_id = media.id.clone();
+            let model = options.model;
+            this.update(cx, |state, cx| {
+                state.set_status(
+                    if is_video {
+                        tf("Swapping the face in {seconds} s of video with FaceFusion…", &[("seconds", &format!("{span:.1}"))])
+                    } else {
+                        t("Swapping the face in the picture with FaceFusion…").to_owned()
+                    },
+                    cx,
+                );
+            })
+            .ok();
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+                    if is_video {
+                        media::swap_face_video(&facefusion, &ffmpeg, &face, &media.path, &output, Some((start, span)), &options)
+                    } else {
+                        media::swap_face_image(&facefusion, &ffmpeg, &face, &media.path, &output, &options)
+                    }
+                    .map_err(|error| error.to_string())?;
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    item.name = name;
+                    let media_id = item.id.clone();
+                    let source_duration = item.duration;
+                    let model_name = format!("FaceFusion {} (local)", model.label());
+                    let mut commands = vec![
+                        Command::AddMedia(item),
+                        Command::SetOrigin {
+                            media_id: media_id.clone(),
+                            origin: Some(editor::MediaOrigin::generated("faceswap", Some(&source_id), Some(&model_name))),
+                        },
+                    ];
+                    match (is_video, source_duration) {
+                        (true, Some(source_duration)) => {
+                            commands.push(Command::ReplaceMediaSpan { element_id, media_id, source_duration })
+                        }
+                        _ => commands.push(Command::ReplaceMedia { element_id, media_id }),
+                    }
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        state.set_status(t("Face swapped; undo puts the original back. Exports say the video contains a face swap.").to_owned(), cx);
                     }
                 }
                 Err(message) => state.set_status(message, cx),

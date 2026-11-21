@@ -895,6 +895,14 @@ impl Project {
         element.media_id().and_then(|id| self.media_item(id))
     }
 
+    /// The export disclosure when any clip shows face-swapped media.
+    pub fn face_swap_disclosure(&self) -> Option<&'static str> {
+        self.elements()
+            .filter_map(|(_, element)| element.media_id())
+            .any(|id| self.origins.get(id).and_then(|origin| origin.tool.as_deref()) == Some("faceswap"))
+            .then_some(crate::assets::FACE_SWAP_EXPORT_NOTE)
+    }
+
     pub fn touch(&mut self) {
         self.updated_at = now_millis();
     }

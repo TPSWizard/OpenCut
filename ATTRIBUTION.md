@@ -332,6 +332,12 @@ this repository. Templates you save stay in your browser or in
   `hyperswap-image-faceswap-by-facefusion-labs`). No model weights are in
   this repository or downloaded by it; their licence is FaceFusion Labs'
   and the service's terms are Segmind's.
+- On the desktop, face swap runs the user's own FaceFusion
+  (https://github.com/facefusion/facefusion, OpenRAIL-AS), installed by
+  them; this repository neither ships nor downloads FaceFusion or its
+  models, whose licences (mostly non-commercial or research-only; GHOST is
+  Apache-2.0) the person installing it accepts. `crates/media/src/faceswap.rs`
+  only builds its command line and runs it.
 - The route (`apps/api/src/faceswap.ts`) and the editor code
   (`apps/web/src/faceswap`) are own code. Swapped media is recorded as
   generated (tool `faceswap`, model "HyperSwap (FaceFusion Labs) via

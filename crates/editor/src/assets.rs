@@ -36,6 +36,10 @@ pub struct MediaOrigin {
     pub source: Option<String>,
 }
 
+/// Written into an export's metadata (comment and description) when the
+/// timeline shows face-swapped media; the web app's `FACE_SWAP_EXPORT_NOTE`.
+pub const FACE_SWAP_EXPORT_NOTE: &str = "Contains an AI face swap (made with ConzaCut).";
+
 impl MediaOrigin {
     pub fn generated(tool: &str, from: Option<&str>, model: Option<&str>) -> Self {
         Self {

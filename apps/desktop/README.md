@@ -292,6 +292,32 @@ with the same settings is reused. Both live in `crates/media/src/motion.rs`.
 
 The whole source file is processed, not only the part on the timeline.
 
+## Face swap (local, with your own FaceFusion)
+
+**Face swap** in the inspector (video and picture clips) puts the face from
+a photo onto a face in the clip with [FaceFusion](https://github.com/facefusion/facefusion),
+run on this computer: nothing is uploaded. ConzaCut never downloads
+FaceFusion or its models. Install it yourself (its Windows installer, or
+its guide: a conda environment named `facefusion` and `python install.py
+directml` or `cuda@12`) into `~/.opencut/tools/facefusion` or `~/facefusion`,
+or point `OPENCUT_FACEFUSION` at its folder and `OPENCUT_FACEFUSION_PYTHON`
+at its Python, then restart. FaceFusion is OpenRAIL-AS and its models carry
+their own licences, most of them non-commercial or research-only (GHOST is
+Apache-2.0, but the face detection and recognition models it relies on are
+not).
+
+Choose the model (HyperSwap 1a fast, 1c detailed, or GHOST 2), which face
+changes (the largest, the first or second from the left in the clip's first
+frame, or all), and optionally sharpen the face (GFPGAN 1.4). Confirm that
+the face is yours or that the person agreed, and that the people in the clip
+agreed too; the confirmation is asked again for each swap. A video clip has
+only the part it plays swapped (`media::swap_face_video`: FFmpeg cuts the
+span, FaceFusion runs `headless-run` from its own folder, FFmpeg puts the
+span's own sound back), and the clip then plays the result in one undo step.
+The result is marked as generated (tool `faceswap`), so the credits list
+it, and every export that shows it says so in its metadata (comment and
+description).
+
 ## B-roll from a script
 
 **B-roll for this script** in the media panel's voice-over section lays out

@@ -206,6 +206,9 @@ pub struct EncodeSettings {
     /// Total length, so audio can be padded or cut to the picture.
     pub duration_seconds: f64,
     pub audio: Vec<AudioMixClip>,
+    /// Written into the file's metadata (comment and description), e.g.
+    /// that it contains a face swap.
+    pub disclosure: Option<String>,
 }
 
 /// Encodes BGRA frames pushed through [`Encoder::write_frame`] into a video
@@ -482,6 +485,12 @@ pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<S
             }
         }
     }
+    if let Some(note) = settings.disclosure.as_deref().map(str::trim).filter(|note| !note.is_empty()) {
+        for key in ["comment", "description"] {
+            args.push("-metadata".into());
+            args.push(format!("{key}={note}"));
+        }
+    }
     args.push("-shortest".into());
     args.push(settings.output.to_string_lossy().into_owned());
     args
@@ -523,6 +532,7 @@ mod tests {
                     gain_keys: Vec::new(),
                 },
             ],
+            disclosure: None,
         };
         let args = build_args(&settings);
         let joined = args.join(" ");
@@ -580,6 +590,7 @@ mod tests {
             hardware: false,
             duration_seconds: 4.0,
             audio: vec![clip],
+            disclosure: None,
         };
         let args = build_args(&settings);
         let graph = &args[args.iter().position(|a| a == "-filter_complex").unwrap() + 1];
@@ -609,6 +620,7 @@ mod tests {
                 gain: 1.0,
                 gain_keys: Vec::new(),
             }],
+            disclosure: None,
         };
         let joined = build_args(&settings).join(" ");
         assert!(joined.contains("-profile:v high -bf 2 -coder 1 -b:v 8000000 -maxrate 12000000 -bufsize 16000000 -g 15 -keyint_min 15 -sc_threshold 0 -flags +cgop"), "{joined}");
@@ -632,11 +644,24 @@ mod tests {
             hardware: false,
             duration_seconds: 2.0,
             audio: vec![],
+            disclosure: None,
         };
         let joined = build_args(&settings).join(" ");
         assert!(joined.contains("-map 0:v -an -c:v libvpx-vp9"));
         assert!(joined.contains("-crf 32"));
         assert!(!joined.contains("filter_complex"));
+    }
+
+    #[test]
+    fn writes_the_disclosure_into_the_metadata() {
+        let mut settings = silent(EncodeFormat::Mp4, None);
+        settings.disclosure = Some("Contains an AI face swap (made with ConzaCut).".to_owned());
+        let args = build_args(&settings);
+        let comment = args.iter().position(|arg| arg == "comment=Contains an AI face swap (made with ConzaCut).").unwrap();
+        assert_eq!(args[comment - 1], "-metadata");
+        assert!(args.iter().any(|arg| arg == "description=Contains an AI face swap (made with ConzaCut)."));
+        assert_eq!(args.last().unwrap(), "out.mp4");
+        assert!(!build_args(&silent(EncodeFormat::Webm, None)).iter().any(|arg| arg == "-metadata"));
     }
 
     fn silent(format: EncodeFormat, codec: Option<VideoCodec>) -> EncodeSettings {
@@ -653,6 +678,7 @@ mod tests {
             hardware: false,
             duration_seconds: 2.0,
             audio: vec![],
+            disclosure: None,
         }
     }
 

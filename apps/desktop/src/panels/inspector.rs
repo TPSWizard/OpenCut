@@ -43,6 +43,9 @@ pub(crate) struct InspectorPanel {
     frames_factor: u32,
     upscale_model: media::UpscaleModel,
     upscale_scale: u32,
+    /// Local face swap settings; consent is asked again for each clip.
+    faceswap: media::SwapOptions,
+    faceswap_consent: bool,
     filler_language: &'static str,
     silence_ripple: editor::RippleScope,
 }
@@ -124,6 +127,8 @@ impl InspectorPanel {
             frames_factor: 2,
             upscale_model: media::UpscaleModel::Animation,
             upscale_scale: 2,
+            faceswap: media::SwapOptions::default(),
+            faceswap_consent: false,
             filler_language: "auto",
             silence_ripple: editor::RippleScope::All,
         }
@@ -550,6 +555,7 @@ impl Render for InspectorPanel {
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
         let has_realesrgan = state.has_realesrgan();
+        let has_facefusion = state.has_facefusion();
         let loudness = state.loudness.clone();
         let beats = state.beats;
         let marker_count = state.markers.len();
@@ -1752,6 +1758,109 @@ impl Render for InspectorPanel {
                                 .on_click(move |_, _, cx| {
                                     state.update(cx, |state, cx| state.upscale_selected(model, scale, cx));
                                 }),
+                        );
+
+                    // Local face swap with the user's own FaceFusion.
+                    let options = self.faceswap.clone();
+                    let mut swap_model_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Model"), window));
+                    for swap_model in [media::SwapModel::HyperSwap1a, media::SwapModel::HyperSwap1c, media::SwapModel::Ghost2] {
+                        swap_model_row = swap_model_row.child(
+                            Button::new(eid("faceswap-model", swap_model.program_name()), swap_model.label())
+                                .variant(if options.model == swap_model { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.faceswap.model = swap_model;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let mut face_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Face"), window));
+                    for (id, label, choice) in [
+                        ("faceswap-largest", t("Largest"), media::FaceChoice::Largest),
+                        ("faceswap-left-1", t("1st from left"), media::FaceChoice::FromLeft(0)),
+                        ("faceswap-left-2", t("2nd from left"), media::FaceChoice::FromLeft(1)),
+                        ("faceswap-all", t("All"), media::FaceChoice::All),
+                    ] {
+                        face_row = face_row.child(
+                            Button::new(id, label)
+                                .variant(if options.choice == choice { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.faceswap.choice = choice;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let consent = self.faceswap_consent;
+                    let state = self.state.clone();
+                    let run_options = options.clone();
+                    content = content
+                        .child(self.heading(t("Face swap"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(if has_facefusion {
+                                    t("Runs your own FaceFusion on this computer; nothing is uploaded. Its models have their own licences, most of them non-commercial. A video clip has only the part it plays swapped, and exports say the video contains a face swap.")
+                                } else {
+                                    t("FaceFusion is not installed. Install it yourself from facefusion.io into ~/.opencut/tools/facefusion with a conda environment named facefusion (or set OPENCUT_FACEFUSION and OPENCUT_FACEFUSION_PYTHON), then restart. Its models have their own licences, most of them non-commercial.")
+                                }),
+                        )
+                        .child(swap_model_row)
+                        .child(face_row)
+                        .child(
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .gap(px(4.))
+                                .child(
+                                    Button::new("faceswap-enhance", t("Sharpen the face"))
+                                        .variant(if options.enhance { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                            this.faceswap.enhance = !this.faceswap.enhance;
+                                            cx.notify();
+                                        })),
+                                )
+                                .child(
+                                    Button::new(
+                                        "faceswap-consent",
+                                        if consent { t("Permission confirmed") } else { t("Confirm permission") },
+                                    )
+                                    .variant(if consent { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.faceswap_consent = !this.faceswap_consent;
+                                        cx.notify();
+                                    })),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Confirm only if the face is yours, or the person has agreed, and the people in the clip have agreed too.")),
+                        )
+                        .child(
+                            Button::new("faceswap-run", t("Swap face…"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg || !has_facefusion || !consent)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    let options = run_options.clone();
+                                    this.faceswap_consent = false;
+                                    state.update(cx, |state, cx| state.face_swap_selected(options, cx));
+                                    cx.notify();
+                                })),
                         );
                 }
 

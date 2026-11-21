@@ -47,6 +47,7 @@ fn settings(path: &Path, format: EncodeFormat, codec: VideoCodec) -> EncodeSetti
         hardware: false,
         duration_seconds: 0.5,
         audio: vec![],
+        disclosure: None,
     }
 }
 

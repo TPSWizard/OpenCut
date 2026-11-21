@@ -118,6 +118,7 @@ fn probes_decodes_and_encodes() {
                 GainKey { seconds: 0.5, db: -2.0, ease: GainEase::Linear },
             ],
         }],
+        disclosure: None,
     };
     let mut encoder = Encoder::start(&ffmpeg, &settings).unwrap();
     for index in 0..30 {
