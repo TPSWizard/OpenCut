@@ -95,7 +95,7 @@ fn python_in(env: &Path) -> PathBuf {
 }
 
 /// FaceFusion: the folder in `OPENCUT_FACEFUSION`, else
-/// `~/.opencut/tools/facefusion`, else `~/facefusion`; its Python from
+/// `~/.opencut/tools/facefusion`, `~/facefusion` or `~/Desktop/facefusion`; its Python from
 /// `OPENCUT_FACEFUSION_PYTHON`, else a conda environment called
 /// `facefusion` (as FaceFusion's install guide makes) in Miniconda or
 /// Anaconda, else a `venv` or `.venv` in the folder.
@@ -104,7 +104,7 @@ pub fn locate_facefusion() -> Option<FaceFusion> {
     let dirs: Vec<PathBuf> = std::env::var_os("OPENCUT_FACEFUSION")
         .map(PathBuf::from)
         .into_iter()
-        .chain(home.iter().flat_map(|home| [home.join(".opencut").join("tools").join("facefusion"), home.join("facefusion")]))
+        .chain(home.iter().flat_map(|home| [home.join(".opencut").join("tools").join("facefusion"), home.join("facefusion"), home.join("Desktop").join("facefusion")]))
         .collect();
     let dir = dirs.into_iter().find(|dir| dir.join("facefusion.py").is_file())?;
     let mut pythons: Vec<PathBuf> = std::env::var_os("OPENCUT_FACEFUSION_PYTHON").map(PathBuf::from).into_iter().collect();
@@ -159,12 +159,16 @@ fn run_facefusion(facefusion: &FaceFusion, args: &[OsString]) -> Result<(), Medi
         .env("PYTHONIOENCODING", "utf-8")
         .output()?;
     if !result.status.success() {
-        let message = crate::ffmpeg::last_stderr_line(&result.stderr);
-        let message = if message.is_empty() { crate::ffmpeg::last_stderr_line(&result.stdout) } else { message };
+        // FaceFusion logs some failures to stdout only.
+        let quiet = result.stderr.iter().all(u8::is_ascii_whitespace);
+        let message = crate::ffmpeg::last_stderr_line(if quiet { &result.stdout } else { &result.stderr });
         let code = result.status.code().map(|code| format!(" (exit {code})")).unwrap_or_default();
         let explained = match result.status.code() {
             Some(2) => "FaceFusion's checks failed: it needs Python 3.10 or later and curl, ffmpeg and ffprobe on PATH".to_owned(),
             Some(3) => "FaceFusion declined the content".to_owned(),
+            _ if message.contains("no source face detected") => {
+                "No face was found in the face photo; choose a clear photo of one face".to_owned()
+            }
             _ => message,
         };
         return Err(MediaError::ProgramFailed { program: format!("FaceFusion{code}"), message: explained });

@@ -299,7 +299,7 @@ a photo onto a face in the clip with [FaceFusion](https://github.com/facefusion/
 run on this computer: nothing is uploaded. ConzaCut never downloads
 FaceFusion or its models. Install it yourself (its Windows installer, or
 its guide: a conda environment named `facefusion` and `python install.py
-directml` or `cuda@12`) into `~/.opencut/tools/facefusion` or `~/facefusion`,
+directml` or `cuda@12`) into `~/.opencut/tools/facefusion`, `~/facefusion` or `~/Desktop/facefusion`,
 or point `OPENCUT_FACEFUSION` at its folder and `OPENCUT_FACEFUSION_PYTHON`
 at its Python, then restart. FaceFusion is OpenRAIL-AS and its models carry
 their own licences, most of them non-commercial or research-only (GHOST is
