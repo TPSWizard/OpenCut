@@ -412,7 +412,8 @@ export interface ApiEffectInfo {
 export interface ApiEffectParamInfo {
 	key: string;
 	label: string;
-	type: "number" | "select";
+	/** `color` takes a hex string such as "#00b140". */
+	type: "number" | "select" | "color";
 	default: number | string;
 	min?: number;
 	max?: number;

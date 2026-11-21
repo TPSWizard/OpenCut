@@ -132,6 +132,11 @@ pub const SHADERS: &[ShaderSpec] = &[
         numbers: &["u_shadows", "u_highlights", "u_range"],
     },
     ShaderSpec {
+        id: "chroma-key",
+        source: include_str!("shaders/chroma_key.wgsl"),
+        numbers: &["u_key_r", "u_key_g", "u_key_b", "u_strength", "u_softness", "u_spill"],
+    },
+    ShaderSpec {
         id: "lut",
         source: include_str!("shaders/lut.wgsl"),
         numbers: &["u_size", "u_intensity", "u_tetrahedral"],

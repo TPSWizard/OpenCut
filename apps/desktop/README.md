@@ -149,8 +149,13 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   lift/gamma/gain (three-way colour with red, green and blue offsets),
   curves (a five-point master curve and three-point red, green and blue
   curves), levels (input and output black and white points, gamma),
-  shadows and highlights, LUT, vignette, film grain, RGB split, pixelate,
-  sharpen, mirror, glitch and kaleidoscope. The LUT effect's **Load…**
+  shadows and highlights, chroma key, LUT, vignette, film grain, RGB split,
+  pixelate, sharpen, mirror, glitch and kaleidoscope. Chroma key makes a
+  green or blue screen (or any key colour, typed as hex) transparent: it
+  compares each pixel's chroma (BT.709 Cb/Cr) with the key's, in units of
+  the key's own saturation, so uneven light on the screen matters less;
+  Strength sets how close counts as screen, Edge softness the ramp, and
+  Spill removal takes the key's tint out of the edges it leaves. The LUT effect's **Load…**
   button reads a `.cube` or `.3dl` file or a HALD CLUT image
   (`crates/editor/src/luts.rs`, the same parser as the web app's
   `src/luts/parse.ts`), keeps at most 33 points a side, and stores the

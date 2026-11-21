@@ -6,8 +6,9 @@
 use crate::document::Effect;
 use crate::params::Params;
 
-/// A number parameter, or a choice when `options` is not empty (stored as
-/// the option's value string).
+/// A number parameter, a choice when `options` is not empty (stored as
+/// the option's value string), or a colour when `color` holds its default
+/// (stored as a hex string such as "#00b140").
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EffectParamSpec {
     pub key: &'static str,
@@ -18,6 +19,8 @@ pub struct EffectParamSpec {
     pub step: f64,
     /// `(value, label)` pairs for a choice; the default is `options[default as usize]`.
     pub options: &'static [(&'static str, &'static str)],
+    /// The default hex colour of a colour parameter.
+    pub color: Option<&'static str>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -29,7 +32,11 @@ pub struct EffectSpec {
 }
 
 const fn number(key: &'static str, label: &'static str, default: f64, min: f64, max: f64, step: f64) -> EffectParamSpec {
-    EffectParamSpec { key, label, default, min, max, step, options: &[] }
+    EffectParamSpec { key, label, default, min, max, step, options: &[], color: None }
+}
+
+const fn color(key: &'static str, label: &'static str, default: &'static str) -> EffectParamSpec {
+    EffectParamSpec { key, label, default: 0.0, min: 0.0, max: 0.0, step: 0.0, options: &[], color: Some(default) }
 }
 
 pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
@@ -112,6 +119,7 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
                 ("top", "Top onto bottom"),
                 ("bottom", "Bottom onto top"),
             ],
+            color: None,
         }],
     },
     EffectSpec {
@@ -199,7 +207,19 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
                 max: 1.0,
                 step: 1.0,
                 options: &[("trilinear", "Trilinear"), ("tetrahedral", "Tetrahedral")],
+                color: None,
             },
+        ],
+    },
+    EffectSpec {
+        kind: "chroma-key",
+        label: "Chroma key",
+        description: "Makes a green or blue screen (or any chosen colour) transparent, with spill removal for the fringe it leaves.",
+        params: &[
+            color("keyColor", "Key colour", "#00b140"),
+            number("strength", "Strength", 0.4, 0.0, 1.5, 0.01),
+            number("softness", "Edge softness", 0.15, 0.0, 1.0, 0.01),
+            number("spill", "Spill removal", 0.5, 0.0, 1.0, 0.01),
         ],
     },
     EffectSpec {
@@ -223,6 +243,10 @@ impl EffectParamSpec {
         !self.options.is_empty()
     }
 
+    pub fn is_color(&self) -> bool {
+        self.color.is_some()
+    }
+
     /// The index of a choice's stored value, or the default's.
     pub fn choice_index(&self, value: &str) -> usize {
         self.options
@@ -241,6 +265,8 @@ impl Effect {
         for param in spec.params {
             if param.is_choice() {
                 params.set(param.key, param.options[param.default as usize].0);
+            } else if let Some(color) = param.color {
+                params.set(param.key, color);
             } else {
                 params.set(param.key, param.default);
             }
@@ -266,6 +292,9 @@ mod tests {
             for param in spec.params {
                 if param.is_choice() {
                     assert_eq!(effect.params.text(param.key, ""), param.options[0].0);
+                } else if let Some(color) = param.color {
+                    assert_eq!(effect.params.text(param.key, ""), color);
+                    assert!(crate::parse_hex_color(color).is_some(), "{}.{}", spec.kind, param.key);
                 } else {
                     assert_eq!(effect.params.number(param.key, f64::NAN), param.default);
                     assert!(param.min <= param.default && param.default <= param.max, "{}.{}", spec.kind, param.key);

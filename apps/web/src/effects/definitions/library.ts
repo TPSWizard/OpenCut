@@ -450,6 +450,38 @@ export const lutEffectDefinition: EffectDefinition = {
 	},
 };
 
+/** "#rrggbb" (or "#rgb") to 0..1 channels; the default green when unreadable. */
+export function keyColorChannels(value: unknown): [number, number, number] {
+	const hex = String(value ?? "").trim().replace(/^#/, "");
+	const full = hex.length === 3 || hex.length === 4 ? [...hex.slice(0, 3)].map((digit) => digit + digit).join("") : hex.slice(0, 6);
+	if (!/^[0-9a-fA-F]{6}$/.test(full)) return [0, 0xb1 / 255, 0x40 / 255];
+	return [0, 2, 4].map((start) => Number.parseInt(full.slice(start, start + 2), 16) / 255) as [number, number, number];
+}
+
+export const chromaKeyEffectDefinition = singlePass({
+	type: "chroma-key",
+	name: "Chroma key",
+	keywords: ["chroma", "key", "green screen", "blue screen", "keying", "transparent", "remove colour", "remove color"],
+	shader: "chroma-key",
+	params: [
+		{ key: "keyColor", label: "Key colour", type: "color", default: "#00b140" },
+		number({ key: "strength", label: "Strength", default: 0.4, min: 0, max: 1.5, step: 0.01 }),
+		number({ key: "softness", label: "Edge softness", default: 0.15, min: 0, max: 1, step: 0.01 }),
+		number({ key: "spill", label: "Spill removal", default: 0.5, min: 0, max: 1, step: 0.01 }),
+	],
+	uniforms: ({ read, params }) => {
+		const [red, green, blue] = keyColorChannels(params.keyColor);
+		return {
+			u_key_r: red,
+			u_key_g: green,
+			u_key_b: blue,
+			u_strength: read("strength"),
+			u_softness: read("softness"),
+			u_spill: read("spill"),
+		};
+	},
+});
+
 export const libraryEffectDefinitions: EffectDefinition[] = [
 	colorEffectDefinition,
 	vignetteEffectDefinition,
@@ -464,5 +496,6 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	curvesEffectDefinition,
 	levelsEffectDefinition,
 	shadowsHighlightsEffectDefinition,
+	chromaKeyEffectDefinition,
 	lutEffectDefinition,
 ];

@@ -198,6 +198,26 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
                 ("u_range", param("range")),
             ],
         )],
+        "chroma-key" => {
+            let default = spec
+                .and_then(|spec| spec.params.iter().find(|param| param.key == "keyColor"))
+                .and_then(|param| param.color)
+                .unwrap_or("#00b140");
+            let key = editor::parse_hex_color(&effect.params.text("keyColor", default))
+                .or_else(|| editor::parse_hex_color(default))
+                .unwrap_or([0.0, 0.69, 0.25, 1.0]);
+            vec![numbers_pass(
+                "chroma-key",
+                &[
+                    ("u_key_r", key[0] as f64),
+                    ("u_key_g", key[1] as f64),
+                    ("u_key_b", key[2] as f64),
+                    ("u_strength", param("strength")),
+                    ("u_softness", param("softness")),
+                    ("u_spill", param("spill")),
+                ],
+            )]
+        }
         _ => Vec::new(),
     }
 }
@@ -387,6 +407,25 @@ mod tests {
                 assert_eq!(pass.lut.is_some(), spec.kind == "lut", "{} names a table only for the LUT shader", spec.kind);
             }
         }
+    }
+
+    #[test]
+    fn chroma_key_reads_its_colour() {
+        let mut params = Params::new();
+        params.set("keyColor", "#0047bb");
+        params.set("strength", 0.3);
+        let plan = EffectPlan { id: "k".to_owned(), kind: "chroma-key".to_owned(), params };
+        let pass = &effect_pass_groups(&[plan], 100, 100, 0.0)[0][0];
+        assert_eq!(number(pass, "u_key_r"), 0.0);
+        assert!((number(pass, "u_key_g") - 0x47 as f32 / 255.0).abs() < 1e-6);
+        assert!((number(pass, "u_key_b") - 0xbb as f32 / 255.0).abs() < 1e-6);
+        assert!((number(pass, "u_strength") - 0.3).abs() < 1e-6);
+        // An unreadable colour falls back to the default green.
+        let mut params = Params::new();
+        params.set("keyColor", "nonsense");
+        let plan = EffectPlan { id: "k".to_owned(), kind: "chroma-key".to_owned(), params };
+        let pass = &effect_pass_groups(&[plan], 100, 100, 0.0)[0][0];
+        assert!((number(pass, "u_key_g") - 0xb1 as f32 / 255.0).abs() < 1e-6);
     }
 
     #[test]

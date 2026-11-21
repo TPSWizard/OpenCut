@@ -659,3 +659,61 @@ fn draws_lottie_frames_by_clip_time() {
         assert!(near(pixel(&frame, x, y), blue), "{time}s: dot halfway: {:?}", pixel(&frame, x, y));
     }
 }
+
+/// Chroma key: a picture of green screen (two shades, as uneven lighting
+/// gives), a greenish-grey fringe and red. The greens turn transparent
+/// over the blue background, red stays, and spill removal takes the green
+/// cast out of the fringe without hiding it.
+#[test]
+fn chroma_key_hides_the_screen_and_removes_spill() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("screen.png");
+    let image = image::RgbaImage::from_fn(160, 90, |x, _| match x {
+        0..40 => image::Rgba([0, 177, 64, 255]),
+        40..80 => image::Rgba([20, 140, 60, 255]),
+        80..120 => image::Rgba([120, 170, 120, 255]),
+        _ => image::Rgba([220, 30, 30, 255]),
+    });
+    image.save(&path).unwrap();
+    let mut project = Project::new("Chroma key");
+    project.settings.background = editor::Background::Color { color: "#0000ff".to_owned() };
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "screen".to_owned(),
+            name: "screen.png".to_owned(),
+            kind: MediaKind::Image,
+            path,
+            duration: None,
+            width: Some(160),
+            height: Some(90),
+            fps: None,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let element = Element::from_media(project.media_item("screen").unwrap(), seconds(0.0));
+    let element_id = element.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+    let before = renderer.render(&project, seconds(0.5), 160, 90).unwrap();
+    let fringe_before = pixel(&before, 100, 45);
+    apply(
+        &mut project,
+        &EditorCommand::AddEffect { element_id, effect: editor::Effect::from_catalogue("chroma-key").unwrap() },
+    )
+    .unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 160, 90).unwrap();
+    // BGRA.
+    for x in [20, 60] {
+        let p = pixel(&frame, x, 45);
+        assert!(p[0] > 240 && p[1] < 20 && p[2] < 20, "green at x={x} shows the blue background: {p:?}");
+    }
+    let red = pixel(&frame, 140, 45);
+    assert!(red[2] > 200 && red[0] < 50, "red kept: {red:?}");
+    let fringe = pixel(&frame, 100, 45);
+    assert!(fringe[0] < 160, "fringe kept, not keyed: {fringe:?}");
+    let cast = |p: [u8; 4]| p[1] as i32 - (p[2] as i32 + p[0] as i32) / 2;
+    // The default removes half the cast towards the key.
+    assert!(cast(fringe) * 10 < cast(fringe_before) * 7, "spill removed: {fringe_before:?} -> {fringe:?}");
+}

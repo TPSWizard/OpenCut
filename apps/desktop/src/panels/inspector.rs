@@ -2258,6 +2258,29 @@ impl Render for InspectorPanel {
                                 content = content.child(choice_row);
                                 continue;
                             }
+                            if let Some(default) = param.color {
+                                // A colour: typed as hex, kept only when it reads.
+                                let effect_id = effect_id.clone();
+                                let key = param.key;
+                                let row = self.row(
+                                    t(param.label),
+                                    &format!("effect.{effect_id}.{key}"),
+                                    default,
+                                    effect_params.text(key, default).into_owned(),
+                                    Some(key_state(&format!("effects.{effect_id}.params.{key}"))),
+                                    window,
+                                    cx,
+                                    Box::new(move |text, state, cx| {
+                                        if editor::parse_hex_color(text).is_some() {
+                                            let mut params = Params::new();
+                                            params.set(key, text.trim().to_owned());
+                                            state.update_effect(&effect_id, Some(params), None, cx);
+                                        }
+                                    }),
+                                );
+                                content = content.child(row);
+                                continue;
+                            }
                             let path = format!("effects.{effect_id}.params.{}", param.key);
                             let effect_id = effect_id.clone();
                             let (key, min, max) = (param.key, param.min, param.max);

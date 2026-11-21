@@ -684,5 +684,9 @@
   "Permission confirmed": "已确认许可",
   "Confirm permission": "确认许可",
   "Confirm only if the face is yours, or the person has agreed, and the people in the clip have agreed too.": "仅当这张脸是你的或本人已同意，且片段中的人也已同意时才确认。",
-  "Swap face…": "换脸…"
+  "Swap face…": "换脸…",
+  "Chroma key": "色度抠像",
+  "Key colour": "抠像颜色",
+  "Edge softness": "边缘柔和度",
+  "Spill removal": "溢色去除"
 }

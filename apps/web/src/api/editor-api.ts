@@ -2310,6 +2310,8 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 							default: param.default,
 							options: param.options.map((option) => ({ ...option })),
 						});
+					} else if (param.type === "color") {
+						params.push({ key: param.key, label: param.label, type: "color", default: param.default });
 					}
 				}
 				return {
