@@ -283,11 +283,12 @@ impl Renderer {
         layer: &LayerPlan,
         (width, height, canvas_width, canvas_height, scale_x, scale_y): (u32, u32, f32, f32, f32, f32),
     ) -> Result<Vec<LayerDescriptor>, RenderError> {
+        let zoom_scale = layer.zoom.map_or(1.0, |zoom| zoom.scale);
         let Some((texture_id, natural_width, natural_height)) = self.prepare_source(
             project,
             &layer.element_id,
             &layer.source,
-            scale_x * layer.transform.scale_x.abs(),
+            scale_x * layer.transform.scale_x.abs() * zoom_scale,
         )?
         else {
             return Ok(Vec::new());
@@ -307,7 +308,23 @@ impl Renderer {
                 canvas_height,
             ),
         };
-        let transform = &layer.transform;
+        // An auto zoom punch-in scales the drawn frame about its focus point
+        // (the web app's `zoomTransform`).
+        let mut zoomed = layer.transform;
+        if let Some(zoom) = layer.zoom {
+            let (offset_x, offset_y) = editor::zoom_offset(
+                (zoom.focus_x as f64, zoom.focus_y as f64),
+                zoom.scale as f64,
+                (base_width * zoomed.scale_x.abs()) as f64,
+                (base_height * zoomed.scale_y.abs()) as f64,
+                zoomed.rotate_degrees as f64,
+            );
+            zoomed.position_x += offset_x as f32;
+            zoomed.position_y += offset_y as f32;
+            zoomed.scale_x *= zoom.scale;
+            zoomed.scale_y *= zoom.scale;
+        }
+        let transform = &zoomed;
         let quad = QuadTransformDescriptor {
             center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
             center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,

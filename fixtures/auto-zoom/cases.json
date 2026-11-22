@@ -1,0 +1,142 @@
+{
+  "note": "Synthetic caption words (clip seconds) and the punch-ins the auto zoom planner must make; read by apps/web/src/auto-zoom/__tests__/zoom.test.ts and crates/editor/src/auto_zoom.rs.",
+  "cases": [
+    {
+      "name": "alternates, numbers emphasise, pauses split",
+      "strength": "medium",
+      "duration": 8.0,
+      "words": [
+        {
+          "text": "Hi",
+          "start": 0.0,
+          "end": 0.3
+        },
+        {
+          "text": "there.",
+          "start": 0.35,
+          "end": 0.8
+        },
+        {
+          "text": "Today",
+          "start": 1.0,
+          "end": 1.3
+        },
+        {
+          "text": "we",
+          "start": 1.35,
+          "end": 1.5
+        },
+        {
+          "text": "cook",
+          "start": 1.55,
+          "end": 1.9
+        },
+        {
+          "text": "pasta.",
+          "start": 2.0,
+          "end": 2.6
+        },
+        {
+          "text": "It",
+          "start": 3.0,
+          "end": 3.3
+        },
+        {
+          "text": "takes",
+          "start": 3.35,
+          "end": 3.6
+        },
+        {
+          "text": "10",
+          "start": 3.65,
+          "end": 3.9
+        },
+        {
+          "text": "minutes.",
+          "start": 4.0,
+          "end": 4.5
+        },
+        {
+          "text": "Easy",
+          "start": 5.0,
+          "end": 5.4
+        },
+        {
+          "text": "enjoy",
+          "start": 6.4,
+          "end": 6.9
+        }
+      ],
+      "punches": "1.00-3.00@1.150;3.00-5.00@1.300;5.00-6.40@1.150"
+    },
+    {
+      "name": "keyword and exclamation, short punch dropped, clipped to the clip",
+      "strength": "strong",
+      "duration": 1.8,
+      "words": [
+        {
+          "text": "Big",
+          "start": 0.2,
+          "end": 0.5,
+          "keyword": true
+        },
+        {
+          "text": "news!",
+          "start": 0.55,
+          "end": 0.9
+        },
+        {
+          "text": "Short.",
+          "start": 1.2,
+          "end": 1.5
+        }
+      ],
+      "punches": "0.20-1.20@1.500"
+    },
+    {
+      "name": "touching punches of one zoom merge",
+      "strength": "subtle",
+      "duration": 5.0,
+      "words": [
+        {
+          "text": "Wow!",
+          "start": 0.0,
+          "end": 0.4
+        },
+        {
+          "text": "Look",
+          "start": 0.5,
+          "end": 0.7
+        },
+        {
+          "text": "at",
+          "start": 0.75,
+          "end": 0.85
+        },
+        {
+          "text": "3",
+          "start": 0.9,
+          "end": 1.1
+        },
+        {
+          "text": "things.",
+          "start": 1.2,
+          "end": 1.6
+        },
+        {
+          "text": "ok",
+          "start": 2.0,
+          "end": 2.3
+        }
+      ],
+      "punches": "0.00-2.00@1.150"
+    },
+    {
+      "name": "no words",
+      "strength": "medium",
+      "duration": 3.0,
+      "words": [],
+      "punches": ""
+    }
+  ]
+}

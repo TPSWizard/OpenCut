@@ -338,5 +338,17 @@
   "Clear keywords": "清除关键词",
   "Keyword; click to make it a plain word": "关键词；点击改为普通词",
   "Click to make it a keyword": "点击设为关键词",
-  "{keywords} keyword(s) in {captions} changed caption(s).": "已在 {captions} 条更改的字幕中设置 {keywords} 个关键词。"
+  "{keywords} keyword(s) in {captions} changed caption(s).": "已在 {captions} 条更改的字幕中设置 {keywords} 个关键词。",
+  "Subtle": "轻微",
+  "Medium": "中等",
+  "Strong": "强烈",
+  "{count} punch-in(s) from {words} caption words.": "根据 {words} 个字幕单词生成了 {count} 个推近。",
+  "Zooming into the face.": "推近到人脸。",
+  "No face found; zooming a little above the middle.": "未找到人脸，推近到画面中间偏上。",
+  "Auto zoom failed": "自动推近失败",
+  "Auto zoom": "自动推近",
+  "Small zooms in and out on the speaker at sentence starts, bigger ones on keywords, numbers and exclamations, from the captions over the clip.": "根据片段上的字幕，在句子开头对说话人轻微推近和拉远，在关键词、数字和感叹处推得更近。",
+  "Zoom into the speaker's face": "推近到说话人的脸",
+  "Planning zooms…": "正在规划推近…",
+  "Remove zooms": "移除推近"
 }

@@ -3,6 +3,7 @@ import { LoudnessSection } from "@/loudness/components/loudness-section";
 import { SilenceSection } from "@/silence/components/silence-section";
 import { ShotsSection } from "@/shots/components/shots-section";
 import { ReframeSection } from "@/reframe/components/reframe-section";
+import { AutoZoomSection } from "@/auto-zoom/components/auto-zoom-section";
 import { PictureCleanupSection } from "@/picture/components/picture-cleanup-section";
 import { CutoutSection } from "@/cutout/components/cutout-section";
 import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
@@ -151,6 +152,9 @@ function buildTransformTab({
 				/>
 				{element.type === "video" && <ShotsSection element={element} trackId={trackId} />}
 				{element.type === "video" && <ReframeSection element={element} trackId={trackId} />}
+				{(element.type === "video" || element.type === "image") && (
+					<AutoZoomSection element={element} trackId={trackId} />
+				)}
 				{element.type === "video" && <CutoutSection element={element} trackId={trackId} />}
 				{element.type === "image" && <PictureCleanupSection element={element} trackId={trackId} />}
 				{(element.type === "video" || element.type === "image") && (

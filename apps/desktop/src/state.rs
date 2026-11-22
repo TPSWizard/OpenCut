@@ -952,6 +952,44 @@ impl EditorState {
         .detach();
     }
 
+    /// Plans auto zoom punch-ins for the selected video or picture clip from
+    /// the captions over it (`editor::plan_punches` at `strength`, the web
+    /// editor's planner), or removes them with `None`. The focus stays as
+    /// it is (the web editor can find the face). One undo step.
+    pub(crate) fn auto_zoom_selected(&mut self, strength: Option<&'static str>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Video { .. } | editor::ElementKind::Image { .. }) {
+            self.set_status(t("Auto zoom needs a video or picture clip."), cx);
+            return;
+        }
+        let text = match strength {
+            Some(strength) => {
+                let words = editor::clip_words(self.project(), element.start_time, element.end_time());
+                if words.is_empty() {
+                    self.set_status(t("No captions with word timings over this clip; generate captions in the web editor first."), cx);
+                    return;
+                }
+                let punches = editor::plan_punches(&words, element.duration.to_seconds_f64(), strength);
+                if punches.is_empty() {
+                    self.set_status(t("The captions over this clip are too short for a punch-in."), cx);
+                    return;
+                }
+                editor::format_punches(&punches)
+            }
+            None => String::new(),
+        };
+        let count = editor::parse_punches(&text).len();
+        let mut params = Params::new();
+        params.set("zoom.punches", text.as_str());
+        self.update_selected_params(params, cx);
+        let status = if count == 0 {
+            t("Removed the zooms.").to_string()
+        } else {
+            tf("{count} punch-in(s).", &[("count", &count.to_string())])
+        };
+        self.set_status(status, cx);
+    }
+
     /// Picks the keywords of every caption with timed words on unlocked
     /// tracks (`editor::pick_keyword_indices`, the web editor's local pick),
     /// or clears them with `clear`. One undo step.

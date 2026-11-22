@@ -1,3 +1,4 @@
+import type { ClipZoom } from "@/auto-zoom/zoom";
 import { BaseNode } from "./base-node";
 import type { Effect, EffectPass } from "@/effects/types";
 import type { Mask } from "@/masks/types";
@@ -20,6 +21,8 @@ export interface VisualNodeParams {
 	masks?: Mask[];
 	/** One-click in, out and loop animations, from the element's params. */
 	clipAnimation?: ClipAnimations | null;
+	/** Auto zoom punch-ins (video and picture clips), from the element's params. */
+	clipZoom?: ClipZoom | null;
 	/** Rounded corners, outline and drop shadow, from the element's params. */
 	layerStyle?: LayerStyle | null;
 	/**

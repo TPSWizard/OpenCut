@@ -1020,6 +1020,21 @@ export interface EditorApiMethods {
 	"cutout.setInverted": { params: ApiElementLocator & { inverted: boolean }; result: ApiElementInfo };
 	/** Shows the whole clip again; the matte stays in the media. */
 	"cutout.clear": { params: ApiElementLocator; result: ApiElementInfo };
+	/**
+	 * Auto zoom punch-ins on a video or picture clip, planned from the
+	 * captions over it: sentences alternate between no zoom and the normal
+	 * zoom, sentences with a keyword, number or "!" take the emphasis zoom
+	 * (`strength` subtle 1.08/1.15, medium 1.15/1.3, strong 1.25/1.5). With
+	 * `face` (default for video) the zoom centres on the median face of a few
+	 * frames. Written to `zoom.punches` (and `zoom.focusX/Y`), drawn in both
+	 * editors on top of keyframes. One undo step. Times are clip seconds.
+	 */
+	"zoom.auto": {
+		params: ApiElementLocator & { strength?: "subtle" | "medium" | "strong"; face?: boolean };
+		result: { punches: { start: number; end: number; scale: number }[]; words: number; focus: { x: number; y: number } | null };
+	};
+	/** Removes a clip's punch-ins. One undo step. */
+	"zoom.clear": { params: ApiElementLocator; result: ApiElementInfo };
 	/** Puts a reframed clip back: scale 1, centred, no position or scale keys. */
 	"reframe.clear": {
 		params: ApiElementLocator;

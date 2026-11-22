@@ -973,6 +973,66 @@ impl Render for InspectorPanel {
                         }
                     }
 
+                    // Auto zoom punch-ins (`editor::plan_punches`) from the
+                    // captions over a video or picture clip.
+                    if matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. }) {
+                        let punches = editor::parse_punches(&element.params.text("zoom.punches", ""));
+                        content = content
+                            .child(Separator::horizontal())
+                            .child(self.heading(t("Auto zoom"), window))
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(if punches.is_empty() {
+                                t("Zooms in at sentence starts and on emphasis, from the captions over the clip. Pick a strength:").to_string()
+                            } else {
+                                tf("{count} punch-in(s).", &[("count", &punches.len().to_string())])
+                            }));
+                        let mut zoom_row = div().flex().flex_wrap().gap(px(4.));
+                        for (id, label) in [("subtle", t("Subtle")), ("medium", t("Medium")), ("strong", t("Strong"))] {
+                            let state = self.state.clone();
+                            zoom_row = zoom_row.child(
+                                Button::new(eid("auto-zoom", id), label)
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.auto_zoom_selected(Some(id), cx))),
+                            );
+                        }
+                        if !punches.is_empty() {
+                            let state = self.state.clone();
+                            zoom_row = zoom_row.child(
+                                Button::new("auto-zoom-clear", t("Remove zooms"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.auto_zoom_selected(None, cx))),
+                            );
+                        }
+                        content = content.child(zoom_row);
+                        if !punches.is_empty() {
+                            for (key, label, default, min, max) in [
+                                ("zoom.focusX", "Zoom focus X", 0.0, -0.5, 0.5),
+                                ("zoom.focusY", "Zoom focus Y", editor::ZOOM_FOCUS_Y_DEFAULT, -0.5, 0.5),
+                                ("zoom.ramp", "Zoom ease (s)", editor::ZOOM_RAMP_DEFAULT, 0.0, editor::ZOOM_RAMP_MAX),
+                            ] {
+                                content = content.child(self.row(
+                                    t(label),
+                                    key,
+                                    "",
+                                    number_text(element.params.number(key, default)),
+                                    None,
+                                    window,
+                                    cx,
+                                    Box::new(move |text, state, cx| {
+                                        if let Ok(value) = text.trim().parse::<f64>() {
+                                            if value.is_finite() {
+                                                let mut params = Params::new();
+                                                params.set(key, value.clamp(min, max));
+                                                state.update_selected_params(params, cx);
+                                            }
+                                        }
+                                    }),
+                                ));
+                            }
+                        }
+                    }
+
                     // Rounded corners (not on text), outline and drop shadow
                     // (`editor::LayerStyle`), the web editor's Style tab.
                     content = content

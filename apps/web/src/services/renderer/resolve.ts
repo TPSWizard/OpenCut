@@ -51,6 +51,7 @@ import type { TextElement } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
 import type { TextKeywords, TextWordHighlight } from "@/text/primitives";
 import { getActiveWordState, readCaptionStyle } from "@/captions";
+import { zoomAt, zoomTransform } from "@/auto-zoom/zoom";
 import { keywordIndices } from "@/captions/keywords";
 import { VideoNode, type ResolvedVideoNodeState } from "./nodes/video-node";
 import {
@@ -259,7 +260,7 @@ function resolveVisualState({
 			localTime,
 		}),
 	};
-	const { transform, opacity } = params.clipAnimation
+	const animated = params.clipAnimation
 		? applyClipAnimationState({
 				...keyed,
 				state: clipAnimationStateAt({
@@ -275,6 +276,31 @@ function resolveVisualState({
 		context.renderer.width / sourceWidth,
 		context.renderer.height / sourceHeight,
 	);
+	// An auto zoom punch-in scales the frame about its focus point
+	// (`zoom_offset` in the desktop renderer).
+	const zoomScale = params.clipZoom ? zoomAt({ zoom: params.clipZoom, seconds: localTime / TICKS_PER_SECOND }) : 1;
+	const transform =
+		params.clipZoom && zoomScale !== 1
+			? (() => {
+					const zoom = zoomTransform({
+						zoom: params.clipZoom,
+						scale: zoomScale,
+						width: sourceWidth * containScale * Math.abs(animated.transform.scaleX),
+						height: sourceHeight * containScale * Math.abs(animated.transform.scaleY),
+						rotate: animated.transform.rotate,
+					});
+					return {
+						...animated.transform,
+						position: {
+							x: animated.transform.position.x + zoom.offsetX,
+							y: animated.transform.position.y + zoom.offsetY,
+						},
+						scaleX: animated.transform.scaleX * zoom.scale,
+						scaleY: animated.transform.scaleY * zoom.scale,
+					};
+				})()
+			: animated.transform;
+	const opacity = animated.opacity;
 	const effectWidth = Math.round(
 		Math.abs(sourceWidth * containScale * transform.scaleX),
 	);

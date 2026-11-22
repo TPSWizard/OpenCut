@@ -80,6 +80,18 @@ pub struct LayerPlan {
     pub cutout: Option<CutoutPlan>,
     /// Rounded corners, outline and drop shadow.
     pub style: crate::LayerStyle,
+    /// An auto zoom punch-in at this time (video and picture clips); the
+    /// renderer scales the drawn frame about the focus point.
+    pub zoom: Option<LayerZoom>,
+}
+
+/// An auto zoom at the planned time: `scale` (above 1) about the focus
+/// point, a share of the clip's frame from its centre.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LayerZoom {
+    pub scale: f32,
+    pub focus_x: f32,
+    pub focus_y: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -602,6 +614,14 @@ fn layer_plan(
         mask,
         cutout,
         style: crate::LayerStyle::from_params(&params, matches!(element.kind, ElementKind::Text)),
+        zoom: matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. })
+            .then(|| crate::read_clip_zoom(&element.params))
+            .flatten()
+            .and_then(|zoom| {
+                let scale = crate::zoom_at(&zoom, element.local_time(param_time).to_seconds_f64());
+                ((scale - 1.0).abs() > 1e-6)
+                    .then_some(LayerZoom { scale: scale as f32, focus_x: zoom.focus_x as f32, focus_y: zoom.focus_y as f32 })
+            }),
     })
 }
 
@@ -672,6 +692,33 @@ mod tests {
             plan.layers()[0].source
         );
         assert!(project.media_item("anim").unwrap().is_visual());
+    }
+
+    #[test]
+    fn auto_zoom_punches_in_only_inside_its_spans() {
+        let mut project = Project::new("Zoom");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "talk".to_owned(),
+                name: "talk.mp4".to_owned(),
+                kind: MediaKind::Video,
+                path: "talk.mp4".into(),
+                duration: Some(seconds(10.0)),
+                width: Some(1920),
+                height: Some(1080),
+                fps: Some(30.0),
+                has_audio: true,
+            }),
+        )
+        .unwrap();
+        let mut clip = Element::from_media(project.media_item("talk").unwrap(), MediaTime::ZERO);
+        clip.params.set("zoom.punches", "2-4@1.3").set("zoom.ramp", 0.0).set("zoom.focusX", 0.2);
+        apply(&mut project, &Command::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+        assert_eq!(plan_frame(&project, seconds(1.0)).layers()[0].zoom, None);
+        let zoom = plan_frame(&project, seconds(3.0)).layers()[0].zoom.expect("zoomed");
+        assert_eq!((zoom.scale, zoom.focus_x, zoom.focus_y), (1.3, 0.2, -0.1));
+        assert_eq!(plan_frame(&project, seconds(4.5)).layers()[0].zoom, None);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 import { readClipAnimations } from "@/clip-animation/presets";
+import { readClipZoom } from "@/auto-zoom/zoom";
 import { readLayerStyle } from "@/layer-style/style";
 import type { SceneTracks, TimelineElement, TimelineTrack, VideoElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
@@ -97,6 +98,7 @@ function buildElementNode({
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
 				clipAnimation: readClipAnimations(element.params),
+				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
@@ -117,6 +119,7 @@ function buildElementNode({
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
 				clipAnimation: readClipAnimations(element.params),
+				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
@@ -136,6 +139,7 @@ function buildElementNode({
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
 				clipAnimation: readClipAnimations(element.params),
+				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),

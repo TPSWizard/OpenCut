@@ -769,5 +769,17 @@
   "Pick keywords": "挑选关键词",
   "Clear keywords": "清除关键词",
   "The captions' keywords are already set.": "字幕的关键词已经设置好了。",
-  "{keywords} keyword(s) in {captions} changed caption(s).": "已在 {captions} 条更改的字幕中设置 {keywords} 个关键词。"
+  "{keywords} keyword(s) in {captions} changed caption(s).": "已在 {captions} 条更改的字幕中设置 {keywords} 个关键词。",
+  "Auto zoom": "自动推近",
+  "Zooms in at sentence starts and on emphasis, from the captions over the clip. Pick a strength:": "根据片段上的字幕，在句子开头和强调处推近。选择强度：",
+  "{count} punch-in(s).": "{count} 个推近。",
+  "Subtle": "轻微",
+  "Remove zooms": "移除推近",
+  "Zoom focus X": "推近焦点 X",
+  "Zoom focus Y": "推近焦点 Y",
+  "Zoom ease (s)": "推近缓动（秒）",
+  "Auto zoom needs a video or picture clip.": "自动推近需要视频或图片片段。",
+  "No captions with word timings over this clip; generate captions in the web editor first.": "这个片段上没有带单词时间的字幕；请先在网页编辑器中生成字幕。",
+  "The captions over this clip are too short for a punch-in.": "这个片段上的字幕太短，无法推近。",
+  "Removed the zooms.": "已移除推近。"
 }

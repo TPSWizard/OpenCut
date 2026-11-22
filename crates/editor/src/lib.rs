@@ -9,6 +9,7 @@
 //! so a project means the same thing on every front end.
 
 mod animation;
+mod auto_zoom;
 mod assets;
 mod audio;
 mod beats;
@@ -107,8 +108,12 @@ pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect
 pub use error::EditorError;
 pub use frame::{
     BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, CutoutPlan, TextAlign,
-    TextBackground, TextDecoration, TextHighlight, TextKeywords, TextStyle, TransitionPlan, active_word, caption_highlight, caption_keywords, fit_contain,
+    TextBackground, TextDecoration, TextHighlight, TextKeywords, LayerZoom, TextStyle, TransitionPlan, active_word, caption_highlight, caption_keywords, fit_contain,
     parse_hex_color, plan_frame,
+};
+pub use auto_zoom::{
+    ClipZoom, MIN_PUNCH_SECONDS, SENTENCE_GAP_SECONDS, TAIL_SECONDS, ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX, ZOOM_SCALE_MAX,
+    ZOOM_STRENGTHS, ZoomPunch, ZoomWord, clip_words, format_punches, parse_punches, plan_punches, read_clip_zoom, zoom_at, zoom_offset,
 };
 pub use caption_keywords::{
     KEYWORD_COLOR_DEFAULT, KEYWORD_SCALE_DEFAULT, KEYWORD_SCALE_MAX, STOP_WORDS, keyword_budget, keyword_core, keyword_score, pick_keyword_indices,

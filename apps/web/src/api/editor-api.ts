@@ -107,6 +107,8 @@ import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/mea
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
+import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
+import { ZOOM_STRENGTHS, type ZoomStrength } from "@/auto-zoom/zoom";
 import { REFRAME_CAMERAS } from "@/reframe/path";
 import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions";
 import { TRANSLATION_LANGUAGE_CODES } from "@/translation/languages";
@@ -1966,6 +1968,38 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "invalid_params", message: "Background removal needs a video clip" });
 			}
 			clearCutout({ editor, trackId: track.id, elementId: element.id });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
+		},
+		"zoom.auto": async ({ elementId, trackId, strength, face }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
+			if (element.type !== "video" && element.type !== "image") {
+				throw new EditorApiError({ code: "invalid_params", message: "Auto zoom needs a video or picture clip" });
+			}
+			if (strength !== undefined && !(ZOOM_STRENGTHS as readonly string[]).includes(strength)) {
+				throw new EditorApiError({ code: "invalid_params", message: `strength must be one of ${ZOOM_STRENGTHS.join(", ")}` });
+			}
+			try {
+				const result = await autoZoomClip({
+					editor,
+					trackId: track.id,
+					elementId: element.id,
+					strength: (strength ?? "medium") as ZoomStrength,
+					findFace: face ?? element.type === "video",
+				});
+				return { punches: result.punches, words: result.words, focus: result.focus };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto zoom failed" });
+			}
+		},
+		"zoom.clear": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
+			if (element.type !== "video" && element.type !== "image") {
+				throw new EditorApiError({ code: "invalid_params", message: "Auto zoom needs a video or picture clip" });
+			}
+			clearAutoZoom({ editor, trackId: track.id, elementId: element.id });
 			const updated = resolveElement({ elementId: element.id, trackId: track.id });
 			return toElementInfo({ element: updated.element, trackId: track.id });
 		},

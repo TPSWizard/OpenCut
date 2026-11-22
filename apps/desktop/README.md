@@ -434,6 +434,19 @@ editor's Animation tab sets, worked out while the clip plays by
 when it is trimmed. A typewriter draws the letters not shown yet clear, so
 the text does not move as it types.
 
+## Auto zoom
+
+The inspector's **Auto zoom** section (video and picture clips) plans
+punch-ins from the captions over the clip with `editor::plan_punches`
+(`crates/editor/src/auto_zoom.rs`, the web editor's planner): a sentence
+starts after . ! ? or a 0.7 s pause, sentences alternate between no zoom
+and the normal zoom, and one with a keyword, a number or "!" takes the
+emphasis zoom (Subtle 1.08 / 1.15, Medium 1.15 / 1.3, Strong 1.25 / 1.5).
+They are stored as `zoom.punches` with `zoom.focusX` / `zoom.focusY` (the
+point zoomed into; the web editor can find the face) and `zoom.ramp`, and
+the renderer scales the drawn frame about the focus as the clip plays, on
+top of its keyframes and auto-reframe.
+
 ## Corners, outline and shadow
 
 The inspector's **Style** section rounds a clip's corners (a percent of

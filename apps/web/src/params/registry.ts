@@ -1,3 +1,4 @@
+import { ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX } from "@/auto-zoom/zoom";
 import type {
 	ParamDefinition,
 	ParamValue,
@@ -247,6 +248,23 @@ function animationParams({ isText }: { isText: boolean }): ElementParamDefinitio
 }
 
 /** Rounded corners (not on text), outline and drop shadow; see `@/layer-style/style`. */
+/** Auto zoom punch-ins (video and picture clips); see `@/auto-zoom/zoom`. */
+const zoomParams: ElementParamDefinition[] = [
+	{ key: "zoom.punches", label: "Punch-ins (start-end@zoom)", type: "text", default: "", keyframable: false },
+	{ key: "zoom.focusX", label: "Zoom focus X", type: "number", default: 0, min: -0.5, max: 0.5, step: 0.01, keyframable: false },
+	{
+		key: "zoom.focusY",
+		label: "Zoom focus Y",
+		type: "number",
+		default: ZOOM_FOCUS_Y_DEFAULT,
+		min: -0.5,
+		max: 0.5,
+		step: 0.01,
+		keyframable: false,
+	},
+	{ key: "zoom.ramp", label: "Zoom ease (s)", type: "number", default: ZOOM_RAMP_DEFAULT, min: 0, max: ZOOM_RAMP_MAX, step: 0.05, keyframable: false },
+];
+
 function styleParams({ isText }: { isText: boolean }): ElementParamDefinition[] {
 	const shadowOn = [{ param: "shadow.enabled", equals: true }];
 	return [
@@ -588,11 +606,11 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...audioElementParams],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...audioElementParams],
 });
 elementParamRegistry.register({
 	key: "image",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false })],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams],
 });
 elementParamRegistry.register({
 	key: "text",
