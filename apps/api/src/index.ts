@@ -14,6 +14,7 @@ import {
 } from "./stock";
 import { handleShare, type ShareEnv } from "./share";
 import { handleBroll, type BrollEnv } from "./broll";
+import { handleKeywords } from "./keywords";
 import { handleShorts } from "./shorts";
 import { handleFaceSwap, type FaceSwapEnv } from "./faceswap";
 
@@ -435,6 +436,9 @@ export default {
 		}
 		if (request.method !== "OPTIONS" && pathname.startsWith("/shorts/")) {
 			return handleShorts(request, bindings, corsHeaders(request));
+		}
+		if (request.method !== "OPTIONS" && pathname.startsWith("/captions/")) {
+			return handleKeywords(request, bindings, corsHeaders(request));
 		}
 		if (request.method !== "OPTIONS" && pathname.startsWith("/faceswap/")) {
 			return handleFaceSwap(request, bindings, corsHeaders(request));

@@ -486,6 +486,10 @@ pub struct CaptionWord {
     pub text: String,
     pub start: MediaTime,
     pub end: MediaTime,
+    /// Drawn in the keyword colour and size (`caption.keyword*`); see
+    /// `caption_keywords.rs`. Left out of the file when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub keyword: bool,
 }
 
 /// A clip on the timeline. `duration` is what is visible; `trim_start` and

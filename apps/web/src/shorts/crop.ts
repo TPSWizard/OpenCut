@@ -54,7 +54,7 @@ export function cropElement({ element, start, end }: { element: TimelineElement;
 	if (cropped.type === "text" && element.type === "text" && element.words?.length) {
 		const newStart = cropped.startTime;
 		const words = element.words
-			.map((word) => ({ text: word.text, start: element.startTime + word.start, end: element.startTime + word.end }))
+			.map((word) => ({ text: word.text, start: element.startTime + word.start, end: element.startTime + word.end, keyword: word.keyword }))
 			.filter((word) => {
 				const middle = (word.start + word.end) / 2;
 				return middle >= start && middle < end;
@@ -63,6 +63,7 @@ export function cropElement({ element, start, end }: { element: TimelineElement;
 				text: word.text,
 				start: Math.min(Math.max(word.start - newStart, 0), cropped.duration) as MediaTime,
 				end: Math.min(Math.max(word.end - newStart, 0), cropped.duration) as MediaTime,
+				...(word.keyword && { keyword: true }),
 			}));
 		if (words.length === 0) return null;
 		const content = words.length === element.words.length ? element.params.content : words.map((word) => word.text.trim()).join(" ");

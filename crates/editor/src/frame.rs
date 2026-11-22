@@ -257,6 +257,32 @@ pub fn caption_highlight(params: &Params, words: &[CaptionWord], local_time: Med
     })
 }
 
+/// The keywords of a caption (words flagged `keyword`) and how they look:
+/// the keyword colour (the spoken-word highlight still wins) and a size
+/// relative to the rest of the text.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextKeywords {
+    pub indices: Vec<usize>,
+    pub color: [f32; 4],
+    pub scale: f32,
+}
+
+/// The keyword look for a caption, or `None` when no word is a keyword.
+pub fn caption_keywords(params: &Params, words: &[CaptionWord]) -> Option<TextKeywords> {
+    let indices: Vec<usize> = words.iter().enumerate().filter(|(_, word)| word.keyword).map(|(index, _)| index).collect();
+    if indices.is_empty() {
+        return None;
+    }
+    let default_color = crate::KEYWORD_COLOR_DEFAULT;
+    Some(TextKeywords {
+        indices,
+        color: parse_hex_color(&params.text("caption.keywordColor", default_color))
+            .or_else(|| parse_hex_color(default_color))
+            .unwrap_or([1.0; 4]),
+        scale: params.number("caption.keywordScale", crate::KEYWORD_SCALE_DEFAULT).clamp(1.0, crate::KEYWORD_SCALE_MAX) as f32,
+    })
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
     pub content: String,
@@ -274,6 +300,8 @@ pub struct TextStyle {
     pub background: Option<TextBackground>,
     /// Caption emphasis at the planned time; `None` for plain text.
     pub highlight: Option<TextHighlight>,
+    /// Caption keywords; `None` when no word is one.
+    pub keywords: Option<TextKeywords>,
     /// Characters a typewriter or word-by-word animation shows (newlines
     /// not counted), each where it sits in the whole text; `None` for all.
     pub reveal_chars: Option<usize>,
@@ -332,6 +360,7 @@ impl TextStyle {
             },
             background,
             highlight: None,
+            keywords: None,
             reveal_chars: None,
         }
     }
@@ -517,6 +546,7 @@ fn layer_plan(
         ElementKind::Text => {
             let mut style = TextStyle::from_params(&params, canvas_height);
             style.highlight = caption_highlight(&params, &element.words, element.local_time(param_time));
+            style.keywords = caption_keywords(&params, &element.words);
             style.reveal_chars = animation.and_then(|state| crate::revealed_char_count(&style.content, state.reveal));
             LayerSource::Text(style)
         }
@@ -804,9 +834,9 @@ mod tests {
         let mut project = Project::new("Captions");
         let mut text = Element::text("Hello there world", seconds(1.0));
         text.words = vec![
-            CaptionWord { text: "Hello".into(), start: seconds(0.0), end: seconds(0.4) },
-            CaptionWord { text: "there".into(), start: seconds(0.5), end: seconds(0.9) },
-            CaptionWord { text: "world".into(), start: seconds(1.2), end: seconds(1.6) },
+            CaptionWord { text: "Hello".into(), start: seconds(0.0), end: seconds(0.4), keyword: false },
+            CaptionWord { text: "there".into(), start: seconds(0.5), end: seconds(0.9), keyword: false },
+            CaptionWord { text: "world".into(), start: seconds(1.2), end: seconds(1.6), keyword: false },
         ];
         text.params.set("caption.highlight", "box").set("caption.activeColor", "#ff0000");
         apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();

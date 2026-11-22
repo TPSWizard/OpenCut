@@ -25,7 +25,11 @@ multi-track timeline, text, transforms, audio) and renders through the shared
   word spoken so far, `none` leaves the text plain. The inspector's Captions
   section (shown for text with words) picks the mode and the two colours;
   the rasteriser colours the words as rich-text spans, so the layout never
-  moves. Transcription itself runs only in the web editor.
+  moves. Transcription itself runs only in the web editor. Words flagged
+  `keyword` (Pick keywords in that section runs the web editor's local
+  pick, `editor::pick_keyword_indices`; Clear keywords drops them) are drawn
+  in `caption.keywordColor` at `caption.keywordScale` times the font size,
+  which widens their line; the spoken-word colour still wins.
 
 - **Projects**: a project list with create, open and delete. Projects are JSON
   files in `~/.opencut/projects/<id>/project.json` (set `OPENCUT_PROJECTS` to

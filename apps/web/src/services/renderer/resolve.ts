@@ -49,8 +49,9 @@ import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
 import type { TextElement } from "@/timeline/types";
 import type { MediaTime } from "@/wasm";
-import type { TextWordHighlight } from "@/text/primitives";
+import type { TextKeywords, TextWordHighlight } from "@/text/primitives";
 import { getActiveWordState, readCaptionStyle } from "@/captions";
+import { keywordIndices } from "@/captions/keywords";
 import { VideoNode, type ResolvedVideoNodeState } from "./nodes/video-node";
 import {
 	TransitionNode,
@@ -632,7 +633,18 @@ function resolveTextNode({
 			element: node.params,
 			localTime: roundMediaTime({ time: localTime }),
 		}),
+		keywords: resolveCaptionKeywords({ element: node.params }),
 	};
+}
+
+/** The caption's keywords and their look, or null when no word is a keyword. */
+function resolveCaptionKeywords({ element }: { element: TextElement }): TextKeywords | null {
+	const indices = keywordIndices({ words: element.words });
+	if (indices.length === 0) {
+		return null;
+	}
+	const style = readCaptionStyle({ params: element.params });
+	return { indices, color: style.keywordColor, scale: style.keywordScale };
 }
 
 /** The caption emphasis for a text element at `localTime`, or null without words. */

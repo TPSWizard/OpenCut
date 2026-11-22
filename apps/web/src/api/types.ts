@@ -204,6 +204,8 @@ export interface ApiCaptionWord {
 	text: string;
 	start: number;
 	end: number;
+	/** Set on caption keywords (see `captions.pickKeywords`); left out otherwise. */
+	keyword?: boolean;
 }
 
 /** How a caption's spoken word stands out; see the `caption.*` text params. */
@@ -211,6 +213,10 @@ export interface ApiCaptionStyle {
 	highlight?: "none" | "word" | "box" | "fill";
 	activeColor?: string;
 	boxColor?: string;
+	/** Colour of the keywords (words flagged by `captions.pickKeywords` or `captions.setKeywords`). */
+	keywordColor?: string;
+	/** Keyword size relative to the other words, 1 to 2 (default 1.25). */
+	keywordScale?: number;
 }
 
 /**
@@ -759,6 +765,28 @@ export interface EditorApiMethods {
 	"captions.translate": {
 		params: { trackId?: string; from: string; to: string; engine?: "auto" | "browser" | "opus" };
 		result: { trackId: string; captions: number; engine: "browser" | "opus"; models: string[]; translations: string[] };
+	};
+	/**
+	 * Picks the keywords of every caption with timed words (or `elementIds`):
+	 * `source` "local" (default) scores numbers, then names, then long
+	 * words, skipping stop words, one to three per caption (the desktop's
+	 * pick too); "claude" asks Claude through the API worker with the server
+	 * `passcode`. Keywords are drawn in `caption.keywordColor` at
+	 * `caption.keywordScale`. One undo step.
+	 */
+	"captions.pickKeywords": {
+		params: { elementIds?: string[]; source?: "local" | "claude"; passcode?: string };
+		result: { captions: number; keywords: number; model?: string };
+	};
+	/** Clears the keywords of every caption (or `elementIds`). One undo step. */
+	"captions.clearKeywords": {
+		params: { elementIds?: string[] };
+		result: { captions: number; keywords: number };
+	};
+	/** Sets one caption's keywords to exactly these word indices. One undo step. */
+	"captions.setKeywords": {
+		params: ApiElementLocator & { indices: number[] };
+		result: { captions: number; keywords: number };
 	};
 	/** Inserts captions as a new text track at the top of the overlays. */
 	"captions.insert": {

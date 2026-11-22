@@ -4,6 +4,7 @@ import type { EffectPass } from "@/effects/types";
 import type { BlendMode, Transform } from "@/rendering";
 import {
 	drawMeasuredTextLayout,
+	type TextKeywords,
 	type TextWordHighlight,
 } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
@@ -26,6 +27,8 @@ export interface ResolvedTextNodeState {
 	measuredText: MeasuredTextElement;
 	/** The caption words to emphasise at this time, if the element has words. */
 	highlight: TextWordHighlight | null;
+	/** The caption's keywords and their look, if any word is one. */
+	keywords: TextKeywords | null;
 	/** Characters shown by a typewriter or word-by-word animation (newlines not counted), or null for all. */
 	revealChars: number | null;
 }
@@ -63,6 +66,7 @@ export function renderTextToContext({
 		backgroundColor: resolved.backgroundColor,
 		textBaseline: baseline,
 		highlight: resolved.highlight,
+		keywords: resolved.keywords,
 		revealChars: resolved.revealChars,
 	});
 

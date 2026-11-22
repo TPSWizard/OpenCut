@@ -33,6 +33,9 @@ pub struct ElementPatch {
     pub retime: Option<Option<crate::Retime>>,
     /// Replaces the cut-out (`Some(None)` removes it).
     pub cutout: Option<Option<crate::Cutout>>,
+    /// Sets the caption words' keyword flags: exactly these word indices
+    /// become keywords (out-of-range ones are ignored).
+    pub keywords: Option<Vec<usize>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -898,6 +901,11 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if let Some(cutout) = &patch.cutout {
                 element.cutout = cutout.clone();
+            }
+            if let Some(keywords) = &patch.keywords {
+                for (index, word) in element.words.iter_mut().enumerate() {
+                    word.keyword = keywords.contains(&index);
+                }
             }
             project.tracks[track_index].sort_elements();
             Outcome::Elements(vec![reference])

@@ -1,0 +1,137 @@
+{
+  "note": "Synthetic captions and the keyword indices the local pick must choose; read by apps/web/src/captions/__tests__/keywords.test.ts and crates/editor/src/caption_keywords.rs.",
+  "cases": [
+    {
+      "words": [
+        "So",
+        "I",
+        "made",
+        "$5,000",
+        "last",
+        "month"
+      ],
+      "keywords": [
+        3
+      ]
+    },
+    {
+      "words": [
+        "We",
+        "went",
+        "to",
+        "Paris",
+        "and",
+        "loved",
+        "it."
+      ],
+      "keywords": [
+        3
+      ]
+    },
+    {
+      "words": [
+        "Honestly,",
+        "this",
+        "changed",
+        "everything",
+        "for",
+        "me."
+      ],
+      "keywords": [
+        3
+      ]
+    },
+    {
+      "words": [
+        "Hello"
+      ],
+      "keywords": []
+    },
+    {
+      "words": [
+        "the",
+        "and",
+        "is"
+      ],
+      "keywords": []
+    },
+    {
+      "words": [
+        "Stop.",
+        "Breathe",
+        "slowly",
+        "before",
+        "speaking"
+      ],
+      "keywords": [
+        4
+      ]
+    },
+    {
+      "words": [
+        "You",
+        "should",
+        "really",
+        "try",
+        "this",
+        "amazing",
+        "little",
+        "trick",
+        "that",
+        "doubled",
+        "my",
+        "sales",
+        "in",
+        "2025."
+      ],
+      "keywords": [
+        5,
+        13
+      ]
+    },
+    {
+      "words": [
+        "“Wow!”",
+        "said",
+        "Maria,",
+        "grinning",
+        "at",
+        "Tokyo",
+        "tower",
+        "lights",
+        "tonight",
+        "everywhere",
+        "around",
+        "us",
+        "now",
+        "yes"
+      ],
+      "keywords": [
+        2,
+        5
+      ]
+    },
+    {
+      "words": [
+        "it",
+        "was",
+        "50%",
+        "cheaper",
+        "than",
+        "before"
+      ],
+      "keywords": [
+        2
+      ]
+    },
+    {
+      "words": [
+        "Grandmother's",
+        "kitchen"
+      ],
+      "keywords": [
+        0
+      ]
+    }
+  ]
+}

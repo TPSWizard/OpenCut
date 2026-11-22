@@ -126,7 +126,7 @@ pub fn caption_element(index: usize, chunk: &CaptionChunk, canvas: CanvasSize) -
         .map(|word| {
             let start = (word.start - chunk.start).clamp(0.0, chunk.duration);
             let end = (word.end - chunk.start).clamp(start, chunk.duration);
-            CaptionWord { text: word.text.trim().to_owned(), start: seconds(start), end: seconds(end) }
+            CaptionWord { text: word.text.trim().to_owned(), start: seconds(start), end: seconds(end), keyword: false }
         })
         .collect();
     element

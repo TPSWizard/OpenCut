@@ -409,6 +409,23 @@ const captionParams: ElementParamDefinition[] = [
 		default: DEFAULT_CAPTION_STYLE.boxColor,
 		keyframable: false,
 	},
+	{
+		key: "caption.keywordColor",
+		label: "Keyword Color",
+		type: "color",
+		default: DEFAULT_CAPTION_STYLE.keywordColor,
+		keyframable: false,
+	},
+	{
+		key: "caption.keywordScale",
+		label: "Keyword Size",
+		type: "number",
+		default: DEFAULT_CAPTION_STYLE.keywordScale,
+		min: 1,
+		max: 2,
+		step: 0.05,
+		keyframable: false,
+	},
 ];
 
 const textElementParams: ElementParamDefinition[] = [

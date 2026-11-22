@@ -10,6 +10,8 @@ export interface CaptionWord {
 	text: string;
 	start: MediaTime;
 	end: MediaTime;
+	/** Drawn in the keyword colour and size (`caption.keyword*`); see `keywords.ts`. */
+	keyword?: boolean;
 }
 
 /**
@@ -40,6 +42,10 @@ export interface CaptionStyle {
 	highlight: CaptionHighlight;
 	activeColor: string;
 	boxColor: string;
+	/** Colour of the words flagged `keyword`. */
+	keywordColor: string;
+	/** Size of the keywords relative to the other words (1 to 2). */
+	keywordScale: number;
 }
 
 /** Where the playhead stands among a caption's words. */

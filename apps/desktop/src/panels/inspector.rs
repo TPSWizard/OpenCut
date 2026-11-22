@@ -84,6 +84,7 @@ const TEXT_NUMBER_PARAMS: &[(&str, &str, f64)] = &[
 const CAPTION_COLOR_PARAMS: &[(&str, &str, &str)] = &[
     ("caption.activeColor", "Active colour", "#ffd60a"),
     ("caption.boxColor", "Box colour", "#e5484d"),
+    ("caption.keywordColor", "Keyword colour", editor::KEYWORD_COLOR_DEFAULT),
 ];
 
 const TEXT_STRING_PARAMS: &[(&str, &str, &str)] = &[
@@ -1249,6 +1250,56 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+                    // Keywords: the words that matter, in the keyword colour and size.
+                    content = content.child(self.row(
+                        t("Keyword size"),
+                        "caption.keywordScale",
+                        "1.25",
+                        number_text(params.number("caption.keywordScale", editor::KEYWORD_SCALE_DEFAULT)),
+                        None,
+                        window,
+                        cx,
+                        Box::new(|text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                if value.is_finite() {
+                                    let mut params = Params::new();
+                                    params.set("caption.keywordScale", value.clamp(1.0, editor::KEYWORD_SCALE_MAX));
+                                    state.update_selected_params(params, cx);
+                                }
+                            }
+                        }),
+                    ));
+                    let keywords: Vec<&str> =
+                        element.words.iter().filter(|word| word.keyword).map(|word| word.text.as_str()).collect();
+                    let summary = if keywords.is_empty() {
+                        t("No keywords in this caption.").to_string()
+                    } else {
+                        tf("Keywords: {words}", &[("words", &keywords.join(", "))])
+                    };
+                    let (pick_state, clear_state) = (self.state.clone(), self.state.clone());
+                    content = content
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(summary))
+                        .child(
+                            div()
+                                .flex()
+                                .gap(px(4.))
+                                .child(
+                                    Button::new("caption-keywords-pick", t("Pick keywords"))
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            pick_state.update(cx, |state, cx| state.caption_keywords_all(false, cx));
+                                        }),
+                                )
+                                .child(
+                                    Button::new("caption-keywords-clear", t("Clear keywords"))
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            clear_state.update(cx, |state, cx| state.caption_keywords_all(true, cx));
+                                        }),
+                                ),
+                        );
                 }
 
                 if has_audio {

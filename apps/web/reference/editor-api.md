@@ -68,6 +68,9 @@ methods answer with the error code `no_project` before that.
 | `timeline.setTransition` | `{ elementId, trackId?, transition: { type, duration?, params? } \| null }` | `ApiElementInfo` |
 | `transitions.list` | – | `ApiTransitionInfo[]` |
 | `captions.insert` | `{ captions: ApiCaption[], style?: ApiCaptionStyle }` | `{ trackId, elements: ApiElementRef[] }` |
+| `captions.pickKeywords` | `{ elementIds?, source?: "local" \| "claude", passcode? }` | `{ captions, keywords, model? }` — flags the words that matter in every caption with timed words (or `elementIds`), drawn in `caption.keywordColor` at `caption.keywordScale` (1–2) in preview, export and the desktop: "local" (default) scores anything with a digit, then names (a capital not at a sentence start), then words of four or more letters by length, skipping English stop words, keeping round(words / 6) per caption between one and three (the desktop's pick, both checked against `fixtures/caption-keywords/cases.json`); "claude" asks Claude through the API worker (`POST /captions/keywords`, the server passcode); one undo step |
+| `captions.clearKeywords` | `{ elementIds? }` | `{ captions, keywords }` — clears the keyword flags; one undo step |
+| `captions.setKeywords` | `{ elementId, trackId?, indices }` | `{ captions, keywords }` — one caption's keywords set to exactly these word numbers; one undo step |
 | `captions.export` | `{ format: "srt" \| "vtt" \| "ass", trackId? }` | `{ format, fileName, cueCount, content }` — the visible text elements (or one track's) as a subtitle file; WebVTT carries inline word timestamps and ASS `\k` karaoke tags with one style per look |
 | `captions.transcribe` | `{ language?, modelId?, wordsPerCaption?, insert?, style? }` | `{ text, words, captions, trackId }` (in page: runs Whisper) |
 | `timeline.split` | `{ elements, time }` | `ApiElementRef[]` |

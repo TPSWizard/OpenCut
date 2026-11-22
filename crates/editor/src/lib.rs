@@ -16,6 +16,7 @@ mod clip_animation;
 mod broll;
 mod bundle;
 mod captions;
+mod caption_keywords;
 mod commands;
 mod compound;
 mod document;
@@ -106,7 +107,11 @@ pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect
 pub use error::EditorError;
 pub use frame::{
     BackdropPlan, EffectPlan, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, CutoutPlan, TextAlign,
-    TextBackground, TextDecoration, TextHighlight, TextStyle, TransitionPlan, active_word, caption_highlight, fit_contain, parse_hex_color, plan_frame,
+    TextBackground, TextDecoration, TextHighlight, TextKeywords, TextStyle, TransitionPlan, active_word, caption_highlight, caption_keywords, fit_contain,
+    parse_hex_color, plan_frame,
+};
+pub use caption_keywords::{
+    KEYWORD_COLOR_DEFAULT, KEYWORD_SCALE_DEFAULT, KEYWORD_SCALE_MAX, STOP_WORDS, keyword_budget, keyword_core, keyword_score, pick_keyword_indices,
 };
 pub use transition::{
     ADJACENCY_TOLERANCE, TransitionWindow, in_window, is_adjacent, next_adjacent, previous_adjacent, transition_window,

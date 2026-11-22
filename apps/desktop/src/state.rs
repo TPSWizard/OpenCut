@@ -952,6 +952,46 @@ impl EditorState {
         .detach();
     }
 
+    /// Picks the keywords of every caption with timed words on unlocked
+    /// tracks (`editor::pick_keyword_indices`, the web editor's local pick),
+    /// or clears them with `clear`. One undo step.
+    pub(crate) fn caption_keywords_all(&mut self, clear: bool, cx: &mut Context<Self>) {
+        let mut commands = Vec::new();
+        let (mut captions, mut keywords) = (0usize, 0usize);
+        for track in self.project().tracks.iter().filter(|track| !track.locked) {
+            for element in track.elements.iter().filter(|element| !element.words.is_empty()) {
+                let picked = if clear {
+                    Vec::new()
+                } else {
+                    let texts: Vec<&str> = element.words.iter().map(|word| word.text.as_str()).collect();
+                    editor::pick_keyword_indices(&texts)
+                };
+                keywords += picked.len();
+                let current: Vec<usize> =
+                    element.words.iter().enumerate().filter(|(_, word)| word.keyword).map(|(index, _)| index).collect();
+                if current == picked {
+                    continue;
+                }
+                captions += 1;
+                commands.push(Command::UpdateElement {
+                    element_id: element.id.clone(),
+                    patch: editor::ElementPatch { keywords: Some(picked), ..Default::default() },
+                });
+            }
+        }
+        if commands.is_empty() {
+            self.set_status(t("The captions' keywords are already set."), cx);
+            return;
+        }
+        if self.execute(Command::Batch(commands), cx).is_some() {
+            let status = tf("{keywords} keyword(s) in {captions} changed caption(s).", &[
+                ("keywords", &keywords.to_string()),
+                ("captions", &captions.to_string()),
+            ]);
+            self.set_status(status, cx);
+        }
+    }
+
     /// Speaks `script` with a system voice into a WAV, adds it on an audio
     /// track at the playhead and, with `captions`, a caption track timed
     /// line by line; one undo step.

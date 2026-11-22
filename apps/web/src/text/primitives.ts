@@ -59,6 +59,18 @@ export interface TextWordHighlight {
 	spokenCount: number;
 }
 
+/**
+ * A caption's keywords (by word index) and how they look: the keyword
+ * colour (the spoken-word highlight still wins) and a size relative to the
+ * other words; the line keeps its height. The desktop draws the same
+ * (`editor::TextKeywords`).
+ */
+export interface TextKeywords {
+	indices: number[];
+	color: string;
+	scale: number;
+}
+
 const HIGHLIGHT_BOX_PADDING_X = 0.18;
 const HIGHLIGHT_BOX_PADDING_Y = 0.08;
 const HIGHLIGHT_BOX_HEIGHT = 1.1;
@@ -167,6 +179,7 @@ export function drawMeasuredTextLayout({
 	backgroundColor,
 	textBaseline = "middle",
 	highlight,
+	keywords = null,
 	revealChars = null,
 }: {
 	ctx: TextCanvasContext;
@@ -176,6 +189,8 @@ export function drawMeasuredTextLayout({
 	backgroundColor?: string;
 	textBaseline?: CanvasTextBaseline;
 	highlight?: TextWordHighlight | null;
+	/** Caption keywords to draw in their colour and size; null for none. */
+	keywords?: TextKeywords | null;
 	/**
 	 * Draw only this many characters (newlines not counted), each where it
 	 * sits in the whole text, as a typewriter animation reveals it; null
@@ -189,6 +204,13 @@ export function drawMeasuredTextLayout({
 	ctx.fillStyle = textColor;
 	setCanvasLetterSpacing({ ctx, letterSpacingPx: layout.letterSpacing });
 
+	// With keywords every line is laid out word by word, since a larger
+	// keyword widens its line; the background grows to the widest one.
+	const keyed = keywords && keywords.indices.length > 0 && revealChars === null ? keywordLineRuns({ ctx, layout, keywords }) : null;
+	const block = keyed
+		? { ...layout.block, maxWidth: Math.max(layout.block.maxWidth, ...keyed.map((run) => run.width)) }
+		: layout.block;
+
 	if (
 		background?.enabled &&
 		backgroundColor &&
@@ -197,7 +219,7 @@ export function drawMeasuredTextLayout({
 	) {
 		const backgroundRect = getTextBackgroundRect({
 			textAlign: layout.textAlign,
-			block: layout.block,
+			block,
 			background: {
 				...background,
 				color: backgroundColor,
@@ -225,6 +247,11 @@ export function drawMeasuredTextLayout({
 			ctx.fill();
 			ctx.fillStyle = textColor;
 		}
+	}
+
+	if (keyed && keywords) {
+		drawKeywordLines({ ctx, layout, runs: keyed, keywords, highlight: highlight ?? null, textColor });
+		return;
 	}
 
 	let remaining = revealChars ?? Number.POSITIVE_INFINITY;
@@ -260,6 +287,107 @@ export function drawMeasuredTextLayout({
 	if (highlight && highlight.mode !== "none" && revealChars === null) {
 		drawHighlightedWords({ ctx, layout, highlight, textColor });
 	}
+}
+
+interface KeywordPiece {
+	text: string;
+	/** Offset from the line's left edge. */
+	x: number;
+	width: number;
+	font: string;
+	/** The caption word index, or null for the space between words. */
+	wordIndex: number | null;
+	keyword: boolean;
+}
+
+/** Each line as measured pieces (words in their own font, the spaces between them). */
+export function keywordLineRuns({
+	ctx,
+	layout,
+	keywords,
+}: {
+	ctx: TextCanvasContext;
+	layout: MeasuredTextLayout;
+	keywords: TextKeywords;
+}): { width: number; pieces: KeywordPiece[] }[] {
+	const wanted = new Set(keywords.indices);
+	const baseFont = layout.fontString;
+	const keywordFont = baseFont.replace(/(\d+(?:\.\d+)?)px/, (_, size: string) => `${Number(size) * keywords.scale}px`);
+	let wordIndex = 0;
+	const runs = layout.lines.map((line) => {
+		const pieces: KeywordPiece[] = [];
+		let x = 0;
+		for (const match of line.matchAll(/\S+|\s+/g)) {
+			const isWord = /\S/.test(match[0]);
+			const keyword = isWord && wanted.has(wordIndex);
+			const font = keyword ? keywordFont : baseFont;
+			ctx.font = font;
+			const width = ctx.measureText(match[0]).width;
+			pieces.push({ text: match[0], x, width, font, wordIndex: isWord ? wordIndex : null, keyword });
+			if (isWord) wordIndex += 1;
+			x += width;
+		}
+		return { width: x, pieces };
+	});
+	ctx.font = baseFont;
+	return runs;
+}
+
+/** Draws the lines word by word: keywords in their colour and size, the spoken word (and its box) on top. */
+function drawKeywordLines({
+	ctx,
+	layout,
+	runs,
+	keywords,
+	highlight,
+	textColor,
+}: {
+	ctx: TextCanvasContext;
+	layout: MeasuredTextLayout;
+	runs: { width: number; pieces: KeywordPiece[] }[];
+	keywords: TextKeywords;
+	highlight: TextWordHighlight | null;
+	textColor: string;
+}): void {
+	const spoken = new Set(highlight && highlight.mode !== "none" ? highlightedWordIndices({ highlight }) : []);
+	const em = layout.scaledFontSize;
+	ctx.save();
+	ctx.textAlign = "left";
+	runs.forEach((run, line) => {
+		const lineY = line * layout.lineHeightPx - layout.block.visualCenterOffset;
+		const left = layout.textAlign === "center" ? -run.width / 2 : layout.textAlign === "right" ? -run.width : 0;
+		for (const piece of run.pieces) {
+			if (piece.wordIndex === null) continue;
+			const isSpoken = spoken.has(piece.wordIndex);
+			if (isSpoken && highlight?.mode === "box" && piece.wordIndex === highlight.activeIndex) {
+				const size = piece.keyword ? em * keywords.scale : em;
+				const padX = size * HIGHLIGHT_BOX_PADDING_X;
+				const height = size * HIGHLIGHT_BOX_HEIGHT + 2 * size * HIGHLIGHT_BOX_PADDING_Y;
+				ctx.fillStyle = highlight.boxColor;
+				ctx.beginPath();
+				ctx.roundRect(left + piece.x - padX, lineY - height / 2, piece.width + 2 * padX, height, size * HIGHLIGHT_BOX_RADIUS);
+				ctx.fill();
+			}
+			ctx.font = piece.font;
+			ctx.fillStyle = isSpoken && highlight ? highlight.activeColor : piece.keyword ? keywords.color : textColor;
+			ctx.fillText(piece.text, left + piece.x, lineY);
+		}
+		ctx.font = layout.fontString;
+		ctx.textAlign = layout.textAlign;
+		ctx.fillStyle = textColor;
+		drawTextDecoration({
+			ctx,
+			textDecoration: layout.textDecoration,
+			lineWidth: run.width,
+			lineY,
+			metrics: layout.lineMetrics[line],
+			scaledFontSize: layout.scaledFontSize,
+			textAlign: layout.textAlign,
+		});
+		ctx.textAlign = "left";
+	});
+	ctx.restore();
+	ctx.fillStyle = textColor;
 }
 
 /** The indices of the words `highlight` singles out. */

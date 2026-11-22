@@ -475,11 +475,12 @@ mod tests {
         let mut caption = Element::text("hello world", MediaTime::from_seconds_f64(2.0).unwrap());
         caption.duration = MediaTime::from_seconds_f64(1.5).unwrap();
         caption.words = vec![
-            CaptionWord { text: "hello".into(), start: MediaTime::ZERO, end: MediaTime::from_seconds_f64(0.5).unwrap() },
+            CaptionWord { text: "hello".into(), start: MediaTime::ZERO, end: MediaTime::from_seconds_f64(0.5).unwrap(), keyword: false },
             CaptionWord {
                 text: "world".into(),
                 start: MediaTime::from_seconds_f64(0.6).unwrap(),
                 end: MediaTime::from_seconds_f64(1.0).unwrap(),
+                keyword: false,
             },
         ];
         caption.params.set("fontWeight", "bold").set("transform.positionY", 300.0);

@@ -329,5 +329,14 @@
   "Shadow opacity": "阴影不透明度",
   "Shadow blur": "阴影模糊",
   "Shadow X": "阴影 X",
-  "Shadow Y": "阴影 Y"
+  "Shadow Y": "阴影 Y",
+  "The editor's own pick still works without Claude.": "不使用 Claude 时，编辑器自带的挑选仍然可用。",
+  "Keywords are the words that matter in each caption, drawn in the keyword colour and size. Pick them for every caption, or click a word below.": "关键词是每条字幕中最重要的词，会以关键词颜色和大小显示。可为所有字幕挑选，或点击下方的单词。",
+  "Pick with Claude (uses the server's key and passcode)": "用 Claude 挑选（使用服务器的密钥和口令）",
+  "Asking Claude…": "正在询问 Claude…",
+  "Pick keywords": "挑选关键词",
+  "Clear keywords": "清除关键词",
+  "Keyword; click to make it a plain word": "关键词；点击改为普通词",
+  "Click to make it a keyword": "点击设为关键词",
+  "{keywords} keyword(s) in {captions} changed caption(s).": "已在 {captions} 条更改的字幕中设置 {keywords} 个关键词。"
 }

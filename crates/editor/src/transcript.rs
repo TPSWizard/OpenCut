@@ -116,7 +116,7 @@ pub fn retime_captions(project: &mut Project, ranges: &[(MediaTime, MediaTime)],
                         (word_start, word_end)
                     };
                     let relative = |time: MediaTime| (time - new_start).max(MediaTime::ZERO).min(new_end - new_start);
-                    words.push(CaptionWord { text: word.text.clone(), start: relative(word_start), end: relative(word_end) });
+                    words.push(CaptionWord { text: word.text.clone(), start: relative(word_start), end: relative(word_end), keyword: word.keyword });
                 }
                 changed += 1;
                 if words.is_empty() || new_end <= new_start {

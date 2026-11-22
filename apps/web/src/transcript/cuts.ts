@@ -112,7 +112,7 @@ function retimeCaption({
 		} else if (shifting && middle < cut.start) {
 			wordEnd = Math.min(wordEnd, cut.start);
 		}
-		words.push({ text: word.text, start: relative(wordStart), end: relative(wordEnd) });
+		words.push({ text: word.text, start: relative(wordStart), end: relative(wordEnd), ...(word.keyword && { keyword: true }) });
 	}
 	if (words.length === 0 || newEnd <= newStart) return null;
 	return {

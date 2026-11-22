@@ -125,6 +125,12 @@ import { transcriptCuts } from "@/transcript/cuts";
 import { SHORTS_DEFAULTS } from "@/shorts/lines";
 import { freezeFrame } from "@/freeze/freeze";
 import { VOICE_EFFECTS, applyVoiceEffectToElement, enhanceVoiceOfElement, isVoiceEffect } from "@/voice/apply";
+import {
+	applyKeywordPicks,
+	clearCaptionKeywords,
+	pickCaptionKeywords,
+	pickCaptionKeywordsWithClaude,
+} from "@/captions/keyword-commands";
 import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
@@ -275,6 +281,7 @@ function toElementInfo({
 						text: word.text,
 						start: seconds(word.start),
 						end: seconds(word.end),
+						...(word.keyword && { keyword: true }),
 					}))
 				: undefined,
 	};
@@ -344,7 +351,13 @@ function toCaptionStyle(raw: unknown): Partial<CaptionStyle> | undefined {
 			message: "style.highlight must be none, word, box or fill",
 		});
 	}
-	for (const key of ["activeColor", "boxColor"] as const) {
+	if (
+		style.keywordScale !== undefined &&
+		(typeof style.keywordScale !== "number" || !Number.isFinite(style.keywordScale) || style.keywordScale < 1 || style.keywordScale > 2)
+	) {
+		throw new EditorApiError({ code: "invalid_params", message: "style.keywordScale must be 1 to 2" });
+	}
+	for (const key of ["activeColor", "boxColor", "keywordColor"] as const) {
 		if (style[key] !== undefined && typeof style[key] !== "string") {
 			throw new EditorApiError({
 				code: "invalid_params",
@@ -356,7 +369,17 @@ function toCaptionStyle(raw: unknown): Partial<CaptionStyle> | undefined {
 		...(style.highlight !== undefined && { highlight: style.highlight }),
 		...(style.activeColor !== undefined && { activeColor: style.activeColor }),
 		...(style.boxColor !== undefined && { boxColor: style.boxColor }),
+		...(style.keywordColor !== undefined && { keywordColor: style.keywordColor }),
+		...(style.keywordScale !== undefined && { keywordScale: style.keywordScale }),
 	};
+}
+
+function toElementIds(raw: unknown): string[] | undefined {
+	if (raw === undefined) return undefined;
+	if (!Array.isArray(raw) || !raw.every((id) => typeof id === "string")) {
+		throw new EditorApiError({ code: "invalid_params", message: "elementIds must be a list of element ids" });
+	}
+	return raw;
 }
 
 function toTrackInfo({
@@ -1400,6 +1423,37 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				});
 			}
 			return elementInfoById({ trackId: track.id, elementId: element.id });
+		},
+		"captions.pickKeywords": async ({ elementIds, source, passcode }) => {
+			requireProject();
+			const ids = toElementIds(elementIds);
+			if (source !== undefined && source !== "local" && source !== "claude") {
+				throw new EditorApiError({ code: "invalid_params", message: "source must be local or claude" });
+			}
+			if (source !== "claude") return pickCaptionKeywords({ editor, elementIds: ids });
+			if (typeof passcode !== "string") {
+				throw new EditorApiError({ code: "invalid_params", message: "passcode is needed to ask Claude" });
+			}
+			try {
+				return await pickCaptionKeywordsWithClaude({ editor, passcode, elementIds: ids });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Picking keywords failed" });
+			}
+		},
+		"captions.clearKeywords": ({ elementIds }) => {
+			requireProject();
+			return clearCaptionKeywords({ editor, elementIds: toElementIds(elementIds) });
+		},
+		"captions.setKeywords": ({ elementId, trackId, indices }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			requireUnlocked(track);
+			if (element.type !== "text" || !element.words?.length) {
+				throw new EditorApiError({ code: "invalid_params", message: "Keywords need a caption with timed words" });
+			}
+			if (!Array.isArray(indices) || !indices.every((at) => Number.isInteger(at) && at >= 0 && at < (element.words?.length ?? 0))) {
+				throw new EditorApiError({ code: "invalid_params", message: "indices must be word numbers of the caption" });
+			}
+			return applyKeywordPicks({ editor, captions: [{ trackId: track.id, element }], picks: [indices] });
 		},
 		"captions.insert": ({ captions, style }) => {
 			requireProject();

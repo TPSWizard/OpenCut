@@ -151,8 +151,14 @@ impl TextRasterizer {
                 rich.push((line, hidden.clone()));
             }
             buffer.set_rich_text(&mut self.font_system, rich, &attrs, Shaping::Advanced, None);
-        } else if let Some(highlight) = style.highlight.as_ref().filter(|_| !highlighted.is_empty()) {
-            let active = to_color(highlight.active_color);
+        } else if !highlighted.is_empty() || style.keywords.is_some() {
+            // Keywords take the keyword colour at their own size (the line
+            // keeps its height); the spoken-word highlight still wins on colour.
+            let active = style.highlight.as_ref().map(|highlight| to_color(highlight.active_color));
+            let keyword = style.keywords.as_ref().map(|keywords| {
+                let size = (font_size * keywords.scale.clamp(1.0, 4.0)).max(1.0);
+                (keywords, attrs.clone().color(to_color(keywords.color)).metrics(Metrics::new(size, line_height)))
+            });
             let mut rich: Vec<(&str, Attrs)> = Vec::new();
             for (line_index, line) in content.split('\n').enumerate() {
                 if line_index > 0 {
@@ -163,11 +169,13 @@ impl TextRasterizer {
                     if span.start > cursor {
                         rich.push((&line[cursor..span.start], attrs.clone()));
                     }
-                    let word_attrs = if highlighted.contains(&word_index) {
-                        attrs.clone().color(active)
-                    } else {
-                        attrs.clone()
+                    let mut word_attrs = match &keyword {
+                        Some((keywords, keyword_attrs)) if keywords.indices.contains(&word_index) => keyword_attrs.clone(),
+                        _ => attrs.clone(),
                     };
+                    if let (true, Some(active)) = (highlighted.contains(&word_index), active) {
+                        word_attrs = word_attrs.color(active);
+                    }
                     rich.push((&line[span.start..span.end], word_attrs));
                     cursor = span.end;
                 }
@@ -499,6 +507,7 @@ mod tests {
             decoration: TextDecoration::None,
             background: None,
             highlight: None,
+            keywords: None,
             reveal_chars: None,
         }
     }
@@ -574,6 +583,34 @@ mod tests {
         assert!(*blue.first().unwrap() < *green.first().unwrap() && *blue.last().unwrap() > *green.last().unwrap());
         assert_eq!(boxed.width, plain.width, "the box stays within the text block");
         assert!(boxed.height >= plain.height);
+    }
+
+    #[test]
+    fn keywords_are_coloured_and_larger() {
+        let mut rasterizer = TextRasterizer::new();
+        let plain = rasterizer.rasterize(&style("one two three"));
+        let mut keyed = style("one two three");
+        keyed.keywords = Some(editor::TextKeywords { indices: vec![1], color: [0.0, 1.0, 0.0, 1.0], scale: 1.5 });
+        let raster = rasterizer.rasterize(&keyed);
+        let green = columns_of(&raster, [0, 255, 0]);
+        let red = columns_of(&raster, [0, 0, 255]);
+        assert!(!green.is_empty() && !red.is_empty());
+        let (g0, g1) = (*green.first().unwrap(), *green.last().unwrap());
+        assert!(red.iter().any(|&x| x < g0) && red.iter().any(|&x| x > g1), "the keyword sits between plain words");
+        assert!(raster.width > plain.width, "a larger keyword widens the line: {} vs {}", raster.width, plain.width);
+
+        // The spoken word's colour wins over the keyword colour.
+        keyed.highlight = Some(TextHighlight {
+            mode: HighlightMode::Word,
+            active_color: [0.0, 0.0, 1.0, 1.0],
+            box_color: [0.0, 0.0, 0.0, 1.0],
+            active_index: Some(1),
+            spoken_count: 2,
+        });
+        let spoken = rasterizer.rasterize(&keyed);
+        assert!(columns_of(&spoken, [0, 255, 0]).is_empty(), "no keyword green while it is spoken");
+        assert!(!columns_of(&spoken, [255, 0, 0]).is_empty());
+        assert_eq!(spoken.width, raster.width, "it keeps the keyword size");
     }
 
     /// Opaque pixels in row `y`.
