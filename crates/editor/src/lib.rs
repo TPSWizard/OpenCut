@@ -28,6 +28,7 @@ mod frame;
 mod fillers;
 mod freeform;
 mod freeze;
+mod layer_style;
 mod loudness;
 mod luts;
 mod markers;
@@ -80,6 +81,10 @@ pub use clip_animation::{
     ANIMATION_LOOP_KINDS, ANIMATION_LOOP_PERIOD_DEFAULT, ANIMATION_LOOP_PERIOD_MAX, ANIMATION_LOOP_PERIOD_MIN,
     ANIMATION_OUT_KINDS, ClipAnimationState, ClipAnimations, RevealMode, TEXT_ONLY_ANIMATIONS, animation_label,
     animation_windows, clip_animation_state_at, read_clip_animations, revealed_char_count,
+};
+pub use layer_style::{
+    CORNER_RADIUS_MAX, LayerShadow, LayerStyle, OUTLINE_WIDTH_MAX, SHADOW_BLUR_DEFAULT, SHADOW_BLUR_MAX,
+    SHADOW_OFFSET_DEFAULT, SHADOW_OFFSET_MAX, SHADOW_OPACITY_DEFAULT,
 };
 pub use freeze::{FREEZE_DEFAULT_SECONDS, FREEZE_MAX_SECONDS, FREEZE_MIN_SECONDS, freeze_still};
 pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts};

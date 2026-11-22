@@ -1,3 +1,4 @@
+import { layerStyleDescriptor, readLayerStyle } from "@/layer-style/style";
 import { drawCssBackground } from "@/gradients";
 import { getMaskDefinition } from "@/masks";
 import { incrementCounter } from "@/diagnostics/render-perf";
@@ -309,6 +310,13 @@ async function collectVisualSourceNode({
 		blendMode: node.params.blendMode ?? "normal",
 		effectPassGroups: node.resolved.effectPasses,
 		mask,
+		...(node.params.layerStyle && {
+			style: layerStyleDescriptor({
+				style: node.params.layerStyle,
+				width: transform.width,
+				height: transform.height,
+			}),
+		}),
 	});
 	if (strokeLayer) {
 		items.push(strokeLayer);
@@ -352,6 +360,7 @@ function collectTextNode({
 			renderTextToContext({ node, ctx });
 		},
 	});
+	const style = readLayerStyle(node.params.params, { isText: true });
 	items.push({
 		type: "layer",
 		textureId,
@@ -360,6 +369,7 @@ function collectTextNode({
 		blendMode: node.params.blendMode ?? "normal",
 		effectPassGroups: node.resolved.effectPasses,
 		mask: null,
+		...(style && { style: layerStyleDescriptor({ style, width: width, height: height }) }),
 	});
 }
 

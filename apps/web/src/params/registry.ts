@@ -29,6 +29,15 @@ import {
 	ANIMATION_OUT_KINDS,
 	TEXT_ONLY_ANIMATIONS,
 } from "@/clip-animation/presets";
+import {
+	CORNER_RADIUS_MAX as LAYER_CORNER_RADIUS_MAX,
+	OUTLINE_WIDTH_MAX,
+	SHADOW_BLUR_DEFAULT,
+	SHADOW_BLUR_MAX,
+	SHADOW_OFFSET_DEFAULT,
+	SHADOW_OFFSET_MAX,
+	SHADOW_OPACITY_DEFAULT,
+} from "@/layer-style/style";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -233,6 +242,91 @@ function animationParams({ isText }: { isText: boolean }): ElementParamDefinitio
 			max: ANIMATION_LOOP_PERIOD_MAX,
 			step: 0.1,
 			keyframable: false,
+		},
+	];
+}
+
+/** Rounded corners (not on text), outline and drop shadow; see `@/layer-style/style`. */
+function styleParams({ isText }: { isText: boolean }): ElementParamDefinition[] {
+	const shadowOn = [{ param: "shadow.enabled", equals: true }];
+	return [
+		...(isText
+			? []
+			: [
+					{
+						key: "cornerRadius",
+						label: "Rounded corners (%)",
+						type: "number",
+						default: 0,
+						min: 0,
+						max: LAYER_CORNER_RADIUS_MAX,
+						step: 1,
+						keyframable: false,
+					} satisfies ElementParamDefinition,
+				]),
+		{
+			key: "outline.width",
+			label: "Outline width",
+			type: "number",
+			default: 0,
+			min: 0,
+			max: OUTLINE_WIDTH_MAX,
+			step: 0.5,
+			keyframable: false,
+		},
+		{ key: "outline.color", label: "Outline colour", type: "color", default: "#ffffff", keyframable: false },
+		{ key: "shadow.enabled", label: "Shadow", type: "boolean", default: false, keyframable: false },
+		{
+			key: "shadow.color",
+			label: "Shadow colour",
+			type: "color",
+			default: "#000000",
+			keyframable: false,
+			dependencies: shadowOn,
+		},
+		{
+			key: "shadow.opacity",
+			label: "Shadow opacity",
+			type: "number",
+			default: SHADOW_OPACITY_DEFAULT,
+			min: 0,
+			max: 1,
+			step: 0.01,
+			keyframable: false,
+			dependencies: shadowOn,
+		},
+		{
+			key: "shadow.blur",
+			label: "Shadow blur",
+			type: "number",
+			default: SHADOW_BLUR_DEFAULT,
+			min: 0,
+			max: SHADOW_BLUR_MAX,
+			step: 1,
+			keyframable: false,
+			dependencies: shadowOn,
+		},
+		{
+			key: "shadow.offsetX",
+			label: "Shadow X",
+			type: "number",
+			default: SHADOW_OFFSET_DEFAULT,
+			min: -SHADOW_OFFSET_MAX,
+			max: SHADOW_OFFSET_MAX,
+			step: 1,
+			keyframable: false,
+			dependencies: shadowOn,
+		},
+		{
+			key: "shadow.offsetY",
+			label: "Shadow Y",
+			type: "number",
+			default: SHADOW_OFFSET_DEFAULT,
+			min: -SHADOW_OFFSET_MAX,
+			max: SHADOW_OFFSET_MAX,
+			step: 1,
+			keyframable: false,
+			dependencies: shadowOn,
 		},
 	];
 }
@@ -477,11 +571,11 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...audioElementParams],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...audioElementParams],
 });
 elementParamRegistry.register({
 	key: "image",
-	definition: [...visualElementParams, ...animationParams({ isText: false })],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false })],
 });
 elementParamRegistry.register({
 	key: "text",
@@ -489,16 +583,16 @@ elementParamRegistry.register({
 		...textElementParams,
 		...captionParams,
 		...visualElementParams,
-		...animationParams({ isText: true }),
+		...animationParams({ isText: true }), ...styleParams({ isText: true }),
 	],
 });
 elementParamRegistry.register({
 	key: "sticker",
-	definition: [...visualElementParams, ...animationParams({ isText: false })],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false })],
 });
 elementParamRegistry.register({
 	key: "graphic",
-	definition: [...visualElementParams, ...animationParams({ isText: false })],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false })],
 });
 elementParamRegistry.register({ key: "audio", definition: audioElementParams });
 elementParamRegistry.register({ key: "effect", definition: [] });

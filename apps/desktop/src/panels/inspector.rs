@@ -971,6 +971,119 @@ impl Render for InspectorPanel {
                             ));
                         }
                     }
+
+                    // Rounded corners (not on text), outline and drop shadow
+                    // (`editor::LayerStyle`), the web editor's Style tab.
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Style"), window));
+                    let mut presets = div().flex().flex_wrap().gap(px(4.));
+                    for (id, label, glow) in [("style-shadow", t("Drop shadow"), false), ("style-glow", t("Glow"), true)] {
+                        let state = self.state.clone();
+                        presets = presets.child(
+                            Button::new(id, label)
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params
+                                        .set("shadow.enabled", true)
+                                        .set("shadow.color", if glow { "#ffffff" } else { "#000000" })
+                                        .set("shadow.opacity", if glow { 0.9 } else { editor::SHADOW_OPACITY_DEFAULT })
+                                        .set("shadow.blur", if glow { 24.0 } else { editor::SHADOW_BLUR_DEFAULT })
+                                        .set("shadow.offsetX", if glow { 0.0 } else { editor::SHADOW_OFFSET_DEFAULT })
+                                        .set("shadow.offsetY", if glow { 0.0 } else { editor::SHADOW_OFFSET_DEFAULT });
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    let shadow_on = element.params.bool("shadow.enabled", false);
+                    {
+                        let state = self.state.clone();
+                        presets = presets.child(
+                            Button::new("style-shadow-toggle", if shadow_on { t("Shadow on") } else { t("Shadow off") })
+                                .variant(if shadow_on { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set("shadow.enabled", !shadow_on);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    content = content.child(presets);
+                    let mut style_numbers: Vec<(&'static str, &'static str, f64, f64, f64)> = Vec::new();
+                    if !is_text {
+                        style_numbers.push(("cornerRadius", "Rounded corners (%)", 0.0, 0.0, editor::CORNER_RADIUS_MAX));
+                    }
+                    style_numbers.push(("outline.width", "Outline width", 0.0, 0.0, editor::OUTLINE_WIDTH_MAX));
+                    for (key, label, default, min, max) in style_numbers {
+                        content = content.child(self.row(
+                            t(label),
+                            key,
+                            "0",
+                            number_text(element.params.number(key, default)),
+                            None,
+                            window,
+                            cx,
+                            Box::new(move |text, state, cx| {
+                                if let Ok(value) = text.trim().parse::<f64>() {
+                                    if value.is_finite() {
+                                        let mut params = Params::new();
+                                        params.set(key, value.clamp(min, max));
+                                        state.update_selected_params(params, cx);
+                                    }
+                                }
+                            }),
+                        ));
+                    }
+                    content = content.child(self.row(
+                        t("Outline colour"),
+                        "outline.color",
+                        "#ffffff",
+                        element.params.text("outline.color", "#ffffff").into_owned(),
+                        None,
+                        window,
+                        cx,
+                        set_text_param("outline.color"),
+                    ));
+                    if shadow_on {
+                        content = content.child(self.row(
+                            t("Shadow colour"),
+                            "shadow.color",
+                            "#000000",
+                            element.params.text("shadow.color", "#000000").into_owned(),
+                            None,
+                            window,
+                            cx,
+                            set_text_param("shadow.color"),
+                        ));
+                        for (key, label, default, min, max) in [
+                            ("shadow.opacity", "Shadow opacity", editor::SHADOW_OPACITY_DEFAULT, 0.0, 1.0),
+                            ("shadow.blur", "Shadow blur", editor::SHADOW_BLUR_DEFAULT, 0.0, editor::SHADOW_BLUR_MAX),
+                            ("shadow.offsetX", "Shadow X", editor::SHADOW_OFFSET_DEFAULT, -editor::SHADOW_OFFSET_MAX, editor::SHADOW_OFFSET_MAX),
+                            ("shadow.offsetY", "Shadow Y", editor::SHADOW_OFFSET_DEFAULT, -editor::SHADOW_OFFSET_MAX, editor::SHADOW_OFFSET_MAX),
+                        ] {
+                            content = content.child(self.row(
+                                t(label),
+                                key,
+                                "",
+                                number_text(element.params.number(key, default)),
+                                None,
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        if value.is_finite() {
+                                            let mut params = Params::new();
+                                            params.set(key, value.clamp(min, max));
+                                            state.update_selected_params(params, cx);
+                                        }
+                                    }
+                                }),
+                            ));
+                        }
+                    }
                 }
 
                 if is_text {

@@ -11,7 +11,9 @@ struct LayerUniforms {
     opacity: f32,
     flip_x: f32,
     flip_y: f32,
-    _padding: vec2f,
+    /// Rounded corners, in pixels (0 for square ones).
+    corner_radius: f32,
+    _padding: f32,
 }
 
 @group(0) @binding(0) var source_texture: texture_2d<f32>;
@@ -46,5 +48,14 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         select(uv.y, 1.0 - uv.y, uniforms.flip_y > 0.5),
     );
     let color = textureSampleLevel(source_texture, source_sampler, sample_uv, 0.0);
-    return vec4f(color.rgb, color.a * uniforms.opacity);
+    var coverage = 1.0;
+    let half_size = abs(uniforms.size) * 0.5;
+    let radius = min(uniforms.corner_radius, min(half_size.x, half_size.y));
+    if (radius > 0.0) {
+        // Signed distance to the rounded box, softened over one pixel.
+        let q = abs(local) - (half_size - vec2f(radius));
+        let distance = length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - radius;
+        coverage = clamp(0.5 - distance, 0.0, 1.0);
+    }
+    return vec4f(color.rgb, color.a * uniforms.opacity * coverage);
 }

@@ -70,6 +70,7 @@ fn full_layer(texture_id: &str) -> LayerDescriptor {
         blend_mode: BlendMode::Normal,
         effect_pass_groups: Vec::new(),
         mask: None,
+        style: Default::default(),
     }
 }
 

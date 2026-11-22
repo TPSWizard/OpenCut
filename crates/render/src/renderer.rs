@@ -198,6 +198,7 @@ impl Renderer {
                 blend_mode: BlendMode::Normal,
                 effect_pass_groups: if passes.is_empty() { Vec::new() } else { vec![passes] },
                 mask: None,
+                style: Default::default(),
             }));
         }
         let frame_size = (width, height, canvas_width, canvas_height, scale_x, scale_y);
@@ -330,6 +331,7 @@ impl Renderer {
                 .or(mask),
             None => mask,
         };
+        let style = style_descriptor(&layer.style, &quad, scale_x, scale_y);
         let mut items = vec![LayerDescriptor {
             texture_id,
             transform: quad,
@@ -340,6 +342,7 @@ impl Renderer {
                 effect_pass_groups(&layer.effects, width, height, layer.local_time.to_seconds_f64())
             },
             mask,
+            style,
         }];
         items.extend(stroke);
         Ok(items)
@@ -636,6 +639,7 @@ impl Renderer {
                 blend_mode: BlendMode::Normal,
                 effect_pass_groups: Vec::new(),
                 mask: None,
+                style: Default::default(),
             })
         } else {
             None
@@ -853,5 +857,28 @@ mod tests {
     fn blend_modes_parse() {
         assert_eq!(parse_blend_mode("screen"), BlendMode::Screen);
         assert_eq!(parse_blend_mode("nonsense"), BlendMode::Normal);
+    }
+}
+
+/// A layer's corners, outline and shadow in frame pixels (`scale_x` and
+/// `scale_y` take canvas pixels to frame pixels).
+fn style_descriptor(
+    style: &editor::LayerStyle,
+    quad: &QuadTransformDescriptor,
+    scale_x: f32,
+    scale_y: f32,
+) -> compositor::LayerStyleDescriptor {
+    compositor::LayerStyleDescriptor {
+        corner_radius: style.corner_radius_pixels(quad.width, quad.height),
+        outline: style.outline.map(|(width, color)| compositor::LayerOutlineDescriptor {
+            width: width * scale_x,
+            color,
+        }),
+        shadow: style.shadow.as_ref().map(|shadow| compositor::LayerShadowDescriptor {
+            color: shadow.color,
+            offset_x: shadow.offset_x * scale_x,
+            offset_y: shadow.offset_y * scale_y,
+            blur: shadow.blur * scale_x,
+        }),
     }
 }

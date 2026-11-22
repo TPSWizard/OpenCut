@@ -78,6 +78,8 @@ pub struct LayerPlan {
     /// The element's first mask, if any.
     pub mask: Option<MaskPlan>,
     pub cutout: Option<CutoutPlan>,
+    /// Rounded corners, outline and drop shadow.
+    pub style: crate::LayerStyle,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -569,6 +571,7 @@ fn layer_plan(
         local_time: element.local_time(param_time),
         mask,
         cutout,
+        style: crate::LayerStyle::from_params(&params, matches!(element.kind, ElementKind::Text)),
     })
 }
 

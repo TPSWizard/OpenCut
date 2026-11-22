@@ -430,6 +430,18 @@ editor's Animation tab sets, worked out while the clip plays by
 when it is trimmed. A typewriter draws the letters not shown yet clear, so
 the text does not move as it types.
 
+## Corners, outline and shadow
+
+The inspector's **Style** section rounds a clip's corners (a percent of
+half its shorter side; not on text, whose box has its own), draws an
+outline around its shape, and puts a drop shadow or glow under it
+(**Drop shadow** and **Glow** set one up in a click). They are the
+`cornerRadius`, `outline.*` and `shadow.*` params the web editor's Style
+tab sets, and the shared compositor draws them after the clip's effects
+and mask: the corners in the layer shader, the outline and the shadow as
+passes in `crates/compositor/src/shaders/style.wgsl`, on the whole frame so
+they are never cut off at the clip's edge.
+
 ## Freeze frame
 
 **Freeze** in the timeline toolbar (and **Freeze frame** in a clip's

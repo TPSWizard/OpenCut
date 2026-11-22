@@ -4,6 +4,7 @@ import type { Mask } from "@/masks/types";
 import type { BlendMode, Transform } from "@/rendering";
 import type { RetimeConfig, VisualElement } from "@/timeline";
 import type { ClipAnimations } from "@/clip-animation/presets";
+import type { LayerStyle } from "@/layer-style/style";
 
 export interface VisualNodeParams {
 	duration: number;
@@ -19,6 +20,8 @@ export interface VisualNodeParams {
 	masks?: Mask[];
 	/** One-click in, out and loop animations, from the element's params. */
 	clipAnimation?: ClipAnimations | null;
+	/** Rounded corners, outline and drop shadow, from the element's params. */
+	layerStyle?: LayerStyle | null;
 	/**
 	 * Resolve at times outside the clip too (a transition's handles): the
 	 * source keeps playing from the material beyond the trim and holds its

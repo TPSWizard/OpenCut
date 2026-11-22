@@ -741,5 +741,17 @@
   "Shake": "抖动",
   "Wobble": "摇摆",
   "Float": "漂浮",
-  "Ken Burns": "肯·伯恩斯推移"
+  "Ken Burns": "肯·伯恩斯推移",
+  "Drop shadow": "投影",
+  "Glow": "发光",
+  "Shadow on": "阴影：开",
+  "Shadow off": "阴影：关",
+  "Rounded corners (%)": "圆角（%）",
+  "Outline width": "描边宽度",
+  "Outline colour": "描边颜色",
+  "Shadow colour": "阴影颜色",
+  "Shadow opacity": "阴影不透明度",
+  "Shadow blur": "阴影模糊",
+  "Shadow X": "阴影 X",
+  "Shadow Y": "阴影 Y"
 }

@@ -1,6 +1,7 @@
 import type { BlendMode } from "@/rendering";
 import type { EffectPass } from "@/effects/types";
 import type { TransitionParams } from "@/transitions/types";
+import type { LayerStyleDescriptor } from "@/layer-style/style";
 
 export type FrameDescriptor = {
 	width: number;
@@ -19,6 +20,8 @@ export type LayerItemDescriptor = {
 	blendMode: BlendMode;
 	effectPassGroups: EffectPass[][];
 	mask: LayerMaskDescriptor | null;
+	/** Rounded corners, outline and drop shadow; none when left out. */
+	style?: LayerStyleDescriptor;
 };
 
 export type SceneEffectItemDescriptor = {

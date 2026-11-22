@@ -20,6 +20,7 @@ use crate::{
 const LAYER_SHADER_SOURCE: &str = include_str!("shaders/layer.wgsl");
 const BLEND_SHADER_SOURCE: &str = include_str!("shaders/blend.wgsl");
 const MASK_SHADER_SOURCE: &str = include_str!("shaders/mask.wgsl");
+const STYLE_SHADER_SOURCE: &str = include_str!("shaders/style.wgsl");
 
 pub struct RenderFrameOptions<'a, 'surface> {
     pub frame: &'a FrameDescriptor,
@@ -37,7 +38,18 @@ pub struct Compositor {
     blend_pipeline: wgpu::RenderPipeline,
     mask_uniform_bind_group_layout: wgpu::BindGroupLayout,
     mask_pipeline: wgpu::RenderPipeline,
+    style_uniform_bind_group_layout: wgpu::BindGroupLayout,
+    outline_pipeline: wgpu::RenderPipeline,
+    shadow_blur_pipeline: wgpu::RenderPipeline,
+    shadow_composite_pipeline: wgpu::RenderPipeline,
     transitions: TransitionPipelines,
+}
+
+#[derive(Clone, Copy)]
+enum StylePass {
+    Outline,
+    ShadowBlur,
+    ShadowComposite,
 }
 
 #[derive(Debug, Error)]
@@ -60,7 +72,19 @@ struct LayerUniformBuffer {
     opacity: f32,
     flip_x: f32,
     flip_y: f32,
-    _padding: [f32; 2], // WebGL requires uniform buffer sizes to be multiples of 16 bytes (40 → 48)
+    corner_radius: f32,
+    _padding: f32, // WebGL requires uniform buffer sizes to be multiples of 16 bytes (40 → 48)
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct StyleUniformBuffer {
+    resolution: [f32; 2],
+    direction: [f32; 2],
+    offset: [f32; 2],
+    radius: f32,
+    _padding: f32,
+    color: [f32; 4],
 }
 
 #[repr(C)]
@@ -96,6 +120,72 @@ impl Compositor {
             label: Some("compositor-mask-shader"),
             source: wgpu::ShaderSource::Wgsl(MASK_SHADER_SOURCE.into()),
         });
+        let style_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("compositor-style-shader"),
+            source: wgpu::ShaderSource::Wgsl(STYLE_SHADER_SOURCE.into()),
+        });
+        let style_uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("compositor-style-uniform-layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+        let style_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("compositor-style-pipeline-layout"),
+            bind_group_layouts: &[
+                Some(context.texture_sampler_bind_group_layout()),
+                Some(context.texture_sampler_bind_group_layout()),
+                Some(&style_uniform_bind_group_layout),
+            ],
+            immediate_size: 0,
+        });
+        let style_pipeline = |entry_point: &str, label: &str| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&style_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &fullscreen_shader,
+                    entry_point: Some("vertex_main"),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<[f32; 2]>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        }],
+                    }],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &style_shader,
+                    entry_point: Some(entry_point),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: context.texture_format(),
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let outline_pipeline = style_pipeline("outline_main", "compositor-outline-pipeline");
+        let shadow_blur_pipeline = style_pipeline("shadow_blur_main", "compositor-shadow-blur-pipeline");
+        let shadow_composite_pipeline =
+            style_pipeline("shadow_composite_main", "compositor-shadow-composite-pipeline");
 
         let layer_uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -280,6 +370,10 @@ impl Compositor {
             blend_pipeline,
             mask_uniform_bind_group_layout,
             mask_pipeline,
+            style_uniform_bind_group_layout,
+            outline_pipeline,
+            shadow_blur_pipeline,
+            shadow_composite_pipeline,
             transitions: TransitionPipelines::new(context),
         }
     }
@@ -516,7 +610,155 @@ impl Compositor {
             );
         }
 
+        let (width, height) = (frame.width, frame.height);
+        if let Some(outline) = layer.style.outline.as_ref().filter(|outline| outline.width > 0.0) {
+            current = self.style_pass(
+                context,
+                encoder,
+                StylePass::Outline,
+                &current,
+                None,
+                (width, height),
+                StyleUniformBuffer {
+                    resolution: [width as f32, height as f32],
+                    direction: [0.0; 2],
+                    offset: [0.0; 2],
+                    radius: outline.width.min(200.0),
+                    _padding: 0.0,
+                    color: outline.color,
+                },
+            );
+        }
+        if let Some(shadow) = layer.style.shadow.as_ref().filter(|shadow| shadow.color[3] > 0.0) {
+            let blur = shadow.blur.clamp(0.0, 128.0);
+            let uniforms = |direction: [f32; 2], offset: [f32; 2], radius: f32| StyleUniformBuffer {
+                resolution: [width as f32, height as f32],
+                direction,
+                offset,
+                radius,
+                _padding: 0.0,
+                color: shadow.color,
+            };
+            let mut shape = self.style_pass(
+                context,
+                encoder,
+                StylePass::ShadowBlur,
+                &current,
+                None,
+                (width, height),
+                uniforms([1.0, 0.0], [shadow.offset_x, shadow.offset_y], blur),
+            );
+            if blur >= 0.5 {
+                shape = self.style_pass(
+                    context,
+                    encoder,
+                    StylePass::ShadowBlur,
+                    &shape,
+                    None,
+                    (width, height),
+                    uniforms([0.0, 1.0], [0.0, 0.0], blur),
+                );
+            }
+            current = self.style_pass(
+                context,
+                encoder,
+                StylePass::ShadowComposite,
+                &current,
+                Some(&shape),
+                (width, height),
+                uniforms([0.0, 0.0], [0.0, 0.0], 0.0),
+            );
+        }
+
         Ok(current)
+    }
+
+    /// One outline or shadow pass over a full-frame layer texture; `second`
+    /// is the blurred shadow shape for the composite (the layer otherwise).
+    #[allow(clippy::too_many_arguments)]
+    fn style_pass(
+        &mut self,
+        context: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        pass: StylePass,
+        layer_texture: &wgpu::Texture,
+        second: Option<&wgpu::Texture>,
+        (width, height): (u32, u32),
+        uniforms: StyleUniformBuffer,
+    ) -> wgpu::Texture {
+        let target = self
+            .texture_pool
+            .acquire(context, width, height, "compositor-style-texture");
+        let layer_view = layer_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let second_view = second
+            .unwrap_or(layer_texture)
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let target_view = target.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_bind_group = |view: &wgpu::TextureView, label: &str| {
+            context.device().create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some(label),
+                layout: context.texture_sampler_bind_group_layout(),
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(context.linear_sampler()),
+                    },
+                ],
+            })
+        };
+        let layer_bind_group = texture_bind_group(&layer_view, "compositor-style-layer-bind-group");
+        let second_bind_group = texture_bind_group(&second_view, "compositor-style-second-bind-group");
+        let uniform_buffer = context
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("compositor-style-uniform-buffer"),
+                contents: bytemuck::bytes_of(&uniforms),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+        let uniform_bind_group = context
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("compositor-style-uniform-bind-group"),
+                layout: &self.style_uniform_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+            });
+        let pipeline = match pass {
+            StylePass::Outline => &self.outline_pipeline,
+            StylePass::ShadowBlur => &self.shadow_blur_pipeline,
+            StylePass::ShadowComposite => &self.shadow_composite_pipeline,
+        };
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("compositor-style-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+            render_pass.set_pipeline(pipeline);
+            render_pass.set_vertex_buffer(0, context.fullscreen_quad().slice(..));
+            render_pass.set_bind_group(0, &layer_bind_group, &[]);
+            render_pass.set_bind_group(1, &second_bind_group, &[]);
+            render_pass.set_bind_group(2, &uniform_bind_group, &[]);
+            render_pass.draw(0..6, 0..1);
+        }
+        target
     }
 
     /// A transition's two sides blended by its shader: each side is its
@@ -695,7 +937,8 @@ impl Compositor {
                         opacity: layer.opacity,
                         flip_x: if layer.transform.flip_x { 1.0 } else { 0.0 },
                         flip_y: if layer.transform.flip_y { 1.0 } else { 0.0 },
-                        _padding: [0.0; 2],
+                        corner_radius: layer.style.corner_radius.max(0.0),
+                        _padding: 0.0,
                     }),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 });

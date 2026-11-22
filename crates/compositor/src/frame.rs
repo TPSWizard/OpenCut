@@ -68,6 +68,46 @@ pub struct LayerDescriptor {
     #[serde(default)]
     pub effect_pass_groups: Vec<Vec<EffectPassDescriptor>>,
     pub mask: Option<LayerMaskDescriptor>,
+    /// Rounded corners, outline and drop shadow; none by default.
+    #[serde(default)]
+    pub style: LayerStyleDescriptor,
+}
+
+/// How a layer is dressed after its effects and mask, in frame pixels.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LayerStyleDescriptor {
+    /// Radius of the quad's rounded corners in pixels; 0 for square ones.
+    #[serde(default)]
+    pub corner_radius: f32,
+    #[serde(default)]
+    pub outline: Option<LayerOutlineDescriptor>,
+    #[serde(default)]
+    pub shadow: Option<LayerShadowDescriptor>,
+}
+
+/// A solid outline `width` pixels wide around the layer's shape.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LayerOutlineDescriptor {
+    pub width: f32,
+    /// Straight-alpha RGBA, 0 to 1.
+    pub color: [f32; 4],
+}
+
+/// The layer's shape in `color` (alpha is its strength), moved by the
+/// offset and blurred by `blur` pixels, under the layer. With no offset it
+/// is a glow.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LayerShadowDescriptor {
+    pub color: [f32; 4],
+    #[serde(default)]
+    pub offset_x: f32,
+    #[serde(default)]
+    pub offset_y: f32,
+    #[serde(default)]
+    pub blur: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
