@@ -959,6 +959,7 @@ impl Render for TimelinePanel {
             .child(tool("redo", t("Redo"), can_redo, |s, cx| s.redo(cx)))
             .child(div().w(px(8.)))
             .child(tool("split", t("Split"), true, |s, cx| s.split_at_playhead(cx)))
+            .child(tool("freeze", t("Freeze"), true, |s, cx| s.freeze_frame_at_playhead(cx)))
             .child(tool("duplicate", t("Duplicate"), !selection.is_empty(), |s, cx| s.duplicate_selection(cx)))
             .child(tool("delete", t("Delete"), !selection.is_empty(), |s, cx| s.delete_selection(cx)))
             .child(div().w(px(8.)))

@@ -138,6 +138,45 @@ pub struct AudioMixClip {
     /// Keyframed volume; the value is held before the first and after the
     /// last key.
     pub gain_keys: Vec<GainKey>,
+    /// Linear fades from and to silence at the clip's start and end.
+    pub fade_in_seconds: f64,
+    pub fade_out_seconds: f64,
+    /// Stereo pan from -1 (left) to 1 (right), as Web Audio's
+    /// StereoPannerNode pans two channels.
+    pub pan: f64,
+}
+
+/// `afade` filters for a clip's fades (`tri` is a straight ramp), each
+/// with a leading comma; empty without fades.
+fn fade_filters(clip: &AudioMixClip) -> String {
+    let length = (clip.source_end_seconds - clip.source_start_seconds).max(0.0);
+    let mut filters = String::new();
+    if clip.fade_in_seconds > 0.0 {
+        filters.push_str(&format!(",afade=t=in:st=0:d={:.6}:curve=tri", clip.fade_in_seconds));
+    }
+    if clip.fade_out_seconds > 0.0 {
+        filters.push_str(&format!(
+            ",afade=t=out:st={:.6}:d={:.6}:curve=tri",
+            (length - clip.fade_out_seconds).max(0.0),
+            clip.fade_out_seconds
+        ));
+    }
+    filters
+}
+
+/// A `pan` filter for a panned stereo clip, with a leading comma; empty when centred.
+fn pan_filter(clip: &AudioMixClip) -> String {
+    let pan = if clip.pan.is_finite() { clip.pan.clamp(-1.0, 1.0) } else { 0.0 };
+    if pan == 0.0 {
+        return String::new();
+    }
+    let x = if pan <= 0.0 { pan + 1.0 } else { pan } * std::f64::consts::FRAC_PI_2;
+    let (gain_left, gain_right) = (x.cos(), x.sin());
+    if pan <= 0.0 {
+        format!(",pan=stereo|c0=c0+{gain_left:.6}*c1|c1={gain_right:.6}*c1")
+    } else {
+        format!(",pan=stereo|c0={gain_left:.6}*c0|c1=c1+{gain_right:.6}*c0")
+    }
 }
 
 /// The `volume` filter for a clip: a constant, or an expression in `t`
@@ -433,11 +472,13 @@ pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<S
             let label = format!("a{index}");
             let delay_ms = (clip.timeline_start_seconds.max(0.0) * 1000.0).round() as u64;
             filter.push_str(&format!(
-                "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,{volume},aresample=48000,aformat=channel_layouts=stereo,adelay={delay}|{delay}[{label}];",
+                "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,{volume}{fades},aresample=48000,aformat=channel_layouts=stereo{pan},adelay={delay}|{delay}[{label}];",
                 input = index + 1,
                 start = clip.source_start_seconds.max(0.0),
                 end = clip.source_end_seconds.max(clip.source_start_seconds),
                 volume = volume_filter(clip),
+                fades = fade_filters(clip),
+                pan = pan_filter(clip),
                 delay = delay_ms,
             ));
             labels.push(format!("[{label}]"));
@@ -521,6 +562,9 @@ mod tests {
                     source_end_seconds: 4.0,
                     timeline_start_seconds: 0.0,
                     gain: 1.0,
+                    fade_in_seconds: 0.0,
+                    fade_out_seconds: 0.0,
+                    pan: 0.0,
                     gain_keys: Vec::new(),
                 },
                 AudioMixClip {
@@ -529,6 +573,9 @@ mod tests {
                     source_end_seconds: 2.5,
                     timeline_start_seconds: 3.25,
                     gain: 0.5,
+                    fade_in_seconds: 0.0,
+                    fade_out_seconds: 0.0,
+                    pan: 0.0,
                     gain_keys: Vec::new(),
                 },
             ],
@@ -559,6 +606,9 @@ mod tests {
             timeline_start_seconds: 0.0,
             gain: 1.0,
             // Out of order on purpose: keys are sorted by time.
+            fade_in_seconds: 0.0,
+            fade_out_seconds: 0.0,
+            pan: 0.0,
             gain_keys: vec![
                 key(2.0, 0.0, GainEase::Smooth),
                 key(0.5, -20.0, GainEase::Linear),
@@ -618,6 +668,9 @@ mod tests {
                 source_end_seconds: 2.0,
                 timeline_start_seconds: 0.0,
                 gain: 1.0,
+                fade_in_seconds: 0.0,
+                fade_out_seconds: 0.0,
+                pan: 0.0,
                 gain_keys: Vec::new(),
             }],
             disclosure: None,

@@ -112,6 +112,10 @@ fn probes_decodes_and_encodes() {
             source_end_seconds: 1.5,
             timeline_start_seconds: 0.0,
             gain: 0.8,
+            // Fades and a pan to the right, so ffmpeg parses `afade` and `pan`.
+            fade_in_seconds: 0.1,
+            fade_out_seconds: 0.2,
+            pan: 0.6,
             // A fade-in, so ffmpeg parses the keyframed volume expression.
             gain_keys: vec![
                 GainKey { seconds: 0.0, db: -30.0, ease: GainEase::Smooth },
@@ -136,6 +140,16 @@ fn probes_decodes_and_encodes() {
     assert_eq!((info.width, info.height), (Some(160), Some(120)));
     assert!(info.has_audio);
     assert!((info.duration.unwrap().to_seconds_f64() - 1.0).abs() < 0.15);
+    // Panned right: the right channel is louder, and the fade out ends near silence.
+    let mut mixed = AudioReader::open(&ffmpeg, &output, 0.0, AudioSettings::default()).unwrap();
+    let mut samples = vec![0f32; 48_000 * 2];
+    let read = mixed.read(&mut samples).unwrap();
+    let frames: Vec<&[f32]> = samples[..read].chunks_exact(2).collect();
+    let power = |range: std::ops::Range<usize>, channel: usize| frames[range].iter().map(|frame| frame[channel] * frame[channel]).sum::<f32>();
+    let middle = frames.len() / 3..frames.len() * 2 / 3;
+    assert!(power(middle.clone(), 1) > 2.0 * power(middle.clone(), 0), "pan right");
+    let tail = frames.len().saturating_sub(480)..frames.len();
+    assert!(power(tail, 1) < 0.05 * power(middle.start..middle.start + 480, 1), "faded out");
 
     // Images decode in-process.
     let png = dir.path().join("pic.png");

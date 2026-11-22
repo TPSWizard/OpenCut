@@ -417,6 +417,32 @@ reduced less, never damaged. Neither side
 uses RNNoise: `afftdn` ships with FFmpeg and needs no model file, and the
 web pass keeps the app free of a WASM dependency.
 
+## Freeze frame
+
+**Freeze** in the timeline toolbar (and **Freeze frame** in a clip's
+inspector) holds the frame at the playhead of a video clip for three
+seconds: the selected clip if it is under the playhead, else the topmost
+one. FFmpeg writes that frame as a full-size PNG under
+`~/.opencut/processed/` on a background thread; then, in one undo step,
+the picture is added and `Command::FreezeFrame` splits the clip, puts an
+image clip with the clip's look (position, scale, effects, masks, and
+animated values fixed at that moment) in between, and moves everything
+that starts at or after the playhead on unlocked tracks three seconds
+later, so separated audio and captions stay in step. Clips that span the
+playhead on other tracks (music, say) play on. The web editor's toolbar
+button and `timeline.freezeFrame` do the same.
+
+## Audio fades and pan
+
+The inspector's **Audio** section has **Fade in** and **Fade out** (seconds,
+up to 10 each, scaled down together on a clip too short for both) and
+**Pan** (-1 left to 1 right), the `fadeIn`, `fadeOut` and `pan` params the
+web editor's Audio tab sets. Fades are straight ramps from and to silence
+on top of the volume and its keys; pan follows Web Audio's two-channel
+StereoPannerNode (at 0 nothing changes), so playback here, the export
+(`afade` and `pan` filters) and the web preview and export all sound the
+same.
+
 ## Voice effects
 
 The inspector's **Voice** section (audio and video clips) changes the
@@ -494,6 +520,9 @@ sheet (`--contact-sheet qa/sheet.png`). The export loop lives in
 dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
 
 ## Not there yet
+
+- The media browser does not play files before they go on the timeline;
+  the web editor's media panel does.
 
 - Shapes and other graphics from the web editor are read from project
   files but not rendered. Transcription runs through `whisper-cli` on the

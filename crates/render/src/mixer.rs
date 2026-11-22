@@ -135,6 +135,13 @@ impl Mixer {
                 None => 0,
             };
             let clip = &self.clips[clip_index];
+            if clip.pan != 0.0 && channels == 2 {
+                for frame in scratch[..read].chunks_exact_mut(2) {
+                    let (left, right) = editor::pan_stereo(clip.pan, frame[0] as f64, frame[1] as f64);
+                    frame[0] = left as f32;
+                    frame[1] = right as f32;
+                }
+            }
             let offset = (overlap_start - buffer_start) as usize * channels;
             if clip.is_animated() {
                 // Keyframed volume: one gain per short block of frames.

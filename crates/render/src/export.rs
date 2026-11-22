@@ -76,6 +76,9 @@ pub fn export_project(
                 timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
                 gain: clip.gain(),
                 gain_keys: gain_keys(&clip.volume),
+                fade_in_seconds: clip.fade_in_seconds,
+                fade_out_seconds: clip.fade_out_seconds,
+                pan: clip.pan,
             })
             .collect()
     } else {

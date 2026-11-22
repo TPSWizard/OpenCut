@@ -50,6 +50,7 @@ import type { MediaAsset } from "@/media/types";
 import { useProxyJobs } from "@/media/proxy-store";
 import { MissingMediaSection } from "@/components/editor/panels/assets/missing-media";
 import { cn } from "@/utils/ui";
+import { AudioPlaybackPreview, VideoPlaybackPreview } from "@/components/editor/panels/assets/views/media-playback";
 import {
 	CloudUploadIcon,
 	GridViewIcon,
@@ -530,6 +531,7 @@ function MediaPreview({
 	if (item.type === "video") {
 		if (item.thumbnailUrl) {
 			return (
+				<VideoPlaybackPreview item={item} scrub={variant === "grid"}>
 				<div className="relative size-full">
 					<Image
 						src={item.thumbnailUrl}
@@ -545,27 +547,32 @@ function MediaPreview({
 					) : null}
 					<MediaProxyBadge item={item} />
 				</div>
+				</VideoPlaybackPreview>
 			);
 		}
 
 		return (
-			<MediaTypePlaceholder
-				icon={Video01Icon}
-				label={t("Video")}
-				duration={item.duration}
-				variant="muted"
-			/>
+			<VideoPlaybackPreview item={item} scrub={variant === "grid"}>
+				<MediaTypePlaceholder
+					icon={Video01Icon}
+					label={t("Video")}
+					duration={item.duration}
+					variant="muted"
+				/>
+			</VideoPlaybackPreview>
 		);
 	}
 
 	if (item.type === "audio") {
 		return (
-			<MediaTypePlaceholder
-				icon={MusicNote03Icon}
-				label={t("Audio")}
-				duration={item.duration}
-				variant="bordered"
-			/>
+			<AudioPlaybackPreview item={item}>
+				<MediaTypePlaceholder
+					icon={MusicNote03Icon}
+					label={t("Audio")}
+					duration={item.duration}
+					variant="bordered"
+				/>
+			</AudioPlaybackPreview>
 		);
 	}
 

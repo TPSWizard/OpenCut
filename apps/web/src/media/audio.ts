@@ -10,8 +10,10 @@ import type { MediaAsset } from "@/media/types";
 import { applyAudioMasteringToBuffer } from "@/media/audio-mastering";
 import type { AudioCapableElement } from "@/timeline/audio-state";
 import {
-	hasAnimatedVolume,
+	getElementPan,
+	hasGainAutomation,
 	isElementMuted,
+	panStereo,
 	resolveEffectiveAudioGain,
 } from "@/timeline/audio-state";
 import { doesElementHaveEnabledAudio } from "@/timeline/audio-separation";
@@ -839,35 +841,37 @@ function mixAudioChannels({
 	const outputStartSample = Math.floor(startTime * sampleRate);
 	const renderedLength = Math.ceil(elementDuration * sampleRate);
 
-	const outputChannels = 2;
-	for (let channel = 0; channel < outputChannels; channel++) {
-		const outputData = outputBuffer.getChannelData(channel);
-		const sourceChannel = Math.min(channel, buffer.numberOfChannels - 1);
-		const sourceData = buffer.getChannelData(sourceChannel);
+	const left = outputBuffer.getChannelData(0);
+	const right = outputBuffer.getChannelData(1);
+	const sourceLeft = buffer.getChannelData(0);
+	const sourceRight = buffer.getChannelData(Math.min(1, buffer.numberOfChannels - 1));
+	const automated = hasGainAutomation({ element: element.timelineElement });
+	// Pan gains: the left and right outputs as mixes of the two inputs (see `panStereo`).
+	const [leftFromLeft, rightFromLeft] = panStereo({ pan: getElementPan({ element: element.timelineElement }), left: 1, right: 0 });
+	const [leftFromRight, rightFromRight] = panStereo({ pan: getElementPan({ element: element.timelineElement }), left: 0, right: 1 });
 
-		for (let i = 0; i < renderedLength; i++) {
-			const outputIndex = outputStartSample + i;
-			if (outputIndex >= outputLength) break;
+	for (let i = 0; i < renderedLength; i++) {
+		const outputIndex = outputStartSample + i;
+		if (outputIndex >= outputLength) break;
 
-			const clipTime = i / sampleRate;
-			const sourceTime =
-				trimStart + getSourceTimeAtClipTime({ clipTime, retime, duration: elementDuration });
-			const sourceIndex = sourceTime * buffer.sampleRate;
-			if (sourceIndex >= sourceData.length) break;
+		const clipTime = i / sampleRate;
+		const sourceTime =
+			trimStart + getSourceTimeAtClipTime({ clipTime, retime, duration: elementDuration });
+		const sourceIndex = sourceTime * buffer.sampleRate;
+		if (sourceIndex >= sourceLeft.length) break;
 
-			const lowerIndex = Math.floor(sourceIndex);
-			const upperIndex = Math.min(sourceData.length - 1, lowerIndex + 1);
-			const fraction = sourceIndex - lowerIndex;
-			const gain = hasAnimatedVolume({ element: element.timelineElement })
-				? resolveEffectiveAudioGain({
-						element: element.timelineElement,
-						localTime: clipTime,
-					})
-				: element.volume;
-			outputData[outputIndex] +=
-				(sourceData[lowerIndex] * (1 - fraction) +
-					sourceData[upperIndex] * fraction) *
-				gain;
-		}
+		const lowerIndex = Math.floor(sourceIndex);
+		const upperIndex = Math.min(sourceLeft.length - 1, lowerIndex + 1);
+		const fraction = sourceIndex - lowerIndex;
+		const gain = automated
+			? resolveEffectiveAudioGain({
+					element: element.timelineElement,
+					localTime: clipTime,
+				})
+			: element.volume;
+		const l = sourceLeft[lowerIndex] * (1 - fraction) + sourceLeft[upperIndex] * fraction;
+		const r = sourceRight[lowerIndex] * (1 - fraction) + sourceRight[upperIndex] * fraction;
+		left[outputIndex] += (l * leftFromLeft + r * leftFromRight) * gain;
+		right[outputIndex] += (l * rightFromLeft + r * rightFromRight) * gain;
 	}
 }

@@ -138,6 +138,10 @@ export const ACTIONS = {
 		description: "Duplicate selected element",
 		category: "selection",
 	},
+	"freeze-frame": {
+		description: "Freeze the frame at the playhead",
+		category: "editing",
+	},
 	"toggle-elements-muted-selected": {
 		description: "Mute/unmute selected elements",
 		category: "selection",

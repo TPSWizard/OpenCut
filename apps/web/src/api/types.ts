@@ -801,6 +801,17 @@ export interface EditorApiMethods {
 		params: { elements: ApiElementLocator[]; time: number };
 		result: ApiElementRef[];
 	};
+	/**
+	 * Holds a video clip's frame at `time` (default: the playhead) for
+	 * `seconds` (default 3): the clip splits there, a full-size still with
+	 * the clip's look goes in between, and everything starting at or after
+	 * `time` on unlocked tracks moves along. Without `elementId` it takes
+	 * the selected video clip under the playhead, else the topmost.
+	 */
+	"timeline.freezeFrame": {
+		params: { elementId?: string; trackId?: string; time?: number; seconds?: number };
+		result: { assetId: string; trackId: string; elementId: string; sourceSeconds: number; seconds: number };
+	};
 	"timeline.delete": {
 		params: { elements: ApiElementLocator[] };
 		result: { deleted: number };

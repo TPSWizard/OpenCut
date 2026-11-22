@@ -5,7 +5,8 @@ import type { AudioClipSource } from "@/media/audio";
 import { createAudioContext, collectAudioClips } from "@/media/audio";
 import {
 	buildAudioGainAutomation,
-	hasAnimatedVolume,
+	getElementPan,
+	hasGainAutomation,
 } from "@/timeline/audio-state";
 import { createAudioMasteringChain } from "@/media/audio-mastering";
 import {
@@ -292,7 +293,7 @@ export class AudioManager {
 			const clipGain = audioContext.createGain();
 			clipGain.gain.value = clip.volume;
 			node.connect(clipGain);
-			clipGain.connect(this.masterGain ?? audioContext.destination);
+			const panner = this.connectClipOutput({ audioContext, clip, clipGain });
 
 			const startTimestamp =
 				this.playbackStartContextTime +
@@ -337,6 +338,7 @@ export class AudioManager {
 			node.addEventListener("ended", () => {
 				node.disconnect();
 				clipGain.disconnect();
+				panner?.disconnect();
 				this.queuedSources.delete(node);
 			});
 
@@ -384,7 +386,7 @@ export class AudioManager {
 		node.buffer = buffer;
 		const clipGain = audioContext.createGain();
 		node.connect(clipGain);
-		clipGain.connect(this.masterGain ?? audioContext.destination);
+		const panner = this.connectClipOutput({ audioContext, clip, clipGain });
 
 		const startTimestamp =
 			this.playbackStartContextTime +
@@ -415,6 +417,7 @@ export class AudioManager {
 		node.addEventListener("ended", () => {
 			node.disconnect();
 			clipGain.disconnect();
+			panner?.disconnect();
 			this.queuedSources.delete(node);
 		});
 	}
@@ -457,6 +460,36 @@ export class AudioManager {
 		this.sinks.clear();
 	}
 
+	/**
+	 * Connects a clip's gain to the output, through a stereo panner when the
+	 * clip is panned. The panner takes two channels ("explicit"), so a mono
+	 * source is spread to both sides first and panned as stereo, as the
+	 * export does; returns it for disconnecting.
+	 */
+	private connectClipOutput({
+		audioContext,
+		clip,
+		clipGain,
+	}: {
+		audioContext: AudioContext;
+		clip: AudioClipSource;
+		clipGain: GainNode;
+	}): StereoPannerNode | null {
+		const output = this.masterGain ?? audioContext.destination;
+		const pan = getElementPan({ element: clip.timelineElement });
+		if (pan === 0) {
+			clipGain.connect(output);
+			return null;
+		}
+		const panner = audioContext.createStereoPanner();
+		panner.channelCount = 2;
+		panner.channelCountMode = "explicit";
+		panner.pan.value = pan;
+		clipGain.connect(panner);
+		panner.connect(output);
+		return panner;
+	}
+
 	private shouldUsePreparedClipBuffer({
 		clip,
 	}: {
@@ -465,7 +498,7 @@ export class AudioManager {
 		return (
 			this.hasCurveRetime({ clip }) ||
 			hasVariableRetime({ retime: clip.retime }) ||
-			hasAnimatedVolume({ element: clip.timelineElement }) ||
+			hasGainAutomation({ element: clip.timelineElement }) ||
 			shouldMaintainPitch({
 				rate: clip.retime?.rate ?? 1,
 				maintainPitch: clip.retime?.maintainPitch,
@@ -494,7 +527,7 @@ export class AudioManager {
 		clipGain.gain.cancelScheduledValues(startTimestamp);
 		clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
 
-		if (!hasAnimatedVolume({ element: clip.timelineElement })) {
+		if (!hasGainAutomation({ element: clip.timelineElement })) {
 			return;
 		}
 

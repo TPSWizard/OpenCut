@@ -27,6 +27,57 @@ pub struct AudioClipPlan {
     /// Keyframed volume in decibels, relative to the clip's start; empty when
     /// the volume is static.
     pub volume: Channel,
+    /// Linear fade from silence over the clip's first seconds, and to
+    /// silence over its last (the `fadeIn` / `fadeOut` params; see
+    /// [`clip_fades`]).
+    pub fade_in_seconds: f64,
+    pub fade_out_seconds: f64,
+    /// Stereo pan from -1 (left) to 1 (right); see [`pan_stereo`].
+    pub pan: f64,
+}
+
+/// Longest fade in or out, in seconds.
+pub const AUDIO_FADE_MAX_SECONDS: f64 = 10.0;
+
+/// A clip's fade in and out in seconds from its `fadeIn` / `fadeOut`
+/// params: each within 0 to 10 s, scaled down together when they would
+/// overlap on a clip `length` seconds long. The web editor's
+/// `getAudioFades` is the same.
+pub fn clip_fades(params: &crate::Params, length: f64) -> (f64, f64) {
+    let read = |key: &str| {
+        let value = params.number(key, 0.0);
+        if value.is_finite() { value.clamp(0.0, AUDIO_FADE_MAX_SECONDS) } else { 0.0 }
+    };
+    let (mut fade_in, mut fade_out) = (read("fadeIn"), read("fadeOut"));
+    let length = length.max(0.0);
+    if fade_in + fade_out > length && fade_in + fade_out > 0.0 {
+        let scale = length / (fade_in + fade_out);
+        fade_in *= scale;
+        fade_out *= scale;
+    }
+    (fade_in, fade_out)
+}
+
+/// A clip's stereo pan from its `pan` param, within -1 to 1.
+pub fn clip_pan(params: &crate::Params) -> f64 {
+    let pan = params.number("pan", 0.0);
+    if pan.is_finite() { pan.clamp(-1.0, 1.0) } else { 0.0 }
+}
+
+/// Pans one stereo frame as Web Audio's StereoPannerNode does for two
+/// channels (equal power; at 0 nothing changes), so the desktop sounds like
+/// the web preview. The web editor's `panStereo` is the same formula.
+pub fn pan_stereo(pan: f64, left: f64, right: f64) -> (f64, f64) {
+    if pan == 0.0 {
+        return (left, right);
+    }
+    let x = if pan <= 0.0 { pan + 1.0 } else { pan } * std::f64::consts::FRAC_PI_2;
+    let (gain_left, gain_right) = (x.cos(), x.sin());
+    if pan <= 0.0 {
+        (left + right * gain_left, right * gain_right)
+    } else {
+        (left * gain_left, right + left * gain_right)
+    }
 }
 
 impl AudioClipPlan {
@@ -39,17 +90,29 @@ impl AudioClipPlan {
         db_to_gain(self.volume_db)
     }
 
+    /// Whether the gain changes over time (volume keys or fades).
     pub fn is_animated(&self) -> bool {
-        !self.volume.is_empty()
+        !self.volume.is_empty() || self.fade_in_seconds > 0.0 || self.fade_out_seconds > 0.0
     }
 
-    /// Linear gain at a timeline time, following the volume keys.
+    /// The fade's linear gain (0 to 1) `local` seconds into the clip.
+    pub fn fade_gain_at(&self, local: f64) -> f64 {
+        let length = self.timeline_duration.to_seconds_f64();
+        let mut gain = 1.0;
+        if self.fade_in_seconds > 0.0 && local < self.fade_in_seconds {
+            gain *= local.max(0.0) / self.fade_in_seconds;
+        }
+        if self.fade_out_seconds > 0.0 && local > length - self.fade_out_seconds {
+            gain *= (length - local).max(0.0) / self.fade_out_seconds;
+        }
+        gain.clamp(0.0, 1.0)
+    }
+
+    /// Linear gain at a timeline time, following the volume keys and fades.
     pub fn gain_at(&self, timeline_time: MediaTime) -> f64 {
-        let db = self
-            .volume
-            .value_at(timeline_time - self.timeline_start)
-            .unwrap_or(self.volume_db);
-        db_to_gain(db)
+        let local = timeline_time - self.timeline_start;
+        let db = self.volume.value_at(local).unwrap_or(self.volume_db);
+        db_to_gain(db) * self.fade_gain_at(local.to_seconds_f64())
     }
 
     /// `gain_at` for a time in seconds.
@@ -102,6 +165,9 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
                 retime: element.retime.clone().filter(|retime| !retime.is_identity()),
                 volume_db: element.params.number("volume", 0.0),
                 volume: element.animations.get("volume").cloned().unwrap_or_default(),
+                fade_in_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).0,
+                fade_out_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).1,
+                pan: clip_pan(&element.params),
             });
         }
     }

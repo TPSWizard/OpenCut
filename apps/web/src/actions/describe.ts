@@ -36,6 +36,7 @@ const DESCRIPTIONS: Record<TAction, () => string> = {
 	"cancel-interaction": () => t("Cancel current interaction"),
 	"deselect-all": () => t("Deselect all elements"),
 	"duplicate-selected": () => t("Duplicate selected element"),
+	"freeze-frame": () => t("Freeze the video frame at the playhead for 3 seconds"),
 	"toggle-elements-muted-selected": () => t("Mute/unmute selected elements"),
 	"toggle-elements-visibility-selected": () => t("Show/hide selected elements"),
 	"toggle-bookmark": () => t("Toggle bookmark at playhead"),

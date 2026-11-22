@@ -123,6 +123,7 @@ import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
 import { transcriptCuts } from "@/transcript/cuts";
 import { SHORTS_DEFAULTS } from "@/shorts/lines";
+import { freezeFrame } from "@/freeze/freeze";
 import { VOICE_EFFECTS, applyVoiceEffectToElement, isVoiceEffect } from "@/voice/apply";
 import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
@@ -1554,6 +1555,20 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				elements: unlockedRefs(elements),
 				splitTime: ticks(time, "time"),
 			}),
+		"timeline.freezeFrame": async ({ elementId, trackId, time, seconds }) => {
+			const target = elementId ? resolveElement({ elementId, trackId }) : null;
+			if (time !== undefined) ticks(time, "time");
+			try {
+				return await freezeFrame({
+					editor,
+					...(target ? { trackId: target.track.id, elementId: target.element.id } : {}),
+					...(time !== undefined ? { time } : {}),
+					...(seconds !== undefined ? { seconds } : {}),
+				});
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Freeze frame failed" });
+			}
+		},
 		"timeline.delete": ({ elements }) => {
 			const refs = unlockedRefs(elements);
 			editor.timeline.deleteElements({ elements: refs });

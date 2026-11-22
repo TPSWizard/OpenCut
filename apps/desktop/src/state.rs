@@ -1948,6 +1948,74 @@ impl EditorState {
 
     /// Splits the selected elements at the playhead, or every element
     /// under the playhead when nothing is selected.
+    /// Holds the frame at the playhead of a video clip (the selected one if
+    /// it is under the playhead, else the topmost) for three seconds: FFmpeg
+    /// writes that frame as a full-size PNG under ~/.opencut/processed on a
+    /// background thread, then the picture is added and
+    /// [`Command::FreezeFrame`] splits the clip and moves later clips along,
+    /// in one undo step.
+    pub(crate) fn freeze_frame_at_playhead(&mut self, cx: &mut Context<Self>) {
+        let time = self.playhead();
+        let is_target = |element: &Element| matches!(element.kind, editor::ElementKind::Video { .. }) && !element.hidden && element.contains(time);
+        let selected = self.selected_element().filter(|element| is_target(element)).cloned();
+        let target = selected.or_else(|| {
+            self.project()
+                .elements()
+                .find(|(track, element)| !track.locked && is_target(element))
+                .map(|(_, element)| element.clone())
+        });
+        let Some(element) = target else {
+            self.set_status(t("Put the playhead over a video clip to freeze its frame."), cx);
+            return;
+        };
+        let Some(media) = self.project().media_for(&element).cloned() else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to freeze a frame."), cx);
+            return;
+        };
+        let seconds = element.source_time(time).to_seconds_f64();
+        let stamp = format!("{seconds:.2}").replace('.', "-");
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-freeze-{stamp}.png", media.id));
+        let source_name = media.name.clone();
+        let source_id = media.id.clone();
+        self.set_status(t("Freezing the frame…"), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    media::frame_to_png(&ffmpeg, &media.path, &output, seconds).map_err(|error| error.to_string())?;
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    let base = std::path::Path::new(&source_name).file_stem().map(|stem| stem.to_string_lossy().into_owned()).unwrap_or(source_name.clone());
+                    item.name = format!("{base} (freeze {seconds:.2} s).png");
+                    let media_id = item.id.clone();
+                    let length = MediaTime::from_seconds_f64(editor::FREEZE_DEFAULT_SECONDS).unwrap_or(MediaTime::ZERO);
+                    let commands = vec![
+                        Command::AddMedia(item),
+                        Command::SetOrigin { media_id: media_id.clone(), origin: Some(editor::MediaOrigin::generated("freeze", Some(&source_id), None)) },
+                        Command::FreezeFrame { element_id: element.id.clone(), time, length, media_id },
+                    ];
+                    if let Some(outcome) = state.execute(Command::Batch(commands), cx) {
+                        if let Some(still) = outcome.element_refs().last() {
+                            state.selection = vec![still.element_id.clone()];
+                        }
+                        state.set_status(t("Froze the frame for 3 seconds."), cx);
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn split_at_playhead(&mut self, cx: &mut Context<Self>) {
         let time = self.playhead();
         let targets: Vec<String> = if self.selection.is_empty() {

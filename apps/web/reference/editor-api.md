@@ -71,7 +71,9 @@ methods answer with the error code `no_project` before that.
 | `captions.export` | `{ format: "srt" \| "vtt" \| "ass", trackId? }` | `{ format, fileName, cueCount, content }` — the visible text elements (or one track's) as a subtitle file; WebVTT carries inline word timestamps and ASS `\k` karaoke tags with one style per look |
 | `captions.transcribe` | `{ language?, modelId?, wordsPerCaption?, insert?, style? }` | `{ text, words, captions, trackId }` (in page: runs Whisper) |
 | `timeline.split` | `{ elements, time }` | `ApiElementRef[]` |
+| `timeline.freezeFrame` | `{ elementId?, trackId?, time?, seconds? }` | `{ assetId, trackId, elementId, sourceSeconds, seconds }` — holds a video clip's frame at `time` (default: the playhead) for `seconds` (default 3, 0.1–60): the clip splits there, a full-size PNG still of that frame with the clip's look (animated values fixed at that moment) goes in between, and everything starting at or after `time` on unlocked tracks moves along, so separated audio and captions keep in step; without `elementId` the selected video clip under the playhead, else the topmost; one undo step |
 | `timeline.delete` | `{ elements }` | `{ deleted }` |
+| (audio params) | `timeline.updateElement` `{ patch: { params: { fadeIn, fadeOut, pan } } }` | – audio and video clips: `fadeIn` / `fadeOut` in seconds (0–10, scaled down together on a short clip; straight ramps on top of the volume), `pan` from -1 (left) to 1 (right) as Web Audio's two-channel StereoPannerNode pans; preview and export (and the desktop) follow them |
 | `timeline.duplicate` | `{ elements }` | `ApiElementRef[]` |
 | `timeline.addTrack` / `timeline.removeTrack` | `{ type, index? }` / `{ trackId }` | `ApiTrackInfo` / `{ removed: true }` |
 | `timeline.setTrackMuted` / `timeline.setTrackHidden` | `{ trackId, muted }` / `{ trackId, hidden }` | `ApiTrackInfo` |

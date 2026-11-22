@@ -45,6 +45,9 @@ fn follows_volume_keyframes() {
         source_start: seconds(0.0),
         source_end: seconds(2.0),
         volume_db: 0.0,
+        fade_in_seconds: 0.0,
+        fade_out_seconds: 0.0,
+        pan: 0.0,
         volume,
         retime: None,
     };

@@ -172,6 +172,36 @@ const audioElementParams: ElementParamDefinition[] = [
 		default: false,
 		keyframable: false,
 	},
+	{
+		key: "fadeIn",
+		label: "Fade in (s)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 10,
+		step: 0.1,
+		keyframable: false,
+	},
+	{
+		key: "fadeOut",
+		label: "Fade out (s)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 10,
+		step: 0.1,
+		keyframable: false,
+	},
+	{
+		key: "pan",
+		label: "Pan (left to right)",
+		type: "number",
+		default: 0,
+		min: -1,
+		max: 1,
+		step: 0.01,
+		keyframable: false,
+	},
 ];
 
 /** How a caption's spoken word is shown; see `@/captions`. */

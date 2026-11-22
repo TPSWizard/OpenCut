@@ -767,6 +767,15 @@ impl Render for InspectorPanel {
                             })
                             .child({
                                 let state = self.state.clone();
+                                Button::new("freeze", t("Freeze frame"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::Small)
+                                    .on_click(move |_, _, cx| {
+                                        state.update(cx, |state, cx| state.freeze_frame_at_playhead(cx))
+                                    })
+                            })
+                            .child({
+                                let state = self.state.clone();
                                 Button::new("duplicate", t("Duplicate"))
                                     .variant(ButtonVariant::Outline)
                                     .size(ButtonSize::Small)
@@ -1044,10 +1053,38 @@ impl Render for InspectorPanel {
                             }
                         }),
                     );
+                    // Fades in seconds (0 to 10) and pan (-1 left to 1 right); the
+                    // web editor's `fadeIn` / `fadeOut` / `pan` params.
+                    let mut audio_rows = Vec::new();
+                    for (key, label, min, max) in [
+                        ("fadeIn", "Fade in (s)", 0.0, editor::AUDIO_FADE_MAX_SECONDS),
+                        ("fadeOut", "Fade out (s)", 0.0, editor::AUDIO_FADE_MAX_SECONDS),
+                        ("pan", "Pan (-1 left, 1 right)", -1.0, 1.0),
+                    ] {
+                        audio_rows.push(self.row(
+                            t(label),
+                            key,
+                            "0",
+                            number_text(params.number(key, 0.0)),
+                            None,
+                            window,
+                            cx,
+                            Box::new(move |text, state, cx| {
+                                if let Ok(value) = text.trim().parse::<f64>() {
+                                    if value.is_finite() {
+                                        let mut params = Params::new();
+                                        params.set(key, value.clamp(min, max));
+                                        state.update_selected_params(params, cx);
+                                    }
+                                }
+                            }),
+                        ));
+                    }
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading(t("Audio"), window))
                         .child(volume_row)
+                        .children(audio_rows)
                         .child({
                             let state = self.state.clone();
                             div()

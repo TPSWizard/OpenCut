@@ -153,6 +153,9 @@ pub(crate) fn measure_clip(
         source_start: element.trim_start,
         source_end: element.trim_start + element.duration,
         volume_db: 0.0,
+        fade_in_seconds: 0.0,
+        fade_out_seconds: 0.0,
+        pan: 0.0,
         volume: Default::default(),
         retime: None,
     };

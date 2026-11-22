@@ -143,6 +143,9 @@ mod tests {
             source_start: time::MediaTime::ZERO,
             source_end: time::MediaTime::from_seconds_f64(4.0).unwrap(),
             volume_db: 0.0,
+            fade_in_seconds: 0.0,
+            fade_out_seconds: 0.0,
+            pan: 0.0,
             volume: Default::default(),
             retime: Some(editor::Retime::constant(2.0)),
         };

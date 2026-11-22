@@ -127,6 +127,18 @@ pub enum Command {
         media_id: String,
         origin: Option<crate::MediaOrigin>,
     },
+    /// Holds a video clip's frame at timeline `time` for `length`: the clip
+    /// splits there, an image clip showing `media_id` (that frame as a
+    /// picture, added first) goes in between with the clip's look, and
+    /// everything starting at or after `time` on unlocked tracks moves
+    /// `length` later. A time within 10 ms of the clip's start or end
+    /// freezes before or after the whole clip. See [`crate::freeze_still`].
+    FreezeFrame {
+        element_id: String,
+        time: MediaTime,
+        length: MediaTime,
+        media_id: String,
+    },
     /// Splits one element at several times in one step (the first piece
     /// keeps the id); times outside the element are skipped.
     SplitElementAtTimes {
@@ -342,6 +354,7 @@ fn check_locks(project: &Project, command: &Command) -> Result<(), EditorError> 
         | Command::ReplaceMedia { element_id, .. }
         | Command::ReplaceMediaSpan { element_id, .. }
         | Command::SplitElementAtTimes { element_id, .. }
+        | Command::FreezeFrame { element_id, .. }
         | Command::UpdateElement { element_id, .. }
         | Command::SetKeyframe { element_id, .. }
         | Command::SetColorKeyframe { element_id, .. }
@@ -714,6 +727,46 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             element.trim_end = if *source_duration > span { *source_duration - span } else { MediaTime::ZERO };
             element.source_duration = Some(*source_duration);
             Outcome::None
+        }
+        Command::FreezeFrame { element_id, time, length, media_id } => {
+            if *length < MIN_ELEMENT_DURATION {
+                return Err(EditorError::InvalidParams("the freeze is too short".to_owned()));
+            }
+            if !project.media.iter().any(|item| item.id == *media_id && item.kind == crate::document::MediaKind::Image) {
+                return Err(EditorError::InvalidParams("the frozen frame must be a picture in the project".to_owned()));
+            }
+            let (track_index, element_index) = locate(project, element_id)?;
+            if project.tracks[track_index].locked {
+                return Err(EditorError::TrackLocked(project.tracks[track_index].name.clone()));
+            }
+            let element = &project.tracks[track_index].elements[element_index];
+            if !matches!(element.kind, ElementKind::Video { .. }) {
+                return Err(EditorError::InvalidParams("freeze frame needs a video clip".to_owned()));
+            }
+            if *time < element.start_time || *time > element.end_time() {
+                return Err(EditorError::InvalidParams("the freeze time must fall on the clip".to_owned()));
+            }
+            let at = if *time <= element.start_time + MIN_ELEMENT_DURATION {
+                element.start_time
+            } else if *time >= element.end_time() - MIN_ELEMENT_DURATION {
+                element.end_time()
+            } else {
+                *time
+            };
+            let still = crate::freeze_still(element, at, *length, media_id);
+            if at > element.start_time && at < element.end_time() {
+                apply(project, &Command::SplitElement { element_id: element_id.clone(), time: at })?;
+            }
+            for track in project.tracks.iter_mut().filter(|track| !track.locked) {
+                for element in track.elements.iter_mut().filter(|element| element.start_time >= at) {
+                    element.start_time = element.start_time + *length;
+                }
+            }
+            let track = &mut project.tracks[track_index];
+            let reference = ElementRef { track_id: track.id.clone(), element_id: still.id.clone() };
+            track.elements.push(still);
+            track.sort_elements();
+            Outcome::Elements(vec![reference])
         }
         Command::SplitElementAtTimes { element_id, times } => {
             let mut sorted = times.clone();

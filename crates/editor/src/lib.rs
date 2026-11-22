@@ -26,6 +26,7 @@ mod error;
 mod frame;
 mod fillers;
 mod freeform;
+mod freeze;
 mod loudness;
 mod luts;
 mod markers;
@@ -49,7 +50,7 @@ pub use animation::{
     Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, format_linear_rgba, is_param_path,
     parse_color_to_linear_rgba, resolve_object_params, resolve_params, split_animations,
 };
-pub use audio::{AudioClipPlan, plan_audio};
+pub use audio::{AUDIO_FADE_MAX_SECONDS, AudioClipPlan, clip_fades, clip_pan, pan_stereo, plan_audio};
 pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
 pub use broll::{MIN_SHOT_SECONDS, Shot, WORDS_PER_SECOND, plan_shots, query_for, shot_seconds};
 pub use open_link::bundle_url_from_link;
@@ -73,6 +74,7 @@ pub use fillers::{
     FILLER_LANGUAGES, FILLER_PROMPT, FILLER_WORDS, FillerHit, FillerOptions, filler_intervals, filler_set, find_fillers,
     normalize_word,
 };
+pub use freeze::{FREEZE_DEFAULT_SECONDS, FREEZE_MAX_SECONDS, FREEZE_MIN_SECONDS, freeze_still};
 pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts};
 pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,

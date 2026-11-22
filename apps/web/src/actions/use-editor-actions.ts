@@ -5,6 +5,8 @@ import { useTimelineStore } from "@/timeline/timeline-store";
 import { useActionHandler } from "@/actions/use-action-handler";
 import { allTracks, collectEditPoints, elementsInRange, nextEditPoint, previousEditPoint } from "@/timeline/edits";
 import { toast } from "sonner";
+import { t } from "@/i18n";
+import { freezeFrame } from "@/freeze/freeze";
 import { TracksEditCommand } from "@/commands/timeline/tracks-edit";
 import { breakApartCompound, createCompound, groupElements, ungroupElements } from "@/timeline/compound";
 import { generateUUID } from "@/utils/id";
@@ -586,6 +588,24 @@ export function useEditorActions() {
 			editor.timeline.duplicateElements({
 				elements: selectedElements,
 			});
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"freeze-frame",
+		() => {
+			const toastId = toast.loading(t("Freezing the frame…"));
+			freezeFrame({ editor })
+				.then((result) =>
+					toast.success(t("Froze the frame for {seconds} s", { seconds: result.seconds }), { id: toastId }),
+				)
+				.catch((error) =>
+					toast.error(t("Freeze frame failed"), {
+						id: toastId,
+						description: error instanceof Error ? error.message : String(error),
+					}),
+				);
 		},
 		undefined,
 	);
