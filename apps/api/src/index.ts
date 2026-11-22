@@ -13,7 +13,8 @@ import {
 	type PixabayVideoHit,
 } from "./stock";
 import { handleShare, type ShareEnv } from "./share";
-import { handleBroll, type BrollEnv } from "./broll";
+import { handleBroll, type BrollEnv } from "./broll";
+import { handleShorts } from "./shorts";
 import { handleFaceSwap, type FaceSwapEnv } from "./faceswap";
 
 /**
@@ -431,6 +432,9 @@ export default {
 		}
 		if (request.method !== "OPTIONS" && pathname.startsWith("/broll/")) {
 			return handleBroll(request, bindings, corsHeaders(request));
+		}
+		if (request.method !== "OPTIONS" && pathname.startsWith("/shorts/")) {
+			return handleShorts(request, bindings, corsHeaders(request));
 		}
 		if (request.method !== "OPTIONS" && pathname.startsWith("/faceswap/")) {
 			return handleFaceSwap(request, bindings, corsHeaders(request));

@@ -611,6 +611,32 @@ export class ProjectManager {
 		}
 	}
 
+	/**
+	 * Saves a project made from another one (a short cut from it, say) with
+	 * copies of the source's media items in `mediaIds`, and lists it. The
+	 * open project stays open.
+	 */
+	async saveDerivedProject({
+		project,
+		sourceProjectId,
+		mediaIds,
+	}: {
+		project: TProject;
+		sourceProjectId: string;
+		mediaIds: Iterable<string>;
+	}): Promise<string> {
+		const wanted = new Set(mediaIds);
+		await storageService.saveProject({ project });
+		const assets = await storageService.loadAllMediaAssets({ projectId: sourceProjectId });
+		await Promise.all(
+			assets
+				.filter((asset) => wanted.has(asset.id))
+				.map((mediaAsset) => storageService.saveMediaAsset({ projectId: project.metadata.id, mediaAsset })),
+		);
+		this.updateMetadata(project);
+		return project.metadata.id;
+	}
+
 	async updateSettings({
 		settings,
 		pushHistory = true,

@@ -122,6 +122,8 @@ import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
 import { transcriptCuts } from "@/transcript/cuts";
+import { SHORTS_DEFAULTS } from "@/shorts/lines";
+import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
 import { cutSilence, detectSilence } from "@/silence/cut";
@@ -1980,6 +1982,65 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Filler removal failed" });
 			}
+		},
+		"shorts.plan": async ({ count, minSeconds, maxSeconds, passcode }) => {
+			requireProject();
+			const options = {
+				count: count ?? SHORTS_DEFAULTS.count,
+				minSeconds: minSeconds ?? SHORTS_DEFAULTS.minSeconds,
+				maxSeconds: maxSeconds ?? SHORTS_DEFAULTS.maxSeconds,
+			};
+			if (!Number.isInteger(options.count) || options.count < 1 || options.count > 10) {
+				throw new EditorApiError({ code: "invalid_params", message: "count must be 1 to 10" });
+			}
+			if (
+				![options.minSeconds, options.maxSeconds].every((value) => typeof value === "number" && Number.isFinite(value)) ||
+				options.minSeconds < 1 ||
+				options.maxSeconds < options.minSeconds ||
+				options.maxSeconds > 600
+			) {
+				throw new EditorApiError({ code: "invalid_params", message: "minSeconds and maxSeconds must satisfy 1 <= min <= max <= 600" });
+			}
+			if (passcode !== undefined && typeof passcode !== "string") {
+				throw new EditorApiError({ code: "invalid_params", message: "passcode must be text" });
+			}
+			const lines = projectLines({ editor });
+			if (lines.length === 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "No captions with word timings; generate captions first" });
+			}
+			try {
+				const result = await pickShorts({ lines, options, passcode });
+				return { ...result, lines: lines.map((line) => ({ start: line.start, end: line.end, text: line.text })) };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Picking shorts failed" });
+			}
+		},
+		"shorts.make": async ({ picks, paddingSeconds }) => {
+			requireProject();
+			if (!Array.isArray(picks) || picks.length === 0 || picks.length > 10) {
+				throw new EditorApiError({ code: "invalid_params", message: "picks must be 1 to 10 { start, end, title? }" });
+			}
+			for (const [index, pick] of picks.entries()) {
+				if (!pick || !Number.isFinite(pick.start) || !Number.isFinite(pick.end) || pick.start < 0 || pick.end <= pick.start) {
+					throw new EditorApiError({ code: "invalid_params", message: `picks[${index}] needs a start before its end, in seconds` });
+				}
+			}
+			if (paddingSeconds !== undefined && (!Number.isFinite(paddingSeconds) || paddingSeconds < 0 || paddingSeconds > 5)) {
+				throw new EditorApiError({ code: "invalid_params", message: "paddingSeconds must be 0 to 5" });
+			}
+			const made = await makeShorts({
+				editor,
+				picks: picks.map((pick, index) => ({
+					first: 0,
+					last: 0,
+					start: pick.start,
+					end: pick.end,
+					title: typeof pick.title === "string" && pick.title.trim() ? pick.title.trim() : `Short ${index + 1}`,
+					reason: "",
+				})),
+				paddingSeconds: paddingSeconds ?? SHORT_PADDING_SECONDS,
+			});
+			return made.map((short) => ({ projectId: short.projectId, name: short.name, start: short.pick.start, end: short.pick.end, seconds: short.seconds }));
 		},
 		"transcript.get": ({ elementId, trackId }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

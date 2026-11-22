@@ -58,6 +58,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { DiagnosticSeverity } from "@/diagnostics/types";
+import { ShortsSection } from "@/shorts/components/shorts-section";
 
 const DIAGNOSTIC_BUTTON_VARIANT: Record<
 	DiagnosticSeverity,
@@ -496,6 +497,7 @@ export function Captions() {
 					)}
 				</SectionContent>
 			</Section>
+			<ShortsSection />
 		</PanelView>
 	);
 }

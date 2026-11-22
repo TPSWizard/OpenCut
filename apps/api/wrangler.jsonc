@@ -29,6 +29,8 @@
   // Opus 5.5 at low effort, with server-side refusal fallbacks). Spends the
   // owner's credit, so it also needs the sharing passcode:
   //   wrangler secret put ANTHROPIC_API_KEY
+  // The same key and passcode pick the moments for long video to shorts
+  // (POST /shorts/plan; Opus 5.5, adaptive thinking, medium effort).
 
   // Face swap (POST /faceswap/jobs …) through Segmind's hosted HyperSwap
   // models; inputs go through the SHARES bucket under faceswap/ and are

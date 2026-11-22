@@ -1034,6 +1034,30 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Long video to shorts, step one: the open project's transcript (its
+	 * word-timed captions) as lines, and the moments that stand on their
+	 * own as shorts, picked by Claude through the API worker when
+	 * `passcode` (the server passcode) is given, else locally.
+	 */
+	"shorts.plan": {
+		params: { count?: number; minSeconds?: number; maxSeconds?: number; passcode?: string };
+		result: {
+			by: "claude" | "local";
+			model: string;
+			lines: { start: number; end: number; text: string }[];
+			picks: { first: number; last: number; start: number; end: number; title: string; reason: string }[];
+		};
+	};
+	/**
+	 * Long video to shorts, step two: saves each pick (timeline seconds) as
+	 * a new 9:16 project cut from the open one's scene, with its captions
+	 * and a centred cover crop. The open project is unchanged.
+	 */
+	"shorts.make": {
+		params: { picks: { start: number; end: number; title?: string }[]; paddingSeconds?: number };
+		result: { projectId: string; name: string; start: number; end: number; seconds: number }[];
+	};
+	/**
 	 * A clip's transcript: the timed words (timeline seconds) of the
 	 * visible captions over it, indexed for `transcript.cut`.
 	 */
