@@ -23,6 +23,7 @@ num-traits = { workspace = true }
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 time = { workspace = true, features = ["wasm"] }
+voice = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
 web-sys = { workspace = true, features = ["OffscreenCanvas", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "Window", "Performance"] }

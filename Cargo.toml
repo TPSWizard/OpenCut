@@ -15,6 +15,7 @@ members = [
   'crates/media',
   'crates/render',
   'crates/time',
+  'crates/voice',
   'crates/wasm',
 ]
 
@@ -35,6 +36,7 @@ masks = { path = "crates/masks" }
 media = { path = "crates/media" }
 render = { path = "crates/render" }
 time = { path = "crates/time" }
+voice = { path = "crates/voice" }
 
 # Desktop
 gpui = "0.2.2"

@@ -12,6 +12,8 @@ mod masks;
 mod perf;
 #[cfg(target_arch = "wasm32")]
 mod transitions;
+#[cfg(target_arch = "wasm32")]
+mod voice;
 
 #[cfg(target_arch = "wasm32")]
 pub use compositor::*;
@@ -27,4 +29,6 @@ pub use masks::*;
 pub use perf::*;
 #[cfg(target_arch = "wasm32")]
 pub use transitions::*;
+#[cfg(target_arch = "wasm32")]
+pub use voice::*;
 pub use time::*;

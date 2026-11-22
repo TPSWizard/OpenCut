@@ -18,6 +18,7 @@ futures = { workspace = true }
 gpui = { workspace = true }
 image = { workspace = true }
 media = { workspace = true }
+voice = { workspace = true }
 render = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

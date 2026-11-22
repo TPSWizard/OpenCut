@@ -1014,6 +1014,18 @@ export interface EditorApiMethods {
 	 * over it or a transcription, and with `apply` (default true) cuts them
 	 * out softly in one undo step.
 	 */
+	/** The voice effects `audio.voiceEffect` takes. */
+	"audio.voiceEffects": { params: Record<string, never>; result: { id: string; label: string }[] };
+	/**
+	 * Changes the voice of a clip (`deeper`, `higher`, `chipmunk`, `monster`,
+	 * `robot`, `echo`, `radio`, `hall`) into a new WAV asset the clip then
+	 * plays, the same length; a video clip's audio is separated first. One
+	 * undo step.
+	 */
+	"audio.voiceEffect": {
+		params: ApiElementLocator & { effect: string };
+		result: { assetId: string; assetName: string; elementId: string; trackId: string; seconds: number };
+	};
 	"audio.removeFillers": {
 		params: ApiElementLocator & {
 			language?: string;

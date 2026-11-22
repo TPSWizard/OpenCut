@@ -778,41 +778,107 @@ impl EditorState {
             this.update(cx, |state, cx| match produced {
                 Ok(mut item) => {
                     item.name = format!("{source_name} (denoised {} dB)", reduction_db.round() as i64);
-                    let media_id = item.id.clone();
-                    let mut commands = vec![
-                        Command::AddMedia(item.clone()),
-                        Command::SetOrigin {
-                            media_id: media_id.clone(),
-                            origin: Some(editor::MediaOrigin::generated("denoise", Some(&source_id), None)),
-                        },
-                    ];
-                    if is_video {
-                        let mut audio = editor::Element::from_media(&item, element.start_time);
-                        audio.name = element.name.clone();
-                        audio.duration = element.duration;
-                        audio.trim_start = element.trim_start;
-                        audio.trim_end = element.trim_end;
-                        audio.params.set("volume", element.params.number("volume", 0.0));
-                        commands.push(Command::InsertElement { element: audio, placement: editor::TrackPlacement::Auto });
-                        let mut params = editor::Params::new();
-                        params.set("muted", true);
-                        commands.push(Command::UpdateElement {
-                            element_id: element.id.clone(),
-                            patch: editor::ElementPatch { params: Some(params), ..Default::default() },
-                        });
+                    let status = if is_video {
+                        t("Denoised audio added on its own track; the clip's own audio is muted.")
                     } else {
-                        commands.push(Command::ReplaceMedia { element_id: element.id.clone(), media_id });
-                    }
-                    if state.execute(Command::Batch(commands), cx).is_some() {
-                        state.set_status(
-                            if is_video {
-                                t("Denoised audio added on its own track; the clip's own audio is muted.").to_owned()
-                            } else {
-                                t("The clip now plays its denoised audio.").to_owned()
-                            },
-                            cx,
-                        );
-                    }
+                        t("The clip now plays its denoised audio.")
+                    };
+                    state.swap_in_processed_audio(&element, is_video, item, "denoise", &source_id, status, cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Points the clip at processed audio in one undo step: an audio clip
+    /// swaps its media; a video clip gets a new audio clip with the
+    /// processed file and its own audio muted.
+    #[allow(clippy::too_many_arguments)]
+    fn swap_in_processed_audio(
+        &mut self,
+        element: &Element,
+        is_video: bool,
+        item: editor::MediaItem,
+        tool: &str,
+        source_id: &str,
+        status: &str,
+        cx: &mut Context<Self>,
+    ) {
+        let media_id = item.id.clone();
+        let mut commands = vec![
+            Command::AddMedia(item.clone()),
+            Command::SetOrigin { media_id: media_id.clone(), origin: Some(editor::MediaOrigin::generated(tool, Some(source_id), None)) },
+        ];
+        if is_video {
+            let mut audio = editor::Element::from_media(&item, element.start_time);
+            audio.name = element.name.clone();
+            audio.duration = element.duration;
+            audio.trim_start = element.trim_start;
+            audio.trim_end = element.trim_end;
+            audio.params.set("volume", element.params.number("volume", 0.0));
+            commands.push(Command::InsertElement { element: audio, placement: editor::TrackPlacement::Auto });
+            let mut params = editor::Params::new();
+            params.set("muted", true);
+            commands.push(Command::UpdateElement {
+                element_id: element.id.clone(),
+                patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+            });
+        } else {
+            commands.push(Command::ReplaceMedia { element_id: element.id.clone(), media_id });
+        }
+        if self.execute(Command::Batch(commands), cx).is_some() {
+            self.set_status(status.to_owned(), cx);
+        }
+    }
+
+    /// Writes the selected clip's audio through a voice effect (the shared
+    /// `voice` crate) under ~/.opencut/processed on a background thread,
+    /// then points the clip at it as noise reduction does. One undo step.
+    pub(crate) fn voice_effect_selected(&mut self, effect: &'static str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
+        if !(is_video || matches!(element.kind, editor::ElementKind::Audio { .. })) {
+            self.set_status(t("Voice effects need an audio or video clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        if !media.has_audio {
+            self.set_status(t("This clip's media has no audio."), cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed for voice effects."), cx);
+            return;
+        };
+        let label = voice::VOICE_EFFECTS.iter().find(|(id, _)| *id == effect).map(|(_, label)| *label).unwrap_or(effect);
+        let element = element.clone();
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-voice-{effect}.wav", media.id));
+        let source_name = media.name.clone();
+        let source_id = media.id.clone();
+        self.set_status(tf("Applying the {effect} voice…", &[("effect", &t(label))]), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    media::voice_effect_to_wav(&ffmpeg, &media.path, &output, effect, 2).map_err(|error| error.to_string())?;
+                    probe_media(Some(&ffmpeg), output)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(mut item) => {
+                    item.name = format!("{source_name} ({} voice)", label.to_lowercase());
+                    let status = if is_video {
+                        t("The voice is on its own audio track; the clip's own audio is muted.")
+                    } else {
+                        t("The clip now plays the changed voice.")
+                    };
+                    state.swap_in_processed_audio(&element, is_video, item, "voice", &source_id, status, cx);
                 }
                 Err(message) => state.set_status(message, cx),
             })

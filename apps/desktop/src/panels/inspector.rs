@@ -1460,6 +1460,32 @@ impl Render for InspectorPanel {
                                 }),
                         );
 
+                    // Voice effects: the clip's audio through the shared
+                    // `voice` crate into a new media item the clip plays.
+                    let mut voice_row = div().flex().flex_wrap().items_center().gap(px(4.));
+                    for (effect, label) in voice::VOICE_EFFECTS {
+                        let state = self.state.clone();
+                        let effect: &'static str = effect;
+                        voice_row = voice_row.child(
+                            Button::new(eid("voice-effect", effect), t(label))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.voice_effect_selected(effect, cx));
+                                }),
+                        );
+                    }
+                    content = content
+                        .child(self.heading(t("Voice"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Changes the voice (pitch down or up, robot, echo, radio, hall) into a copy the clip then plays, the same length as the original; undo puts the original back.")),
+                        )
+                        .child(voice_row);
+
                     // Beat markers: tempo from the clip's onsets; markers the
                     // timeline snaps to while clips are dragged.
                     let mut every_row = div()

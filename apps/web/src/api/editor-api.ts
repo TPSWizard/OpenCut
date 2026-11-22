@@ -123,6 +123,7 @@ import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
 import { transcriptCuts } from "@/transcript/cuts";
 import { SHORTS_DEFAULTS } from "@/shorts/lines";
+import { VOICE_EFFECTS, applyVoiceEffectToElement, isVoiceEffect } from "@/voice/apply";
 import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
@@ -2081,6 +2082,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 			const result = cutTranscriptWords({ editor, trackId: track.id, elementId: element.id, deleted, ripple: ripple ?? "all" });
 			return { ...result, applied: result.cuts.length > 0 };
+		},
+		"audio.voiceEffects": () => VOICE_EFFECTS.map((effect) => ({ id: effect.id, label: effect.label })),
+		"audio.voiceEffect": async ({ elementId, trackId, effect }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!isVoiceEffect(effect)) {
+				throw new EditorApiError({ code: "invalid_params", message: `effect must be one of ${VOICE_EFFECTS.map((e) => e.id).join(", ")}` });
+			}
+			try {
+				return await applyVoiceEffectToElement({ editor, trackId: track.id, elementId: element.id, effect });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "The voice effect failed" });
+			}
 		},
 		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

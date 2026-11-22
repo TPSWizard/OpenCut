@@ -8,6 +8,7 @@ import { CutoutSection } from "@/cutout/components/cutout-section";
 import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
 import { BeatsSection } from "@/beats/components/beats-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
+import { VoiceSection } from "@/voice/components/voice-section";
 import { FillersSection } from "@/fillers/components/fillers-section";
 import { TranscriptSection } from "@/transcript/components/transcript-section";
 import type { ReactNode } from "react";
@@ -191,6 +192,7 @@ function buildAudioTab({
 				/>
 				<LoudnessSection element={element} trackId={trackId} />
 				<DenoiseSection element={element} trackId={trackId} />
+				<VoiceSection element={element} trackId={trackId} />
 				<BeatsSection element={element} trackId={trackId} />
 				<DuckingSection element={element} trackId={trackId} />
 				<SilenceSection element={element} trackId={trackId} />

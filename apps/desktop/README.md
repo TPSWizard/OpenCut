@@ -417,6 +417,20 @@ reduced less, never damaged. Neither side
 uses RNNoise: `afftdn` ships with FFmpeg and needs no model file, and the
 web pass keeps the app free of a WASM dependency.
 
+## Voice effects
+
+The inspector's **Voice** section (audio and video clips) changes the
+clip's voice: Deeper and Higher (4 semitones), Monster and Chipmunk (9),
+Robot, Echo, Radio and Hall. The audio is decoded at 48 kHz, each channel
+goes through the `voice` crate (`crates/voice`: a phase vocoder plus
+resampling for pitch, zero-phase resynthesis at about 110 Hz for the
+robot, a 300 ms feedback delay, a 300-3400 Hz band with drive, a
+Schroeder reverb), the channels are kept under full scale together, and
+the result is written as a WAV under `~/.opencut/processed/` the same
+length as the original. The clip then plays it as with noise reduction
+(a video clip gets its own audio clip and is muted); undo puts the
+original back. The web editor runs the same crate as WebAssembly.
+
 ## Beat markers
 
 The inspector's **Beats** section (audio and video clips) finds the tempo

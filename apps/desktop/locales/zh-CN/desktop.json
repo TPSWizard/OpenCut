@@ -695,5 +695,19 @@
   "Cut {count} struck word(s)": "剪掉 {count} 个划掉的词",
   "Showing the first {count} words.": "仅显示前 {count} 个词。",
   "Strike some words first.": "请先划掉一些文字。",
-  "{words} word(s) cut in {count} place(s) ({seconds} s); the captions follow.": "已在 {count} 处剪掉 {words} 个词（{seconds} 秒）；字幕已同步。"
+  "{words} word(s) cut in {count} place(s) ({seconds} s); the captions follow.": "已在 {count} 处剪掉 {words} 个词（{seconds} 秒）；字幕已同步。",
+  "Changes the voice (pitch down or up, robot, echo, radio, hall) into a copy the clip then plays, the same length as the original; undo puts the original back.": "改变声音（降调或升调、机器人、回声、收音机、大厅），生成与原片段等长的副本供片段播放；撤销可恢复原声。",
+  "Deeper": "低沉",
+  "Higher": "高亢",
+  "Chipmunk": "花栗鼠",
+  "Monster": "怪兽",
+  "Robot": "机器人",
+  "Echo": "回声",
+  "Radio": "收音机",
+  "Hall": "大厅",
+  "Voice effects need an audio or video clip.": "变声需要音频或视频片段。",
+  "FFmpeg is needed for voice effects.": "变声需要 FFmpeg。",
+  "Applying the {effect} voice…": "正在应用“{effect}”声音…",
+  "The voice is on its own audio track; the clip's own audio is muted.": "变声后的声音在单独的音轨上；片段自身的声音已静音。",
+  "The clip now plays the changed voice.": "片段现在播放变声后的声音。"
 }
