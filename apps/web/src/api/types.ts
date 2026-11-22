@@ -1033,6 +1033,22 @@ export interface EditorApiMethods {
 		params: ApiElementLocator & { strength?: "subtle" | "medium" | "strong"; face?: boolean };
 		result: { punches: { start: number; end: number; scale: number }[]; words: number; focus: { x: number; y: number } | null };
 	};
+	/** The split-screen layouts `layout.splitScreen` takes; cells are [x, y, width, height] shares of the canvas. */
+	"layout.splitLayouts": { params: Record<string, never>; result: { id: string; label: string; cells: number[][] }[] };
+	/**
+	 * Puts 2 to 4 video or picture clips (in cell order) into a split-screen
+	 * layout: each covers its cell (scale over the contain fit, position from
+	 * the canvas centre), its transform keyframes are cleared and its masks
+	 * replaced by a rectangle cropped to the cell. `gap` is canvas pixels
+	 * between cells. One undo step.
+	 */
+	"layout.splitScreen": {
+		params: { layout: string; elements: ApiElementRef[]; gap?: number };
+		result: {
+			elements: ApiElementRef[];
+			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
+		};
+	};
 	/** Removes a clip's punch-ins. One undo step. */
 	"zoom.clear": { params: ApiElementLocator; result: ApiElementInfo };
 	/** Puts a reframed clip back: scale 1, centred, no position or scale keys. */

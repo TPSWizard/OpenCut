@@ -990,6 +990,23 @@ impl EditorState {
         self.set_status(status, cx);
     }
 
+    /// Puts the selected video and picture clips into a split-screen layout
+    /// (`editor::split_screen_commands`), in selection order. One undo step.
+    pub(crate) fn split_screen_selection(&mut self, layout: &'static str, cx: &mut Context<Self>) {
+        let ids = self.selection.clone();
+        match editor::split_screen_commands(self.project(), layout, &ids, 0.0) {
+            Some(commands) => {
+                if self.execute(Command::Batch(commands), cx).is_some() {
+                    self.set_status(tf("{count} clips arranged.", &[("count", &ids.len().to_string())]), cx);
+                }
+            }
+            None => self.set_status(
+                t("Split screen needs video or picture clips with a known size, as many as the layout has parts."),
+                cx,
+            ),
+        }
+    }
+
     /// Picks the keywords of every caption with timed words on unlocked
     /// tracks (`editor::pick_keyword_indices`, the web editor's local pick),
     /// or clears them with `clear`. One undo step.

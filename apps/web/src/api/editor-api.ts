@@ -108,6 +108,8 @@ import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
 import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
+import { applySplitScreen } from "@/split-screen/apply";
+import { SPLIT_LAYOUTS, splitLayout } from "@/split-screen/layout";
 import { ZOOM_STRENGTHS, type ZoomStrength } from "@/auto-zoom/zoom";
 import { REFRAME_CAMERAS } from "@/reframe/path";
 import { listCaptionTracks, translateCaptionTrack } from "@/translation/captions";
@@ -1991,6 +1993,30 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return { punches: result.punches, words: result.words, focus: result.focus };
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Auto zoom failed" });
+			}
+		},
+		"layout.splitLayouts": () => SPLIT_LAYOUTS.map((layout) => ({ id: layout.id, label: layout.label, cells: layout.cells.map((cell) => [...cell]) })),
+		"layout.splitScreen": ({ layout, elements, gap }) => {
+			requireProject();
+			const chosen = typeof layout === "string" ? splitLayout(layout) : undefined;
+			if (!chosen) {
+				throw new EditorApiError({ code: "invalid_params", message: `layout must be one of ${SPLIT_LAYOUTS.map((item) => item.id).join(", ")}` });
+			}
+			if (!Array.isArray(elements) || elements.length !== chosen.cells.length) {
+				throw new EditorApiError({ code: "invalid_params", message: `${chosen.id} needs ${chosen.cells.length} elements` });
+			}
+			if (gap !== undefined && (typeof gap !== "number" || !Number.isFinite(gap) || gap < 0 || gap > 200)) {
+				throw new EditorApiError({ code: "invalid_params", message: "gap must be 0 to 200 canvas pixels" });
+			}
+			const targets = elements.map((ref) => {
+				const { track, element } = resolveElement(ref);
+				return { trackId: track.id, elementId: element.id };
+			});
+			try {
+				const placements = applySplitScreen({ editor, layoutId: chosen.id, targets, gap: gap ?? 0 });
+				return { elements: targets, placements };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
 			}
 		},
 		"zoom.clear": ({ elementId, trackId }) => {

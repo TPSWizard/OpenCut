@@ -781,5 +781,15 @@
   "Auto zoom needs a video or picture clip.": "自动推近需要视频或图片片段。",
   "No captions with word timings over this clip; generate captions in the web editor first.": "这个片段上没有带单词时间的字幕；请先在网页编辑器中生成字幕。",
   "The captions over this clip are too short for a punch-in.": "这个片段上的字幕太短，无法推近。",
-  "Removed the zooms.": "已移除推近。"
+  "Removed the zooms.": "已移除推近。",
+  "Split screen": "分屏",
+  "Puts the selected video and picture clips side by side or in a grid, in the order you selected them, each filling its part of the canvas.": "按选择顺序把选中的视频和图片片段并排或排成网格，每个片段填满画布中的一块。",
+  "Side by side": "左右并排",
+  "Top and bottom": "上下排列",
+  "Three columns": "三列",
+  "Three rows": "三行",
+  "One big, two small": "一大两小",
+  "Grid of four": "四宫格",
+  "{count} clips arranged.": "已排列 {count} 个片段。",
+  "Split screen needs video or picture clips with a known size, as many as the layout has parts.": "分屏需要已知尺寸的视频或图片片段，数量与布局的格数相同。"
 }

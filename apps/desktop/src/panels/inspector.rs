@@ -3141,6 +3141,30 @@ impl Render for InspectorPanel {
                                     })
                             }),
                     );
+                // Split screen: the selected clips into a layout, in the
+                // order they were selected (`editor::split_screen_commands`).
+                let layouts: Vec<_> =
+                    editor::SPLIT_LAYOUTS.iter().filter(|(_, _, cells)| cells.len() == selection_count).collect();
+                if !layouts.is_empty() {
+                    let mut row = div().flex().flex_wrap().gap(px(4.));
+                    for (id, label, _) in layouts {
+                        let state = self.state.clone();
+                        let id: &'static str = id;
+                        row = row.child(
+                            Button::new(eid("split-screen", id), t(label))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.split_screen_selection(id, cx))),
+                        );
+                    }
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Split screen"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Puts the selected video and picture clips side by side or in a grid, in the order you selected them, each filling its part of the canvas.",
+                        )))
+                        .child(row);
+                }
             }
             None => {
                 let name_row = self.row(

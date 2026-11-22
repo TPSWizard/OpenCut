@@ -434,6 +434,17 @@ editor's Animation tab sets, worked out while the clip plays by
 when it is trimmed. A typewriter draws the letters not shown yet clear, so
 the text does not move as it types.
 
+## Split screen
+
+With 2 to 4 video or picture clips selected, the inspector's **Split
+screen** section offers the layouts for that many clips (side by side,
+top and bottom, three columns or rows, one big and two small, a grid of
+four). One click (`editor::split_screen_commands`, the web editor's
+`split-screen/layout.ts`) scales each clip to cover its part of the canvas,
+centres it there, clears its transform keyframes and replaces its masks
+with a rectangle cropped to the part, in the order the clips were selected;
+one undo step.
+
 ## Auto zoom
 
 The inspector's **Auto zoom** section (video and picture clips) plans

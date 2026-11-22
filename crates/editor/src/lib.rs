@@ -47,6 +47,7 @@ mod stock;
 mod silence;
 mod store;
 mod subtitles;
+mod split_screen;
 mod transcript;
 mod transition;
 
@@ -115,6 +116,7 @@ pub use auto_zoom::{
     ClipZoom, MIN_PUNCH_SECONDS, SENTENCE_GAP_SECONDS, TAIL_SECONDS, ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX, ZOOM_SCALE_MAX,
     ZOOM_STRENGTHS, ZoomPunch, ZoomWord, clip_words, format_punches, parse_punches, plan_punches, read_clip_zoom, zoom_at, zoom_offset,
 };
+pub use split_screen::{SPLIT_LAYOUTS, SplitPlacement, place_in_cell, plan_split_screen, split_layout_cells, split_screen_commands};
 pub use caption_keywords::{
     KEYWORD_COLOR_DEFAULT, KEYWORD_SCALE_DEFAULT, KEYWORD_SCALE_MAX, STOP_WORDS, keyword_budget, keyword_core, keyword_score, pick_keyword_indices,
 };

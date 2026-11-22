@@ -1,0 +1,224 @@
+{
+  "note": "Synthetic split-screen layouts and the placement of each clip (canvas px from centre; scale over the contain fit; mask size as shares of the clip's frame); read by apps/web/src/split-screen/__tests__/layout.test.ts and crates/editor/src/split_screen.rs.",
+  "cases": [
+    {
+      "name": "landscape side by side",
+      "layout": "side-by-side",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "gap": 0,
+      "sources": [
+        [
+          1920,
+          1080
+        ],
+        [
+          1920,
+          1080
+        ]
+      ],
+      "placements": [
+        {
+          "positionX": -480.0,
+          "positionY": 0.0,
+          "scale": 1.0,
+          "maskWidth": 0.5,
+          "maskHeight": 1
+        },
+        {
+          "positionX": 480.0,
+          "positionY": 0.0,
+          "scale": 1.0,
+          "maskWidth": 0.5,
+          "maskHeight": 1
+        }
+      ]
+    },
+    {
+      "name": "vertical top and bottom",
+      "layout": "top-bottom",
+      "canvas": [
+        1080,
+        1920
+      ],
+      "gap": 0,
+      "sources": [
+        [
+          1920,
+          1080
+        ],
+        [
+          1080,
+          1920
+        ]
+      ],
+      "placements": [
+        {
+          "positionX": 0.0,
+          "positionY": -480.0,
+          "scale": 1.5802469135802468,
+          "maskWidth": 0.6328125000000001,
+          "maskHeight": 1
+        },
+        {
+          "positionX": 0.0,
+          "positionY": 480.0,
+          "scale": 1.0,
+          "maskWidth": 1,
+          "maskHeight": 0.5
+        }
+      ]
+    },
+    {
+      "name": "grid with a gap",
+      "layout": "grid",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "gap": 20,
+      "sources": [
+        [
+          1920,
+          1080
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          1080,
+          1920
+        ],
+        [
+          1000,
+          1000
+        ]
+      ],
+      "placements": [
+        {
+          "positionX": -485.0,
+          "positionY": -275.0,
+          "scale": 0.4947916666666667,
+          "maskWidth": 1,
+          "maskHeight": 0.991812865497076
+        },
+        {
+          "positionX": 485.0,
+          "positionY": -275.0,
+          "scale": 0.4947916666666667,
+          "maskWidth": 1,
+          "maskHeight": 0.991812865497076
+        },
+        {
+          "positionX": -485.0,
+          "positionY": 275.0,
+          "scale": 1.5637860082304527,
+          "maskWidth": 1,
+          "maskHeight": 0.3138157894736842
+        },
+        {
+          "positionX": 485.0,
+          "positionY": 275.0,
+          "scale": 0.8796296296296297,
+          "maskWidth": 1,
+          "maskHeight": 0.5578947368421052
+        }
+      ]
+    },
+    {
+      "name": "one big two small, vertical",
+      "layout": "one-and-two",
+      "canvas": [
+        1080,
+        1920
+      ],
+      "gap": 12,
+      "sources": [
+        [
+          1920,
+          1080
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          720,
+          1280
+        ]
+      ],
+      "placements": [
+        {
+          "positionX": -273.0,
+          "positionY": 0.0,
+          "scale": 3.1604938271604937,
+          "maskWidth": 0.15644531250000002,
+          "maskHeight": 1
+        },
+        {
+          "positionX": 273.0,
+          "positionY": -483.0,
+          "scale": 1.5703703703703704,
+          "maskWidth": 0.31485849056603776,
+          "maskHeight": 1
+        },
+        {
+          "positionX": 273.0,
+          "positionY": 483.0,
+          "scale": 0.496875,
+          "maskWidth": 0.9951083158630328,
+          "maskHeight": 1
+        }
+      ]
+    },
+    {
+      "name": "three columns",
+      "layout": "three-columns",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "gap": 0,
+      "sources": [
+        [
+          1920,
+          1080
+        ],
+        [
+          1080,
+          1920
+        ],
+        [
+          640,
+          480
+        ]
+      ],
+      "placements": [
+        {
+          "positionX": -640.0,
+          "positionY": 0.0,
+          "scale": 1.0,
+          "maskWidth": 0.3333333333333333,
+          "maskHeight": 1
+        },
+        {
+          "positionX": 0.0,
+          "positionY": 0.0,
+          "scale": 1.0534979423868314,
+          "maskWidth": 1,
+          "maskHeight": 0.94921875
+        },
+        {
+          "positionX": 640.0,
+          "positionY": 0.0,
+          "scale": 1.0,
+          "maskWidth": 0.4444444444444444,
+          "maskHeight": 1
+        }
+      ]
+    }
+  ]
+}
