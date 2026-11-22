@@ -26,6 +26,8 @@ export interface ResolvedTextNodeState {
 	measuredText: MeasuredTextElement;
 	/** The caption words to emphasise at this time, if the element has words. */
 	highlight: TextWordHighlight | null;
+	/** Characters shown by a typewriter or word-by-word animation (newlines not counted), or null for all. */
+	revealChars: number | null;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -61,6 +63,7 @@ export function renderTextToContext({
 		backgroundColor: resolved.backgroundColor,
 		textBaseline: baseline,
 		highlight: resolved.highlight,
+		revealChars: resolved.revealChars,
 	});
 
 	ctx.restore();

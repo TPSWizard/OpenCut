@@ -36,7 +36,9 @@ import {
 	ArrowRightDoubleIcon,
 	DashboardSpeed02Icon,
 	CaptionsIcon,
+	Motion02Icon,
 } from "@hugeicons/core-free-icons";
+import { AnimationTab } from "@/clip-animation/components/animation-tab";
 import { ElementParamsTab } from "./components/element-params-tab";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
@@ -114,6 +116,8 @@ export function propertiesTabLabel(tab: PropertiesTabDef): string {
 			return t("Graphic");
 		case "Compound":
 			return t("Compound");
+		case "Animation":
+			return t("Animation");
 		default:
 			return tab.label;
 	}
@@ -170,6 +174,19 @@ function buildBlendingTab({
 				sectionKey="blending"
 			/>
 		),
+	};
+}
+
+function buildAnimationTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: "animation",
+		label: "Animation",
+		icon: <HugeiconsIcon icon={Motion02Icon} size={16} />,
+		content: ({ trackId }) => <AnimationTab element={element} trackId={trackId} />,
 	};
 }
 
@@ -325,6 +342,7 @@ function getTextConfig({
 				? [buildCaptionsTab({ element })]
 				: []),
 			buildTransformTab({ element }),
+			buildAnimationTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 		],
@@ -343,6 +361,7 @@ function getVideoConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
+			buildAnimationTab({ element }),
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
 			buildBlendingTab({ element }),
@@ -362,6 +381,7 @@ function getImageConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
+			buildAnimationTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
@@ -379,6 +399,7 @@ function getStickerConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
+			buildAnimationTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 			buildClipEffectsTab({ element }),
@@ -396,6 +417,7 @@ function getGraphicConfig({
 		tabs: [
 			buildGraphicTab({ element }),
 			buildTransformTab({ element }),
+			buildAnimationTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 			buildMasksTab({ element }),

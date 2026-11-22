@@ -3,6 +3,7 @@ import type { Effect, EffectPass } from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { BlendMode, Transform } from "@/rendering";
 import type { RetimeConfig, VisualElement } from "@/timeline";
+import type { ClipAnimations } from "@/clip-animation/presets";
 
 export interface VisualNodeParams {
 	duration: number;
@@ -16,6 +17,8 @@ export interface VisualNodeParams {
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];
+	/** One-click in, out and loop animations, from the element's params. */
+	clipAnimation?: ClipAnimations | null;
 	/**
 	 * Resolve at times outside the clip too (a transition's handles): the
 	 * source keeps playing from the material beyond the trim and holds its

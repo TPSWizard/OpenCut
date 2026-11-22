@@ -869,6 +869,108 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+
+                    // One-click animations (`editor::clip_animation`): a way
+                    // in, a way out and a loop, the web editor's Animation tab.
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Animation"), window));
+                    for (slot, label, kind_key, length_key, kinds, length_label, default, min, max) in [
+                        (
+                            "anim-in",
+                            t("In"),
+                            "animIn",
+                            "animInDuration",
+                            editor::ANIMATION_IN_KINDS,
+                            t("In length (s)"),
+                            editor::ANIMATION_DURATION_DEFAULT,
+                            editor::ANIMATION_DURATION_MIN,
+                            editor::ANIMATION_DURATION_MAX,
+                        ),
+                        (
+                            "anim-out",
+                            t("Out"),
+                            "animOut",
+                            "animOutDuration",
+                            editor::ANIMATION_OUT_KINDS,
+                            t("Out length (s)"),
+                            editor::ANIMATION_DURATION_DEFAULT,
+                            editor::ANIMATION_DURATION_MIN,
+                            editor::ANIMATION_DURATION_MAX,
+                        ),
+                        (
+                            "anim-loop",
+                            t("Loop"),
+                            "animLoop",
+                            "animLoopPeriod",
+                            editor::ANIMATION_LOOP_KINDS,
+                            t("Seconds per cycle"),
+                            editor::ANIMATION_LOOP_PERIOD_DEFAULT,
+                            editor::ANIMATION_LOOP_PERIOD_MIN,
+                            editor::ANIMATION_LOOP_PERIOD_MAX,
+                        ),
+                    ] {
+                        let current = element.params.text(kind_key, "none").into_owned();
+                        let current = if kinds.contains(&current.as_str())
+                            && (is_text || !editor::TEXT_ONLY_ANIMATIONS.contains(&current.as_str()))
+                        {
+                            current
+                        } else {
+                            "none".to_owned()
+                        };
+                        let mut chips = div().flex_1().flex().flex_wrap().gap(px(4.));
+                        let choices = std::iter::once("none").chain(
+                            kinds
+                                .iter()
+                                .copied()
+                                .filter(|kind| is_text || !editor::TEXT_ONLY_ANIMATIONS.contains(kind)),
+                        );
+                        for kind in choices {
+                            let state = self.state.clone();
+                            chips = chips.child(
+                                Button::new(eid(slot, kind), t(editor::animation_label(kind)))
+                                    .variant(if current == kind {
+                                        ButtonVariant::Default
+                                    } else {
+                                        ButtonVariant::Outline
+                                    })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        let mut params = Params::new();
+                                        params.set(kind_key, kind);
+                                        state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                    }),
+                            );
+                        }
+                        content = content.child(
+                            div()
+                                .flex()
+                                .items_start()
+                                .gap(px(6.))
+                                .child(Self::label_cell(label, window))
+                                .child(chips),
+                        );
+                        if current != "none" && current != "kenBurns" {
+                            content = content.child(self.row(
+                                length_label,
+                                length_key,
+                                "",
+                                number_text(element.params.number(length_key, default)),
+                                None,
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        if value.is_finite() {
+                                            let mut params = Params::new();
+                                            params.set(length_key, value.clamp(min, max));
+                                            state.update_selected_params(params, cx);
+                                        }
+                                    }
+                                }),
+                            ));
+                        }
+                    }
                 }
 
                 if is_text {

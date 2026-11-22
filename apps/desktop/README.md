@@ -417,6 +417,19 @@ reduced less, never damaged. Neither side
 uses RNNoise: `afftdn` ships with FFmpeg and needs no model file, and the
 web pass keeps the app free of a WASM dependency.
 
+## Animations
+
+The inspector's **Animation** section (any clip with a picture) picks a
+way **In** (fade, pop, grow, shrink, slide up, down, left or right, drop
+and bounce, spin, and on text typewriter or word by word), a way **Out**
+(the same moves, leaving) and a **Loop** (pulse, shake, wobble, float, or
+Ken Burns, a slow push in and drift over the whole clip), each with its
+length. They are the `animIn`, `animOut` and `animLoop` params the web
+editor's Animation tab sets, worked out while the clip plays by
+`editor::clip_animation` on top of its keyframes, so they follow the clip
+when it is trimmed. A typewriter draws the letters not shown yet clear, so
+the text does not move as it types.
+
 ## Freeze frame
 
 **Freeze** in the timeline toolbar (and **Freeze frame** in a clip's

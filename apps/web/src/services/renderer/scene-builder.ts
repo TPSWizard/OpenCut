@@ -1,3 +1,4 @@
+import { readClipAnimations } from "@/clip-animation/presets";
 import type { SceneTracks, TimelineElement, TimelineTrack, VideoElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { RootNode } from "./nodes/root-node";
@@ -94,6 +95,7 @@ function buildElementNode({
 				retime: element.retime,
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
+				clipAnimation: readClipAnimations(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -112,6 +114,7 @@ function buildElementNode({
 				trimEnd: element.trimEnd,
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
+				clipAnimation: readClipAnimations(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -129,6 +132,7 @@ function buildElementNode({
 				trimEnd: element.trimEnd,
 				transform: buildTransformFromParams({ params: element.params }),
 				animations: element.animations,
+				clipAnimation: readClipAnimations(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -167,6 +171,7 @@ function buildElementNode({
 			trimEnd: element.trimEnd,
 			transform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
+			clipAnimation: readClipAnimations(element.params),
 			opacity: readOpacityFromParams({ params: element.params }),
 			blendMode: readBlendModeFromParams({ params: element.params }),
 			effects: element.effects ?? [],
@@ -184,6 +189,7 @@ function buildElementNode({
 			trimEnd: element.trimEnd,
 			transform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
+			clipAnimation: readClipAnimations(element.params),
 			opacity: readOpacityFromParams({ params: element.params }),
 			blendMode: readBlendModeFromParams({ params: element.params }),
 			effects: element.effects ?? [],

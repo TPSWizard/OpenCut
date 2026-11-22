@@ -167,6 +167,7 @@ export function drawMeasuredTextLayout({
 	backgroundColor,
 	textBaseline = "middle",
 	highlight,
+	revealChars = null,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -175,6 +176,12 @@ export function drawMeasuredTextLayout({
 	backgroundColor?: string;
 	textBaseline?: CanvasTextBaseline;
 	highlight?: TextWordHighlight | null;
+	/**
+	 * Draw only this many characters (newlines not counted), each where it
+	 * sits in the whole text, as a typewriter animation reveals it; null
+	 * draws everything.
+	 */
+	revealChars?: number | null;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -220,8 +227,24 @@ export function drawMeasuredTextLayout({
 		}
 	}
 
+	let remaining = revealChars ?? Number.POSITIVE_INFINITY;
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
+		const chars = Array.from(layout.lines[index]);
+		if (remaining < chars.length) {
+			// Part of the line: draw its start where it sits in the whole line.
+			if (remaining > 0) {
+				const lineWidth = layout.lineMetrics[index].width;
+				const x = layout.textAlign === "center" ? -lineWidth / 2 : layout.textAlign === "right" ? -lineWidth : 0;
+				ctx.save();
+				ctx.textAlign = "left";
+				ctx.fillText(chars.slice(0, remaining).join(""), x, lineY);
+				ctx.restore();
+			}
+			remaining = 0;
+			continue;
+		}
+		remaining -= chars.length;
 		ctx.fillText(layout.lines[index], 0, lineY);
 		drawTextDecoration({
 			ctx,
@@ -234,7 +257,7 @@ export function drawMeasuredTextLayout({
 		});
 	}
 
-	if (highlight && highlight.mode !== "none") {
+	if (highlight && highlight.mode !== "none" && revealChars === null) {
 		drawHighlightedWords({ ctx, layout, highlight, textColor });
 	}
 }

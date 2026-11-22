@@ -20,6 +20,12 @@ import {
 } from "@/text/measure-element";
 import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
+import {
+	applyClipAnimationState,
+	clipAnimationStateAt,
+	readClipAnimations,
+	revealedCharCount,
+} from "@/clip-animation/presets";
 import { videoCache } from "@/services/video-cache/service";
 import type { CanvasRenderer } from "./canvas-renderer";
 import type { AnyBaseNode } from "./nodes/base-node";
@@ -240,16 +246,30 @@ function resolveVisualState({
 		elementStartTime: params.timeOffset,
 		elementDuration: params.duration,
 	});
-	const transform = resolveTransformAtTime({
-		baseTransform: params.transform,
-		animations: params.animations,
-		localTime,
-	});
-	const opacity = resolveOpacityAtTime({
-		baseOpacity: params.opacity,
-		animations: params.animations,
-		localTime,
-	});
+	const keyed = {
+		transform: resolveTransformAtTime({
+			baseTransform: params.transform,
+			animations: params.animations,
+			localTime,
+		}),
+		opacity: resolveOpacityAtTime({
+			baseOpacity: params.opacity,
+			animations: params.animations,
+			localTime,
+		}),
+	};
+	const { transform, opacity } = params.clipAnimation
+		? applyClipAnimationState({
+				...keyed,
+				state: clipAnimationStateAt({
+					animations: params.clipAnimation,
+					localSeconds: localTime / TICKS_PER_SECOND,
+					lengthSeconds: params.duration / TICKS_PER_SECOND,
+					canvasWidth: context.renderer.width,
+					canvasHeight: context.renderer.height,
+				}),
+			})
+		: keyed;
 	const containScale = Math.min(
 		context.renderer.width / sourceWidth,
 		context.renderer.height / sourceHeight,
@@ -548,8 +568,7 @@ function resolveTextNode({
 		elementDuration: node.params.duration,
 	});
 	const background = buildTextBackgroundFromElement({ element: node.params });
-
-	return {
+	const keyed = {
 		transform: resolveTransformAtTime({
 			baseTransform: node.params.transform,
 			animations: node.params.animations,
@@ -560,6 +579,27 @@ function resolveTextNode({
 			animations: node.params.animations,
 			localTime,
 		}),
+	};
+	const clipAnimation = readClipAnimations(node.params.params);
+	const animationState = clipAnimation
+		? clipAnimationStateAt({
+				animations: clipAnimation,
+				localSeconds: localTime / TICKS_PER_SECOND,
+				lengthSeconds: node.params.duration / TICKS_PER_SECOND,
+				canvasWidth: node.params.canvasCenter.x * 2,
+				canvasHeight: node.params.canvasHeight,
+				isText: true,
+			})
+		: null;
+	const { transform, opacity } = animationState
+		? applyClipAnimationState({ ...keyed, state: animationState })
+		: keyed;
+	const content = typeof node.params.params.content === "string" ? node.params.params.content : "";
+
+	return {
+		transform,
+		opacity,
+		revealChars: animationState ? revealedCharCount({ content, reveal: animationState.reveal }) : null,
 		textColor: resolveColorAtTime({
 			baseColor:
 				typeof node.params.params.color === "string"

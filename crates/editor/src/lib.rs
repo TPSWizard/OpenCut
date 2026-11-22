@@ -12,6 +12,7 @@ mod animation;
 mod assets;
 mod audio;
 mod beats;
+mod clip_animation;
 mod broll;
 mod bundle;
 mod captions;
@@ -73,6 +74,12 @@ pub use document::{
 pub use fillers::{
     FILLER_LANGUAGES, FILLER_PROMPT, FILLER_WORDS, FillerHit, FillerOptions, filler_intervals, filler_set, find_fillers,
     normalize_word,
+};
+pub use clip_animation::{
+    ANIMATION_DURATION_DEFAULT, ANIMATION_DURATION_MAX, ANIMATION_DURATION_MIN, ANIMATION_IN_KINDS,
+    ANIMATION_LOOP_KINDS, ANIMATION_LOOP_PERIOD_DEFAULT, ANIMATION_LOOP_PERIOD_MAX, ANIMATION_LOOP_PERIOD_MIN,
+    ANIMATION_OUT_KINDS, ClipAnimationState, ClipAnimations, RevealMode, TEXT_ONLY_ANIMATIONS, animation_label,
+    animation_windows, clip_animation_state_at, read_clip_animations, revealed_char_count,
 };
 pub use freeze::{FREEZE_DEFAULT_SECONDS, FREEZE_MAX_SECONDS, FREEZE_MIN_SECONDS, freeze_still};
 pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts};

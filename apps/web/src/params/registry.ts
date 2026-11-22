@@ -16,6 +16,19 @@ import {
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
 import { DEFAULT_CAPTION_STYLE } from "@/captions/params";
+import {
+	ANIMATION_DURATION_DEFAULT,
+	ANIMATION_DURATION_MAX,
+	ANIMATION_DURATION_MIN,
+	ANIMATION_IN_KINDS,
+	ANIMATION_LABELS,
+	ANIMATION_LOOP_KINDS,
+	ANIMATION_LOOP_PERIOD_DEFAULT,
+	ANIMATION_LOOP_PERIOD_MAX,
+	ANIMATION_LOOP_PERIOD_MIN,
+	ANIMATION_OUT_KINDS,
+	TEXT_ONLY_ANIMATIONS,
+} from "@/clip-animation/presets";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -154,6 +167,75 @@ const visualElementParams: ElementParamDefinition[] = [
 		options: BLEND_MODE_OPTIONS,
 	},
 ];
+
+function animationOptions(kinds: readonly string[], isText: boolean): Array<{ value: string; label: string }> {
+	return [
+		{ value: "none", label: "None" },
+		...kinds
+			.filter((kind) => isText || !TEXT_ONLY_ANIMATIONS.has(kind))
+			.map((kind) => ({ value: kind, label: ANIMATION_LABELS[kind] ?? kind })),
+	];
+}
+
+/** One-click animations (see `@/clip-animation/presets`); typewriter and word by word only on text. */
+function animationParams({ isText }: { isText: boolean }): ElementParamDefinition[] {
+	return [
+		{
+			key: "animIn",
+			label: "Animation in",
+			type: "select",
+			default: "none",
+			keyframable: false,
+			options: animationOptions(ANIMATION_IN_KINDS, isText),
+		},
+		{
+			key: "animInDuration",
+			label: "In length (s)",
+			type: "number",
+			default: ANIMATION_DURATION_DEFAULT,
+			min: ANIMATION_DURATION_MIN,
+			max: ANIMATION_DURATION_MAX,
+			step: 0.1,
+			keyframable: false,
+		},
+		{
+			key: "animOut",
+			label: "Animation out",
+			type: "select",
+			default: "none",
+			keyframable: false,
+			options: animationOptions(ANIMATION_OUT_KINDS, isText),
+		},
+		{
+			key: "animOutDuration",
+			label: "Out length (s)",
+			type: "number",
+			default: ANIMATION_DURATION_DEFAULT,
+			min: ANIMATION_DURATION_MIN,
+			max: ANIMATION_DURATION_MAX,
+			step: 0.1,
+			keyframable: false,
+		},
+		{
+			key: "animLoop",
+			label: "Loop animation",
+			type: "select",
+			default: "none",
+			keyframable: false,
+			options: animationOptions(ANIMATION_LOOP_KINDS, isText),
+		},
+		{
+			key: "animLoopPeriod",
+			label: "Loop speed (s per cycle)",
+			type: "number",
+			default: ANIMATION_LOOP_PERIOD_DEFAULT,
+			min: ANIMATION_LOOP_PERIOD_MIN,
+			max: ANIMATION_LOOP_PERIOD_MAX,
+			step: 0.1,
+			keyframable: false,
+		},
+	];
+}
 
 const audioElementParams: ElementParamDefinition[] = [
 	{
@@ -395,20 +477,28 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...audioElementParams],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...audioElementParams],
 });
-elementParamRegistry.register({ key: "image", definition: visualElementParams });
+elementParamRegistry.register({
+	key: "image",
+	definition: [...visualElementParams, ...animationParams({ isText: false })],
+});
 elementParamRegistry.register({
 	key: "text",
-	definition: [...textElementParams, ...captionParams, ...visualElementParams],
+	definition: [
+		...textElementParams,
+		...captionParams,
+		...visualElementParams,
+		...animationParams({ isText: true }),
+	],
 });
 elementParamRegistry.register({
 	key: "sticker",
-	definition: visualElementParams,
+	definition: [...visualElementParams, ...animationParams({ isText: false })],
 });
 elementParamRegistry.register({
 	key: "graphic",
-	definition: visualElementParams,
+	definition: [...visualElementParams, ...animationParams({ isText: false })],
 });
 elementParamRegistry.register({ key: "audio", definition: audioElementParams });
 elementParamRegistry.register({ key: "effect", definition: [] });

@@ -272,6 +272,9 @@ pub struct TextStyle {
     pub background: Option<TextBackground>,
     /// Caption emphasis at the planned time; `None` for plain text.
     pub highlight: Option<TextHighlight>,
+    /// Characters a typewriter or word-by-word animation shows (newlines
+    /// not counted), each where it sits in the whole text; `None` for all.
+    pub reveal_chars: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -327,6 +330,7 @@ impl TextStyle {
             },
             background,
             highlight: None,
+            reveal_chars: None,
         }
     }
 }
@@ -425,7 +429,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                     progress: window.progress(time),
                     params: transition.params.clone(),
                     from: None,
-                    to: layer_plan(track, element, time, canvas.height as f32, false),
+                    to: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), false),
                 }));
                 continue;
             }
@@ -440,15 +444,15 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                     kind: transition.kind.clone(),
                     progress: window.progress(time),
                     params: transition.params.clone(),
-                    from: layer_plan(track, element, time, canvas.height as f32, true),
-                    to: next.and_then(|next| layer_plan(track, next, time, canvas.height as f32, true)),
+                    from: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), true),
+                    to: next.and_then(|next| layer_plan(track, next, time, (canvas.width as f32, canvas.height as f32), true)),
                 }));
                 continue;
             }
             if !element.contains(time) {
                 continue;
             }
-            if let Some(layer) = layer_plan(track, element, time, canvas.height as f32, false) {
+            if let Some(layer) = layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), false) {
                 items.push(FrameItemPlan::Layer(layer));
             }
         }
@@ -471,7 +475,7 @@ fn layer_plan(
     track: &Track,
     element: &Element,
     time: MediaTime,
-    canvas_height: f32,
+    (canvas_width, canvas_height): (f32, f32),
     extended: bool,
 ) -> Option<LayerPlan> {
     let param_time = if extended {
@@ -480,6 +484,16 @@ fn layer_plan(
         time
     };
     let params = element.params_at(param_time);
+    // One-click in, out and loop animations, on top of the keyframes.
+    let animation = crate::read_clip_animations(&element.params).map(|animations| {
+        crate::clip_animation_state_at(
+            &animations,
+            element.local_time(param_time).to_seconds_f64(),
+            element.duration.to_seconds_f64(),
+            (canvas_width as f64, canvas_height as f64),
+            matches!(element.kind, ElementKind::Text),
+        )
+    });
     let source = match &element.kind {
         ElementKind::Video { media_id } => LayerSource::Video {
             media_id: media_id.clone(),
@@ -501,6 +515,7 @@ fn layer_plan(
         ElementKind::Text => {
             let mut style = TextStyle::from_params(&params, canvas_height);
             style.highlight = caption_highlight(&params, &element.words, element.local_time(param_time));
+            style.reveal_chars = animation.and_then(|state| crate::revealed_char_count(&style.content, state.reveal));
             LayerSource::Text(style)
         }
         // Compounds are expanded before planning; audio draws nothing.
@@ -533,12 +548,22 @@ fn layer_plan(
         }),
         _ => None,
     };
+    let mut transform = LayerTransform::from_params(&params);
+    let mut opacity = params.number("opacity", 1.0).clamp(0.0, 1.0) as f32;
+    if let Some(state) = animation {
+        transform.position_x += state.offset_x as f32;
+        transform.position_y += state.offset_y as f32;
+        transform.scale_x *= state.scale as f32;
+        transform.scale_y *= state.scale as f32;
+        transform.rotate_degrees += state.rotate as f32;
+        opacity = (opacity * state.opacity as f32).clamp(0.0, 1.0);
+    }
     Some(LayerPlan {
         element_id: element.id.clone(),
         track_id: track.id.clone(),
         source,
-        transform: LayerTransform::from_params(&params),
-        opacity: params.number("opacity", 1.0).clamp(0.0, 1.0) as f32,
+        transform,
+        opacity,
         blend_mode: params.text("blendMode", "normal").into_owned(),
         effects,
         local_time: element.local_time(param_time),
@@ -736,6 +761,39 @@ mod tests {
         let plan = plan_frame(&project, seconds(6.0));
         assert!(plan.layers().is_empty());
         assert_eq!((plan.width, plan.height), (1920, 1080));
+    }
+
+    #[test]
+    fn animation_presets_move_fade_and_reveal_layers() {
+        let mut project = Project::new("Animations");
+        let mut text = Element::text("one two", seconds(1.0));
+        text.params
+            .set("transform.positionY", 10.0)
+            .set("animIn", "typewriter")
+            .set("animInDuration", 1.0)
+            .set("animOut", "slideDown")
+            .set("animOutDuration", 1.0);
+        let length = text.duration.to_seconds_f64();
+        apply(
+            &mut project,
+            &Command::InsertElement {
+                element: text,
+                placement: TrackPlacement::Auto,
+            },
+        )
+        .unwrap();
+
+        let layer = |time: f64| plan_frame(&project, seconds(time)).layers()[0].clone();
+        let LayerSource::Text(style) = layer(1.5).source else { panic!("expected text") };
+        assert_eq!(style.reveal_chars, Some(4), "half of the seven characters, rounded up");
+        let LayerSource::Text(style) = layer(2.5).source else { panic!("expected text") };
+        assert_eq!(style.reveal_chars, None, "all of it after the way in");
+        assert_eq!(layer(2.5).transform.position_y, 10.0);
+
+        // The last moment slides down out of view by most of the slide (+y is down).
+        let end = layer(1.0 + length - 0.01);
+        assert!(end.transform.position_y > 10.0 + 0.9 * 0.3 * 1080.0);
+        assert!(end.opacity < 0.05);
     }
 
     #[test]

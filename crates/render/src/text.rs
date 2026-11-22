@@ -128,7 +128,30 @@ impl TextRasterizer {
             .as_ref()
             .map(TextHighlight::highlighted_indices)
             .unwrap_or_default();
-        if let Some(highlight) = style.highlight.as_ref().filter(|_| !highlighted.is_empty()) {
+        if let Some(reveal) = style.reveal_chars {
+            // A typewriter or word-by-word animation: the text keeps its
+            // layout and the characters not shown yet are drawn clear.
+            let hidden = attrs.clone().color(cosmic_text::Color::rgba(0, 0, 0, 0));
+            let split = content
+                .char_indices()
+                .filter(|(_, c)| *c != '\n')
+                .nth(reveal)
+                .map_or(content.len(), |(index, _)| index);
+            let mut rich: Vec<(&str, Attrs)> = Vec::new();
+            for (index, line) in content[..split].split('\n').enumerate() {
+                if index > 0 {
+                    rich.push(("\n", attrs.clone()));
+                }
+                rich.push((line, attrs.clone()));
+            }
+            for (index, line) in content[split..].split('\n').enumerate() {
+                if index > 0 {
+                    rich.push(("\n", attrs.clone()));
+                }
+                rich.push((line, hidden.clone()));
+            }
+            buffer.set_rich_text(&mut self.font_system, rich, &attrs, Shaping::Advanced, None);
+        } else if let Some(highlight) = style.highlight.as_ref().filter(|_| !highlighted.is_empty()) {
             let active = to_color(highlight.active_color);
             let mut rich: Vec<(&str, Attrs)> = Vec::new();
             for (line_index, line) in content.split('\n').enumerate() {
@@ -184,7 +207,7 @@ impl TextRasterizer {
         let thickness = (font_size * 0.07).max(1.0);
         let mut decorations: Vec<(f32, f32, f32)> = Vec::new();
         let mut decoration_bottom = text_height;
-        if style.decoration != TextDecoration::None {
+        if style.decoration != TextDecoration::None && style.reveal_chars.is_none() {
             for run in buffer.layout_runs() {
                 if run.glyphs.is_empty() {
                     continue;
@@ -476,6 +499,7 @@ mod tests {
             decoration: TextDecoration::None,
             background: None,
             highlight: None,
+            reveal_chars: None,
         }
     }
 
@@ -491,6 +515,23 @@ mod tests {
                 })
             })
             .collect()
+    }
+
+    #[test]
+    fn a_typewriter_shows_the_first_characters_in_place() {
+        let mut rasterizer = TextRasterizer::new();
+        let full = rasterizer.rasterize(&style("abcdef"));
+        let mut half = style("abcdef");
+        half.reveal_chars = Some(3);
+        let raster = rasterizer.rasterize(&half);
+        assert_eq!((raster.width, raster.height), (full.width, full.height), "the layout does not move");
+        let shown = columns_of(&raster, [0, 0, 255]);
+        let all = columns_of(&full, [0, 0, 255]);
+        assert!(!shown.is_empty());
+        assert_eq!(shown.first(), all.first(), "the first letters stay where they were");
+        assert!(*shown.last().unwrap() < raster.width * 6 / 10, "only about the left half shows");
+        half.reveal_chars = Some(0);
+        assert!(columns_of(&rasterizer.rasterize(&half), [0, 0, 255]).is_empty());
     }
 
     #[test]
