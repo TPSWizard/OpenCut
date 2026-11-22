@@ -48,7 +48,15 @@ pub(crate) struct InspectorPanel {
     faceswap_consent: bool,
     filler_language: &'static str,
     silence_ripple: editor::RippleScope,
+    /// Text-based editing: struck transcript words of `struck_for`, and the
+    /// word Shift-click extends from.
+    struck_words: std::collections::BTreeSet<usize>,
+    struck_for: Option<String>,
+    transcript_anchor: Option<usize>,
 }
+
+/// Transcript words shown at most, so a long clip stays responsive.
+const TRANSCRIPT_MAX_WORDS: usize = 3000;
 
 /// Shortest pauses offered for silence auto-cut, in seconds.
 const SILENCE_MIN_SECONDS: &[f64] = &[0.3, 0.5, 1.0, 2.0];
@@ -131,7 +139,33 @@ impl InspectorPanel {
             faceswap_consent: false,
             filler_language: "auto",
             silence_ripple: editor::RippleScope::All,
+            struck_words: Default::default(),
+            struck_for: None,
+            transcript_anchor: None,
         }
+    }
+
+    /// Strikes or restores a transcript word; with `extend`, the run from the
+    /// last clicked word takes that word's new state.
+    fn strike_word(&mut self, index: usize, extend: bool) {
+        match (extend, self.transcript_anchor) {
+            (true, Some(anchor)) if anchor != index => {
+                let strike = self.struck_words.contains(&anchor);
+                for word in anchor.min(index)..=anchor.max(index) {
+                    if strike {
+                        self.struck_words.insert(word);
+                    } else {
+                        self.struck_words.remove(&word);
+                    }
+                }
+            }
+            _ => {
+                if !self.struck_words.remove(&index) {
+                    self.struck_words.insert(index);
+                }
+            }
+        }
+        self.transcript_anchor = Some(index);
     }
 
     /// The input for `key`, created with `commit` on first use, showing
@@ -557,6 +591,18 @@ impl Render for InspectorPanel {
         let has_realesrgan = state.has_realesrgan();
         let has_facefusion = state.has_facefusion();
         let loudness = state.loudness.clone();
+        let transcript_words: Vec<editor::TimedWord> = selected
+            .as_ref()
+            .and_then(|element| state.caption_words_over(&element.id))
+            .map(|(_, _, words)| words)
+            .unwrap_or_default();
+        let selected_id = selected.as_ref().map(|element| element.id.clone());
+        if self.struck_for != selected_id {
+            self.struck_for = selected_id;
+            self.struck_words.clear();
+            self.transcript_anchor = None;
+        }
+        self.struck_words.retain(|index| *index < transcript_words.len());
         let beats = state.beats;
         let marker_count = state.markers.len();
         // Voice choices for auto-ducking: every other clip with audio.
@@ -1289,6 +1335,78 @@ impl Render for InspectorPanel {
                         )
                         .child(language_row)
                         .child(fillers_row);
+
+                    // Text-based editing: strike words of the transcript to cut them.
+                    content = content.child(self.heading(t("Transcript"), window)).child(
+                        div()
+                            .text_xs()
+                            .text_color(colors.muted_foreground)
+                            .child(t("Click words to strike them (Shift-click strikes a run), then cut them out. Uses the captions over this clip; the captions are retimed with the cut and gaps close as the Silence setting says.")),
+                    );
+                    if transcript_words.is_empty() {
+                        content = content.child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("No captions over this clip yet: transcribe it to captions first.")),
+                        );
+                    } else {
+                        let mut words_row = div().flex().flex_wrap().gap(px(2.));
+                        for (index, word) in transcript_words.iter().enumerate().take(TRANSCRIPT_MAX_WORDS) {
+                            let struck = self.struck_words.contains(&index);
+                            words_row = words_row.child(
+                                Button::new(eid("transcript-word", &index.to_string()), word.text.trim().to_owned())
+                                    .variant(if struck { ButtonVariant::Destructive } else { ButtonVariant::Ghost })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
+                                        this.strike_word(index, event.modifiers().shift);
+                                        cx.notify();
+                                    })),
+                            );
+                        }
+                        let struck: Vec<usize> = self.struck_words.iter().copied().collect();
+                        let struck_count = struck.len();
+                        let element_id = element.id.clone();
+                        let ripple = self.silence_ripple;
+                        let actions_row = div()
+                            .flex()
+                            .flex_wrap()
+                            .items_center()
+                            .gap(px(8.))
+                            .child(
+                                Button::new("cut-transcript", tf("Cut {count} struck word(s)", &[("count", &struck_count)]))
+                                    .size(ButtonSize::XSmall)
+                                    .disabled(struck_count == 0)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        let done = this.state.update(cx, |state, cx| state.cut_transcript_words(&element_id, &struck, ripple, cx));
+                                        if done {
+                                            this.struck_words.clear();
+                                            this.transcript_anchor = None;
+                                        }
+                                        cx.notify();
+                                    })),
+                            )
+                            .child(
+                                Button::new("clear-transcript", t("Clear"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .disabled(struck_count == 0)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.struck_words.clear();
+                                        this.transcript_anchor = None;
+                                        cx.notify();
+                                    })),
+                            );
+                        content = content.child(words_row).child(actions_row);
+                        if transcript_words.len() > TRANSCRIPT_MAX_WORDS {
+                            content = content.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(colors.muted_foreground)
+                                    .child(tf("Showing the first {count} words.", &[("count", &TRANSCRIPT_MAX_WORDS)])),
+                            );
+                        }
+                    }
 
                     content = content
                         .child(self.heading(t("Silence"), window))

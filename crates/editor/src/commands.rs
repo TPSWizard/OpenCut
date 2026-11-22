@@ -90,6 +90,14 @@ pub enum Command {
         ranges: Vec<(MediaTime, MediaTime)>,
         ripple: RippleScope,
     },
+    /// Brings timed captions in line with a [`Command::RemoveRanges`] on the
+    /// same ranges, applied just before it (in one [`Command::Batch`]):
+    /// words in the stretches go, later words move with the ripple. See
+    /// [`crate::retime_captions`].
+    RetimeCaptions {
+        ranges: Vec<(MediaTime, MediaTime)>,
+        ripple: RippleScope,
+    },
     /// Adds a text track at the top and puts these elements on it, in one
     /// step: what transcription produces.
     /// Several commands as one step: all apply, or none when one fails.
@@ -627,6 +635,10 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 .map(|element| ElementRef { track_id: track_id.clone(), element_id: element.id.clone() })
                 .collect();
             Outcome::Elements(remaining)
+        }
+        Command::RetimeCaptions { ranges, ripple } => {
+            crate::retime_captions(project, ranges, *ripple);
+            Outcome::None
         }
         Command::InsertCaptions { elements } => {
             let mut track = new_track(project, TrackKind::Text);
@@ -2032,6 +2044,87 @@ mod tests {
         assert_eq!(spans, vec![(0.0, 2.0, 0.0), (2.0, 3.0, 3.0), (5.0, 1.5, 8.0)]);
         let (_, title) = project.element(&title_id).unwrap();
         assert_eq!(title.start_time.to_seconds_f64(), 6.0);
+    }
+
+    #[test]
+    fn cutting_transcript_words_keeps_the_captions_in_step() {
+        use crate::captions::{CaptionChunk, TimedWord, caption_element};
+        use crate::document::{CanvasSize, Element, MediaItem, MediaKind};
+        let mut project = Project::new("Transcript");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "talk".to_owned(),
+                name: "talk.wav".to_owned(),
+                kind: MediaKind::Audio,
+                path: "talk.wav".into(),
+                duration: MediaTime::from_seconds_f64(10.0),
+                width: None,
+                height: None,
+                fps: None,
+                has_audio: true,
+            }),
+        )
+        .unwrap();
+        let talk = Element::from_media(project.media_item("talk").unwrap(), MediaTime::ZERO);
+        let talk_id = talk.id.clone();
+        apply(&mut project, &Command::InsertElement { element: talk, placement: TrackPlacement::Auto }).unwrap();
+        let word = |text: &str, start: f64, end: f64| TimedWord { text: text.to_owned(), start, end };
+        let words = vec![
+            word("So", 1.0, 1.2),
+            word("the", 1.4, 1.5),
+            word("plan", 1.5, 1.9),
+            word("is", 2.1, 2.3),
+            word("simple.", 2.5, 3.0),
+            word("Later", 5.0, 5.4),
+            word("words.", 5.5, 6.0),
+        ];
+        let chunk = |text: &str, range: std::ops::Range<usize>| {
+            let words = words[range].to_vec();
+            let start = words[0].start;
+            CaptionChunk { text: text.to_owned(), start, duration: words.last().unwrap().end - start, words }
+        };
+        let canvas = CanvasSize { width: 1920, height: 1080 };
+        let captions = vec![
+            caption_element(0, &chunk("So the plan", 0..3), canvas),
+            caption_element(1, &chunk("is simple.", 3..5), canvas),
+            caption_element(2, &chunk("Later words.", 5..7), canvas),
+        ];
+        let ids: Vec<String> = captions.iter().map(|caption| caption.id.clone()).collect();
+        apply(&mut project, &Command::InsertCaptions { elements: captions }).unwrap();
+
+        // Delete "plan is": cut 1.5..2.4 (pause middles).
+        let cuts = crate::transcript_cuts(&words, &[2, 3], 0.0, 10.0);
+        assert_eq!(cuts.len(), 1);
+        let ranges: Vec<(MediaTime, MediaTime)> = cuts
+            .iter()
+            .map(|(start, end)| (MediaTime::from_seconds_f64(*start).unwrap(), MediaTime::from_seconds_f64(*end).unwrap()))
+            .collect();
+        apply(
+            &mut project,
+            &Command::Batch(vec![
+                Command::RetimeCaptions { ranges: ranges.clone(), ripple: RippleScope::All },
+                Command::RemoveRanges { element_id: talk_id.clone(), ranges, ripple: RippleScope::All },
+            ]),
+        )
+        .unwrap();
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-6;
+        let (_, first) = project.element(&ids[0]).unwrap();
+        assert_eq!(first.params.text("content", ""), "So the");
+        assert!(close(first.start_time.to_seconds_f64(), 1.0) && close(first.duration.to_seconds_f64(), 0.5));
+        let (_, second) = project.element(&ids[1]).unwrap();
+        assert_eq!(second.params.text("content", ""), "simple.");
+        assert!(close(second.start_time.to_seconds_f64(), 1.5), "{}", second.start_time.to_seconds_f64());
+        assert!(close(second.duration.to_seconds_f64(), 0.6));
+        assert!(close(second.words[0].start.to_seconds_f64(), 0.1) && close(second.words[0].end.to_seconds_f64(), 0.6));
+        let (_, third) = project.element(&ids[2]).unwrap();
+        assert!(close(third.start_time.to_seconds_f64(), 4.1), "rippled with the picture");
+        assert!(close(third.words[1].start.to_seconds_f64(), 0.5), "inner timings untouched");
+
+        // Deleting a whole caption's words removes the caption.
+        let ranges = vec![(MediaTime::from_seconds_f64(4.0).unwrap(), MediaTime::from_seconds_f64(5.2).unwrap())];
+        crate::retime_captions(&mut project, &ranges, RippleScope::None);
+        assert!(project.element(&ids[2]).is_none());
     }
 
     #[test]

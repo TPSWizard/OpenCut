@@ -121,6 +121,8 @@ import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remov
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
+import { transcriptCuts } from "@/transcript/cuts";
+import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
@@ -1978,6 +1980,46 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Filler removal failed" });
 			}
+		},
+		"transcript.get": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const transcript = clipTranscript({ tracks: editor.scenes.getActiveScene().tracks, trackId: track.id, elementId: element.id });
+			if (!transcript) throw new EditorApiError({ code: "invalid_params", message: "transcript.get needs an audio or video clip" });
+			return {
+				from: transcript.from,
+				to: transcript.to,
+				words: transcript.words.map((word, index) => ({ index, text: word.text, start: word.start, end: word.end })),
+			};
+		},
+		"transcript.cut": ({ elementId, trackId, delete: deleted, ripple, apply }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!Array.isArray(deleted) || !deleted.every((index) => Number.isInteger(index) && index >= 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "delete must be an array of word indices" });
+			}
+			if (ripple !== undefined && !isRippleScope(ripple)) {
+				throw new EditorApiError({ code: "invalid_params", message: "ripple must be all, track or none" });
+			}
+			const transcript = clipTranscript({ tracks: editor.scenes.getActiveScene().tracks, trackId: track.id, elementId: element.id });
+			if (!transcript) throw new EditorApiError({ code: "invalid_params", message: "transcript.cut needs an audio or video clip" });
+			if (transcript.words.length === 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "No captions over this clip; generate captions first" });
+			}
+			const outOfRange = deleted.find((index) => index >= transcript.words.length);
+			if (outOfRange !== undefined) {
+				throw new EditorApiError({ code: "invalid_params", message: `No word ${outOfRange}; the transcript has ${transcript.words.length}` });
+			}
+			if (apply === false) {
+				const cuts = transcriptCuts({ words: transcript.words, deleted, from: transcript.from, to: transcript.to });
+				return {
+					cuts,
+					seconds: cuts.reduce((sum, cut) => sum + (cut.end - cut.start), 0),
+					words: new Set(deleted).size,
+					applied: false,
+					pieces: [{ trackId: track.id, elementId: element.id }],
+				};
+			}
+			const result = cutTranscriptWords({ editor, trackId: track.id, elementId: element.id, deleted, ripple: ripple ?? "all" });
+			return { ...result, applied: result.cuts.length > 0 };
 		},
 		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

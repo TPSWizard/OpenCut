@@ -1034,6 +1034,24 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * A clip's transcript: the timed words (timeline seconds) of the
+	 * visible captions over it, indexed for `transcript.cut`.
+	 */
+	"transcript.get": {
+		params: ApiElementLocator;
+		result: { from: number; to: number; words: { index: number; text: string; start: number; end: number }[] };
+	};
+	/**
+	 * Text-based editing: cuts the words at `delete` (indices from
+	 * `transcript.get`) out of the clip in one undo step, from the middle of
+	 * the pause before each run to the middle of the pause after it, with
+	 * the captions retimed to match. `apply: false` only reports the cuts.
+	 */
+	"transcript.cut": {
+		params: ApiElementLocator & { delete: number[]; ripple?: "all" | "track" | "none"; apply?: boolean };
+		result: { cuts: { start: number; end: number }[]; seconds: number; words: number; applied: boolean; pieces: ApiElementRef[] };
+	};
+	/**
 	 * Parses a LUT file (.cube, .3dl or a HALD CLUT image) into the `lut`
 	 * parameter of the LUT effect (`name|size|base64`, at most 33 a side).
 	 */

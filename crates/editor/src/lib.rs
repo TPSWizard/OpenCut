@@ -42,6 +42,7 @@ mod stock;
 mod silence;
 mod store;
 mod subtitles;
+mod transcript;
 mod transition;
 
 pub use animation::{
@@ -72,6 +73,7 @@ pub use fillers::{
     FILLER_LANGUAGES, FILLER_PROMPT, FILLER_WORDS, FillerHit, FillerOptions, filler_intervals, filler_set, find_fillers,
     normalize_word,
 };
+pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts};
 pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,
     freeform_local_to_canvas, freeform_segment_count, insert_freeform_point, read_freeform_path,

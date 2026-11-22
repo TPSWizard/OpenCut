@@ -5,7 +5,7 @@
  * the scene; the cuts go through the same command as silence removal.
  */
 
-import { RemoveRangesCommand } from "@/commands/timeline/element/remove-ranges";
+import { CutWithCaptionsCommand } from "@/commands/timeline/element/cut-with-captions";
 import type { EditorCore } from "@/core";
 import { generateCaptions } from "@/captions/generate";
 import type { RippleScope } from "@/silence/detect";
@@ -114,7 +114,7 @@ export async function findClipFillers({
 	return { source: used, language: matchLanguage, words: words.length, fillers, intervals, seconds: totalSeconds({ intervals }) };
 }
 
-/** Cuts the intervals out of the clip in one undo step; returns the pieces left. */
+/** Cuts the intervals out of the clip in one undo step, captions retimed to match; returns the pieces left. */
 export function cutIntervals({
 	editor,
 	trackId,
@@ -129,7 +129,7 @@ export function cutIntervals({
 	ripple?: RippleScope;
 }): { trackId: string; elementId: string }[] {
 	if (intervals.length === 0) return [{ trackId, elementId }];
-	const command = new RemoveRangesCommand({
+	const command = new CutWithCaptionsCommand({
 		trackId,
 		elementId,
 		ranges: intervals.map((interval) => ({

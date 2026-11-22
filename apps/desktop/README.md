@@ -380,6 +380,22 @@ uses only the fillers that are no real word in any of them) and live in
 into the neighbouring words, runs of fillers merge, and the gaps close as
 the Silence section's ripple setting says, in one undo step. Longer words
 "like" and "so" are left alone: they are words as often as fillers.
+The captions are retimed with the cut, as below.
+
+## Text-based editing
+
+The inspector's **Transcript** section (audio and video clips) shows the
+words of the captions over the clip. Click words to strike them, Shift-click
+to strike a run, then **Cut struck words**: each run is cut from the middle
+of the pause before it to the middle of the pause after it (80 ms past the
+first or last word of the transcript), so what is left keeps a natural
+pause, and the gaps close as the Silence section's ripple setting says. The
+captions follow in the same undo step: struck words leave their captions
+(a caption with none left goes), and with gaps closed on every track the
+words after the cut move left with the picture, even inside a caption that
+straddles it. The piece after the first cut stays selected so editing goes
+on. The arithmetic is `crates/editor/src/transcript.rs`, the twin of the
+web app's `src/transcript/cuts.ts`. Transcribe the clip to captions first.
 
 ## Noise reduction
 

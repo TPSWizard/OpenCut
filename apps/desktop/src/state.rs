@@ -3515,23 +3515,7 @@ impl EditorState {
     ) {
         let Some(element) = self.selected_element() else { return };
         let element_id = element.id.clone();
-        let from = element.start_time.to_seconds_f64();
-        let to = element.end_time().to_seconds_f64();
-        // Words of the captions that overlap the clip, on the timeline clock.
-        let mut words: Vec<editor::TimedWord> = Vec::new();
-        for (track, caption) in self.project().elements() {
-            if track.hidden || caption.hidden || caption.words.is_empty() {
-                continue;
-            }
-            let base = caption.start_time.to_seconds_f64();
-            for word in &caption.words {
-                let (start, end) = (base + word.start.to_seconds_f64(), base + word.end.to_seconds_f64());
-                if end >= from && start <= to {
-                    words.push(editor::TimedWord { text: word.text.clone(), start, end });
-                }
-            }
-        }
-        words.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let Some((from, to, words)) = self.caption_words_over(&element_id) else { return };
         let options = editor::FillerOptions::default();
         if !words.is_empty() {
             let count = words.len();
@@ -3584,6 +3568,78 @@ impl EditorState {
         .detach();
     }
 
+    /// The clip's span in timeline seconds and the timed words of the
+    /// visible captions over it, in order: the clip's transcript.
+    pub(crate) fn caption_words_over(&self, element_id: &str) -> Option<(f64, f64, Vec<editor::TimedWord>)> {
+        let (_, element) = self.project().element(element_id)?;
+        let from = element.start_time.to_seconds_f64();
+        let to = element.end_time().to_seconds_f64();
+        let mut words: Vec<editor::TimedWord> = Vec::new();
+        for (track, caption) in self.project().elements() {
+            if track.hidden || caption.hidden || caption.words.is_empty() {
+                continue;
+            }
+            let base = caption.start_time.to_seconds_f64();
+            for word in &caption.words {
+                let (start, end) = (base + word.start.to_seconds_f64(), base + word.end.to_seconds_f64());
+                if end > from && start < to {
+                    words.push(editor::TimedWord { text: word.text.clone(), start, end });
+                }
+            }
+        }
+        words.sort_by(|a, b| a.start.total_cmp(&b.start));
+        Some((from, to, words))
+    }
+
+    /// Text-based editing: cuts the struck words (indices into
+    /// [`Self::caption_words_over`]) out of the clip in one undo step, with
+    /// the captions retimed to match.
+    pub(crate) fn cut_transcript_words(
+        &mut self,
+        element_id: &str,
+        deleted: &[usize],
+        ripple: editor::RippleScope,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let Some((from, to, words)) = self.caption_words_over(element_id) else { return false };
+        let ranges: Vec<(MediaTime, MediaTime)> = editor::transcript_cuts(&words, deleted, from, to)
+            .into_iter()
+            .filter_map(|(start, end)| Some((MediaTime::from_seconds_f64(start)?, MediaTime::from_seconds_f64(end)?)))
+            .collect();
+        if ranges.is_empty() {
+            self.set_status(t("Strike some words first."), cx);
+            return false;
+        }
+        let count = ranges.len();
+        let seconds: f64 = ranges.iter().map(|(s, e)| (*e - *s).to_seconds_f64()).sum();
+        let first_cut = ranges[0].0;
+        let command = Command::Batch(vec![
+            Command::RetimeCaptions { ranges: ranges.clone(), ripple },
+            Command::RemoveRanges { element_id: element_id.to_owned(), ranges, ripple },
+        ]);
+        let Some(outcome) = self.execute(command, cx) else { return false };
+        // The clip is in pieces now; keep the one after the first cut selected
+        // so the transcript stays in view.
+        let mut pieces: Vec<(MediaTime, String)> = outcome
+            .element_refs()
+            .iter()
+            .filter_map(|piece| self.project().element(&piece.element_id).map(|(_, e)| (e.start_time, e.id.clone())))
+            .collect();
+        pieces.sort();
+        let next = pieces.iter().find(|(start, _)| *start >= first_cut).or(pieces.first()).map(|(_, id)| id.clone());
+        if let Some(next) = next {
+            self.select_only(vec![next], cx);
+        }
+        self.set_status(
+            tf(
+                "{words} word(s) cut in {count} place(s) ({seconds} s); the captions follow.",
+                &[("words", &deleted.len()), ("count", &count), ("seconds", &format!("{seconds:.2}"))],
+            ),
+            cx,
+        );
+        true
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn apply_filler_cuts(
         &mut self,
@@ -3611,7 +3667,11 @@ impl EditorState {
         }
         let count = ranges.len();
         let seconds: f64 = ranges.iter().map(|(s, e)| (*e - *s).to_seconds_f64()).sum();
-        if self.execute(Command::RemoveRanges { element_id: element_id.to_owned(), ranges, ripple }, cx).is_some() {
+        let command = Command::Batch(vec![
+            Command::RetimeCaptions { ranges: ranges.clone(), ripple },
+            Command::RemoveRanges { element_id: element_id.to_owned(), ranges, ripple },
+        ]);
+        if self.execute(command, cx).is_some() {
             self.set_status(
                 tf(
                     "{count} filler cut(s) ({seconds} s) from {words} words from {source}.",
