@@ -1,6 +1,6 @@
 [package]
 name = "voice"
-description = "Voice effects (pitch shift, robot, echo, radio, hall) on raw audio samples, shared by the desktop and the web (through WASM)"
+description = "Voice effects (pitch shift, robot, echo, radio, hall) and enhance voice on raw audio samples, shared by the desktop and the web (through WASM)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,3 +10,6 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
+
+[dev-dependencies]
+editor = { workspace = true }

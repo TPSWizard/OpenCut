@@ -1037,6 +1037,27 @@ export interface EditorApiMethods {
 		params: ApiElementLocator & { effect: string };
 		result: { assetId: string; assetName: string; elementId: string; trackId: string; seconds: number };
 	};
+	/**
+	 * Enhance voice: one pass for clearer speech (80 Hz high-pass, noise
+	 * reduction when the clip has pauses, 250 Hz cut and 3.5 kHz presence,
+	 * de-esser, compressor with a pause expander, -16 LUFS under a -1 dBFS
+	 * limiter) into a new WAV asset the clip then plays; the shared Rust
+	 * `voice` crate, as the desktop runs it. Loudness is `null` for silence.
+	 * One undo step.
+	 */
+	"audio.enhanceVoice": {
+		params: ApiElementLocator;
+		result: {
+			assetId: string;
+			assetName: string;
+			elementId: string;
+			trackId: string;
+			seconds: number;
+			inputLufs: number | null;
+			outputLufs: number | null;
+			noiseReduced: boolean;
+		};
+	};
 	"audio.removeFillers": {
 		params: ApiElementLocator & {
 			language?: string;

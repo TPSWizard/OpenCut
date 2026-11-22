@@ -468,6 +468,20 @@ StereoPannerNode (at 0 nothing changes), so playback here, the export
 (`afade` and `pan` filters) and the web preview and export all sound the
 same.
 
+## Enhance voice
+
+The inspector's **Enhance voice** button (audio and video clips) cleans
+up speech in one step, through `voice::enhance_voice`
+(`crates/voice/src/enhance.rs`): an 80 Hz high-pass, noise reduction
+(the web editor's spectral subtraction, run only when the clip has pauses
+well under the speech to learn the noise from), a 2 dB cut at 250 Hz and
+a 3 dB presence lift at 3.5 kHz, a de-esser on the 5 kHz-and-up band, a
+3:1 compressor with a downward expander for the pauses, and loudness to
+-16 LUFS under a -1 dBFS limiter. The result is written as a WAV under
+`~/.opencut/processed/` and the clip plays it as with the voice effects;
+the status line gives the loudness before and after. The web editor runs
+the same crate as WebAssembly.
+
 ## Voice effects
 
 The inspector's **Voice** section (audio and video clips) changes the

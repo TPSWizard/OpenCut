@@ -17,6 +17,25 @@ pub fn voice_effect_to_wav(ffmpeg: &Ffmpeg, source: &Path, output: &Path, effect
     if !voice::is_voice_effect(effect) {
         return Err(MediaError::ProgramFailed { program: "voice".to_owned(), message: format!("unknown voice effect {effect}") });
     }
+    let mut planes: Vec<Vec<f32>> = read_planes(ffmpeg, source, channels)?
+        .into_iter()
+        .map(|plane| voice::apply_voice_effect(effect, &plane, VOICE_SAMPLE_RATE as f32).unwrap_or(plane))
+        .collect();
+    voice::normalize_peak(&mut planes, 0.98);
+    write_wav(output, &planes, VOICE_SAMPLE_RATE)
+}
+
+/// Writes `source`'s audio through enhance voice (`voice::enhance_voice`:
+/// high-pass, noise reduction, EQ, de-esser, compressor, −16 LUFS) to `output`.
+pub fn enhance_voice_to_wav(ffmpeg: &Ffmpeg, source: &Path, output: &Path, channels: u16) -> Result<voice::EnhanceReport, MediaError> {
+    let mut planes = read_planes(ffmpeg, source, channels)?;
+    let report = voice::enhance_voice(&mut planes, VOICE_SAMPLE_RATE as f32);
+    write_wav(output, &planes, VOICE_SAMPLE_RATE)?;
+    Ok(report)
+}
+
+/// `source`'s audio at 48 kHz as one plane per channel (1 or 2).
+fn read_planes(ffmpeg: &Ffmpeg, source: &Path, channels: u16) -> Result<Vec<Vec<f32>>, MediaError> {
     let channels = channels.clamp(1, 2);
     let settings = AudioSettings { sample_rate: VOICE_SAMPLE_RATE, channels };
     let mut reader = AudioReader::open(ffmpeg, source, 0.0, settings)?;
@@ -33,14 +52,7 @@ pub fn voice_effect_to_wav(ffmpeg: &Ffmpeg, source: &Path, output: &Path, effect
         return Err(MediaError::NoStream { path: source.to_path_buf(), stream: "audio" });
     }
     let count = channels as usize;
-    let mut planes: Vec<Vec<f32>> = (0..count)
-        .map(|channel| {
-            let plane: Vec<f32> = interleaved.iter().skip(channel).step_by(count).copied().collect();
-            voice::apply_voice_effect(effect, &plane, VOICE_SAMPLE_RATE as f32).unwrap_or(plane)
-        })
-        .collect();
-    voice::normalize_peak(&mut planes, 0.98);
-    write_wav(output, &planes, VOICE_SAMPLE_RATE)
+    Ok((0..count).map(|channel| interleaved.iter().skip(channel).step_by(count).copied().collect()).collect())
 }
 
 /// 16-bit PCM WAV of the channel planes (equal lengths).
@@ -99,5 +111,24 @@ mod tests {
         let frames = (bytes.len() - 44) / 2;
         assert!((frames as i64 - 48_000).abs() < 200, "one second at 48 kHz: {frames}");
         assert!(voice_effect_to_wav(&ffmpeg, &source, &output, "nope", 1).is_err());
+    }
+
+    #[test]
+    fn enhance_voice_from_a_lavfi_tone() {
+        let Ok(ffmpeg) = Ffmpeg::locate() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("quiet.wav");
+        let status = ffmpeg
+            .command()
+            .args(["-f", "lavfi", "-i", "sine=frequency=300:duration=2:sample_rate=44100,volume=0.05", "-y"])
+            .arg(&source)
+            .output()
+            .unwrap();
+        assert!(status.status.success());
+        let output = dir.path().join("enhanced.wav");
+        let report = enhance_voice_to_wav(&ffmpeg, &source, &output, 2).unwrap();
+        assert!(report.input_lufs < -25.0, "{report:?}");
+        assert!((report.output_lufs - voice::ENHANCE_TARGET_LUFS).abs() < 0.5, "{report:?}");
+        assert!(std::fs::metadata(&output).unwrap().len() > 44 + 48_000 * 2 * 2);
     }
 }

@@ -16,9 +16,13 @@
 //! - Hall: a Schroeder reverb (four combs in parallel, two all-passes).
 //!
 //! [`normalize_peak`] then keeps the channels of a clip together under
-//! full scale.
+//! full scale. [`enhance_voice`] (in `enhance.rs`) is the one-click
+//! clean-up chain for speech.
 
 use std::f32::consts::PI;
+
+mod enhance;
+pub use enhance::{ENHANCE_TARGET_LUFS, EnhanceReport, enhance_voice, integrated_loudness};
 
 /// `(id, label)` of every effect, in menu order.
 pub const VOICE_EFFECTS: &[(&str, &str)] = &[

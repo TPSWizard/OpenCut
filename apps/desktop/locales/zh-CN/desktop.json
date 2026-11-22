@@ -753,5 +753,13 @@
   "Shadow opacity": "阴影不透明度",
   "Shadow blur": "阴影模糊",
   "Shadow X": "阴影 X",
-  "Shadow Y": "阴影 Y"
+  "Shadow Y": "阴影 Y",
+  "Enhance voice": "增强人声",
+  "Enhance voice needs an audio or video clip.": "增强人声需要音频或视频片段。",
+  "FFmpeg is needed to enhance the voice.": "增强人声需要 FFmpeg。",
+  "Enhancing the voice…": "正在增强人声…",
+  "The clip's audio is silent; there is no voice to enhance.": "片段的音频是静音，没有可增强的人声。",
+  "Enhanced the voice: {from} to {to} LUFS.": "已增强人声：{from} → {to} LUFS。",
+  "Background noise in the pauses was reduced.": "已降低停顿处的背景噪声。",
+  "Cleans up speech in one step: cuts rumble, reduces background noise in the pauses, adds presence, softens sharp s sounds, evens the level and brings it to -16 LUFS, into a copy the clip then plays; undo puts the original back.": "一键清理语音：去除低频隆隆声，降低停顿处的背景噪声，增加临场感，抑制刺耳的“嘶”音，平衡音量并调整到 -16 LUFS，生成副本供片段播放；撤销可恢复原音频。"
 }

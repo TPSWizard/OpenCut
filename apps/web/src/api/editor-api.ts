@@ -124,7 +124,7 @@ import { cutIntervals, findClipFillers } from "@/fillers/remove";
 import { transcriptCuts } from "@/transcript/cuts";
 import { SHORTS_DEFAULTS } from "@/shorts/lines";
 import { freezeFrame } from "@/freeze/freeze";
-import { VOICE_EFFECTS, applyVoiceEffectToElement, isVoiceEffect } from "@/voice/apply";
+import { VOICE_EFFECTS, applyVoiceEffectToElement, enhanceVoiceOfElement, isVoiceEffect } from "@/voice/apply";
 import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
@@ -2108,6 +2108,14 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return await applyVoiceEffectToElement({ editor, trackId: track.id, elementId: element.id, effect });
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "The voice effect failed" });
+			}
+		},
+		"audio.enhanceVoice": async ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			try {
+				return await enhanceVoiceOfElement({ editor, trackId: track.id, elementId: element.id });
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Enhance voice failed" });
 			}
 		},
 		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {

@@ -887,6 +887,71 @@ impl EditorState {
         .detach();
     }
 
+    /// Writes the selected clip's audio through enhance voice (the shared
+    /// `voice` crate: high-pass, noise reduction, EQ, de-esser, compressor,
+    /// −16 LUFS) on a background thread, then points the clip at it as the
+    /// voice effects do. One undo step.
+    pub(crate) fn enhance_voice_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let is_video = matches!(element.kind, editor::ElementKind::Video { .. });
+        if !(is_video || matches!(element.kind, editor::ElementKind::Audio { .. })) {
+            self.set_status(t("Enhance voice needs an audio or video clip."), cx);
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        if !media.has_audio {
+            self.set_status(t("This clip's media has no audio."), cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to enhance the voice."), cx);
+            return;
+        };
+        let element = element.clone();
+        let output = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"))
+            .join(format!("{}-voice-enhanced.wav", media.id));
+        let source_name = media.name.clone();
+        let source_id = media.id.clone();
+        self.set_status(t("Enhancing the voice…"), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let report = media::enhance_voice_to_wav(&ffmpeg, &media.path, &output, 2).map_err(|error| error.to_string())?;
+                    probe_media(Some(&ffmpeg), output).map(|item| (item, report))
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok((mut item, report)) => {
+                    item.name = format!("{source_name} (enhanced voice)");
+                    if !report.input_lufs.is_finite() {
+                        state.set_status(t("The clip's audio is silent; there is no voice to enhance."), cx);
+                        return;
+                    }
+                    let mut status = tf("Enhanced the voice: {from} to {to} LUFS.", &[
+                        ("from", &format!("{:.1}", report.input_lufs)),
+                        ("to", &format!("{:.1}", report.output_lufs)),
+                    ]);
+                    if report.noise_reduced {
+                        status.push(' ');
+                        status.push_str(&t("Background noise in the pauses was reduced."));
+                    }
+                    if is_video {
+                        status.push(' ');
+                        status.push_str(&t("The voice is on its own audio track; the clip's own audio is muted."));
+                    }
+                    state.swap_in_processed_audio(&element, is_video, item, "voice", &source_id, &status, cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Speaks `script` with a system voice into a WAV, adds it on an audio
     /// track at the playhead and, with `captions`, a caption track timed
     /// line by line; one undo step.

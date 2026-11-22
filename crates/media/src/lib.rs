@@ -50,5 +50,5 @@ pub use scenes::{SceneScore, parse_scdet, scene_scores};
 pub use faceswap::{FaceChoice, FaceFusion, SwapModel, SwapOptions, facefusion_args, locate_facefusion, swap_face_image, swap_face_video};
 pub use upscale::{MAX_UPSCALED_SIDE, UpscaleModel, locate_realesrgan, upscale_image, upscale_video, upscaled_size};
 pub use still::frame_to_png;
-pub use voice_fx::{VOICE_SAMPLE_RATE, voice_effect_to_wav, write_wav};
+pub use voice_fx::{VOICE_SAMPLE_RATE, enhance_voice_to_wav, voice_effect_to_wav, write_wav};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

@@ -1728,6 +1728,24 @@ impl Render for InspectorPanel {
                                 }),
                         );
                     }
+                    // Enhance voice: one click for clearer, even speech.
+                    let enhance_state = self.state.clone();
+                    content = content
+                        .child(self.heading(t("Enhance voice"), window))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(colors.muted_foreground)
+                                .child(t("Cleans up speech in one step: cuts rumble, reduces background noise in the pauses, adds presence, softens sharp s sounds, evens the level and brings it to -16 LUFS, into a copy the clip then plays; undo puts the original back.")),
+                        )
+                        .child(
+                            Button::new("enhance-voice", t("Enhance voice"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    enhance_state.update(cx, |state, cx| state.enhance_voice_selected(cx));
+                                }),
+                        );
                     content = content
                         .child(self.heading(t("Voice"), window))
                         .child(
