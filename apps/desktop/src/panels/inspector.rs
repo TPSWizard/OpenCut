@@ -3165,6 +3165,22 @@ impl Render for InspectorPanel {
                         )))
                         .child(row);
                 }
+                // Motion tracking: a video and the clip that follows a spot in it.
+                if selection_count == 2 {
+                    let state = self.state.clone();
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Follow motion"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Place the sticker, text or clip over what it should follow at the playhead; it then follows that spot in the video until either clip ends.",
+                        )))
+                        .child(
+                            Button::new("follow-motion", t("Track and follow"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.follow_motion_selection(cx))),
+                        );
+                }
                 // Colour match: the others take on the first selected
                 // clip's colours (`editor::colour_match_commands`).
                 let state = self.state.clone();

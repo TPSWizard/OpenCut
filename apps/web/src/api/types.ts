@@ -1049,6 +1049,18 @@ export interface EditorApiMethods {
 			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
 		};
 	};
+	/**
+	 * Motion tracking: the spot of `video` under `follower`'s centre at
+	 * timeline time `at` (default: the playhead) is tracked through the video
+	 * (template matching, the shared `tracking` crate) until either clip
+	 * ends, and the follower (sticker, text, picture or clip) gets
+	 * `transform.positionX` / `positionY` keys that keep it there. Frames
+	 * where the spot was not found hold the last position. One undo step.
+	 */
+	"tracking.follow": {
+		params: { video: ApiElementRef; follower: ApiElementRef; at?: number };
+		result: { trackId: string; elementId: string; from: number; to: number; frames: number; lost: number; keys: number };
+	};
 	/** The project's cover settings (defaults when none were made). */
 	"cover.get": { params: Record<string, never>; result: { time: number; title: string; style: "bold" | "band" | "top"; embed: boolean } };
 	/** Changes the cover (title, style bold | band | top, frame time in timeline seconds, embed in MP4 exports). One undo step. */

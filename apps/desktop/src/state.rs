@@ -993,6 +993,119 @@ impl EditorState {
         self.set_status(status, cx);
     }
 
+    /// Motion tracking: of the two selected clips, the video's spot under the
+    /// other one's centre at the playhead is tracked until either ends, and
+    /// the other gets position keys that keep it there. One undo step.
+    pub(crate) fn follow_motion_selection(&mut self, cx: &mut Context<Self>) {
+        let ids = self.selection.clone();
+        let project = self.project();
+        let find = |id: &String| project.tracks.iter().flat_map(|track| &track.elements).find(|element| &element.id == id);
+        let elements: Vec<&editor::Element> = ids.iter().filter_map(find).collect();
+        let video_index = elements.iter().position(|element| matches!(element.kind, editor::ElementKind::Video { .. }));
+        let (Some(video_index), 2) = (video_index, elements.len()) else {
+            self.set_status(t("Select a video and the sticker, text or clip that should follow something in it."), cx);
+            return;
+        };
+        let (video, follower) = (elements[video_index], elements[1 - video_index]);
+        if matches!(follower.kind, editor::ElementKind::Audio { .. } | editor::ElementKind::Compound { .. }) {
+            self.set_status(t("The follower must be a sticker, text, picture or clip."), cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read video frames."), cx);
+            return;
+        };
+        let Some(media) = project.media_for(video) else { return };
+        let (Some(width), Some(height)) = (media.width, media.height) else {
+            self.set_status(t("The clip's frame size is unknown."), cx);
+            return;
+        };
+        let seconds = |time: MediaTime| time.to_seconds_f64();
+        let from = seconds(self.playhead());
+        let to = seconds(video.end_time()).min(seconds(follower.end_time()));
+        if !video.contains(self.playhead()) || !follower.contains(self.playhead()) || from >= to {
+            self.set_status(t("Put the playhead where both the video and the follower are."), cx);
+            return;
+        }
+        let canvas = project.settings.canvas;
+        let contain = (canvas.width as f64 / width as f64).min(canvas.height as f64 / height as f64);
+        let placement = tracking::ClipPlacement {
+            position_x: video.params.number("transform.positionX", 0.0),
+            position_y: video.params.number("transform.positionY", 0.0),
+            drawn_width: width as f64 * contain * video.params.number("transform.scaleX", 1.0).abs(),
+            drawn_height: height as f64 * contain * video.params.number("transform.scaleY", 1.0).abs(),
+        };
+        let point = (follower.params.number("transform.positionX", 0.0), follower.params.number("transform.positionY", 0.0));
+        let start = tracking::frame_point(placement, point.0, point.1);
+        if !(start.0 > 0.0 && start.0 < 1.0 && start.1 > 0.0 && start.1 < 1.0) {
+            self.set_status(t("Place the follower over the thing in the video it should follow."), cx);
+            return;
+        }
+        let job = crate::tracking::TrackJob {
+            path: media.path.clone(),
+            size: (width, height),
+            trim_start: seconds(video.trim_start),
+            clip_duration: seconds(video.duration),
+            retime: video.retime.clone(),
+            video_start: seconds(video.start_time),
+            from,
+            to,
+            start,
+        };
+        let follower_id = follower.id.clone();
+        let follower_start = seconds(follower.start_time);
+        let follower_duration = seconds(follower.duration);
+        self.set_status(t("Tracking…"), cx);
+        cx.spawn(async move |this, cx| {
+            let tracked = cx.background_executor().spawn(async move { crate::tracking::track(&ffmpeg, &job) }).await;
+            this.update(cx, |state, cx| {
+                let (samples, lost) = match tracked {
+                    Ok(found) => found,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let first = tracking::canvas_point(placement, samples[0].x, samples[0].y);
+                let relative: Vec<tracking::TrackSample> = samples
+                    .iter()
+                    .map(|sample| tracking::TrackSample { time: sample.time - follower_start, ..*sample })
+                    .collect();
+                let keys = tracking::follow_keys(&relative, placement, (point.0 - first.0, point.1 - first.1), 1.0);
+                let axis = |pick: fn(&(f64, f64, f64)) -> f64| {
+                    let mut out: Vec<(MediaTime, f64)> = Vec::new();
+                    for key in &keys {
+                        let Some(time) = MediaTime::from_seconds_f64(key.0.clamp(0.0, follower_duration)) else { continue };
+                        if out.last().is_some_and(|(last, _)| *last == time) {
+                            continue;
+                        }
+                        out.push((time, pick(key)));
+                    }
+                    out
+                };
+                let (keys_x, keys_y) = (axis(|key| key.1), axis(|key| key.2));
+                let count = keys_x.len();
+                let done = state.execute(
+                    Command::Batch(vec![
+                        Command::SetKeyframes { element_id: follower_id.clone(), path: "transform.positionX".to_owned(), keys: keys_x },
+                        Command::SetKeyframes { element_id: follower_id, path: "transform.positionY".to_owned(), keys: keys_y },
+                    ]),
+                    cx,
+                );
+                if done.is_some() {
+                    let status = if lost > 0 {
+                        tf(
+                            "Following: {keys} keys from {frames} frames; lost in {lost} of them.",
+                            &[("keys", &count), ("frames", &samples.len()), ("lost", &lost)],
+                        )
+                    } else {
+                        tf("Following: {keys} keys from {frames} frames.", &[("keys", &count), ("frames", &samples.len())])
+                    };
+                    state.set_status(status, cx);
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Colour match: the other selected video and picture clips take on the
     /// colours of the first one selected, at the playhead (its middle when
     /// the playhead is outside it). One undo step.

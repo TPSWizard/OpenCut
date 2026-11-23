@@ -4212,6 +4212,7 @@ dependencies = [
  "smallvec",
  "tempfile",
  "time",
+ "tracking",
  "unicode-segmentation",
  "ureq",
  "voice",
@@ -4245,6 +4246,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "time",
+ "tracking",
  "voice",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6521,6 +6523,10 @@ checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
 ]
+
+[[package]]
+name = "tracking"
+version = "0.1.0"
 
 [[package]]
 name = "try-lock"

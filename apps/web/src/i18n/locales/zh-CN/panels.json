@@ -388,5 +388,12 @@
   "Canvas": "画布",
   "16:9": "16:9",
   "9:16": "9:16",
-  "Cover saved ({width}×{height}).": "封面已保存（{width}×{height}）。"
+  "Cover saved ({width}×{height}).": "封面已保存（{width}×{height}）。",
+  "Follow motion": "跟随运动",
+  "Place the sticker, text or clip over what it should follow at the playhead; it then follows that spot in the video until either clip ends.": "在播放头处把贴纸、文字或片段放到要跟随的东西上；之后它会在视频中跟随该位置，直到任一片段结束。",
+  "Tracking…": "正在跟踪…",
+  "Tracking… {percent}%": "正在跟踪… {percent}%",
+  "Following: {keys} keys from {frames} frames; lost in {lost} of them.": "已跟随：{frames} 帧生成 {keys} 个关键帧；其中 {lost} 帧丢失目标。",
+  "Following: {keys} keys from {frames} frames.": "已跟随：{frames} 帧生成 {keys} 个关键帧。",
+  "Track and follow": "跟踪并跟随"
 }

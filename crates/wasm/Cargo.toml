@@ -23,6 +23,7 @@ num-traits = { workspace = true }
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 time = { workspace = true, features = ["wasm"] }
+tracking = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }

@@ -111,6 +111,7 @@ import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
 import { applySplitScreen } from "@/split-screen/apply";
 import { matchColours } from "@/colour-match/apply";
 import { resizeProject } from "@/resize/apply";
+import { followMotion } from "@/tracking/follow";
 import { COVER_SHAPES, COVER_STYLES, type CoverShape, type CoverStyle } from "@/cover/layout";
 import { coverOf, renderCoverPng, suggestCoverTime } from "@/cover/render";
 import { RESIZE_MODES, type ResizeMode } from "@/resize/plan";
@@ -2022,6 +2023,23 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return { elements: targets, placements };
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
+			}
+		},
+		"tracking.follow": async ({ video, follower, at }) => {
+			requireProject();
+			if (at !== undefined && (typeof at !== "number" || !Number.isFinite(at) || at < 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be a time in seconds" });
+			}
+			const toRef = (ref: ApiElementRef) => {
+				const { track, element } = resolveElement(ref);
+				return { trackId: track.id, elementId: element.id };
+			};
+			const followerRef = toRef(follower);
+			try {
+				const result = await followMotion({ editor, video: toRef(video), follower: followerRef, at });
+				return { ...followerRef, ...result };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Tracking failed" });
 			}
 		},
 		"cover.get": () => coverOf(requireProject().settings),

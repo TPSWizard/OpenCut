@@ -823,5 +823,16 @@
   "Top": "顶部",
   "Embed in MP4": "嵌入 MP4",
   "Save PNG": "保存 PNG",
-  "A frame and a title, saved as a picture and embedded as the MP4's cover when exporting.": "一帧画面加标题，可保存为图片，导出时嵌入为 MP4 的封面。"
+  "A frame and a title, saved as a picture and embedded as the MP4's cover when exporting.": "一帧画面加标题，可保存为图片，导出时嵌入为 MP4 的封面。",
+  "Select a video and the sticker, text or clip that should follow something in it.": "请选择一个视频，以及要跟随其中某物的贴纸、文字或片段。",
+  "The follower must be a sticker, text, picture or clip.": "跟随者必须是贴纸、文字、图片或片段。",
+  "Put the playhead where both the video and the follower are.": "请把播放头放在视频和跟随者都存在的位置。",
+  "Place the follower over the thing in the video it should follow.": "请把跟随者放到视频中要跟随的东西上。",
+  "Tracking…": "正在跟踪…",
+  "Following: {keys} keys from {frames} frames; lost in {lost} of them.": "已跟随：{frames} 帧生成 {keys} 个关键帧；其中 {lost} 帧丢失目标。",
+  "Following: {keys} keys from {frames} frames.": "已跟随：{frames} 帧生成 {keys} 个关键帧。",
+  "Follow motion": "跟随运动",
+  "Place the sticker, text or clip over what it should follow at the playhead; it then follows that spot in the video until either clip ends.": "在播放头处把贴纸、文字或片段放到要跟随的东西上；之后它会在视频中跟随该位置，直到任一片段结束。",
+  "Track and follow": "跟踪并跟随",
+  "Not enough of the video to track from there.": "从这里开始可跟踪的视频太短。"
 }

@@ -451,6 +451,22 @@ centred at the bottom: a quarter of the height up on a tall canvas, clear of
 the platforms' buttons, 5 % otherwise. One undo step. The web editor also
 re-wraps caption lines to the new width; the desktop keeps their lines.
 
+## Follow motion
+
+Select a video and a sticker, text, picture or clip placed over something
+in it at the playhead; the multi-selection inspector's **Track and follow**
+tracks the spot under the follower's centre from the playhead until either
+clip ends, and gives the follower position keys that keep it there. Frames
+are decoded at 320 pixels wide, up to 30 a second, and followed by
+`crates/tracking` (the web editor runs the same code as WASM): template
+matching on half-size then full-size frames with normalised
+cross-correlation and sub-pixel peaks; a starting box inside a flat area
+grows until it takes in some edges; a weak match counts as lost and holds
+the last position until the spot is found again. Keys are simplified to
+within a canvas pixel of the path; one undo step. The video's own position
+and scale are read as they are, not its keyframes, and masks cannot follow
+yet (they have no keyframes).
+
 ## Cover
 
 The Project section's **Cover** rows make the project's cover picture: a

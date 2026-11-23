@@ -32,6 +32,7 @@ mod shell;
 mod state;
 mod stickers;
 mod stock;
+mod tracking;
 mod templates;
 mod transcribe;
 mod theme;

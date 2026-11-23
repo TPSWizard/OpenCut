@@ -1,0 +1,12 @@
+[package]
+name = "tracking"
+description = "Point tracking in video frames (template matching, coarse to fine) and the follow keys built from it, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]

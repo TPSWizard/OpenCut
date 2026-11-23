@@ -16,6 +16,7 @@ import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
 import { useT } from "@/i18n";
 import { ColourMatchPanel } from "@/colour-match/components/colour-match-panel";
+import { FollowMotionPanel } from "@/tracking/components/follow-motion-panel";
 import { SplitScreenPanel } from "@/split-screen/components/split-screen-panel";
 
 export function PropertiesPanel() {
@@ -42,6 +43,7 @@ export function PropertiesPanel() {
 				</p>
 				<SplitScreenPanel targets={selectedElements} />
 				<ColourMatchPanel targets={selectedElements} />
+				<FollowMotionPanel targets={selectedElements} />
 			</div>
 		);
 	}
