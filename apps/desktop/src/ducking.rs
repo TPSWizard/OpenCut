@@ -156,6 +156,7 @@ pub(crate) fn measure_clip(
         fade_in_seconds: 0.0,
         fade_out_seconds: 0.0,
         pan: 0.0,
+        fx: Default::default(),
         volume: Default::default(),
         retime: None,
     };

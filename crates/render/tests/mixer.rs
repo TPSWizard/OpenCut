@@ -48,6 +48,7 @@ fn follows_volume_keyframes() {
         fade_in_seconds: 0.0,
         fade_out_seconds: 0.0,
         pan: 0.0,
+        fx: Default::default(),
         volume,
         retime: None,
     };

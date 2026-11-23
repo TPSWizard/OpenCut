@@ -1049,6 +1049,29 @@ export interface EditorApiMethods {
 			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
 		};
 	};
+	/** The audio effect presets (from the shared Rust list). */
+	"audio.fxPresets": {
+		params: Record<string, never>;
+		result: { id: string; label: string; low: number; mid: number; high: number; compressor: [number, number] | null; limiter: number | null }[];
+	};
+	/**
+	 * Audio effects on an audio or video clip: a preset and/or the equaliser
+	 * bands (`low` 120 Hz shelf, `mid` 1 kHz bell, `high` 8 kHz shelf; -12 to
+	 * 12 dB), `compressor` ({ threshold dB, ratio } or null) and `limiter`
+	 * (ceiling dB or null). Played live and in exports by the shared Rust
+	 * code; the media is not changed. One undo step.
+	 */
+	"audio.setFx": {
+		params: ApiElementLocator & {
+			preset?: string;
+			low?: number;
+			mid?: number;
+			high?: number;
+			compressor?: { threshold: number; ratio: number } | null;
+			limiter?: number | null;
+		};
+		result: { trackId: string; elementId: string; low: number; mid: number; high: number; compressor: [number, number] | null; limiter: number | null };
+	};
 	/**
 	 * Motion tracking: the spot of `video` under `follower`'s centre at
 	 * timeline time `at` (default: the playhead) is tracked through the video

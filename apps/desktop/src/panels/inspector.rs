@@ -1839,6 +1839,86 @@ impl Render for InspectorPanel {
                                 }),
                         );
                     }
+                    // Audio effects: equaliser, compressor and limiter, kept as
+                    // `audio.*` params and played live (`voice::apply_audio_fx`
+                    // when the clip's audio is prepared, for preview and export).
+                    let fx = editor::clip_audio_fx(&params);
+                    let mut preset_row = div().flex().flex_wrap().items_center().gap(px(4.));
+                    for (id, label, preset) in voice::audio_fx_presets() {
+                        let state = self.state.clone();
+                        preset_row = preset_row.child(
+                            Button::new(eid("audio-fx-preset", id), t(label))
+                                .variant(if fx == preset { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params
+                                        .set("audio.eq.low", preset.low_db)
+                                        .set("audio.eq.mid", preset.mid_db)
+                                        .set("audio.eq.high", preset.high_db)
+                                        .set("audio.comp.enabled", preset.compressor.is_some())
+                                        .set("audio.comp.threshold", preset.compressor.map_or(voice::DEFAULT_THRESHOLD_DB, |c| c.0))
+                                        .set("audio.comp.ratio", preset.compressor.map_or(voice::DEFAULT_RATIO, |c| c.1))
+                                        .set("audio.limit.enabled", preset.limiter.is_some())
+                                        .set("audio.limit.ceiling", preset.limiter.unwrap_or(voice::DEFAULT_CEILING_DB));
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    let mut fx_rows = Vec::new();
+                    for (key, label, min, max, default) in [
+                        ("audio.eq.low", "Bass (dB)", -voice::EQ_RANGE_DB, voice::EQ_RANGE_DB, 0.0),
+                        ("audio.eq.mid", "Mids (dB)", -voice::EQ_RANGE_DB, voice::EQ_RANGE_DB, 0.0),
+                        ("audio.eq.high", "Treble (dB)", -voice::EQ_RANGE_DB, voice::EQ_RANGE_DB, 0.0),
+                        ("audio.comp.threshold", "Compressor threshold (dB)", -60.0, 0.0, voice::DEFAULT_THRESHOLD_DB),
+                        ("audio.comp.ratio", "Compressor ratio", 1.0, 20.0, voice::DEFAULT_RATIO),
+                        ("audio.limit.ceiling", "Limiter ceiling (dB)", -12.0, 0.0, voice::DEFAULT_CEILING_DB),
+                    ] {
+                        fx_rows.push(self.row(
+                            t(label),
+                            key,
+                            "0",
+                            number_text(params.number(key, default)),
+                            None,
+                            window,
+                            cx,
+                            Box::new(move |text, state, cx| {
+                                if let Ok(value) = text.trim().parse::<f64>() {
+                                    if value.is_finite() {
+                                        let mut params = Params::new();
+                                        params.set(key, value.clamp(min, max));
+                                        state.update_selected_params(params, cx);
+                                    }
+                                }
+                            }),
+                        ));
+                    }
+                    let mut switch_row = div().flex().flex_wrap().items_center().gap(px(4.));
+                    for (key, label, on) in [
+                        ("audio.comp.enabled", "Compressor", fx.compressor.is_some()),
+                        ("audio.limit.enabled", "Limiter", fx.limiter.is_some()),
+                    ] {
+                        let state = self.state.clone();
+                        switch_row = switch_row.child(
+                            Button::new(eid("audio-fx-switch", key), t(label))
+                                .variant(if on { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set(key, !on);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    content = content
+                        .child(self.heading(t("Audio effects"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Equaliser, compressor and limiter on this clip, heard as it plays and in exports; the original stays as it is.",
+                        )))
+                        .child(preset_row)
+                        .children(fx_rows)
+                        .child(switch_row);
+
                     // Enhance voice: one click for clearer, even speech.
                     let enhance_state = self.state.clone();
                     content = content

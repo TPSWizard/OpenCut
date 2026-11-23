@@ -1,3 +1,4 @@
+import { applyFxToBuffer, audioFxOf, fxKey, isIdentityFx } from "@/audio-fx/fx";
 import type { EditorCore } from "@/core";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { clampRetimeRate, shouldMaintainPitch } from "@/retime/rate";
@@ -496,6 +497,8 @@ export class AudioManager {
 		clip: AudioClipSource;
 	}): boolean {
 		return (
+			// Audio effects are run over the clip's prepared buffer.
+			!isIdentityFx(audioFxOf(clip.timelineElement.params as Record<string, unknown>)) ||
 			this.hasCurveRetime({ clip }) ||
 			hasVariableRetime({ retime: clip.retime }) ||
 			hasGainAutomation({ element: clip.timelineElement }) ||
@@ -567,6 +570,7 @@ export class AudioManager {
 			trimStart: clip.trimStart,
 			trimEnd: clip.trimEnd,
 			retime: clip.retime ?? null,
+			fx: fxKey(audioFxOf(clip.timelineElement.params as Record<string, unknown>)),
 		});
 	}
 
@@ -592,7 +596,7 @@ export class AudioManager {
 				return null;
 			}
 
-			return await renderRetimedBuffer({
+			const prepared = await renderRetimedBuffer({
 				audioContext,
 				sourceBuffer: decodedBuffer,
 				trimStart: clip.trimStart,
@@ -600,6 +604,7 @@ export class AudioManager {
 				retime: clip.retime,
 				maintainPitch: clip.retime?.maintainPitch === true,
 			});
+			return applyFxToBuffer({ buffer: prepared, fx: audioFxOf(clip.timelineElement.params as Record<string, unknown>) });
 		})();
 
 		this.preparedClipBuffers.set(cacheKey, promise);

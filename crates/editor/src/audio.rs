@@ -34,6 +34,16 @@ pub struct AudioClipPlan {
     pub fade_out_seconds: f64,
     /// Stereo pan from -1 (left) to 1 (right); see [`pan_stereo`].
     pub pan: f64,
+    /// Equaliser, compressor and limiter (`audio.*` params); see [`clip_audio_fx`].
+    pub fx: voice::AudioFx,
+}
+
+/// A clip's audio effects from its `audio.*` params.
+pub fn clip_audio_fx(params: &crate::Params) -> voice::AudioFx {
+    voice::AudioFx::from_params(
+        |key| params.get(key).and_then(crate::params::ParamValue::as_number),
+        |key| params.get(key).and_then(crate::params::ParamValue::as_bool),
+    )
 }
 
 /// Longest fade in or out, in seconds.
@@ -168,6 +178,7 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
                 fade_in_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).0,
                 fade_out_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).1,
                 pan: clip_pan(&element.params),
+                fx: clip_audio_fx(&element.params),
             });
         }
     }

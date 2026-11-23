@@ -10,6 +10,7 @@ import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
 import { BeatsSection } from "@/beats/components/beats-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
 import { VoiceSection } from "@/voice/components/voice-section";
+import { AudioFxSection } from "@/audio-fx/components/audio-fx-section";
 import { FillersSection } from "@/fillers/components/fillers-section";
 import { TranscriptSection } from "@/transcript/components/transcript-section";
 import type { ReactNode } from "react";
@@ -228,6 +229,7 @@ function buildAudioTab({
 					paramKeys={AUDIO_PARAM_KEYS}
 					sectionKey="audio"
 				/>
+				<AudioFxSection element={element} trackId={trackId} />
 				<LoudnessSection element={element} trackId={trackId} />
 				<DenoiseSection element={element} trackId={trackId} />
 				<VoiceSection element={element} trackId={trackId} />

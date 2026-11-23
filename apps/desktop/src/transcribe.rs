@@ -330,6 +330,7 @@ pub(crate) fn clip_plan(project: &Project, element_id: &str) -> Option<AudioClip
         fade_in_seconds: 0.0,
         fade_out_seconds: 0.0,
         pan: 0.0,
+        fx: Default::default(),
         volume: Default::default(),
         retime: None,
     })
@@ -414,6 +415,7 @@ mod tests {
             fade_in_seconds: 0.0,
             fade_out_seconds: 0.0,
             pan: 0.0,
+            fx: Default::default(),
             volume: Default::default(),
             retime: None,
         };

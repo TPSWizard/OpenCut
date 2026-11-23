@@ -1,7 +1,9 @@
-//! Audio for clips whose speed changes or that play backwards: the clip's
-//! source span is decoded once and resampled along the retime map into a
-//! WAV at timeline pace, cached by content key, so the mixer and the
-//! exporter can treat it as a plain clip. Pitch is not preserved.
+//! Audio for clips whose speed changes, that play backwards or that have
+//! audio effects (equaliser, compressor, limiter; `voice::apply_audio_fx`):
+//! the clip's source span is decoded once, resampled along the retime map
+//! and run through the effects into a WAV at timeline pace, cached by
+//! content key, so the mixer and the exporter can treat it as a plain clip.
+//! Pitch is not preserved.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -15,17 +17,18 @@ const CHANNELS: u16 = 2;
 
 /// Whether the clip needs a rendered copy (anything but a plain 1x).
 pub fn needs_render(clip: &AudioClipPlan) -> bool {
-    clip.retime.as_ref().is_some_and(|retime| !retime.is_identity())
+    clip.retime.as_ref().is_some_and(|retime| !retime.is_identity()) || !clip.fx.is_identity()
 }
 
 fn cache_key(clip: &AudioClipPlan) -> String {
     let retime = clip.retime.as_ref().map(|retime| serde_json::to_string(retime).unwrap_or_default()).unwrap_or_default();
     let text = format!(
-        "{}|{}|{}|{}|{retime}",
+        "{}|{}|{}|{}|{retime}|{}",
         clip.path.display(),
         clip.source_start.as_ticks(),
         clip.source_end.as_ticks(),
-        clip.timeline_duration.as_ticks()
+        clip.timeline_duration.as_ticks(),
+        if clip.fx.is_identity() { String::new() } else { clip.fx.key() }
     );
     let mut hash: u64 = 0xcbf29ce484222325;
     for byte in text.bytes() {
@@ -46,6 +49,7 @@ pub fn rendered_clip(ffmpeg: &Arc<Ffmpeg>, clip: &AudioClipPlan, cache_dir: &Pat
         source_start: time::MediaTime::ZERO,
         source_end: clip.timeline_duration,
         retime: None,
+        fx: voice::AudioFx::default(),
         ..clip.clone()
     })
 }
@@ -76,17 +80,23 @@ fn render(ffmpeg: &Arc<Ffmpeg>, clip: &AudioClipPlan, output: &Path) -> Result<(
         return Err("No audio could be read from the clip".to_owned());
     }
     let out_frames = (duration * SAMPLE_RATE as f64).round() as usize;
-    let mut out: Vec<i16> = Vec::with_capacity(out_frames * CHANNELS as usize);
+    let mut planes: Vec<Vec<f32>> = vec![Vec::with_capacity(out_frames); CHANNELS as usize];
     for index in 0..out_frames {
         let seconds = index as f64 / SAMPLE_RATE as f64;
         let position = retime.source_offset(seconds, duration) * SAMPLE_RATE as f64;
         let lower = position.floor().max(0.0) as usize;
         let fraction = (position - lower as f64).clamp(0.0, 1.0) as f32;
-        for channel in 0..CHANNELS as usize {
+        for (channel, plane) in planes.iter_mut().enumerate() {
             let a = source.get(lower * CHANNELS as usize + channel).copied().unwrap_or(0.0);
             let b = source.get((lower + 1) * CHANNELS as usize + channel).copied().unwrap_or(a);
-            let sample = a * (1.0 - fraction) + b * fraction;
-            out.push((sample.clamp(-1.0, 1.0) * 32767.0).round() as i16);
+            plane.push(a * (1.0 - fraction) + b * fraction);
+        }
+    }
+    voice::apply_audio_fx(&mut planes, SAMPLE_RATE as f32, &clip.fx);
+    let mut out: Vec<i16> = Vec::with_capacity(out_frames * CHANNELS as usize);
+    for index in 0..out_frames {
+        for plane in &planes {
+            out.push((plane[index].clamp(-1.0, 1.0) * 32767.0).round() as i16);
         }
     }
     write_wav(output, &out, SAMPLE_RATE, CHANNELS)
@@ -146,6 +156,7 @@ mod tests {
             fade_in_seconds: 0.0,
             fade_out_seconds: 0.0,
             pan: 0.0,
+            fx: Default::default(),
             volume: Default::default(),
             retime: Some(editor::Retime::constant(2.0)),
         };
@@ -157,5 +168,49 @@ mod tests {
         assert!(!needs_render(&clip));
         clip.retime = Some(editor::Retime::constant(1.0));
         assert!(!needs_render(&clip));
+        // Audio effects alone need a rendered copy, keyed by their settings.
+        let plain = cache_key(&clip);
+        clip.fx = voice::AudioFx { low_db: 3.0, ..Default::default() };
+        assert!(needs_render(&clip));
+        assert_ne!(cache_key(&clip), plain);
+    }
+
+    /// A loud tone through a clip with a -12 dB limiter comes out of the
+    /// cache under the ceiling, and the copy plays at 1x with no effects
+    /// left to apply. Needs FFmpeg; skips otherwise.
+    #[test]
+    fn renders_audio_effects_into_the_cached_copy() {
+        let Ok(ffmpeg) = Ffmpeg::locate() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("tone.wav");
+        let tone: Vec<i16> = (0..SAMPLE_RATE as usize)
+            .flat_map(|i| {
+                let value = (0.9 * (2.0 * std::f64::consts::PI * 300.0 * i as f64 / SAMPLE_RATE as f64).sin() * 32767.0) as i16;
+                [value, value]
+            })
+            .collect();
+        write_wav(&source, &tone, SAMPLE_RATE, CHANNELS).unwrap();
+        let clip = AudioClipPlan {
+            element_id: "e".into(),
+            media_id: "m".into(),
+            path: source,
+            timeline_start: time::MediaTime::ZERO,
+            timeline_duration: time::MediaTime::from_seconds_f64(1.0).unwrap(),
+            source_start: time::MediaTime::ZERO,
+            source_end: time::MediaTime::from_seconds_f64(1.0).unwrap(),
+            volume_db: 0.0,
+            fade_in_seconds: 0.0,
+            fade_out_seconds: 0.0,
+            pan: 0.0,
+            fx: voice::AudioFx { limiter: Some(-12.0), ..Default::default() },
+            volume: Default::default(),
+            retime: None,
+        };
+        let rendered = rendered_clip(&ffmpeg, &clip, dir.path()).unwrap();
+        assert!(rendered.fx.is_identity() && rendered.retime.is_none() && !needs_render(&rendered));
+        let bytes = std::fs::read(&rendered.path).unwrap();
+        let peak = bytes[44..].chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]).unsigned_abs()).max().unwrap();
+        let ceiling = (10f64.powf(-12.0 / 20.0) * 32767.0).round() as u16 + 1;
+        assert!(peak <= ceiling && peak > ceiling - 400, "peak {peak}, ceiling {ceiling}");
     }
 }

@@ -1606,6 +1606,7 @@ dependencies = [
  "thiserror 2.0.19",
  "time",
  "uuid",
+ "voice",
  "zip",
 ]
 
@@ -5096,6 +5097,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.19",
  "time",
+ "voice",
 ]
 
 [[package]]

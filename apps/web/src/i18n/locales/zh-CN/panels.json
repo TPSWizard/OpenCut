@@ -395,5 +395,21 @@
   "Tracking… {percent}%": "正在跟踪… {percent}%",
   "Following: {keys} keys from {frames} frames; lost in {lost} of them.": "已跟随：{frames} 帧生成 {keys} 个关键帧；其中 {lost} 帧丢失目标。",
   "Following: {keys} keys from {frames} frames.": "已跟随：{frames} 帧生成 {keys} 个关键帧。",
-  "Track and follow": "跟踪并跟随"
+  "Track and follow": "跟踪并跟随",
+  "Audio effects": "音频效果",
+  "Equaliser, compressor and limiter on this clip, heard as it plays and in exports; the original stays as it is.": "此片段的均衡器、压缩器和限制器，播放和导出时都会生效；原始文件保持不变。",
+  "Voice clarity": "人声清晰",
+  "Podcast": "播客",
+  "Bass boost": "低音增强",
+  "Bright": "明亮",
+  "Warm": "温暖",
+  "Loud and even": "响亮均匀",
+  "Bass (dB)": "低音（dB）",
+  "Mids (dB)": "中音（dB）",
+  "Treble (dB)": "高音（dB）",
+  "Compressor": "压缩器",
+  "Compressor threshold (dB)": "压缩器阈值（dB）",
+  "Compressor ratio": "压缩比",
+  "Limiter": "限制器",
+  "Limiter ceiling (dB)": "限制器上限（dB）"
 }

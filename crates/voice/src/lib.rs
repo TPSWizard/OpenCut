@@ -21,6 +21,11 @@
 
 use std::f32::consts::PI;
 
+mod audio_fx;
+pub use audio_fx::{
+    AUDIO_FX_PARAMS, AudioFx, DEFAULT_CEILING_DB, DEFAULT_RATIO, DEFAULT_THRESHOLD_DB, EQ_HIGH_HZ, EQ_LOW_HZ, EQ_MID_HZ, EQ_RANGE_DB, apply_audio_fx,
+    audio_fx_presets,
+};
 mod enhance;
 pub use enhance::{ENHANCE_TARGET_LUFS, EnhanceReport, enhance_voice, integrated_loudness};
 

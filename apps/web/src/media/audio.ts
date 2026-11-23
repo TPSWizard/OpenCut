@@ -1,3 +1,4 @@
+import { applyFxToBuffer, audioFxOf, isIdentityFx } from "@/audio-fx/fx";
 import type {
 	AudioElement,
 	VideoElement,
@@ -664,20 +665,25 @@ export async function createTimelineAudioBuffer({
 	for (const element of audioElements) {
 		if (element.muted) continue;
 
-		const renderedBuffer =
+		// Audio effects run over the clip's span at timeline pace, as in playback.
+		const fx = audioFxOf(element.timelineElement.params as Record<string, unknown>);
+		const retimed =
 			shouldMaintainPitch({
 				rate: element.retime?.rate ?? 1,
 				maintainPitch: element.retime?.maintainPitch,
-			}) || hasVariableRetime({ retime: element.retime })
-			? await renderRetimedBuffer({
-					audioContext: context,
-					sourceBuffer: element.buffer,
-					trimStart: element.trimStart,
-					clipDuration: element.duration,
-					retime: element.retime,
-					maintainPitch: true,
-				})
-			: undefined;
+			}) ||
+			hasVariableRetime({ retime: element.retime }) ||
+			!isIdentityFx(fx)
+				? await renderRetimedBuffer({
+						audioContext: context,
+						sourceBuffer: element.buffer,
+						trimStart: element.trimStart,
+						clipDuration: element.duration,
+						retime: element.retime,
+						maintainPitch: true,
+					})
+				: undefined;
+		const renderedBuffer = retimed ? applyFxToBuffer({ buffer: retimed, fx }) : undefined;
 
 		mixAudioChannels({
 			element,

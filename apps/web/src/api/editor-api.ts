@@ -112,6 +112,8 @@ import { applySplitScreen } from "@/split-screen/apply";
 import { matchColours } from "@/colour-match/apply";
 import { resizeProject } from "@/resize/apply";
 import { followMotion } from "@/tracking/follow";
+import { audioFxOf, audioFxPresetList, fxParams } from "@/audio-fx/fx";
+import { UpdateElementsCommand } from "@/commands/timeline/element/update-elements";
 import { COVER_SHAPES, COVER_STYLES, type CoverShape, type CoverStyle } from "@/cover/layout";
 import { coverOf, renderCoverPng, suggestCoverTime } from "@/cover/render";
 import { RESIZE_MODES, type ResizeMode } from "@/resize/plan";
@@ -2024,6 +2026,48 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
 			}
+		},
+		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"audio.setFx": ({ elementId, trackId, preset, low, mid, high, compressor, limiter }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "audio" && element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Audio effects go on audio and video clips" });
+			}
+			let fx = audioFxOf(element.params as Record<string, unknown>);
+			if (preset !== undefined) {
+				const found = audioFxPresetList().find((item) => item.id === preset);
+				if (!found) throw new EditorApiError({ code: "invalid_params", message: `preset must be one of ${audioFxPresetList().map((item) => item.id).join(", ")}` });
+				fx = { ...found.fx };
+			}
+			const band = (value: unknown, name: string) => {
+				if (typeof value !== "number" || !Number.isFinite(value) || value < -12 || value > 12) {
+					throw new EditorApiError({ code: "invalid_params", message: `${name} must be -12 to 12 dB` });
+				}
+				return value;
+			};
+			if (low !== undefined) fx.low = band(low, "low");
+			if (mid !== undefined) fx.mid = band(mid, "mid");
+			if (high !== undefined) fx.high = band(high, "high");
+			if (compressor !== undefined) {
+				if (compressor === null) fx.compressor = null;
+				else if (
+					typeof compressor.threshold === "number" && compressor.threshold >= -60 && compressor.threshold <= 0 &&
+					typeof compressor.ratio === "number" && compressor.ratio >= 1 && compressor.ratio <= 20
+				) fx.compressor = [compressor.threshold, compressor.ratio];
+				else throw new EditorApiError({ code: "invalid_params", message: "compressor needs threshold -60 to 0 dB and ratio 1 to 20, or null" });
+			}
+			if (limiter !== undefined) {
+				if (limiter === null) fx.limiter = null;
+				else if (typeof limiter === "number" && limiter >= -12 && limiter <= 0) fx.limiter = limiter;
+				else throw new EditorApiError({ code: "invalid_params", message: "limiter must be a ceiling of -12 to 0 dB, or null" });
+			}
+			editor.command.execute({
+				command: new UpdateElementsCommand({
+					updates: [{ trackId: track.id, elementId: element.id, patch: { params: { ...element.params, ...fxParams(fx) } } as Partial<TimelineElement> }],
+				}),
+			});
+			return { trackId: track.id, elementId: element.id, ...fx };
 		},
 		"tracking.follow": async ({ video, follower, at }) => {
 			requireProject();

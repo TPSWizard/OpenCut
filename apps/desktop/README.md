@@ -451,6 +451,20 @@ centred at the bottom: a quarter of the height up on a tall canvas, clear of
 the platforms' buttons, 5 % otherwise. One undo step. The web editor also
 re-wraps caption lines to the new width; the desktop keeps their lines.
 
+## Audio effects
+
+An audio or video clip's inspector has **Audio effects**: presets (Voice
+clarity, Podcast, Bass boost, Bright, Warm, Loud and even), **Bass**,
+**Mids** and **Treble** (a 120 Hz low shelf, a 1 kHz bell and an 8 kHz high
+shelf, ±12 dB), a **Compressor** (threshold and ratio; linked channels,
+10 ms attack, 150 ms release, 6 dB soft knee, make-up gain, and a safety
+limiter at -0.1 dBFS when the limiter is off) and a
+**Limiter** (ceiling). They are kept as `audio.*` params and the clip's
+media is not changed: when a clip has any, its audio is prepared through
+`voice::apply_audio_fx` into the processed-audio cache (with any speed
+change), which both the preview mixer and the export play, so what you hear
+is what is exported. The web editor runs the same code as WASM.
+
 ## Follow motion
 
 Select a video and a sticker, text, picture or clip placed over something

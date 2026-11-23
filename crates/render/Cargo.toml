@@ -22,6 +22,7 @@ pollster = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
+voice = { workspace = true }
 
 [dev-dependencies]
 effects = { workspace = true }
