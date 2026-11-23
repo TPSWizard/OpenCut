@@ -110,6 +110,8 @@ import { clearReframe, reframeClip } from "@/reframe/scan";
 import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
 import { applySplitScreen } from "@/split-screen/apply";
 import { matchColours } from "@/colour-match/apply";
+import { resizeProject } from "@/resize/apply";
+import { RESIZE_MODES, type ResizeMode } from "@/resize/plan";
 import { SPLIT_LAYOUTS, splitLayout } from "@/split-screen/layout";
 import { ZOOM_STRENGTHS, type ZoomStrength } from "@/auto-zoom/zoom";
 import { REFRAME_CAMERAS } from "@/reframe/path";
@@ -2018,6 +2020,27 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return { elements: targets, placements };
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
+			}
+		},
+		"project.resize": ({ width, height, mode }) => {
+			requireProject();
+			const chosen = (mode ?? "fit") as ResizeMode;
+			if (!RESIZE_MODES.includes(chosen)) {
+				throw new EditorApiError({ code: "invalid_params", message: `mode must be one of ${RESIZE_MODES.join(", ")}` });
+			}
+			if (typeof width !== "number" || typeof height !== "number" || !Number.isFinite(width) || !Number.isFinite(height)) {
+				throw new EditorApiError({ code: "invalid_params", message: "width and height must be numbers" });
+			}
+			try {
+				const result = resizeProject({
+					editor,
+					canvas: { width, height },
+					mode: chosen,
+					settings: { canvasSizeMode: "custom", lastCustomCanvasSize: { width: Math.round(width), height: Math.round(height) } },
+				});
+				return result;
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : "Resize failed" });
 			}
 		},
 		"color.match": async ({ reference, targets, at }) => {

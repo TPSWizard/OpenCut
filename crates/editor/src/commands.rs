@@ -217,6 +217,12 @@ pub enum Command {
     },
     RenameProject(String),
     UpdateSettings(SettingsPatch),
+    /// A new canvas size with every clip, text and caption re-fitted
+    /// ([`crate::resize_project`]).
+    ResizeProject {
+        canvas: CanvasSize,
+        mode: crate::ResizeMode,
+    },
     /// Sets a keyframe of `path` at a timeline time (relative times are
     /// stored). A key already at that time is replaced.
     SetKeyframe {
@@ -1376,6 +1382,13 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             if let Some(background) = &patch.background {
                 project.settings.background = background.clone();
             }
+            Outcome::None
+        }
+        Command::ResizeProject { canvas, mode } => {
+            if canvas.width < 16 || canvas.height < 16 || canvas.width > 8192 || canvas.height > 8192 {
+                return Err(EditorError::InvalidParams("canvas must be between 16 and 8192 pixels".to_owned()));
+            }
+            crate::resize_project(project, *canvas, *mode);
             Outcome::None
         }
     };

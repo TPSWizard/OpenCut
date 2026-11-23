@@ -34,6 +34,16 @@ import { OcSquarePlusIcon } from "@/components/icons";
 import type { TCanvasSize } from "@/project/types";
 import { useT } from "@/i18n";
 import { LanguageSelect } from "@/i18n/components/language-select";
+import { applyCanvasSettings as applySettings, type ContentChoice, readContentChoice, saveContentChoice } from "@/resize/choice";
+
+/** What happens to the content when the canvas size changes. */
+const CONTENT_LABELS: Record<ContentChoice, string> = {
+	fit: "Fit (whole picture)",
+	fill: "Fill (crop the edges)",
+	keep: "Keep sizes",
+	none: "Canvas only",
+};
+
 
 type SettingsView = "project-info" | "background" | "plugins";
 
@@ -111,6 +121,11 @@ export function SettingsView() {
 	const canvasSizeMode = activeProject.settings.canvasSizeMode ?? "preset";
 	const lastCustomCanvasSize =
 		activeProject.settings.lastCustomCanvasSize ?? null;
+	const [contentChoice, setContentChoice] = useState<ContentChoice>(readContentChoice);
+
+	/** Applies new settings; a new canvas size re-fits the content unless "canvas only" is chosen. */
+	const applyCanvasSettings = (settings: Parameters<typeof editor.project.updateSettings>[0]["settings"]) =>
+		applySettings({ editor, settings, choice: contentChoice });
 
 	const presetItems = canvasPresets.map((preset, index) => {
 		const ratio = dimensionToAspectRatio(preset);
@@ -156,14 +171,12 @@ export function SettingsView() {
 			return;
 		}
 
-		editor.project.updateSettings({
-			settings: {
-				...(shouldUpdateCanvasSize ? { canvasSize } : {}),
-				...(shouldUpdateCanvasSizeMode
-					? { canvasSizeMode: "custom" as const }
-					: {}),
-				lastCustomCanvasSize: canvasSize,
-			},
+		applyCanvasSettings({
+			...(shouldUpdateCanvasSize ? { canvasSize } : {}),
+			...(shouldUpdateCanvasSizeMode
+				? { canvasSizeMode: "custom" as const }
+				: {}),
+			lastCustomCanvasSize: canvasSize,
 		});
 	};
 
@@ -180,13 +193,11 @@ export function SettingsView() {
 
 		if (!shouldUpdateCanvasSize && !shouldUpdateCanvasSizeMode) return;
 
-		editor.project.updateSettings({
-			settings: {
-				...(shouldUpdateCanvasSize ? { canvasSize } : {}),
-				...(shouldUpdateCanvasSizeMode
-					? { canvasSizeMode: "preset" as const }
-					: {}),
-			},
+		applyCanvasSettings({
+			...(shouldUpdateCanvasSize ? { canvasSize } : {}),
+			...(shouldUpdateCanvasSizeMode
+				? { canvasSizeMode: "preset" as const }
+				: {}),
 		});
 	};
 
@@ -283,6 +294,28 @@ export function SettingsView() {
 							<SectionTitle className="flex-1">{t("Aspect ratio")}</SectionTitle>
 						</SectionHeader>
 						<SectionContent className="px-2 flex flex-col gap-1 pb-2">
+							<div className="flex flex-col gap-1 px-2 pb-1">
+								<span className="text-muted-foreground text-xs">{t("Content when resizing")}</span>
+								<Select
+									value={contentChoice}
+									onValueChange={(value) => {
+										const choice = value as ContentChoice;
+										setContentChoice(choice);
+										saveContentChoice(choice);
+									}}
+								>
+									<SelectTrigger className="h-8 w-full text-xs" data-testid="resize-content" aria-label={t("Content when resizing")}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{(["fit", "fill", "keep", "none"] as const).map((choice) => (
+											<SelectItem key={choice} value={choice}>
+												{t(CONTENT_LABELS[choice])}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 							{presetItems.map((preset) => (
 								<AspectRatioItem
 									key={preset.id}

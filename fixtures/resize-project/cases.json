@@ -1,0 +1,365 @@
+{
+  "about": "Resize project (row 69): how much the content grows (fit = whole old frame shows, fill = new frame covered, keep = same pixel sizes), the scale factor a video, picture, sticker or shape gets (its drawn size follows the content once its fit to the new canvas is allowed for), the factor a text element gets (font size follows the canvas height), and the caption bottom margin (a share of the height: clear of platform buttons on a tall canvas). Positions and pixel settings (outline width, shadow offset and blur, mask feather and stroke) scale by `content`. Expected values from an independent Python reference; apps/web/src/resize/plan.ts and crates/editor/src/resize.rs are both checked against them.",
+  "cases": [
+    {
+      "name": "landscape to portrait (fit)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1920
+      ],
+      "mode": "fit",
+      "source": [
+        1920,
+        1080
+      ],
+      "content": 0.5625,
+      "picture": 1.0,
+      "text": 0.31640625,
+      "captionMargin": 0.25
+    },
+    {
+      "name": "landscape to portrait (fill)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1920
+      ],
+      "mode": "fill",
+      "source": [
+        1920,
+        1080
+      ],
+      "content": 1.7777777777777777,
+      "picture": 3.1604938271604937,
+      "text": 1.0,
+      "captionMargin": 0.25
+    },
+    {
+      "name": "landscape to portrait (keep)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1920
+      ],
+      "mode": "keep",
+      "source": [
+        1920,
+        1080
+      ],
+      "content": 1.0,
+      "picture": 1.7777777777777777,
+      "text": 0.5625,
+      "captionMargin": 0.25
+    },
+    {
+      "name": "portrait to landscape (fit)",
+      "from": [
+        1080,
+        1920
+      ],
+      "to": [
+        1920,
+        1080
+      ],
+      "mode": "fit",
+      "source": [
+        1080,
+        1920
+      ],
+      "content": 0.5625,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "portrait to landscape (fill)",
+      "from": [
+        1080,
+        1920
+      ],
+      "to": [
+        1920,
+        1080
+      ],
+      "mode": "fill",
+      "source": [
+        1080,
+        1920
+      ],
+      "content": 1.7777777777777777,
+      "picture": 3.1604938271604937,
+      "text": 3.1604938271604937,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "portrait to landscape (keep)",
+      "from": [
+        1080,
+        1920
+      ],
+      "to": [
+        1920,
+        1080
+      ],
+      "mode": "keep",
+      "source": [
+        1080,
+        1920
+      ],
+      "content": 1.0,
+      "picture": 1.7777777777777777,
+      "text": 1.7777777777777777,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "landscape to square, square source (fit)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1080
+      ],
+      "mode": "fit",
+      "source": [
+        500,
+        500
+      ],
+      "content": 0.5625,
+      "picture": 0.5625,
+      "text": 0.5625,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "landscape to square, square source (fill)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1080
+      ],
+      "mode": "fill",
+      "source": [
+        500,
+        500
+      ],
+      "content": 1.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "landscape to square, square source (keep)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        1080,
+        1080
+      ],
+      "mode": "keep",
+      "source": [
+        500,
+        500
+      ],
+      "content": 1.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "1080p to 4K, tall source (fit)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        3840,
+        2160
+      ],
+      "mode": "fit",
+      "source": [
+        720,
+        1280
+      ],
+      "content": 2.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "1080p to 4K, tall source (fill)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        3840,
+        2160
+      ],
+      "mode": "fill",
+      "source": [
+        720,
+        1280
+      ],
+      "content": 2.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "1080p to 4K, tall source (keep)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        3840,
+        2160
+      ],
+      "mode": "keep",
+      "source": [
+        720,
+        1280
+      ],
+      "content": 1.0,
+      "picture": 0.5,
+      "text": 0.5,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "same size (fit)",
+      "from": [
+        1280,
+        720
+      ],
+      "to": [
+        1280,
+        720
+      ],
+      "mode": "fit",
+      "source": [
+        640,
+        480
+      ],
+      "content": 1.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "same size (fill)",
+      "from": [
+        1280,
+        720
+      ],
+      "to": [
+        1280,
+        720
+      ],
+      "mode": "fill",
+      "source": [
+        640,
+        480
+      ],
+      "content": 1.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "same size (keep)",
+      "from": [
+        1280,
+        720
+      ],
+      "to": [
+        1280,
+        720
+      ],
+      "mode": "keep",
+      "source": [
+        640,
+        480
+      ],
+      "content": 1.0,
+      "picture": 1.0,
+      "text": 1.0,
+      "captionMargin": 0.05
+    },
+    {
+      "name": "wide to tall, sticker sized source (fit)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        720,
+        1280
+      ],
+      "mode": "fit",
+      "source": [
+        300,
+        120
+      ],
+      "content": 0.375,
+      "picture": 1.0000000000000002,
+      "text": 0.31640625,
+      "captionMargin": 0.25
+    },
+    {
+      "name": "wide to tall, sticker sized source (fill)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        720,
+        1280
+      ],
+      "mode": "fill",
+      "source": [
+        300,
+        120
+      ],
+      "content": 1.1851851851851851,
+      "picture": 3.160493827160494,
+      "text": 1.0,
+      "captionMargin": 0.25
+    },
+    {
+      "name": "wide to tall, sticker sized source (keep)",
+      "from": [
+        1920,
+        1080
+      ],
+      "to": [
+        720,
+        1280
+      ],
+      "mode": "keep",
+      "source": [
+        300,
+        120
+      ],
+      "content": 1.0,
+      "picture": 2.666666666666667,
+      "text": 0.84375,
+      "captionMargin": 0.25
+    }
+  ]
+}

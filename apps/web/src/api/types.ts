@@ -1050,6 +1050,25 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Resize project: the canvas becomes `width` × `height` (16 to 8192) and
+	 * every clip, text and caption is re-fitted. `mode` (default fit): fit
+	 * shows the whole old picture, fill covers the new canvas with the edges
+	 * cropped, keep keeps pixel sizes. Positions, position and scale
+	 * keyframes, outline/shadow pixels and mask feather/stroke follow;
+	 * captions are laid out again at the bottom. One undo step.
+	 */
+	"project.resize": {
+		params: { width: number; height: number; mode?: "fit" | "fill" | "keep" };
+		result: {
+			from: { width: number; height: number };
+			to: { width: number; height: number };
+			mode: "fit" | "fill" | "keep";
+			content: number;
+			changed: number;
+			captions: number;
+		};
+	};
+	/**
 	 * Colour match: `targets` (video or picture clips) take on the colours of
 	 * `reference`'s frame at timeline time `at` seconds (default: the playhead;
 	 * the reference's middle when outside it). Per-channel Lab mean and spread

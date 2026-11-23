@@ -365,5 +365,10 @@
   "Matching colours…": "正在匹配颜色…",
   "{count} clips matched.": "已匹配 {count} 个片段。",
   "Match to the first selected": "匹配第一个选中的片段",
-  "1 clip matched.": "已匹配 1 个片段。"
+  "1 clip matched.": "已匹配 1 个片段。",
+  "Content when resizing": "调整尺寸时的内容",
+  "Keep sizes": "保持尺寸",
+  "Fit (whole picture)": "适应（完整画面）",
+  "Fill (crop the edges)": "填充（裁掉边缘）",
+  "Canvas only": "只改画布"
 }

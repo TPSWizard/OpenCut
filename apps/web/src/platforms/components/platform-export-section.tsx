@@ -1,5 +1,6 @@
 "use client";
 
+import { applyCanvasSettings } from "@/resize/choice";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -87,7 +88,8 @@ export function PlatformExportSection({
 		if (fix.fps !== undefined) {
 			settings.fps = floatToFrameRate(fix.fps);
 		}
-		void editor.project.updateSettings({ settings });
+		// A new canvas re-fits the content as the project settings choose.
+		applyCanvasSettings({ editor, settings });
 	};
 
 	return (

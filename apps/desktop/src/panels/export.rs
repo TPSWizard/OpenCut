@@ -368,8 +368,12 @@ impl Render for ExportDialog {
                                     .size(ButtonSize::Small)
                                     .on_click(move |_, _, cx| {
                                         let patch = patch.clone();
-                                        state.update(cx, |state, cx| {
-                                            state.execute(Command::UpdateSettings(patch), cx);
+                                        state.update(cx, |state, cx| match patch.canvas {
+                                            // A new canvas re-fits the content as the Project settings choose.
+                                            Some(canvas) => state.set_canvas_size(canvas, cx),
+                                            None => {
+                                                state.execute(Command::UpdateSettings(patch), cx);
+                                            }
                                         });
                                     }),
                             ),

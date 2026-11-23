@@ -32,7 +32,16 @@ export const SHORT_PADDING_SECONDS = 0.25;
  * placed as the caption tool places them (above the platforms' buttons), keeping their words, timing and
  * look.
  */
-export function relayoutCaptions({ tracks, canvas }: { tracks: SceneTracks; canvas: { width: number; height: number } }): SceneTracks {
+export function relayoutCaptions({
+	tracks,
+	canvas,
+	margin = SHORT_CAPTION_MARGIN,
+}: {
+	tracks: SceneTracks;
+	canvas: { width: number; height: number };
+	/** Bottom margin as a share of the height. */
+	margin?: number;
+}): SceneTracks {
 	const relayout = (element: TimelineElement): TimelineElement => {
 		if (element.type !== "text" || !element.words?.length) return element;
 		const params = element.params as Record<string, unknown>;
@@ -51,7 +60,7 @@ export function relayoutCaptions({ tracks, canvas }: { tracks: SceneTracks; canv
 					textAlign: pick("textAlign"),
 					letterSpacing: pick<number>("letterSpacing"),
 					lineHeight: pick<number>("lineHeight"),
-					placement: { verticalAlign: "bottom", marginVerticalRatio: SHORT_CAPTION_MARGIN },
+					placement: { verticalAlign: "bottom", marginVerticalRatio: margin },
 				},
 			},
 			canvasSize: canvas,

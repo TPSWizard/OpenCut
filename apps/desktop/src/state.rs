@@ -98,6 +98,8 @@ pub(crate) struct EditorState {
     /// FaceFusion for local face swap, when the user installed it.
     facefusion: Option<media::FaceFusion>,
     pub selection: Vec<String>,
+    /// How a new canvas size re-fits the content; `None` changes the canvas only.
+    pub resize_content: Option<editor::ResizeMode>,
     pub playing: bool,
     play_anchor: Option<(Instant, MediaTime)>,
     /// Timeline pixels per second.
@@ -203,6 +205,7 @@ impl EditorState {
             realesrgan: media::locate_realesrgan(),
             facefusion: media::locate_facefusion(),
             selection: Vec::new(),
+            resize_content: Some(editor::ResizeMode::Fit),
             playing: false,
             play_anchor: None,
             zoom: 60.0,
@@ -1069,6 +1072,21 @@ impl EditorState {
             .ok();
         })
         .detach();
+    }
+
+    /// A new canvas size: the content re-fitted the chosen way
+    /// (`editor::resize_project`), or the canvas only. One undo step.
+    pub(crate) fn set_canvas_size(&mut self, canvas: editor::CanvasSize, cx: &mut Context<Self>) {
+        if self.project().settings.canvas == canvas {
+            return;
+        }
+        let command = match self.resize_content {
+            Some(mode) => Command::ResizeProject { canvas, mode },
+            None => Command::UpdateSettings(editor::SettingsPatch { canvas: Some(canvas), ..Default::default() }),
+        };
+        if self.execute(command, cx).is_some() && self.resize_content.is_some() {
+            self.set_status(t("Canvas resized and the content re-fitted."), cx);
+        }
     }
 
     /// Puts the selected video and picture clips into a split-screen layout

@@ -3325,19 +3325,47 @@ impl Render for InspectorPanel {
                             })
                             .size(ButtonSize::XSmall)
                             .on_click(move |_, _, cx| {
+                                state.update(cx, |state, cx| state.set_canvas_size(CanvasSize { width, height }, cx))
+                            }),
+                    );
+                }
+                // How a new canvas size re-fits the clips, text and captions
+                // (`editor::resize_project`).
+                let resize_content = self.state.read(cx).resize_content;
+                let mut content_row = div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(Self::label_cell(t("Content"), window));
+                for (label, choice) in [
+                    ("Fit", Some(editor::ResizeMode::Fit)),
+                    ("Fill", Some(editor::ResizeMode::Fill)),
+                    ("Keep sizes", Some(editor::ResizeMode::Keep)),
+                    ("Canvas only", None),
+                ] {
+                    let state = self.state.clone();
+                    content_row = content_row.child(
+                        Button::new(eid("resize-content", label), t(label))
+                            .variant(if resize_content == choice {
+                                ButtonVariant::Default
+                            } else {
+                                ButtonVariant::Outline
+                            })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
                                 state.update(cx, |state, cx| {
-                                    state.execute(
-                                        Command::UpdateSettings(SettingsPatch {
-                                            canvas: Some(CanvasSize { width, height }),
-                                            ..Default::default()
-                                        }),
-                                        cx,
-                                    );
+                                    state.resize_content = choice;
+                                    cx.notify();
                                 })
                             }),
                     );
                 }
-                content = content.child(fps_row).child(size_row).child(
+                content = content.child(fps_row).child(size_row).child(content_row).child(
+                    div().text_xs().text_color(colors.muted_foreground).child(t(
+                        "When the canvas size changes: Fit shows the whole picture, Fill covers the canvas with the edges cropped, Keep sizes keeps pixel sizes. Captions move to the bottom.",
+                    )),
+                ).child(
                     div()
                         .text_xs()
                         .text_color(colors.muted_foreground)

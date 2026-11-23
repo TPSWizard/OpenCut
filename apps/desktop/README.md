@@ -434,6 +434,23 @@ editor's Animation tab sets, worked out while the clip plays by
 when it is trimmed. A typewriter draws the letters not shown yet clear, so
 the text does not move as it types.
 
+## Resize project
+
+With no clip selected, the inspector's **Project** section has the canvas
+presets and a **Content** row choosing what a new canvas size does to the
+content (`editor::resize_project`, `crates/editor/src/resize.rs`, the web
+editor's `resize/plan.ts`; the export panel's platform fixes follow the same
+choice). The old picture is scaled about the centre: **Fit** shows all of
+it, **Fill** covers the new canvas with the edges cropped, **Keep sizes**
+keeps pixel sizes, and **Canvas only** changes the canvas alone, as before.
+Positions and their keyframes, outline width, shadow offset and blur, and
+mask feather and stroke scale with it; each clip's own scale allows for its
+base size following the canvas (pictures fit it, text follows its height),
+and clips inside compounds are re-fitted too. Captions are placed again
+centred at the bottom: a quarter of the height up on a tall canvas, clear of
+the platforms' buttons, 5 % otherwise. One undo step. The web editor also
+re-wraps caption lines to the new width; the desktop keeps their lines.
+
 ## Split screen
 
 With 2 to 4 video or picture clips selected, the inspector's **Split

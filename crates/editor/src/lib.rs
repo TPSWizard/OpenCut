@@ -39,6 +39,7 @@ mod open_link;
 mod params;
 mod platforms;
 mod relink;
+mod resize;
 mod retime;
 mod picture;
 mod reframe;
@@ -121,6 +122,7 @@ pub use colour_match::{
     COLOUR_MATCH_LUT_SIZE, COLOUR_MATCH_NAME, ColourAccumulator, ColourStats, colour_match_commands, colour_match_lut, colour_match_param,
     is_colour_match_param, lab_to_rgb, rgb_to_lab, transfer_colour,
 };
+pub use resize::{PIXEL_PARAMS, ResizeMode, ResizeReport, caption_margin, content_factor, picture_factor, resize_project, text_factor};
 pub use split_screen::{SPLIT_LAYOUTS, SplitPlacement, place_in_cell, plan_split_screen, split_layout_cells, split_screen_commands};
 pub use caption_keywords::{
     KEYWORD_COLOR_DEFAULT, KEYWORD_SCALE_DEFAULT, KEYWORD_SCALE_MAX, STOP_WORDS, keyword_budget, keyword_core, keyword_score, pick_keyword_indices,
