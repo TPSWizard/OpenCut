@@ -103,6 +103,8 @@ struct WebSettings {
     canvas_size: CanvasSize,
     #[serde(default)]
     background: Background,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    cover: Option<crate::CoverSettings>,
     #[serde(flatten)]
     rest: BTreeMap<String, Value>,
 }
@@ -293,6 +295,7 @@ fn import_bundle_with(path: &Path, store: &ProjectStore, as_new: Option<Option<&
         fps: web.settings.fps,
         canvas: web.settings.canvas_size,
         background: web.settings.background,
+        cover: web.settings.cover,
     };
     project.media = media;
     project.credits = credits;
@@ -524,6 +527,7 @@ fn web_bundle(project: &Project, strict: bool) -> io::Result<(Bundle, Vec<(Strin
                 fps: project.settings.fps,
                 canvas_size: project.settings.canvas,
                 background: project.settings.background.clone(),
+                cover: project.settings.cover.clone(),
                 rest: BTreeMap::from([("canvasSizeMode".to_owned(), json!("preset"))]),
             },
             version: WEB_PROJECT_VERSION,

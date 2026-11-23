@@ -3361,11 +3361,98 @@ impl Render for InspectorPanel {
                             }),
                     );
                 }
+                // Cover: a frame and a title, saved as a PNG and embedded in
+                // MP4 exports (`editor::cover_project`, `render::render_cover`).
+                let cover = self.state.read(cx).cover();
+                let rate = self.state.read(cx).project().settings.fps;
+                let cover_title_row = self.row(
+                    t("Cover title"),
+                    "project.cover-title",
+                    t("Title on the cover"),
+                    cover.title.clone(),
+                    None,
+                    window,
+                    cx,
+                    Box::new(|text, state, cx| {
+                        let title = text.trim().to_owned();
+                        state.update_cover(|cover| cover.title = title, cx)
+                    }),
+                );
+                let mut cover_style_row =
+                    div().flex().flex_wrap().items_center().gap(px(6.)).child(Self::label_cell(t("Style"), window));
+                for style in editor::CoverStyle::ALL {
+                    let state = self.state.clone();
+                    cover_style_row = cover_style_row.child(
+                        Button::new(eid("cover-style", style.label()), t(style.label()))
+                            .variant(if cover.style == style { ButtonVariant::Default } else { ButtonVariant::Outline })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| state.update(cx, |state, cx| state.update_cover(|cover| cover.style = style, cx))),
+                    );
+                }
+                let frame_state = self.state.clone();
+                let suggest_state = self.state.clone();
+                let embed_state = self.state.clone();
+                let cover_frame_row = div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(Self::label_cell(t("Frame"), window))
+                    .child(div().text_xs().child(crate::format::timecode(
+                        MediaTime::from_seconds_f64(cover.time).unwrap_or(MediaTime::ZERO),
+                        rate,
+                    )))
+                    .child(
+                        Button::new("cover-playhead", t("Use playhead"))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                frame_state.update(cx, |state, cx| {
+                                    let time = state.playhead().to_seconds_f64();
+                                    state.update_cover(|cover| cover.time = time, cx)
+                                })
+                            }),
+                    )
+                    .child(
+                        Button::new("cover-suggest", t("Suggest a frame"))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| suggest_state.update(cx, |state, cx| state.suggest_cover(cx))),
+                    )
+                    .child(
+                        Button::new("cover-embed", t("Embed in MP4"))
+                            .variant(if cover.embed { ButtonVariant::Default } else { ButtonVariant::Outline })
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| {
+                                embed_state.update(cx, |state, cx| state.update_cover(|cover| cover.embed = !cover.embed, cx))
+                            }),
+                    );
+                let mut cover_save_row =
+                    div().flex().flex_wrap().items_center().gap(px(6.)).child(Self::label_cell(t("Save PNG"), window));
+                for shape in editor::CoverShape::ALL {
+                    let state = self.state.clone();
+                    cover_save_row = cover_save_row.child(
+                        Button::new(eid("cover-save", shape.label()), t(shape.label()))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| state.update(cx, |state, cx| state.save_cover(shape, cx))),
+                    );
+                }
                 content = content.child(fps_row).child(size_row).child(content_row).child(
                     div().text_xs().text_color(colors.muted_foreground).child(t(
                         "When the canvas size changes: Fit shows the whole picture, Fill covers the canvas with the edges cropped, Keep sizes keeps pixel sizes. Captions move to the bottom.",
                     )),
-                ).child(
+                )
+                .child(Separator::horizontal())
+                .child(self.heading(t("Cover"), window))
+                .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                    "A frame and a title, saved as a picture and embedded as the MP4's cover when exporting.",
+                )))
+                .child(cover_title_row)
+                .child(cover_style_row)
+                .child(cover_frame_row)
+                .child(cover_save_row)
+                .child(
                     div()
                         .text_xs()
                         .text_color(colors.muted_foreground)

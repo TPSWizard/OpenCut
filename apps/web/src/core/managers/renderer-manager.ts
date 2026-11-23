@@ -39,6 +39,21 @@ export class RendererManager {
 		return this.renderTree;
 	}
 
+	private redraws = 0;
+
+	/**
+	 * Asks the preview to draw its frame again: off-screen renders (cover
+	 * pictures) share the compositor canvas the preview shows.
+	 */
+	requestRedraw(): void {
+		this.redraws++;
+		this.notify();
+	}
+
+	getRedrawCount(): number {
+		return this.redraws;
+	}
+
 	async saveSnapshot(): Promise<{ success: boolean; error?: string }> {
 		const snapshot = await this.createSnapshot();
 		if (!snapshot.success) {
@@ -184,7 +199,21 @@ export class RendererManager {
 				background: activeProject.settings.background,
 			});
 
+			// The project's cover, embedded in MP4s when it is set to be.
+			let cover: Uint8Array | undefined;
+			const coverSettings = activeProject.settings.cover;
+			if (format === "mp4" && coverSettings?.embed) {
+				try {
+					const { renderCoverPng } = await import("@/cover/render");
+					const { blob } = await renderCoverPng({ editor: this.editor });
+					cover = new Uint8Array(await blob.arrayBuffer());
+				} catch (error) {
+					console.error("Cover not embedded", error);
+				}
+			}
+
 			const exporter = new SceneExporter({
+				cover,
 				width: canvasSize.width,
 				height: canvasSize.height,
 				fps: exportFps,

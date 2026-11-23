@@ -195,6 +195,8 @@ function PreviewCanvas({
 		};
 	}, [renderer]);
 
+	const redraws = useEditor((e) => e.renderer.getRedrawCount());
+	const lastRedrawRef = useRef(redraws);
 	const render = useCallback(() => {
 		if (!renderTree || renderingRef.current) return;
 
@@ -209,12 +211,14 @@ function PreviewCanvas({
 
 		if (
 			frame === lastFrameRef.current &&
-			renderTree === lastSceneRef.current
+			renderTree === lastSceneRef.current &&
+			redraws === lastRedrawRef.current
 		) {
 			return;
 		}
 
 		renderingRef.current = true;
+		lastRedrawRef.current = redraws;
 		lastSceneRef.current = renderTree;
 		lastFrameRef.current = frame;
 		renderer
@@ -222,7 +226,7 @@ function PreviewCanvas({
 			.then(() => {
 				renderingRef.current = false;
 			});
-	}, [renderer, renderTree, editor.playback, editor.timeline]);
+	}, [renderer, renderTree, redraws, editor.playback, editor.timeline]);
 
 	useRafLoop(render);
 

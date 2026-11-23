@@ -808,5 +808,20 @@
   "Keep sizes": "保持尺寸",
   "Canvas only": "只改画布",
   "When the canvas size changes: Fit shows the whole picture, Fill covers the canvas with the edges cropped, Keep sizes keeps pixel sizes. Captions move to the bottom.": "画布尺寸改变时：适应显示完整画面，填充铺满画布并裁掉边缘，保持尺寸保留像素大小。字幕移到底部。",
-  "Canvas resized and the content re-fitted.": "画布已调整，内容已重新适配。"
+  "Canvas resized and the content re-fitted.": "画布已调整，内容已重新适配。",
+  "Looking for a good cover frame…": "正在寻找合适的封面帧…",
+  "Cover frame picked; the playhead is on it.": "已选好封面帧，播放头已移到该处。",
+  "Saving the cover…": "正在保存封面…",
+  "Cover saved to {path}.": "封面已保存到 {path}。",
+  "Cover": "封面",
+  "Cover title": "封面标题",
+  "Title on the cover": "封面上的标题",
+  "Frame": "画面",
+  "Use playhead": "使用播放头",
+  "Suggest a frame": "推荐画面",
+  "Band": "横条",
+  "Top": "顶部",
+  "Embed in MP4": "嵌入 MP4",
+  "Save PNG": "保存 PNG",
+  "A frame and a title, saved as a picture and embedded as the MP4's cover when exporting.": "一帧画面加标题，可保存为图片，导出时嵌入为 MP4 的封面。"
 }

@@ -38,6 +38,8 @@ type ExportParams = {
 	audioBuffer?: AudioBuffer;
 	/** Written into the file's metadata (comment and description), e.g. that it contains a swapped face. */
 	disclosure?: string;
+	/** A PNG embedded as the MP4's cover picture. */
+	cover?: Uint8Array;
 };
 
 const qualityMap = {
@@ -65,6 +67,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
 	private disclosure: string | null;
+	private cover: Uint8Array | null;
 
 	private isCancelled = false;
 
@@ -81,9 +84,11 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		shouldIncludeAudio,
 		audioBuffer,
 		disclosure,
+		cover,
 	}: ExportParams) {
 		super();
 		this.disclosure = disclosure?.trim() || null;
+		this.cover = format === "mp4" && cover?.length ? cover : null;
 		this.renderer = new CanvasRenderer({
 			width,
 			height,
@@ -192,8 +197,11 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			output.addAudioTrack(audioSource);
 		}
 
-		if (this.disclosure) {
-			output.setMetadataTags({ comment: this.disclosure, description: this.disclosure });
+		if (this.disclosure || this.cover) {
+			output.setMetadataTags({
+				...(this.disclosure ? { comment: this.disclosure, description: this.disclosure } : {}),
+				...(this.cover ? { images: [{ data: this.cover, mimeType: "image/png", kind: "coverFront" as const, name: "cover.png" }] } : {}),
+			});
 		}
 		await output.start();
 

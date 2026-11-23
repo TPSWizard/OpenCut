@@ -34,6 +34,7 @@ import { OcSquarePlusIcon } from "@/components/icons";
 import type { TCanvasSize } from "@/project/types";
 import { useT } from "@/i18n";
 import { LanguageSelect } from "@/i18n/components/language-select";
+import { CoverSettingsView } from "@/cover/components/cover-settings";
 import { applyCanvasSettings as applySettings, type ContentChoice, readContentChoice, saveContentChoice } from "@/resize/choice";
 
 /** What happens to the content when the canvas size changes. */
@@ -358,6 +359,14 @@ export function SettingsView() {
 									}
 								/>
 							</div>
+						</SectionContent>
+					</Section>
+					<Section showTopBorder={false} collapsible sectionKey="settings:cover">
+						<SectionHeader>
+							<SectionTitle className="flex-1">{t("Cover")}</SectionTitle>
+						</SectionHeader>
+						<SectionContent className="px-0">
+							<CoverSettingsView />
 						</SectionContent>
 					</Section>
 				</div>

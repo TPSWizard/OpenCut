@@ -451,6 +451,23 @@ centred at the bottom: a quarter of the height up on a tall canvas, clear of
 the platforms' buttons, 5 % otherwise. One undo step. The web editor also
 re-wraps caption lines to the new width; the desktop keeps their lines.
 
+## Cover
+
+The Project section's **Cover** rows make the project's cover picture: a
+title, a style (**Bold**: big white words with a dark outline, low; **Band**:
+white words on a dark box, low; **Top**: yellow words with a dark outline,
+at the top), a frame (**Use playhead**, or **Suggest a frame**, which scores
+16 evenly spaced frames for sharpness, colour, exposure and contrast), and
+**Embed in MP4**. **Save PNG** writes it at the canvas shape, 16:9
+(1280×720) or 9:16 (1080×1920); another shape is the project re-fitted with
+fill. The cover is the project with the title as a text clip on a new top
+track (`editor::cover_project`), drawn by the normal renderer
+(`render::render_cover`), so the title looks as text does in the editor.
+MP4 exports, here and from `opencut-render`, get it as an attached picture
+(`media::attach_cover`, a stream-copy remux), which players and file
+browsers show as the file's cover. The title layout and frame score are the
+web editor's (`cover/layout.ts`), checked against `fixtures/cover/cases.json`.
+
 ## Split screen
 
 With 2 to 4 video or picture clips selected, the inspector's **Split

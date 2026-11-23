@@ -43,6 +43,8 @@ pub struct SettingsPatch {
     pub fps: Option<FrameRate>,
     pub canvas: Option<CanvasSize>,
     pub background: Option<Background>,
+    /// Sets (`Some(Some)`) or removes (`Some(None)`) the cover.
+    pub cover: Option<Option<crate::CoverSettings>>,
 }
 
 /// Where an inserted element goes.
@@ -1381,6 +1383,9 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if let Some(background) = &patch.background {
                 project.settings.background = background.clone();
+            }
+            if let Some(cover) = &patch.cover {
+                project.settings.cover = cover.clone();
             }
             Outcome::None
         }

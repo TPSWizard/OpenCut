@@ -58,6 +58,9 @@ pub struct ProjectSettings {
     pub canvas: CanvasSize,
     #[serde(default)]
     pub background: Background,
+    /// The cover picture (frame, title, style), when one was made.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover: Option<crate::CoverSettings>,
 }
 
 impl Default for ProjectSettings {
@@ -66,6 +69,7 @@ impl Default for ProjectSettings {
             fps: FrameRate::FPS_30,
             canvas: CanvasSize::HD_1080,
             background: Background::default(),
+            cover: None,
         }
     }
 }

@@ -4,6 +4,7 @@
 //! composites everything with the shared `compositor` crate on the GPU.
 //! [`Mixer`] produces the matching audio for playback.
 
+mod cover;
 mod effects;
 mod export;
 mod retime_audio;
@@ -14,6 +15,7 @@ mod mixer;
 mod renderer;
 mod text;
 
+pub use cover::{embed_cover, render_cover, save_cover_png, suggest_cover_time};
 pub use effects::{backdrop_blur_passes, effect_pass_groups};
 pub use export::{ExportJob, export_project, gain_keys, still_times};
 pub use cache::{clear_regenerable_cache, is_regenerable, regenerable_cache};

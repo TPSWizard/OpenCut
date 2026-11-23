@@ -33,6 +33,8 @@ export interface TProjectSettings {
 	lastCustomCanvasSize?: TCanvasSize | null;
 	originalCanvasSize?: TCanvasSize | null;
 	background: TBackground;
+	/** The cover picture (frame, title, style); see `@/cover`. */
+	cover?: import("@/cover/layout").CoverSettings;
 }
 
 export interface TTimelineViewState {

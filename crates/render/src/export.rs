@@ -114,7 +114,14 @@ pub fn export_project(
             progress(frame_index + 1, frames_total);
         }
     }
-    encoder.finish().map_err(|error| error.to_string())
+    let output = encoder.finish().map_err(|error| error.to_string())?;
+    // The project's cover picture, when it has one to embed (MP4 only).
+    if job.format == EncodeFormat::Mp4 {
+        if let Err(error) = crate::cover::embed_cover(renderer, ffmpeg, project, &output) {
+            eprintln!("cover not embedded: {error}");
+        }
+    }
+    Ok(output)
 }
 
 /// Volume keys for the encoder. A Bézier segment is sampled into short

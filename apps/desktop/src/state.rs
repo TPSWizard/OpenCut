@@ -1074,6 +1074,92 @@ impl EditorState {
         .detach();
     }
 
+    /// The project's cover settings, or the defaults when none were made.
+    pub(crate) fn cover(&self) -> editor::CoverSettings {
+        self.project().settings.cover.clone().unwrap_or_default()
+    }
+
+    /// Changes the cover settings (one undo step).
+    pub(crate) fn update_cover(&mut self, change: impl FnOnce(&mut editor::CoverSettings), cx: &mut Context<Self>) {
+        let mut cover = self.cover();
+        change(&mut cover);
+        if self.project().settings.cover.as_ref() == Some(&cover) {
+            return;
+        }
+        self.execute(Command::UpdateSettings(editor::SettingsPatch { cover: Some(Some(cover)), ..Default::default() }), cx);
+    }
+
+    /// A renderer of its own for cover work off the UI thread.
+    fn cover_renderer(ffmpeg: Option<Arc<Ffmpeg>>) -> Result<render::Renderer, String> {
+        let root = editor::ProjectStore::default_root();
+        render::Renderer::new(render::RendererOptions {
+            ffmpeg,
+            fonts_dir: Some(crate::fonts::fonts_dir(&root)),
+            stickers_dir: Some(crate::stickers::stickers_dir(&root)),
+            proxy_dir: None,
+        })
+        .map_err(|error| error.to_string())
+    }
+
+    /// Looks at evenly spaced frames and makes the best-looking one (sharp,
+    /// colourful, well exposed) the cover frame.
+    pub(crate) fn suggest_cover(&mut self, cx: &mut Context<Self>) {
+        let project = self.project().clone();
+        let ffmpeg = self.ffmpeg.clone();
+        self.set_status(t("Looking for a good cover frame…"), cx);
+        cx.spawn(async move |this, cx| {
+            let found = cx
+                .background_executor()
+                .spawn(async move { Self::cover_renderer(ffmpeg).and_then(|mut renderer| render::suggest_cover_time(&mut renderer, &project)) })
+                .await;
+            this.update(cx, |state, cx| match found {
+                Ok(time) => {
+                    state.update_cover(|cover| cover.time = time, cx);
+                    state.seek(MediaTime::from_seconds_f64(time).unwrap_or(MediaTime::ZERO), cx);
+                    state.set_status(t("Cover frame picked; the playhead is on it."), cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Saves the cover as a PNG of `shape` where the user picks.
+    pub(crate) fn save_cover(&mut self, shape: editor::CoverShape, cx: &mut Context<Self>) {
+        let project = self.project().clone();
+        let cover = self.cover();
+        let size = editor::cover_size(shape, project.settings.canvas);
+        let ffmpeg = self.ffmpeg.clone();
+        let name: String = project.name.chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect();
+        let suggested = format!("{} cover {}x{}.png", name.trim(), size.width, size.height);
+        let directory = std::env::var_os("USERPROFILE")
+            .or_else(|| std::env::var_os("HOME"))
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+        let receiver = cx.prompt_for_new_path(&directory, Some(&suggested));
+        cx.spawn(async move |this, cx| {
+            let Ok(Ok(Some(mut path))) = receiver.await else { return };
+            if path.extension().is_none() {
+                path.set_extension("png");
+            }
+            this.update(cx, |state, cx| state.set_status(t("Saving the cover…"), cx)).ok();
+            let saved_path = path.clone();
+            let saved = cx
+                .background_executor()
+                .spawn(async move {
+                    Self::cover_renderer(ffmpeg).and_then(|mut renderer| render::save_cover_png(&mut renderer, &project, &cover, size, &path))
+                })
+                .await;
+            this.update(cx, |state, cx| match saved {
+                Ok(()) => state.set_status(tf("Cover saved to {path}.", &[("path", &saved_path.display())]), cx),
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// A new canvas size: the content re-fitted the chosen way
     /// (`editor::resize_project`), or the canvas only. One undo step.
     pub(crate) fn set_canvas_size(&mut self, canvas: editor::CanvasSize, cx: &mut Context<Self>) {

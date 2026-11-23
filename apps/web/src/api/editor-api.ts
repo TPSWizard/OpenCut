@@ -111,6 +111,8 @@ import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
 import { applySplitScreen } from "@/split-screen/apply";
 import { matchColours } from "@/colour-match/apply";
 import { resizeProject } from "@/resize/apply";
+import { COVER_SHAPES, COVER_STYLES, type CoverShape, type CoverStyle } from "@/cover/layout";
+import { coverOf, renderCoverPng, suggestCoverTime } from "@/cover/render";
 import { RESIZE_MODES, type ResizeMode } from "@/resize/plan";
 import { SPLIT_LAYOUTS, splitLayout } from "@/split-screen/layout";
 import { ZOOM_STRENGTHS, type ZoomStrength } from "@/auto-zoom/zoom";
@@ -2021,6 +2023,50 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
 			}
+		},
+		"cover.get": () => coverOf(requireProject().settings),
+		"cover.set": async ({ title, style, time, embed }) => {
+			const project = requireProject();
+			const next = { ...coverOf(project.settings) };
+			if (title !== undefined) {
+				if (typeof title !== "string") throw new EditorApiError({ code: "invalid_params", message: "title must be text" });
+				next.title = title.trim();
+			}
+			if (style !== undefined) {
+				if (!COVER_STYLES.includes(style as CoverStyle)) {
+					throw new EditorApiError({ code: "invalid_params", message: `style must be one of ${COVER_STYLES.join(", ")}` });
+				}
+				next.style = style as CoverStyle;
+			}
+			if (time !== undefined) {
+				if (typeof time !== "number" || !Number.isFinite(time) || time < 0) {
+					throw new EditorApiError({ code: "invalid_params", message: "time must be seconds" });
+				}
+				next.time = time;
+			}
+			if (embed !== undefined) next.embed = embed === true;
+			await editor.project.updateSettings({ settings: { cover: next } });
+			return next;
+		},
+		"cover.suggest": async () => {
+			requireProject();
+			try {
+				return { time: await suggestCoverTime({ editor }) };
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "No frame could be suggested" });
+			}
+		},
+		"cover.render": async ({ shape }) => {
+			requireProject();
+			const chosen = (shape ?? "canvas") as CoverShape;
+			if (!COVER_SHAPES.includes(chosen)) {
+				throw new EditorApiError({ code: "invalid_params", message: `shape must be one of ${COVER_SHAPES.join(", ")}` });
+			}
+			const { blob, width, height } = await renderCoverPng({ editor, shape: chosen });
+			const bytes = new Uint8Array(await blob.arrayBuffer());
+			let binary = "";
+			for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+			return { width, height, png: btoa(binary) };
 		},
 		"project.resize": ({ width, height, mode }) => {
 			requireProject();

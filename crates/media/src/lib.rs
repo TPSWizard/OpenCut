@@ -10,6 +10,7 @@
 //! Decoded frames are BGRA, 8 bits per channel, tightly packed: what the
 //! GPU compositor's native texture format and GPUI's images both want.
 
+mod cover;
 mod audio;
 mod codecs;
 mod denoise;
@@ -49,6 +50,7 @@ pub use proxy::{AUTO_PROXY_PIXELS, PROXY_LONG_EDGE, existing_proxy, make_proxy, 
 pub use scenes::{SceneScore, parse_scdet, scene_scores};
 pub use faceswap::{FaceChoice, FaceFusion, SwapModel, SwapOptions, facefusion_args, locate_facefusion, swap_face_image, swap_face_video};
 pub use upscale::{MAX_UPSCALED_SIDE, UpscaleModel, locate_realesrgan, upscale_image, upscale_video, upscaled_size};
+pub use cover::attach_cover;
 pub use still::frame_to_png;
 pub use voice_fx::{VOICE_SAMPLE_RATE, enhance_voice_to_wav, voice_effect_to_wav, write_wav};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

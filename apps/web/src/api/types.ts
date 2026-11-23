@@ -1049,6 +1049,20 @@ export interface EditorApiMethods {
 			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
 		};
 	};
+	/** The project's cover settings (defaults when none were made). */
+	"cover.get": { params: Record<string, never>; result: { time: number; title: string; style: "bold" | "band" | "top"; embed: boolean } };
+	/** Changes the cover (title, style bold | band | top, frame time in timeline seconds, embed in MP4 exports). One undo step. */
+	"cover.set": {
+		params: { title?: string; style?: "bold" | "band" | "top"; time?: number; embed?: boolean };
+		result: { time: number; title: string; style: "bold" | "band" | "top"; embed: boolean };
+	};
+	/** The timeline seconds of the best-looking of 16 evenly spaced frames (sharp, colourful, well exposed). Does not change the cover. */
+	"cover.suggest": { params: Record<string, never>; result: { time: number } };
+	/** The cover as a base64 PNG at the canvas shape (default), 16:9 (1280×720) or 9:16 (1080×1920). */
+	"cover.render": {
+		params: { shape?: "canvas" | "landscape" | "portrait" };
+		result: { width: number; height: number; png: string };
+	};
 	/**
 	 * Resize project: the canvas becomes `width` × `height` (16 to 8192) and
 	 * every clip, text and caption is re-fitted. `mode` (default fit): fit
