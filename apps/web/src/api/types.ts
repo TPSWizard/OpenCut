@@ -1049,6 +1049,22 @@ export interface EditorApiMethods {
 			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
 		};
 	};
+	/**
+	 * Colour match: `targets` (video or picture clips) take on the colours of
+	 * `reference`'s frame at timeline time `at` seconds (default: the playhead;
+	 * the reference's middle when outside it). Per-channel Lab mean and spread
+	 * (Reinhard transfer) baked into a `lut` effect on each target; a target
+	 * matched before has that effect updated. One undo step.
+	 */
+	"color.match": {
+		params: { reference: ApiElementRef; targets: ApiElementRef[]; at?: number };
+		result: {
+			reference: ApiElementRef;
+			referenceSeconds: number;
+			referenceLab: { mean: number[]; spread: number[] };
+			targets: (ApiElementRef & { lab: { mean: number[]; spread: number[] } })[];
+		};
+	};
 	/** Removes a clip's punch-ins. One undo step. */
 	"zoom.clear": { params: ApiElementLocator; result: ApiElementInfo };
 	/** Puts a reframed clip back: scale 1, centred, no position or scale keys. */

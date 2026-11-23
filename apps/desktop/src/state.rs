@@ -990,6 +990,87 @@ impl EditorState {
         self.set_status(status, cx);
     }
 
+    /// Colour match: the other selected video and picture clips take on the
+    /// colours of the first one selected, at the playhead (its middle when
+    /// the playhead is outside it). One undo step.
+    pub(crate) fn colour_match_selection(&mut self, cx: &mut Context<Self>) {
+        let ids = self.selection.clone();
+        if ids.len() < 2 {
+            self.set_status(t("Select the clip to match first, then the clips to change."), cx);
+            return;
+        }
+        let playhead = self.playhead();
+        let project = self.project();
+        let mut sources = Vec::new();
+        for (index, id) in ids.iter().enumerate() {
+            let Some(element) = project.tracks.iter().flat_map(|track| &track.elements).find(|element| &element.id == id) else { return };
+            let is_image = match element.kind {
+                editor::ElementKind::Image { .. } => true,
+                editor::ElementKind::Video { .. } => false,
+                _ => {
+                    self.set_status(t("Colour match works on video and picture clips."), cx);
+                    return;
+                }
+            };
+            let Some(media) = project.media_for(element) else { return };
+            let at = |share: f64| {
+                element.source_time(element.start_time + MediaTime::from_seconds_f64(element.duration.to_seconds_f64() * share).unwrap_or(MediaTime::ZERO))
+            };
+            let source_seconds: Vec<f64> = if index == 0 {
+                let time = if element.contains(playhead) { element.source_time(playhead) } else { at(0.5) };
+                vec![time.to_seconds_f64()]
+            } else {
+                (0..crate::colour_match::TARGET_SAMPLES)
+                    .map(|sample| at((sample as f64 + 0.5) / crate::colour_match::TARGET_SAMPLES as f64).to_seconds_f64())
+                    .collect()
+            };
+            sources.push((
+                id.clone(),
+                crate::colour_match::FrameSource {
+                    name: element.name.clone(),
+                    path: media.path.clone(),
+                    is_image,
+                    size: (media.width.unwrap_or(1920), media.height.unwrap_or(1080)),
+                    source_seconds,
+                },
+            ));
+        }
+        let ffmpeg = self.ffmpeg.clone();
+        self.set_status(t("Matching colours…"), cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx
+                .background_executor()
+                .spawn(async move {
+                    sources
+                        .into_iter()
+                        .map(|(id, source)| crate::colour_match::measure(ffmpeg.as_deref(), &source).map(|stats| (id, stats)))
+                        .collect::<Result<Vec<_>, String>>()
+                })
+                .await;
+            this.update(cx, |state, cx| {
+                let measured = match measured {
+                    Ok(measured) => measured,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let (_, reference) = measured[0].clone();
+                let mut commands = Vec::new();
+                for (id, source) in &measured[1..] {
+                    match editor::colour_match_commands(state.project(), id, editor::colour_match_param(source, &reference)) {
+                        Some(found) => commands.extend(found),
+                        None => return state.set_status(t("A clip to match is no longer on the timeline."), cx),
+                    }
+                }
+                if state.execute(Command::Batch(commands), cx).is_some() {
+                    let count = measured.len() - 1;
+                    let status = if count == 1 { t("1 clip matched.").to_owned() } else { tf("{count} clips matched.", &[("count", &count)]) };
+                    state.set_status(status, cx);
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Puts the selected video and picture clips into a split-screen layout
     /// (`editor::split_screen_commands`), in selection order. One undo step.
     pub(crate) fn split_screen_selection(&mut self, layout: &'static str, cx: &mut Context<Self>) {

@@ -12,6 +12,7 @@ mod open_link;
 mod assets;
 mod audio;
 mod beats;
+mod colour_match;
 mod broll;
 mod ducking;
 mod fonts;

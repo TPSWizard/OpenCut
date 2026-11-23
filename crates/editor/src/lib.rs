@@ -18,6 +18,7 @@ mod broll;
 mod bundle;
 mod captions;
 mod caption_keywords;
+mod colour_match;
 mod commands;
 mod compound;
 mod document;
@@ -115,6 +116,10 @@ pub use frame::{
 pub use auto_zoom::{
     ClipZoom, MIN_PUNCH_SECONDS, SENTENCE_GAP_SECONDS, TAIL_SECONDS, ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX, ZOOM_SCALE_MAX,
     ZOOM_STRENGTHS, ZoomPunch, ZoomWord, clip_words, format_punches, parse_punches, plan_punches, read_clip_zoom, zoom_at, zoom_offset,
+};
+pub use colour_match::{
+    COLOUR_MATCH_LUT_SIZE, COLOUR_MATCH_NAME, ColourAccumulator, ColourStats, colour_match_commands, colour_match_lut, colour_match_param,
+    is_colour_match_param, lab_to_rgb, rgb_to_lab, transfer_colour,
 };
 pub use split_screen::{SPLIT_LAYOUTS, SplitPlacement, place_in_cell, plan_split_screen, split_layout_cells, split_screen_commands};
 pub use caption_keywords::{

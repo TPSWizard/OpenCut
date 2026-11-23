@@ -445,6 +445,21 @@ centres it there, clears its transform keyframes and replaces its masks
 with a rectangle cropped to the part, in the order the clips were selected;
 one undo step.
 
+## Colour match
+
+With 2 or more video or picture clips selected, the inspector's **Colour
+match** button makes the others take on the colours of the first one
+selected. The reference is measured at the playhead (its middle when the
+playhead is outside it) and each other clip over five frames, by the mean
+and spread of each Lab channel (`editor::colour_match_commands`,
+`crates/editor/src/colour_match.rs`, the web editor's
+`colour-match/match.ts`; Reinhard transfer with the spread ratio held to
+0.5 to 2). The transfer is baked into a 17-point table in a **LUT** effect
+named "Colour match" on each clip, so its intensity turns the match down; a
+clip matched again has that effect updated. One undo step. The reference
+is measured from its source picture, before its own effects. Video frames
+need FFmpeg.
+
 ## Auto zoom
 
 The inspector's **Auto zoom** section (video and picture clips) plans

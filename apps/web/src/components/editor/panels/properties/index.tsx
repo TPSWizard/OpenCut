@@ -15,6 +15,7 @@ import { getPropertiesConfig, propertiesTabLabel } from "./registry";
 import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
 import { useT } from "@/i18n";
+import { ColourMatchPanel } from "@/colour-match/components/colour-match-panel";
 import { SplitScreenPanel } from "@/split-screen/components/split-screen-panel";
 
 export function PropertiesPanel() {
@@ -35,11 +36,12 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length > 1) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center gap-4 overflow-hidden rounded-sm border">
+			<div className="panel bg-background flex h-full flex-col items-center justify-center gap-4 overflow-y-auto rounded-sm border py-4">
 				<p className="text-muted-foreground text-sm">
 					{t("{count} elements selected", { count: selectedElements.length })}
 				</p>
 				<SplitScreenPanel targets={selectedElements} />
+				<ColourMatchPanel targets={selectedElements} />
 			</div>
 		);
 	}

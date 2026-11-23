@@ -791,5 +791,16 @@
   "One big, two small": "一大两小",
   "Grid of four": "四宫格",
   "{count} clips arranged.": "已排列 {count} 个片段。",
-  "Split screen needs video or picture clips with a known size, as many as the layout has parts.": "分屏需要已知尺寸的视频或图片片段，数量与布局的格数相同。"
+  "Split screen needs video or picture clips with a known size, as many as the layout has parts.": "分屏需要已知尺寸的视频或图片片段，数量与布局的格数相同。",
+  "Colour match": "颜色匹配",
+  "Makes the other selected clips take on the colours of the first one you selected, at the playhead (or its middle). Each gets a LUT effect you can turn down or remove.": "让其他选中的片段采用第一个选中片段在播放头处（或其中间）的颜色。每个片段会得到一个可以调低或删除的 LUT 效果。",
+  "Matching colours…": "正在匹配颜色…",
+  "{count} clips matched.": "已匹配 {count} 个片段。",
+  "Match to the first selected": "匹配第一个选中的片段",
+  "Select the clip to match first, then the clips to change.": "先选择要匹配的片段，再选择要更改的片段。",
+  "Colour match works on video and picture clips.": "颜色匹配适用于视频和图片片段。",
+  "A clip to match is no longer on the timeline.": "要匹配的片段已不在时间线上。",
+  "FFmpeg is needed to read video frames.": "需要 FFmpeg 才能读取视频帧。",
+  "No pixels could be read from {name}.": "无法从 {name} 读取像素。",
+  "1 clip matched.": "已匹配 1 个片段。"
 }

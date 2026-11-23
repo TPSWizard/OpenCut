@@ -3165,6 +3165,21 @@ impl Render for InspectorPanel {
                         )))
                         .child(row);
                 }
+                // Colour match: the others take on the first selected
+                // clip's colours (`editor::colour_match_commands`).
+                let state = self.state.clone();
+                content = content
+                    .child(Separator::horizontal())
+                    .child(self.heading(t("Colour match"), window))
+                    .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                        "Makes the other selected clips take on the colours of the first one you selected, at the playhead (or its middle). Each gets a LUT effect you can turn down or remove.",
+                    )))
+                    .child(
+                        Button::new("colour-match", t("Match to the first selected"))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .on_click(move |_, _, cx| state.update(cx, |state, cx| state.colour_match_selection(cx))),
+                    );
             }
             None => {
                 let name_row = self.row(

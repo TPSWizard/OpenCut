@@ -109,6 +109,7 @@ import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
 import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
 import { applySplitScreen } from "@/split-screen/apply";
+import { matchColours } from "@/colour-match/apply";
 import { SPLIT_LAYOUTS, splitLayout } from "@/split-screen/layout";
 import { ZOOM_STRENGTHS, type ZoomStrength } from "@/auto-zoom/zoom";
 import { REFRAME_CAMERAS } from "@/reframe/path";
@@ -2017,6 +2018,37 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return { elements: targets, placements };
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Split screen failed" });
+			}
+		},
+		"color.match": async ({ reference, targets, at }) => {
+			requireProject();
+			if (!Array.isArray(targets) || targets.length === 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "targets must list at least one clip" });
+			}
+			if (at !== undefined && (typeof at !== "number" || !Number.isFinite(at) || at < 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be a time in seconds" });
+			}
+			const toRef = (ref: ApiElementRef) => {
+				const { track, element } = resolveElement(ref);
+				return { trackId: track.id, elementId: element.id };
+			};
+			const referenceRef = toRef(reference);
+			const targetRefs = targets.map(toRef);
+			try {
+				const result = await matchColours({ editor, reference: referenceRef, targets: targetRefs, at });
+				const round = (values: number[]) => values.map((value) => Math.round(value * 100) / 100);
+				return {
+					reference: referenceRef,
+					referenceSeconds: result.referenceSeconds,
+					referenceLab: { mean: round(result.reference.mean), spread: round(result.reference.std) },
+					targets: result.targets.map((target) => ({
+						trackId: target.trackId,
+						elementId: target.elementId,
+						lab: { mean: round(target.source.mean), spread: round(target.source.std) },
+					})),
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Colour match failed" });
 			}
 		},
 		"zoom.clear": ({ elementId, trackId }) => {
