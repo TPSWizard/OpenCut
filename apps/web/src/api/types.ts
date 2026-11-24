@@ -1049,6 +1049,31 @@ export interface EditorApiMethods {
 			placements: { positionX: number; positionY: number; scale: number; maskWidth: number; maskHeight: number }[];
 		};
 	};
+	/**
+	 * Corner pin on a video, picture or sticker clip: its corners pinned in
+	 * perspective (drawn by the shared compositor). `corners` are each
+	 * corner's place in percent of the clip's own box before rotation
+	 * (`topLeft` [0, 0] to `bottomRight` [100, 100]); `canvasCorners` are
+	 * canvas pixels instead (where the corners should land now). Setting
+	 * corners switches the pin on; a corner with keyframes gets a keyframe at
+	 * the playhead. `reset` puts them back first. One undo step.
+	 */
+	"transform.cornerPin": {
+		params: ApiElementLocator & {
+			enabled?: boolean;
+			corners?: Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", [number, number]>;
+			canvasCorners?: Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", [number, number]>;
+			reset?: boolean;
+		};
+		result: {
+			trackId: string;
+			elementId: string;
+			enabled: boolean;
+			/** False when the pin is off, at the clip's own corners, or not drawable. */
+			drawn: boolean;
+			corners: Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", [number, number]>;
+		};
+	};
 	/** The audio effect presets (from the shared Rust list). */
 	"audio.fxPresets": {
 		params: Record<string, never>;

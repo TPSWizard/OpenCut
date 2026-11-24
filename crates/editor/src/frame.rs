@@ -80,6 +80,9 @@ pub struct LayerPlan {
     pub cutout: Option<CutoutPlan>,
     /// Rounded corners, outline and drop shadow.
     pub style: crate::LayerStyle,
+    /// The clip's corners pinned in perspective (video, picture and sticker
+    /// clips), in box units: top left, top right, bottom right, bottom left.
+    pub corner_pin: Option<[[f32; 2]; 4]>,
     /// An auto zoom punch-in at this time (video and picture clips); the
     /// renderer scales the drawn frame about the focus point.
     pub zoom: Option<LayerZoom>,
@@ -614,6 +617,9 @@ fn layer_plan(
         mask,
         cutout,
         style: crate::LayerStyle::from_params(&params, matches!(element.kind, ElementKind::Text)),
+        corner_pin: matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. } | ElementKind::Sticker { .. })
+            .then(|| crate::read_corner_pin(&params))
+            .flatten(),
         zoom: matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. })
             .then(|| crate::read_clip_zoom(&element.params))
             .flatten()

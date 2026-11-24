@@ -129,6 +129,9 @@ pub(crate) struct EditorState {
     /// Points of the selected clip's freeform mask that are selected (they
     /// are what `Delete` removes), as in the web app.
     pub selected_mask_points: Vec<String>,
+    /// The selected clip's corner pin handles are shown on the preview (the
+    /// inspector's "Edit on canvas"), as the web app's Corner pin tab does.
+    pub corner_pin_editing: bool,
     /// Platform preset whose safe area the preview shades.
     pub guide: Option<&'static editor::PlatformPreset>,
     /// The last loudness measurement: the clip's id and its report.
@@ -222,6 +225,7 @@ impl EditorState {
             thumbnails: HashMap::new(),
             pen: None,
             selected_mask_points: Vec::new(),
+            corner_pin_editing: false,
             guide: None,
             loudness: None,
             mark_in: None,
@@ -3090,6 +3094,121 @@ impl EditorState {
     /// The selected clip's freeform path in canvas pixels for the preview
     /// overlay: anchors with their handles, which are selected, and whether
     /// the path is closed and editable.
+    // ---- corner pin -------------------------------------------------------
+
+    /// The selected clip's box on the canvas, for its corner pin (video and
+    /// picture clips; a sticker's pin is set by numbers).
+    fn corner_pin_box(&self, element: &Element) -> Option<editor::PinBox> {
+        if !matches!(element.kind, editor::ElementKind::Video { .. } | editor::ElementKind::Image { .. }) {
+            return None;
+        }
+        let quad = editor::element_quad(self.project(), element, self.playhead())?;
+        Some(editor::PinBox {
+            center: [quad.center_x, quad.center_y],
+            size: [quad.width, quad.height],
+            rotation_degrees: quad.rotation_degrees,
+        })
+    }
+
+    /// The corner pin handles on the canvas (top left, top right, bottom
+    /// right, bottom left) at the playhead, while editing on the canvas.
+    pub(crate) fn corner_pin_overlay(&self) -> Option<[(f64, f64); 4]> {
+        if !self.corner_pin_editing {
+            return None;
+        }
+        let element = self.selected_element()?;
+        let pin_box = self.corner_pin_box(element)?;
+        let corners = editor::corner_pin_corners(&element.params_at(self.playhead()));
+        Some(corners.map(|corner| {
+            let [x, y] = editor::box_to_canvas(&pin_box, corner);
+            (x, y)
+        }))
+    }
+
+    pub(crate) fn set_corner_pin_editing(&mut self, editing: bool, cx: &mut Context<Self>) {
+        self.corner_pin_editing = editing;
+        cx.notify();
+    }
+
+    /// The params that move corner `index` of `start` (the clip as it was
+    /// when the drag began) to a canvas point, or `None` when that would
+    /// cross or fold the corners in.
+    fn corner_pin_drag_params(&self, start: &Element, index: usize, to: (f64, f64)) -> Option<Params> {
+        let pin_box = self.corner_pin_box(start)?;
+        let mut corners = editor::corner_pin_corners(&start.params_at(self.playhead()));
+        corners[index] = editor::canvas_to_box(&pin_box, [to.0, to.1]);
+        if !editor::is_corner_pin_drawable(&corners) {
+            return None;
+        }
+        let mut params = Params::new();
+        params.set(editor::CORNER_PIN_ENABLED, true);
+        for (key, value) in editor::corner_pin_params(&corners) {
+            params.set(key, value);
+        }
+        Some(params)
+    }
+
+    /// Moves a corner pin corner to a canvas point: shown while dragging
+    /// (not recorded), then one edit when `commit` (keyframed axes get a
+    /// key at the playhead, as the inspector's fields do).
+    pub(crate) fn drag_corner_pin(&mut self, start: &Element, index: usize, to: (f64, f64), commit: bool, cx: &mut Context<Self>) {
+        let Some(params) = self.corner_pin_drag_params(start, index, to) else { return };
+        let element_id = start.id.clone();
+        let local = start.local_time(self.playhead());
+        let restore = start.clone();
+        let animated: Vec<bool> = params.iter().map(|(key, _)| start.is_animated(key)).collect();
+        self.editor.apply_transient(|project| {
+            let Some(element) = project
+                .tracks
+                .iter_mut()
+                .flat_map(|track| track.elements.iter_mut())
+                .find(|element| element.id == element_id)
+            else {
+                return;
+            };
+            // Back to the press first, so the preview never compounds and
+            // a commit's undo snapshot is the clip before the drag.
+            element.params = restore.params.clone();
+            element.animations = restore.animations.clone();
+            if commit {
+                return;
+            }
+            for ((key, value), keyed) in params.iter().zip(&animated) {
+                match (keyed, value) {
+                    (true, editor::ParamValue::Number(number)) => {
+                        if let Some(channel) = element.animations.get_mut(key) {
+                            channel.upsert(local, *number, None);
+                        }
+                    }
+                    _ => {
+                        element.params.set(key.clone(), value.clone());
+                    }
+                }
+            }
+        });
+        if commit {
+            self.update_selected_params(params, cx);
+        } else {
+            self.request_render(cx);
+            cx.notify();
+        }
+    }
+
+    /// Puts the corners back on the clip's own corners and drops their keyframes.
+    pub(crate) fn reset_corner_pin(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let animated: Vec<String> = editor::corner_pin_keys().into_iter().filter(|key| element.is_animated(key)).collect();
+        for path in animated {
+            self.clear_animation(&path, cx);
+        }
+        let mut params = Params::new();
+        for (corner, place) in editor::CORNER_PIN_CORNERS {
+            params.set(editor::corner_pin_key(corner, 'X'), place[0]);
+            params.set(editor::corner_pin_key(corner, 'Y'), place[1]);
+        }
+        self.update_selected_params(params, cx);
+    }
+
     pub(crate) fn freeform_overlay(&self) -> Option<FreeformOverlay> {
         let (element, mask) = self.freeform_mask()?;
         let quad = editor::element_quad(self.project(), element, self.playhead())?;

@@ -73,7 +73,12 @@ struct LayerUniformBuffer {
     flip_x: f32,
     flip_y: f32,
     corner_radius: f32,
-    _padding: f32, // WebGL requires uniform buffer sizes to be multiples of 16 bytes (40 → 48)
+    /// 1 when the rows below map box points to texture uv (a corner pin).
+    pinned: f32,
+    // Rows of the corner pin matrix (xyz used; WebGL wants 16-byte rows).
+    pin_row_0: [f32; 4],
+    pin_row_1: [f32; 4],
+    pin_row_2: [f32; 4],
 }
 
 #[repr(C)]
@@ -924,6 +929,11 @@ impl Compositor {
                     },
                 ],
             });
+        let pin = layer.corner_pin.as_ref().and_then(|pin| crate::pin_matrix(&crate::corner_pin::widen(pin)));
+        let pin_row = |row: usize| match &pin {
+            Some(matrix) => [matrix[row][0] as f32, matrix[row][1] as f32, matrix[row][2] as f32, 0.0],
+            None => [0.0; 4],
+        };
         let uniform_buffer =
             context
                 .device()
@@ -938,7 +948,10 @@ impl Compositor {
                         flip_x: if layer.transform.flip_x { 1.0 } else { 0.0 },
                         flip_y: if layer.transform.flip_y { 1.0 } else { 0.0 },
                         corner_radius: layer.style.corner_radius.max(0.0),
-                        _padding: 0.0,
+                        pinned: if pin.is_some() { 1.0 } else { 0.0 },
+                        pin_row_0: pin_row(0),
+                        pin_row_1: pin_row(1),
+                        pin_row_2: pin_row(2),
                     }),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 });

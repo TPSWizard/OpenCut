@@ -55,6 +55,7 @@ fn square(style: LayerStyleDescriptor) -> FrameItemDescriptor {
         effect_pass_groups: Vec::new(),
         mask: None,
         style,
+        corner_pin: None,
     })
 }
 

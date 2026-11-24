@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use editor::Params;
+use editor::{Element, Params};
 use gpui::{
     Bounds, Context, DispatchPhase, Entity, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit,
     Path, Pixels, Point, Window, canvas, div, fill, hsla, img, point, prelude::*, px, size,
@@ -31,6 +31,15 @@ struct PathDrag {
     moved: bool,
 }
 
+/// A corner pin handle being dragged: which corner, and the clip as it was
+/// at the press (every move is computed from it).
+struct PinDrag {
+    index: usize,
+    start: Element,
+    last: (f32, f32),
+    moved: bool,
+}
+
 /// The composited frame at the playhead, with transport controls.
 pub(crate) struct PreviewPanel {
     state: Entity<EditorState>,
@@ -42,6 +51,8 @@ pub(crate) struct PreviewPanel {
     pen_press: Rc<Cell<Option<(f32, f32)>>>,
     /// A path point or segment being dragged on the preview.
     path_drag: Rc<RefCell<Option<PathDrag>>>,
+    /// A corner pin handle being dragged on the preview.
+    pin_drag: Rc<RefCell<Option<PinDrag>>>,
 }
 
 impl PreviewPanel {
@@ -52,6 +63,7 @@ impl PreviewPanel {
             frame_bounds: Rc::new(Cell::new(Bounds::default())),
             pen_press: Rc::new(Cell::new(None)),
             path_drag: Rc::new(RefCell::new(None)),
+            pin_drag: Rc::new(RefCell::new(None)),
         }
     }
 }
@@ -115,6 +127,62 @@ fn finish_path_drag(drag: PathDrag, state: &Entity<EditorState>, cx: &mut gpui::
             }
         }
     });
+}
+
+/// Follows a corner pin drag: the clip is previewed with the corner at the
+/// pointer once it has travelled far enough to be a drag.
+fn track_pin_drag(
+    position: Point<Pixels>,
+    bounds: Bounds<Pixels>,
+    canvas_size: (f32, f32),
+    pin_drag: &Rc<RefCell<Option<PinDrag>>>,
+    state: &Entity<EditorState>,
+    cx: &mut gpui::App,
+) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    if scale <= 0.0 {
+        return;
+    }
+    let x = f32::from(position.x - origin.x) / scale;
+    let y = f32::from(position.y - origin.y) / scale;
+    let step = {
+        let mut borrowed = pin_drag.borrow_mut();
+        let Some(drag) = borrowed.as_mut() else {
+            return;
+        };
+        let (x0, y0) = drag.last;
+        drag.last = (x, y);
+        if !drag.moved && ((x - x0).powi(2) + (y - y0).powi(2)).sqrt() * scale < DRAG_PX {
+            drag.last = (x0, y0);
+            return;
+        }
+        drag.moved = true;
+        (drag.index, drag.start.clone())
+    };
+    let (index, start) = step;
+    state.update(cx, |state, cx| state.drag_corner_pin(&start, index, (x as f64, y as f64), false, cx));
+}
+
+/// Ends a corner pin drag: a moved corner is committed as one edit.
+fn finish_pin_drag(drag: PinDrag, state: &Entity<EditorState>, cx: &mut gpui::App) {
+    if drag.moved {
+        let (x, y) = drag.last;
+        state.update(cx, |state, cx| state.drag_corner_pin(&drag.start, drag.index, (x as f64, y as f64), true, cx));
+    }
+}
+
+/// The corner pin outline and its four handles.
+fn paint_pin_overlay(bounds: Bounds<Pixels>, canvas_size: (f32, f32), corners: &[(f64, f64); 4], window: &mut Window) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    let to_screen = |(x, y): (f64, f64)| point(origin.x + px(x as f32 * scale), origin.y + px(y as f32 * scale));
+    let line = hsla(0.0, 0.0, 1.0, 0.9);
+    for i in 0..4 {
+        paint_line(to_screen(corners[i]), to_screen(corners[(i + 1) % 4]), 0.75, line, window);
+    }
+    for corner in corners {
+        paint_square(to_screen(*corner), 5.0, hsla(0.0, 0.0, 0.0, 0.6), window);
+        paint_square(to_screen(*corner), 4.0, line, window);
+    }
 }
 
 /// Where the frame (object-fit contain) sits inside the frame area:
@@ -288,7 +356,9 @@ impl Render for PreviewPanel {
         let pen_active = state.pen.is_some();
         let overlay = state.freeform_overlay();
         let path_editable = overlay.as_ref().is_some_and(|overlay| overlay.editable);
-        let dragging = self.path_drag.borrow().is_some();
+        let pin_overlay = state.corner_pin_overlay();
+        let pin_dragging = self.pin_drag.borrow().is_some();
+        let dragging = self.path_drag.borrow().is_some() || pin_dragging;
 
         let bounds_cell = Rc::clone(&self.frame_bounds);
         let frame_area = div()
@@ -307,9 +377,28 @@ impl Render for PreviewPanel {
                 let bounds_cell = Rc::clone(&self.frame_bounds);
                 let pen_press = Rc::clone(&self.pen_press);
                 let path_drag = Rc::clone(&self.path_drag);
+                let pin_drag = Rc::clone(&self.pin_drag);
                 move |event: &MouseDownEvent, window, cx| {
                     window.focus(&focus_handle);
                     let bounds = bounds_cell.get();
+                    // A corner pin handle may sit outside the frame (a
+                    // corner dragged past the edge), so it is hit first.
+                    if let Some(corners) = pin_overlay {
+                        let (origin, scale) = fitted_frame(bounds, canvas_size);
+                        let x = f32::from(event.position.x - origin.x) / scale.max(0.01);
+                        let y = f32::from(event.position.y - origin.y) / scale.max(0.01);
+                        let tolerance = (HIT_PX * 1.5) / scale.max(0.01);
+                        let hit = corners.iter().position(|(cx_, cy_)| {
+                            ((*cx_ as f32 - x).powi(2) + (*cy_ as f32 - y).powi(2)).sqrt() <= tolerance
+                        });
+                        if let Some(index) = hit {
+                            if let Some(start) = state.read(cx).selected_element().cloned() {
+                                *pin_drag.borrow_mut() = Some(PinDrag { index, start, last: (x, y), moved: false });
+                                window.refresh();
+                                return;
+                            }
+                        }
+                    }
                     let Some((x, y)) = canvas_point(bounds, canvas_size, event.position) else {
                         return;
                     };
@@ -365,7 +454,12 @@ impl Render for PreviewPanel {
                 let bounds_cell = Rc::clone(&self.frame_bounds);
                 let pen_press = Rc::clone(&self.pen_press);
                 let path_drag = Rc::clone(&self.path_drag);
+                let pin_drag = Rc::clone(&self.pin_drag);
                 move |event: &MouseUpEvent, _, cx| {
+                    if let Some(drag) = pin_drag.borrow_mut().take() {
+                        finish_pin_drag(drag, &state, cx);
+                        return;
+                    }
                     let drag = path_drag.borrow_mut().take();
                     if let Some(drag) = drag {
                         finish_path_drag(drag, &state, cx);
@@ -390,8 +484,12 @@ impl Render for PreviewPanel {
                 let state = self.state.clone();
                 let pen_press = Rc::clone(&self.pen_press);
                 let path_drag = Rc::clone(&self.path_drag);
+                let pin_drag = Rc::clone(&self.pin_drag);
                 move |_: &MouseUpEvent, _, cx| {
                     pen_press.set(None);
+                    if let Some(drag) = pin_drag.borrow_mut().take() {
+                        finish_pin_drag(drag, &state, cx);
+                    }
                     let drag = path_drag.borrow_mut().take();
                     if let Some(drag) = drag {
                         finish_path_drag(drag, &state, cx);
@@ -404,6 +502,7 @@ impl Render for PreviewPanel {
                 // fire while hovered), as the web app's pointer capture does.
                 let state = self.state.clone();
                 let path_drag = Rc::clone(&self.path_drag);
+                let pin_drag = Rc::clone(&self.pin_drag);
                 let tracked_bounds = Rc::clone(&self.frame_bounds);
                 canvas(
                     move |bounds, _, _| bounds_cell.set(bounds),
@@ -411,7 +510,11 @@ impl Render for PreviewPanel {
                         if dragging {
                             window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
                                 if phase == DispatchPhase::Bubble {
-                                    track_path_drag(event.position, tracked_bounds.get(), canvas_size, &path_drag, &state, cx);
+                                    if pin_dragging {
+                                        track_pin_drag(event.position, tracked_bounds.get(), canvas_size, &pin_drag, &state, cx);
+                                    } else {
+                                        track_path_drag(event.position, tracked_bounds.get(), canvas_size, &path_drag, &state, cx);
+                                    }
                                 }
                             });
                         }
@@ -444,6 +547,16 @@ impl Render for PreviewPanel {
                     canvas(
                         |_, _, _| (),
                         move |bounds, _, window, _| paint_path_overlay(bounds, canvas_size, &overlay, window),
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
+            })
+            .when_some(pin_overlay, |this, corners| {
+                this.child(
+                    canvas(
+                        |_, _, _| (),
+                        move |bounds, _, window, _| paint_pin_overlay(bounds, canvas_size, &corners, window),
                     )
                     .absolute()
                     .inset_0(),

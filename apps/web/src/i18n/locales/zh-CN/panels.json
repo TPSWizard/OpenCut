@@ -411,5 +411,17 @@
   "Compressor threshold (dB)": "压缩器阈值（dB）",
   "Compressor ratio": "压缩比",
   "Limiter": "限制器",
-  "Limiter ceiling (dB)": "限制器上限（dB）"
+  "Limiter ceiling (dB)": "限制器上限（dB）",
+  "Corner pin": "四角定位",
+  "Reset corners": "重置四角",
+  "Drag the four corners in the preview to fit this clip into a screen, a sign or a frame. Corners can be keyframed, and moving or turning the clip carries them.": "在预览中拖动四个角，把此片段贴进屏幕、招牌或相框。四角可以设置关键帧，移动或旋转片段时会一起带走。",
+  "These corners cross or fold in, so the clip is shown without its pin.": "这些角相互交叉或向内折，因此片段不使用四角定位显示。",
+  "Top left X (%)": "左上 X（%）",
+  "Top left Y (%)": "左上 Y（%）",
+  "Top right X (%)": "右上 X（%）",
+  "Top right Y (%)": "右上 Y（%）",
+  "Bottom right X (%)": "右下 X（%）",
+  "Bottom right Y (%)": "右下 Y（%）",
+  "Bottom left X (%)": "左下 X（%）",
+  "Bottom left Y (%)": "左下 Y（%）"
 }

@@ -24,6 +24,13 @@ import {
 import type { AnyBaseNode } from "./nodes/base-node";
 import type { TBackground, TCanvasSize } from "@/project/types";
 import { DEFAULT_BACKGROUND_BLUR_INTENSITY } from "@/background/blur";
+import { CORNER_PIN_ENABLED } from "@/corner-pin/pin";
+import type { ParamValues } from "@/params";
+
+/** The params a node needs for its corner pin, when the pin is on. */
+function pinParams(params: ParamValues | undefined): ParamValues | null {
+	return params?.[CORNER_PIN_ENABLED] === true ? params : null;
+}
 import { previewDecodeSize, type PreviewQuality } from "@/media/proxy";
 import {
 	buildTransformFromParams,
@@ -100,6 +107,7 @@ function buildElementNode({
 				clipAnimation: readClipAnimations(element.params),
 				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
+				cornerPinParams: pinParams(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -121,6 +129,7 @@ function buildElementNode({
 				clipAnimation: readClipAnimations(element.params),
 				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
+				cornerPinParams: pinParams(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -141,6 +150,7 @@ function buildElementNode({
 				clipAnimation: readClipAnimations(element.params),
 				clipZoom: readClipZoom(element.params),
 				layerStyle: readLayerStyle(element.params),
+				cornerPinParams: pinParams(element.params),
 				opacity: readOpacityFromParams({ params: element.params }),
 				blendMode: readBlendModeFromParams({ params: element.params }),
 				effects: element.effects ?? [],
@@ -181,6 +191,7 @@ function buildElementNode({
 			animations: element.animations,
 			clipAnimation: readClipAnimations(element.params),
 			layerStyle: readLayerStyle(element.params),
+			cornerPinParams: pinParams(element.params),
 			opacity: readOpacityFromParams({ params: element.params }),
 			blendMode: readBlendModeFromParams({ params: element.params }),
 			effects: element.effects ?? [],

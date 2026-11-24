@@ -38,6 +38,14 @@ const PROPERTY_LABELS: Partial<Record<string, string>> = {
 	"background.offsetX": "BG Offset X",
 	"background.offsetY": "BG Offset Y",
 	"background.cornerRadius": "Corner Radius",
+	"cornerPin.topLeftX": "Pin TL X",
+	"cornerPin.topLeftY": "Pin TL Y",
+	"cornerPin.topRightX": "Pin TR X",
+	"cornerPin.topRightY": "Pin TR Y",
+	"cornerPin.bottomRightX": "Pin BR X",
+	"cornerPin.bottomRightY": "Pin BR Y",
+	"cornerPin.bottomLeftX": "Pin BL X",
+	"cornerPin.bottomLeftY": "Pin BL Y",
 };
 
 export function getPropertyLabel(path: AnimationPath): string {

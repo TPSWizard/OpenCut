@@ -1,3 +1,4 @@
+import { cornerPinAt } from "@/corner-pin/pin";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
@@ -312,6 +313,9 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		cornerPin: params.cornerPinParams
+			? cornerPinAt({ params: params.cornerPinParams, animations: params.animations, localTime })
+			: null,
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
 			animations: params.animations,

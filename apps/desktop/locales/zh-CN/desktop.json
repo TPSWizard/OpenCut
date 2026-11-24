@@ -850,5 +850,21 @@
   "Bass boost": "低音增强",
   "Bright": "明亮",
   "Warm": "温暖",
-  "Loud and even": "响亮均匀"
+  "Loud and even": "响亮均匀",
+  "Corner pin": "四角定位",
+  "Pin on": "定位开",
+  "Pin off": "定位关",
+  "Edit on canvas": "在画面上编辑",
+  "Reset corners": "重置四角",
+  "Drag the four corners on the preview (Edit on canvas) to fit this clip into a screen, a sign or a frame. Corners can be keyframed, and moving or turning the clip carries them.": "在预览上拖动四个角（在画面上编辑），把此片段贴进屏幕、招牌或相框。四角可以设置关键帧，移动或旋转片段时会一起带走。",
+  "Set each corner in percent of the clip's box to fit it into a screen, a sign or a frame. Corners can be keyframed.": "以片段框的百分比设置每个角，把它贴进屏幕、招牌或相框。四角可以设置关键帧。",
+  "These corners cross or fold in, so the clip is shown without its pin.": "这些角相互交叉或向内折，因此片段不使用四角定位显示。",
+  "Top left X (%)": "左上 X（%）",
+  "Top left Y (%)": "左上 Y（%）",
+  "Top right X (%)": "右上 X（%）",
+  "Top right Y (%)": "右上 Y（%）",
+  "Bottom right X (%)": "右下 X（%）",
+  "Bottom right Y (%)": "右下 Y（%）",
+  "Bottom left X (%)": "左下 X（%）",
+  "Bottom left Y (%)": "左下 Y（%）"
 }

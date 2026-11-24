@@ -1,0 +1,885 @@
+{
+  "about": "Corner pin (row 73): each corner of a clip is pinned to a point in the clip's own box, (0, 0) its top left and (1, 1) its bottom right, before its rotation, so moving, scaling or turning the clip carries the pin; params `cornerPin.enabled` and `cornerPin.<topLeft|topRight|bottomRight|bottomLeft><X|Y>` in percent of the box (capped -500 to 600; the default corners, a bow tie, a dent or corners on one line mean no pin). `read` is the param reading (apps/web/src/corner-pin/pin.ts and crates/editor/src/corner_pin.rs); `homography` is the perspective map the shared compositor draws with (crates/compositor/src/corner_pin.rs): `forward` takes a texture point (uv) to the box, `inverse` a box point to uv (null beyond the horizon); `canvas` places the pinned corners on the canvas for handles. Expected values from an independent Python reference (exact 8x8 solve).",
+  "read": [
+    {
+      "name": "off by default",
+      "params": {},
+      "corners": null
+    },
+    {
+      "name": "enabled with the default corners is no pin",
+      "params": {
+        "cornerPin.enabled": true
+      },
+      "corners": null
+    },
+    {
+      "name": "disabled keeps nothing",
+      "params": {
+        "cornerPin.enabled": false,
+        "cornerPin.topLeftX": 20
+      },
+      "corners": null
+    },
+    {
+      "name": "a screen in perspective",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftX": 10,
+        "cornerPin.topLeftY": 5,
+        "cornerPin.topRightX": 85,
+        "cornerPin.topRightY": 15,
+        "cornerPin.bottomRightX": 90,
+        "cornerPin.bottomRightY": 80,
+        "cornerPin.bottomLeftX": 5,
+        "cornerPin.bottomLeftY": 95
+      },
+      "corners": [
+        [
+          0.1,
+          0.05
+        ],
+        [
+          0.85,
+          0.15
+        ],
+        [
+          0.9,
+          0.8
+        ],
+        [
+          0.05,
+          0.95
+        ]
+      ]
+    },
+    {
+      "name": "bad values fall back to the defaults",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftX": "x",
+        "cornerPin.topLeftY": null,
+        "cornerPin.topRightX": 120
+      },
+      "corners": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.2,
+          0.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "values are capped",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftX": -900,
+        "cornerPin.topLeftY": -900,
+        "cornerPin.bottomRightX": 2000,
+        "cornerPin.bottomRightY": 2000
+      },
+      "corners": [
+        [
+          -5.0,
+          -5.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          6.0,
+          6.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "a bow tie (two corners crossed) is refused",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftX": 100,
+        "cornerPin.topRightX": 0
+      },
+      "corners": null
+    },
+    {
+      "name": "a dent (one corner pushed inside) is refused",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.bottomRightX": 30,
+        "cornerPin.bottomRightY": 30
+      },
+      "corners": null
+    },
+    {
+      "name": "mirrored all round is allowed",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftX": 100,
+        "cornerPin.topRightX": 0,
+        "cornerPin.bottomRightX": 0,
+        "cornerPin.bottomLeftX": 100
+      },
+      "corners": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "corners on one line are refused",
+      "params": {
+        "cornerPin.enabled": true,
+        "cornerPin.topLeftY": 50,
+        "cornerPin.topRightY": 50,
+        "cornerPin.bottomRightY": 50,
+        "cornerPin.bottomLeftY": 50
+      },
+      "corners": null
+    }
+  ],
+  "homography": [
+    {
+      "name": "identity",
+      "corners": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "forward": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "point": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "point": [
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "point": [
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "point": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0.5,
+            0.5
+          ],
+          "point": [
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "uv": [
+            0.25,
+            0.75
+          ],
+          "point": [
+            0.25,
+            0.75
+          ]
+        },
+        {
+          "uv": [
+            0.9,
+            0.1
+          ],
+          "point": [
+            0.9,
+            0.1
+          ]
+        }
+      ],
+      "inverse": [
+        {
+          "point": [
+            0.3,
+            0.6
+          ],
+          "uv": [
+            0.3,
+            0.6
+          ]
+        },
+        {
+          "point": [
+            -0.2,
+            1.4
+          ],
+          "uv": [
+            -0.2,
+            1.4
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a screen in perspective",
+      "corners": [
+        [
+          0.1,
+          0.05
+        ],
+        [
+          0.85,
+          0.15
+        ],
+        [
+          0.9,
+          0.8
+        ],
+        [
+          0.05,
+          0.95
+        ]
+      ],
+      "forward": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "point": [
+            0.1,
+            0.05
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "point": [
+            0.8499999999999999,
+            0.14999999999999994
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "point": [
+            0.8999999999999998,
+            0.7999999999999999
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "point": [
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "uv": [
+            0.5,
+            0.5
+          ],
+          "point": [
+            0.5387096774193547,
+            0.4612903225806451
+          ]
+        },
+        {
+          "uv": [
+            0.25,
+            0.75
+          ],
+          "point": [
+            0.32482993197278903,
+            0.6751700680272109
+          ]
+        },
+        {
+          "uv": [
+            0.9,
+            0.1
+          ],
+          "point": [
+            0.7971232876712327,
+            0.20287671232876708
+          ]
+        }
+      ],
+      "inverse": [
+        {
+          "point": [
+            0.5,
+            0.5
+          ],
+          "uv": [
+            0.4502332814930017,
+            0.5497667185069985
+          ]
+        },
+        {
+          "point": [
+            0.1,
+            0.05
+          ],
+          "uv": [
+            0.0,
+            8.755429061071929e-18
+          ]
+        },
+        {
+          "point": [
+            0.0,
+            0.0
+          ],
+          "uv": [
+            -0.09773164513404452,
+            -0.04561540025651454
+          ]
+        },
+        {
+          "point": [
+            0.95,
+            0.5
+          ],
+          "uv": [
+            1.129927077068905,
+            0.5687829318124796
+          ]
+        },
+        {
+          "point": [
+            0.4,
+            0.9
+          ],
+          "uv": [
+            0.3318816683404051,
+            1.0128959733983705
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a road going away (top squeezed)",
+      "corners": [
+        [
+          0.4,
+          0.2
+        ],
+        [
+          0.6,
+          0.2
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ],
+      "forward": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "point": [
+            0.4,
+            0.2
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "point": [
+            0.6,
+            0.2
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "point": [
+            0.9999999999999998,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "point": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0.5,
+            0.5
+          ],
+          "point": [
+            0.5,
+            0.33333333333333337
+          ]
+        },
+        {
+          "uv": [
+            0.25,
+            0.75
+          ],
+          "point": [
+            0.37500000000000006,
+            0.5
+          ]
+        },
+        {
+          "uv": [
+            0.9,
+            0.1
+          ],
+          "point": [
+            0.5869565217391305,
+            0.21739130434782608
+          ]
+        }
+      ],
+      "inverse": [
+        {
+          "point": [
+            0.5,
+            0.6
+          ],
+          "uv": [
+            0.5000000000000001,
+            0.8333333333333331
+          ]
+        },
+        {
+          "point": [
+            0.5,
+            0.21
+          ],
+          "uv": [
+            0.5000000000000001,
+            0.05952380952380939
+          ]
+        },
+        {
+          "point": [
+            0.5,
+            0.1
+          ],
+          "uv": [
+            0.5000000000000001,
+            -1.25
+          ]
+        },
+        {
+          "point": [
+            0.5,
+            -2.0
+          ],
+          "uv": null
+        },
+        {
+          "point": [
+            0.05,
+            0.5
+          ],
+          "uv": [
+            -0.4000000000000001,
+            0.7499999999999999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mirrored",
+      "corners": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "forward": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "point": [
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "point": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "point": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "point": [
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0.5,
+            0.5
+          ],
+          "point": [
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "uv": [
+            0.25,
+            0.75
+          ],
+          "point": [
+            0.75,
+            0.75
+          ]
+        },
+        {
+          "uv": [
+            0.9,
+            0.1
+          ],
+          "point": [
+            0.09999999999999998,
+            0.1
+          ]
+        }
+      ],
+      "inverse": [
+        {
+          "point": [
+            0.2,
+            0.3
+          ],
+          "uv": [
+            0.8,
+            0.3
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a parallelogram (no perspective)",
+      "corners": [
+        [
+          0.2,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.8,
+          1.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ],
+      "forward": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "point": [
+            0.2,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "point": [
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "point": [
+            0.8,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "point": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "uv": [
+            0.5,
+            0.5
+          ],
+          "point": [
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "uv": [
+            0.25,
+            0.75
+          ],
+          "point": [
+            0.25,
+            0.75
+          ]
+        },
+        {
+          "uv": [
+            0.9,
+            0.1
+          ],
+          "point": [
+            0.9000000000000001,
+            0.1
+          ]
+        }
+      ],
+      "inverse": [
+        {
+          "point": [
+            0.5,
+            0.5
+          ],
+          "uv": [
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "point": [
+            0.1,
+            0.9
+          ],
+          "uv": [
+            0.09999999999999999,
+            0.9
+          ]
+        }
+      ]
+    }
+  ],
+  "canvas": [
+    {
+      "bounds": {
+        "cx": 960,
+        "cy": 540,
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0
+      },
+      "corners": [
+        [
+          0.1,
+          0.05
+        ],
+        [
+          0.85,
+          0.15
+        ],
+        [
+          0.9,
+          0.8
+        ],
+        [
+          0.05,
+          0.95
+        ]
+      ],
+      "canvas": [
+        [
+          192.0,
+          54.0
+        ],
+        [
+          1632.0,
+          162.0
+        ],
+        [
+          1728.0,
+          864.0
+        ],
+        [
+          96.0,
+          1026.0
+        ]
+      ]
+    },
+    {
+      "bounds": {
+        "cx": 700,
+        "cy": 400,
+        "width": 800,
+        "height": -450,
+        "rotation": 30
+      },
+      "corners": [
+        [
+          0.1,
+          0.05
+        ],
+        [
+          0.85,
+          0.15
+        ],
+        [
+          0.9,
+          0.8
+        ],
+        [
+          0.05,
+          0.95
+        ]
+      ],
+      "canvas": [
+        [
+          524.1218707889795,
+          64.6298557336512
+        ],
+        [
+          1021.2371130596429,
+          403.6009989039509
+        ],
+        [
+          909.6281292110205,
+          676.9134295108993
+        ],
+        [
+          286.9808546376021,
+          395.3701442663488
+        ]
+      ]
+    }
+  ]
+}

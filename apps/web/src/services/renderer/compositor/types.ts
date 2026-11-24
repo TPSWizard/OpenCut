@@ -22,6 +22,12 @@ export type LayerItemDescriptor = {
 	mask: LayerMaskDescriptor | null;
 	/** Rounded corners, outline and drop shadow; none when left out. */
 	style?: LayerStyleDescriptor;
+	/**
+	 * The layer's corners pinned to points of its own box (top left, top
+	 * right, bottom right, bottom left; box units before rotation), drawn
+	 * in perspective by the shared compositor. None when left out.
+	 */
+	cornerPin?: [[number, number], [number, number], [number, number], [number, number]];
 };
 
 export type SceneEffectItemDescriptor = {

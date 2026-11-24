@@ -317,6 +317,7 @@ async function collectVisualSourceNode({
 				height: transform.height,
 			}),
 		}),
+		...(resolvedPin(node) && { cornerPin: resolvedPin(node) }),
 	});
 	if (strokeLayer) {
 		items.push(strokeLayer);
@@ -699,4 +700,10 @@ function identityKey(source: CanvasImageSource): string {
 		return `@${key}`;
 	}
 	return "@?";
+}
+
+/** The corner pin of a resolved visual node, if any. */
+function resolvedPin(node: { resolved: unknown }) {
+	const resolved = node.resolved as { cornerPin?: LayerItemDescriptor["cornerPin"] | null } | null;
+	return resolved?.cornerPin ?? undefined;
 }

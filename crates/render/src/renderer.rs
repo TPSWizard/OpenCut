@@ -199,6 +199,7 @@ impl Renderer {
                 effect_pass_groups: if passes.is_empty() { Vec::new() } else { vec![passes] },
                 mask: None,
                 style: Default::default(),
+                corner_pin: None,
             }));
         }
         let frame_size = (width, height, canvas_width, canvas_height, scale_x, scale_y);
@@ -360,6 +361,7 @@ impl Renderer {
             },
             mask,
             style,
+            corner_pin: layer.corner_pin,
         }];
         items.extend(stroke);
         Ok(items)
@@ -657,6 +659,7 @@ impl Renderer {
                 effect_pass_groups: Vec::new(),
                 mask: None,
                 style: Default::default(),
+                corner_pin: None,
             })
         } else {
             None

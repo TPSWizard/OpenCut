@@ -71,6 +71,7 @@ fn full_layer(texture_id: &str) -> LayerDescriptor {
         effect_pass_groups: Vec::new(),
         mask: None,
         style: Default::default(),
+        corner_pin: None,
     }
 }
 

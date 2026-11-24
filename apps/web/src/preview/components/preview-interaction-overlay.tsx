@@ -4,6 +4,8 @@ import { usePreviewInteraction } from "@/preview/hooks/use-preview-interaction";
 import type { SnapLine } from "@/preview/preview-snap";
 import { TransformHandles } from "./transform-handles";
 import { MaskHandles } from "./mask-handles";
+import { CornerPinHandles } from "./corner-pin-handles";
+import { CORNER_PIN_TAB_ID } from "@/corner-pin/components/corner-pin-tab";
 import { SnapGuides } from "./snap-guides";
 import { TextEditOverlay } from "./text-edit-overlay";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
@@ -29,6 +31,9 @@ export function PreviewInteractionOverlay() {
 		) ?? null;
 	const isMaskMode = activeElement
 		? activeTabPerType[activeElement.type] === "masks"
+		: false;
+	const isCornerPinMode = activeElement
+		? activeTabPerType[activeElement.type] === CORNER_PIN_TAB_ID
 		: false;
 
 	const {
@@ -96,6 +101,8 @@ export function PreviewInteractionOverlay() {
 				/>
 			) : isMaskMode ? (
 				<MaskHandles onSnapLinesChange={setSnapLines} />
+			) : isCornerPinMode ? (
+				<CornerPinHandles />
 			) : (
 				<TransformHandles onSnapLinesChange={setSnapLines} />
 			)}

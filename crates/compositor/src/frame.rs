@@ -71,6 +71,12 @@ pub struct LayerDescriptor {
     /// Rounded corners, outline and drop shadow; none by default.
     #[serde(default)]
     pub style: LayerStyleDescriptor,
+    /// The layer's corners pinned to points of its own box (top left, top
+    /// right, bottom right, bottom left; (0, 0) is the box's top left and
+    /// (1, 1) its bottom right, before rotation), drawn in perspective.
+    /// Corners that cannot be drawn (crossed, dented, flat) are ignored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corner_pin: Option<crate::CornerPin>,
 }
 
 /// How a layer is dressed after its effects and mask, in frame pixels.

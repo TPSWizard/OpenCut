@@ -16,6 +16,15 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"background.offsetX",
 	"background.offsetY",
 	"background.cornerRadius",
+	// Corner pin (`@/corner-pin/pin`): each corner's place in percent of the box.
+	"cornerPin.topLeftX",
+	"cornerPin.topLeftY",
+	"cornerPin.topRightX",
+	"cornerPin.topRightY",
+	"cornerPin.bottomRightX",
+	"cornerPin.bottomRightY",
+	"cornerPin.bottomLeftX",
+	"cornerPin.bottomLeftY",
 ] as const;
 
 export type AnimationPropertyPath = (typeof ANIMATION_PROPERTY_PATHS)[number];

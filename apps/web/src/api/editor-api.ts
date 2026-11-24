@@ -155,6 +155,12 @@ import { SetChannelCommand } from "@/commands/timeline/element/keyframes/set-cha
 import type { Mask, MaskType } from "@/masks/types";
 import { fetchFontsourceCatalogue, loadFontsourceFont } from "@/fonts/fontsource";
 import { isRippleScope } from "@/silence/detect";
+import { canCornerPin, cornerPinUpdates, resetCornerPinUpdates } from "@/corner-pin/apply";
+import { CORNER_PIN_ENABLED, PIN_CORNERS, type CornerPin, canvasToBox, cornerPinCorners, isConvexPin, readCornerPin } from "@/corner-pin/pin";
+import { getElementBounds } from "@/preview/element-bounds";
+import { getElementLocalTime } from "@/animation";
+import { mediaTime } from "@/wasm";
+import type { ParamValue } from "@/params";
 
 type Handlers = {
 	[M in EditorApiMethodName]: (
@@ -2028,6 +2034,87 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"transform.cornerPin": ({ elementId, trackId, enabled, corners, canvasCorners, reset }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!canCornerPin(element) || !("params" in element)) {
+				throw new EditorApiError({ code: "invalid_params", message: "Corner pin goes on video, picture and sticker clips" });
+			}
+			if (corners !== undefined && canvasCorners !== undefined) {
+				throw new EditorApiError({ code: "invalid_params", message: "Give corners or canvasCorners, not both" });
+			}
+			const localTime = getElementLocalTime({
+				timelineTime: editor.playback.getCurrentTime(),
+				elementStartTime: element.startTime,
+				elementDuration: element.duration,
+			});
+			const readPoints = (value: unknown, name: string): [number, number][] => {
+				const record = value as Record<string, unknown> | null;
+				if (!record || typeof record !== "object") {
+					throw new EditorApiError({ code: "invalid_params", message: `${name} needs topLeft, topRight, bottomRight and bottomLeft as [x, y]` });
+				}
+				return PIN_CORNERS.map(({ corner }) => {
+					const point = record[corner];
+					if (!Array.isArray(point) || point.length !== 2 || !point.every((n) => typeof n === "number" && Number.isFinite(n))) {
+						throw new EditorApiError({ code: "invalid_params", message: `${name}.${corner} must be [x, y]` });
+					}
+					return [point[0], point[1]] as [number, number];
+				});
+			};
+			let patch: Partial<TimelineElement> = {};
+			let working: TimelineElement = element;
+			if (reset) {
+				patch = resetCornerPinUpdates(element);
+				working = { ...element, ...patch } as TimelineElement;
+			}
+			let pin: CornerPin | null = null;
+			if (corners !== undefined) {
+				pin = readPoints(corners, "corners").map(([x, y]) => [x / 100, y / 100]) as CornerPin;
+			} else if (canvasCorners !== undefined) {
+				const points = readPoints(canvasCorners, "canvasCorners");
+				const mediaAsset =
+					element.type === "video" || element.type === "image"
+						? editor.media.getAssets().find((asset) => asset.id === element.mediaId)
+						: undefined;
+				const bounds = getElementBounds({
+					element,
+					canvasSize: editor.project.getActive().settings.canvasSize,
+					mediaAsset,
+					localTime,
+				});
+				if (!bounds) throw new EditorApiError({ code: "invalid_params", message: "The clip has no size to pin" });
+				pin = points.map((point) => canvasToBox(bounds, point)) as CornerPin;
+			}
+			if (pin) {
+				if (!isConvexPin(pin)) {
+					throw new EditorApiError({ code: "invalid_params", message: "The corners cross, fold in or lie on one line, so they cannot be drawn in perspective" });
+				}
+				patch = { ...patch, ...cornerPinUpdates({ element: working, corners: pin, localTime: mediaTime({ ticks: localTime }) }) } as Partial<TimelineElement>;
+				working = { ...working, ...patch } as TimelineElement;
+			}
+			if (enabled !== undefined) {
+				if (typeof enabled !== "boolean") throw new EditorApiError({ code: "invalid_params", message: "enabled must be true or false" });
+				const current = ("params" in working ? working.params : {}) as Record<string, unknown>;
+				patch = { ...patch, params: { ...current, [CORNER_PIN_ENABLED]: enabled } } as Partial<TimelineElement>;
+				working = { ...working, ...patch } as TimelineElement;
+			}
+			if (Object.keys(patch).length > 0) {
+				editor.command.execute({
+					command: new UpdateElementsCommand({ updates: [{ trackId: track.id, elementId: element.id, patch }] }),
+				});
+			}
+			const params = ("params" in working ? working.params : {}) as Record<string, ParamValue>;
+			const placed = cornerPinCorners((key) => params[key]);
+			return {
+				trackId: track.id,
+				elementId: element.id,
+				enabled: params[CORNER_PIN_ENABLED] === true,
+				drawn: readCornerPin(params) !== null,
+				corners: Object.fromEntries(
+					PIN_CORNERS.map(({ corner }, i) => [corner, [Math.round(placed[i][0] * 10000) / 100, Math.round(placed[i][1] * 10000) / 100]]),
+				) as Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", [number, number]>,
+			};
+		},
 		"audio.setFx": ({ elementId, trackId, preset, low, mid, high, compressor, limiter }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

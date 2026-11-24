@@ -35,6 +35,7 @@ import {
 	RainDropIcon,
 	MusicNote03Icon,
 	MagicWand05Icon,
+	PerspectiveIcon,
 	ArrowRightDoubleIcon,
 	DashboardSpeed02Icon,
 	CaptionsIcon,
@@ -43,6 +44,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { AnimationTab } from "@/clip-animation/components/animation-tab";
 import { StyleTab } from "@/layer-style/components/style-tab";
+import { CORNER_PIN_TAB_ID, CornerPinTab } from "@/corner-pin/components/corner-pin-tab";
 import { ElementParamsTab } from "./components/element-params-tab";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
@@ -124,6 +126,8 @@ export function propertiesTabLabel(tab: PropertiesTabDef): string {
 			return t("Animation");
 		case "Style":
 			return t("Style");
+		case "Corner pin":
+			return t("Corner pin");
 		default:
 			return tab.label;
 	}
@@ -209,6 +213,19 @@ function buildStyleTab({
 		label: "Style",
 		icon: <HugeiconsIcon icon={SquareIcon} size={16} />,
 		content: ({ trackId }) => <StyleTab element={element} trackId={trackId} />,
+	};
+}
+
+function buildCornerPinTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: CORNER_PIN_TAB_ID,
+		label: "Corner pin",
+		icon: <HugeiconsIcon icon={PerspectiveIcon} size={16} />,
+		content: ({ trackId }) => <CornerPinTab element={element} trackId={trackId} />,
 	};
 }
 
@@ -392,6 +409,7 @@ function getVideoConfig({
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
+			buildCornerPinTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
 	};
@@ -411,6 +429,7 @@ function getImageConfig({
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
 			buildMasksTab({ element }),
+			buildCornerPinTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
 	};
@@ -429,6 +448,7 @@ function getStickerConfig({
 			buildStyleTab({ element }),
 			buildBlendingTab({ element }),
 			buildTransitionTab({ element }),
+			buildCornerPinTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
 	};

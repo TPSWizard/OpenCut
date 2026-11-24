@@ -465,6 +465,26 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Corner pin
+
+A video, picture or sticker clip's inspector has **Corner pin**: **Pin
+on/off**, **Edit on canvas** (video and picture clips: the four corners
+appear on the preview as handles; drag one to move that corner, a drag that
+would cross or fold the corners in is refused) and **Reset corners** (back
+to the clip's own corners, keyframes dropped). With the pin on, each
+corner's **X** and **Y** are set in percent of the clip's own box before
+its rotation (0, 0 is its top left; 100, 100 its bottom right), so moving,
+scaling or turning the clip carries the pin; each can be keyframed, and a
+drag on a keyframed corner keys it at the playhead. The params are
+`cornerPin.enabled` and `cornerPin.<topLeft|topRight|bottomRight|bottomLeft><X|Y>`
+(`editor::read_corner_pin`). The shared compositor draws the clip through
+the perspective map from the unit square to the four corners
+(`compositor::pin_matrix`, Heckbert's square to quadrilateral, inverted
+per pixel in the layer shader, with soft edges); crossed, dented or flat
+shapes draw the clip without its pin. The web editor uses the same
+compositor (WASM) and reads the same params. Masks are applied in the
+clip's unpinned box.
+
 ## Follow motion
 
 Select a video and a sticker, text, picture or clip placed over something

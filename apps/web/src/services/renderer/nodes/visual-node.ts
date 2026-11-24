@@ -6,6 +6,8 @@ import type { BlendMode, Transform } from "@/rendering";
 import type { RetimeConfig, VisualElement } from "@/timeline";
 import type { ClipAnimations } from "@/clip-animation/presets";
 import type { LayerStyle } from "@/layer-style/style";
+import type { CornerPin } from "@/corner-pin/pin";
+import type { ParamValues } from "@/params";
 
 export interface VisualNodeParams {
 	duration: number;
@@ -26,6 +28,11 @@ export interface VisualNodeParams {
 	/** Rounded corners, outline and drop shadow, from the element's params. */
 	layerStyle?: LayerStyle | null;
 	/**
+	 * The element's params when its corner pin is on (video, picture and
+	 * sticker clips); the corners are resolved with their keyframes.
+	 */
+	cornerPinParams?: ParamValues | null;
+	/**
 	 * Resolve at times outside the clip too (a transition's handles): the
 	 * source keeps playing from the material beyond the trim and holds its
 	 * edge frame when there is none; keyframes hold their edge values.
@@ -40,6 +47,8 @@ export interface ResolvedVisualNodeState {
 	transform: Transform;
 	opacity: number;
 	effectPasses: EffectPass[][];
+	/** The corner pin at this time, if any. */
+	cornerPin?: CornerPin | null;
 }
 
 export interface ResolvedVisualSourceNodeState extends ResolvedVisualNodeState {

@@ -1,4 +1,5 @@
 import { ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX } from "@/auto-zoom/zoom";
+import { CORNER_PIN_ENABLED, CORNER_PIN_MAX, CORNER_PIN_MIN, PIN_CORNERS, cornerPinKey } from "@/corner-pin/pin";
 import type {
 	ParamDefinition,
 	ParamValue,
@@ -263,6 +264,28 @@ const zoomParams: ElementParamDefinition[] = [
 		keyframable: false,
 	},
 	{ key: "zoom.ramp", label: "Zoom ease (s)", type: "number", default: ZOOM_RAMP_DEFAULT, min: 0, max: ZOOM_RAMP_MAX, step: 0.05, keyframable: false },
+];
+
+/**
+ * Corner pin (video, picture and sticker clips): each corner's place in
+ * percent of the clip's own box, keyframable; see `@/corner-pin/pin`.
+ */
+const cornerPinParamDefinitions: ElementParamDefinition[] = [
+	{ key: CORNER_PIN_ENABLED, label: "Corner pin", type: "boolean", default: false, keyframable: false },
+	...PIN_CORNERS.flatMap(({ corner, label, default: place }) =>
+		(["X", "Y"] as const).map(
+			(axis, i): ElementParamDefinition => ({
+				key: cornerPinKey(corner, axis),
+				label: `${label} ${axis} (%)`,
+				type: "number",
+				default: place[i],
+				min: CORNER_PIN_MIN,
+				max: CORNER_PIN_MAX,
+				step: 0.1,
+				dependencies: [{ param: CORNER_PIN_ENABLED, equals: true }],
+			}),
+		),
+	),
 ];
 
 function styleParams({ isText }: { isText: boolean }): ElementParamDefinition[] {
@@ -645,11 +668,11 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...audioElementParams],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...cornerPinParamDefinitions, ...audioElementParams],
 });
 elementParamRegistry.register({
 	key: "image",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...cornerPinParamDefinitions],
 });
 elementParamRegistry.register({
 	key: "text",
@@ -662,7 +685,7 @@ elementParamRegistry.register({
 });
 elementParamRegistry.register({
 	key: "sticker",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false })],
+	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...cornerPinParamDefinitions],
 });
 elementParamRegistry.register({
 	key: "graphic",

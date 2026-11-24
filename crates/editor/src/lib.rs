@@ -19,6 +19,7 @@ mod bundle;
 mod captions;
 mod caption_keywords;
 mod colour_match;
+mod corner_pin;
 mod commands;
 mod cover;
 mod compound;
@@ -126,6 +127,10 @@ pub use colour_match::{
 pub use cover::{
     COVER_SAMPLES, CoverBackground, CoverSettings, CoverShape, CoverScore, CoverStyle, CoverTitle, MAX_TITLE_LINES, cover_project,
     cover_sample_times, cover_size, cover_title, frame_score_bgra, frame_score_rgba, pick_cover_time, wrap_title,
+};
+pub use corner_pin::{
+    CORNER_PIN_CORNERS, CORNER_PIN_ENABLED, CORNER_PIN_MAX, CORNER_PIN_MIN, PinBox, box_to_canvas, canvas_to_box,
+    corner_pin_corners, corner_pin_key, corner_pin_keys, corner_pin_params, is_convex as is_corner_pin_drawable, read_corner_pin,
 };
 pub use resize::{PIXEL_PARAMS, ResizeMode, ResizeReport, caption_margin, content_factor, picture_factor, resize_project, text_factor};
 pub use split_screen::{SPLIT_LAYOUTS, SplitPlacement, place_in_cell, plan_split_screen, split_layout_cells, split_screen_commands};

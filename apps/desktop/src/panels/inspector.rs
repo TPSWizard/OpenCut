@@ -103,6 +103,18 @@ const MASK_PERCENT_PARAMS: &[(&str, &str)] = &[
 ];
 
 /// Where a parameter stands with respect to keyframes.
+/// The corner pin rows: param key, label and default (percent of the box).
+const CORNER_PIN_ROWS: [(&str, &str, f64); 8] = [
+    ("cornerPin.topLeftX", "Top left X (%)", 0.0),
+    ("cornerPin.topLeftY", "Top left Y (%)", 0.0),
+    ("cornerPin.topRightX", "Top right X (%)", 100.0),
+    ("cornerPin.topRightY", "Top right Y (%)", 0.0),
+    ("cornerPin.bottomRightX", "Bottom right X (%)", 100.0),
+    ("cornerPin.bottomRightY", "Bottom right Y (%)", 100.0),
+    ("cornerPin.bottomLeftX", "Bottom left X (%)", 0.0),
+    ("cornerPin.bottomLeftY", "Bottom left Y (%)", 100.0),
+];
+
 #[derive(Clone)]
 struct KeyState {
     path: String,
@@ -1138,6 +1150,90 @@ impl Render for InspectorPanel {
                                         if value.is_finite() {
                                             let mut params = Params::new();
                                             params.set(key, value.clamp(min, max));
+                                            state.update_selected_params(params, cx);
+                                        }
+                                    }
+                                }),
+                            ));
+                        }
+                    }
+                }
+
+                // Corner pin (video, picture and sticker clips;
+                // `editor::read_corner_pin`), the web editor's Corner pin tab:
+                // each corner's place in percent of the clip's own box,
+                // keyframable, dragged on the preview while editing.
+                if matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. } | ElementKind::Sticker { .. }) {
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Corner pin"), window));
+                    let pin_on = params.bool(editor::CORNER_PIN_ENABLED, false);
+                    let editing = self.state.read(cx).corner_pin_editing;
+                    let on_canvas = !matches!(element.kind, ElementKind::Sticker { .. });
+                    let mut buttons = div().flex().flex_wrap().gap(px(4.));
+                    {
+                        let state = self.state.clone();
+                        buttons = buttons.child(
+                            Button::new("corner-pin-toggle", if pin_on { t("Pin on") } else { t("Pin off") })
+                                .variant(if pin_on { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set(editor::CORNER_PIN_ENABLED, !pin_on);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    if on_canvas {
+                        let state = self.state.clone();
+                        buttons = buttons.child(
+                            Button::new("corner-pin-edit", t("Edit on canvas"))
+                                .variant(if editing { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.set_corner_pin_editing(!editing, cx));
+                                }),
+                        );
+                    }
+                    {
+                        let state = self.state.clone();
+                        buttons = buttons.child(
+                            Button::new("corner-pin-reset", t("Reset corners"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.reset_corner_pin(cx))),
+                        );
+                    }
+                    content = content.child(buttons).child(
+                        div().text_xs().text_color(colors.muted_foreground).child(if on_canvas {
+                            t("Drag the four corners on the preview (Edit on canvas) to fit this clip into a screen, a sign or a frame. Corners can be keyframed, and moving or turning the clip carries them.")
+                        } else {
+                            t("Set each corner in percent of the clip's box to fit it into a screen, a sign or a frame. Corners can be keyframed.")
+                        }),
+                    );
+                    if pin_on {
+                        if !editor::is_corner_pin_drawable(&editor::corner_pin_corners(&params)) {
+                            content = content.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(colors.destructive)
+                                    .child(t("These corners cross or fold in, so the clip is shown without its pin.")),
+                            );
+                        }
+                        for (key, label, default) in CORNER_PIN_ROWS {
+                            content = content.child(self.row(
+                                t(label),
+                                key,
+                                "",
+                                number_text(params.number(key, default)),
+                                Some(key_state(key)),
+                                window,
+                                cx,
+                                Box::new(move |text, state, cx| {
+                                    if let Ok(value) = text.trim().parse::<f64>() {
+                                        if value.is_finite() {
+                                            let mut params = Params::new();
+                                            params.set(key, value.clamp(editor::CORNER_PIN_MIN, editor::CORNER_PIN_MAX));
                                             state.update_selected_params(params, cx);
                                         }
                                     }

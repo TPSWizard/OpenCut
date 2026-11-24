@@ -717,3 +717,72 @@ fn chroma_key_hides_the_screen_and_removes_spill() {
     // The default removes half the cast towards the key.
     assert!(cast(fringe) * 10 < cast(fringe_before) * 7, "spill removed: {fringe_before:?} -> {fringe:?}");
 }
+
+#[test]
+fn corner_pin_draws_the_clip_in_perspective_and_follows_keyframes() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Corner pin");
+    project.settings.background = editor::Background::Color { color: "#0000ff".to_owned() };
+    let image_id = add_image(&mut project, dir.path());
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.duration = seconds(4.0);
+    // A trapezoid: the top corners pulled in and down.
+    image
+        .params
+        .set(editor::CORNER_PIN_ENABLED, true)
+        .set("cornerPin.topLeftX", 25.0)
+        .set("cornerPin.topLeftY", 10.0)
+        .set("cornerPin.topRightX", 75.0)
+        .set("cornerPin.topRightY", 10.0);
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    // The top left corner glides out to the box's corner over two seconds.
+    for (time, value) in [(0.0, 25.0), (2.0, 0.0)] {
+        apply(
+            &mut project,
+            &EditorCommand::SetKeyframe {
+                element_id: element_id.clone(),
+                path: "cornerPin.topLeftX".to_owned(),
+                time: seconds(time),
+                value,
+                segment: None,
+            },
+        )
+        .unwrap();
+    }
+
+    // The 100×100 picture is contained in the 16:9 canvas: at 320×180 its
+    // box is x 70..250, y 0..180. A box point to a frame pixel:
+    let at = |frame: &render::RenderedFrame, bx: f64, by: f64| {
+        pixel(frame, (70.0 + bx * 180.0).round() as u32, (by * 180.0).round().min(179.0) as u32)
+    };
+    const GREEN: [u8; 4] = [0, 255, 0, 255];
+    const BLUE: [u8; 4] = [255, 0, 0, 255];
+    let start = renderer.render(&project, seconds(0.0), 320, 180).unwrap();
+    assert_eq!(at(&start, 0.5, 0.5), GREEN, "the middle is drawn");
+    assert_eq!(at(&start, 0.5, 0.95), GREEN, "the bottom edge keeps the box's width");
+    assert_eq!(at(&start, 0.03, 0.95), GREEN, "bottom left is still pinned to the box");
+    assert_eq!(at(&start, 0.1, 0.05), BLUE, "above the pinned top edge is background");
+    assert_eq!(at(&start, 0.1, 0.2), BLUE, "outside the slanted left edge is background");
+    assert_eq!(at(&start, 0.9, 0.2), BLUE, "outside the slanted right edge is background");
+
+    // Two seconds in, the top left corner is at the box's left edge.
+    let later = renderer.render(&project, seconds(2.0), 320, 180).unwrap();
+    assert_eq!(at(&later, 0.05, 0.2), GREEN, "the keyframed corner moved out");
+    assert_eq!(at(&later, 0.9, 0.2), BLUE, "the right side is unchanged");
+
+    // Switched off, the picture fills its box again.
+    let mut params = editor::Params::new();
+    params.set(editor::CORNER_PIN_ENABLED, false);
+    apply(
+        &mut project,
+        &EditorCommand::UpdateElement {
+            element_id,
+            patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+        },
+    )
+    .unwrap();
+    let off = renderer.render(&project, seconds(0.0), 320, 180).unwrap();
+    assert_eq!(at(&off, 0.1, 0.05), GREEN, "no pin, no gap");
+}
