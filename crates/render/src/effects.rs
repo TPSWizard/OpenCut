@@ -25,10 +25,23 @@ pub fn effect_pass_groups(
     height: u32,
     time_seconds: f64,
 ) -> Vec<Vec<EffectPassDescriptor>> {
+    effect_pass_groups_with_faces(effects, width, height, time_seconds, None)
+}
+
+/// As [`effect_pass_groups`], with the ovals the layer's faces cover in
+/// the frame (`facetrack::face_oval`, frame pixels) for effects that work
+/// on faces only; such an effect is left out when there are none.
+pub fn effect_pass_groups_with_faces(
+    effects: &[EffectPlan],
+    width: u32,
+    height: u32,
+    time_seconds: f64,
+    faces: Option<&[[f64; 4]]>,
+) -> Vec<Vec<EffectPassDescriptor>> {
     effects
         .iter()
         .filter_map(|effect| {
-            let passes = effect_passes(effect, width, height, time_seconds);
+            let passes = effect_passes(effect, width, height, time_seconds, faces);
             (!passes.is_empty()).then_some(passes)
         })
         .collect()
@@ -40,7 +53,13 @@ fn pixel_scale(height: u32) -> f64 {
     height as f64 / REFERENCE_HEIGHT
 }
 
-fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64) -> Vec<EffectPassDescriptor> {
+fn effect_passes(
+    effect: &EffectPlan,
+    width: u32,
+    height: u32,
+    time_seconds: f64,
+    faces: Option<&[[f64; 4]]>,
+) -> Vec<EffectPassDescriptor> {
     let spec = effect_spec(&effect.kind);
     // A parameter the plan lacks falls back to the catalogue default.
     let param = |key: &str| -> f64 {
@@ -200,15 +219,35 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
         )],
         // Retouch (`retouch` shader): the bilateral rings are `radius` / 2
         // pixels apart at a 1080-high frame, whole pixels at least one.
-        "retouch" => vec![numbers_pass(
-            "retouch",
-            &[
+        // With Area "faces only", the skin inside the layer's face ovals
+        // (none: no retouch at all on this frame).
+        "retouch" => {
+            let faces_only = spec
+                .and_then(|spec| spec.params.iter().find(|param| param.key == "area"))
+                .map(|param| param.choice_index(&effect.params.text("area", "skin")))
+                .unwrap_or(0)
+                == 1;
+            let ovals = if faces_only {
+                match faces.filter(|faces| !faces.is_empty()) {
+                    Some(faces) => facetrack::retouch_face_uniforms(faces),
+                    None => return Vec::new(),
+                }
+            } else {
+                [0.0; 12]
+            };
+            let mut numbers = vec![
                 ("u_smooth", param("smooth").clamp(0.0, 1.0)),
                 ("u_brighten", param("brighten").clamp(0.0, 1.0)),
                 ("u_even", param("even").clamp(0.0, 1.0)),
                 ("u_step", (param("radius") * scale / 2.0).round().max(1.0)),
-            ],
-        )],
+            ];
+            const FACE_UNIFORMS: [&str; 12] = [
+                "u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry", "u_face1_x", "u_face1_y", "u_face1_rx", "u_face1_ry",
+                "u_face2_x", "u_face2_y", "u_face2_rx", "u_face2_ry",
+            ];
+            numbers.extend(FACE_UNIFORMS.iter().copied().zip(ovals));
+            vec![numbers_pass("retouch", &numbers)]
+        }
         "chroma-key" => {
             let default = spec
                 .and_then(|spec| spec.params.iter().find(|param| param.key == "keyColor"))

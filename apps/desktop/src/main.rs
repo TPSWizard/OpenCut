@@ -35,6 +35,7 @@ mod stock;
 mod tracking;
 mod deflicker;
 mod multicam;
+mod faces;
 mod templates;
 mod transcribe;
 mod theme;

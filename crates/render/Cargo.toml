@@ -21,6 +21,7 @@ media = { workspace = true }
 pollster = { workspace = true }
 serde_json = { workspace = true }
 richtext = { workspace = true }
+facetrack = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 voice = { workspace = true }

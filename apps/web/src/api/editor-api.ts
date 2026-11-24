@@ -2041,6 +2041,21 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"retouch.faces": async ({ elementId, trackId }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video" && element.type !== "image") {
+				throw new EditorApiError({ code: "invalid_params", message: "Face retouch works on video and picture clips" });
+			}
+			try {
+				// Loaded on use: face finding brings MediaPipe.
+				const { retouchFaces } = await import("@/retouch/faces");
+				const result = await retouchFaces({ editor, trackId: track.id, elementId: element.id });
+				return { trackId: track.id, elementId: element.id, ...result };
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
 		"multicam.sync": async ({ elements }) => {
 			requireProject();
 			if (!Array.isArray(elements) || elements.length < 2) {

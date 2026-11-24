@@ -1609,6 +1609,7 @@ name = "editor"
 version = "0.1.0"
 dependencies = [
  "deflicker",
+ "facetrack",
  "multicam",
  "richtext",
  "serde",
@@ -1797,6 +1798,14 @@ dependencies = [
  "rayon-core",
  "smallvec",
  "zune-inflate",
+]
+
+[[package]]
+name = "facetrack"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4222,6 +4231,7 @@ dependencies = [
  "cpal",
  "deflicker",
  "editor",
+ "facetrack",
  "futures",
  "gpui",
  "image",
@@ -4263,6 +4273,7 @@ dependencies = [
  "console_error_panic_hook",
  "deflicker",
  "effects",
+ "facetrack",
  "gpu",
  "js-sys",
  "lottie",
@@ -5115,6 +5126,7 @@ dependencies = [
  "cosmic-text",
  "editor",
  "effects",
+ "facetrack",
  "gpu",
  "image",
  "lottie",

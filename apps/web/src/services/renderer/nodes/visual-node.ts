@@ -35,6 +35,8 @@ export interface VisualNodeParams {
 	cornerPinParams?: ParamValues | null;
 	/** Motion blur, 0 (off) to 100 (`@/motion-blur/blur`). */
 	motionBlur?: number;
+	/** The clip's face track when found in this media (`@/retouch/faces`). */
+	faceTrack?: string | null;
 	/**
 	 * Resolve at times outside the clip too (a transition's handles): the
 	 * source keeps playing from the material beyond the trim and holds its
@@ -54,6 +56,8 @@ export interface ResolvedVisualNodeState {
 	cornerPin?: CornerPin | null;
 	/** The transform at shutter open and close, when motion blurred. */
 	motion?: MotionTransforms | null;
+	/** The faces in the drawn frame, flat [cx, cy, w, h, …] shares of the source. */
+	faces?: number[] | null;
 }
 
 export interface ResolvedVisualSourceNodeState extends ResolvedVisualNodeState {

@@ -475,8 +475,18 @@ rings of eight taps (Radius / 2 pixels apart at 1080 high), moves skin
 towards the blur, gives it the blur's colour under its own light and shade
 (Even tone), and lifts it a little (Brighten). Pixels that are not skin are
 left exactly as they are. It needs no model: skin-coloured things that are
-not faces (hands, wood) are softened too. The web editor runs the same
-shader through the WASM compositor.
+not faces (hands, wood) are softened too, unless **Area** is "Faces
+only". **Face retouch → Retouch faces** in the inspector (video and
+picture clips) finds the clip's faces, 5 looks a second over the part a
+video plays, with FaceFusion's YOLO face model in FaceFusion's own Python
+(`scripts/find_faces.py`; needs a FaceFusion install that has downloaded
+the model), keeps them on the clip as a face track (`faces.track`, the
+`facetrack` crate) and sets the Retouch effect to faces only, in one undo
+step. Each frame the planner looks up the faces at the source time, the
+renderer turns them into soft ovals in frame pixels (up to three) and the
+shader retouches skin inside them only. The web editor finds faces with
+MediaPipe's BlazeFace and renders the same track the same way. The web
+editor runs the same shader through the WASM compositor.
 
 ## Multicam
 

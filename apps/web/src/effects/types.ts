@@ -14,6 +14,12 @@ export interface EffectPass {
 	uniforms: Record<string, EffectUniformValue>;
 	/** A look-up table the pass reads (the `lut` shader): registered once by key, then named. */
 	lut?: { key: string; size: number; data: Uint8Array };
+	/**
+	 * Works on faces only (Retouch with Area "faces"): when the frame is
+	 * built, the layer's face ovals fill the pass's `u_face*` uniforms
+	 * (`facetrack`), and the pass is left out where there are none.
+	 */
+	faces?: boolean;
 }
 
 /** What a pass builder gets: the effect's params, the frame size and the

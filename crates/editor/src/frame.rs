@@ -93,6 +93,10 @@ pub struct LayerPlan {
     /// Deflicker: the frame's brightness gain (video clips with
     /// `deflicker.strength` on and measured levels), applied before effects.
     pub brightness_gain: Option<f32>,
+    /// The faces in the drawn frame (video and picture clips with a face
+    /// track from this media, `facetrack`), as shares of the source frame;
+    /// effects that work on faces only (Retouch) read them.
+    pub faces: Option<Vec<facetrack::FaceBox>>,
 }
 
 /// An auto zoom at the planned time: `scale` (above 1) about the focus
@@ -631,6 +635,15 @@ fn layer_plan(
             (at(param_time - half), at(param_time + half))
         })
         .filter(|(open, close)| open != close);
+    // Faces: the clip's face track at this source time.
+    let faces = match &source {
+        LayerSource::Video { media_id, time } | LayerSource::Image { media_id, time } => {
+            facetrack::FaceTrack::parse(&element.params.text(facetrack::FACE_TRACK_PARAM, ""))
+                .filter(|track| &track.media == media_id)
+                .map(|track| track.faces_at(time.to_seconds_f64()))
+        }
+        _ => None,
+    };
     // Deflicker: the measured frame's gain at this source time.
     let brightness_gain = match &source {
         LayerSource::Video { media_id, time } => {
@@ -663,6 +676,7 @@ fn layer_plan(
             }),
         motion,
         brightness_gain,
+        faces,
     })
 }
 

@@ -33,16 +33,21 @@ fn retouch_matches_the_reference_pixel_for_pixel() {
     let pipeline = EffectPipeline::new(&context);
     for case in cases["cases"].as_array().unwrap() {
         let number = |key: &str| UniformValue::Number(case[key].as_f64().unwrap() as f32);
-        let pass = EffectPass {
-            shader: "retouch".into(),
-            uniforms: HashMap::from([
-                ("u_smooth".to_owned(), number("smooth")),
-                ("u_brighten".to_owned(), number("brighten")),
-                ("u_even".to_owned(), number("even")),
-                ("u_step".to_owned(), number("step")),
-            ]),
-            lut: None,
-        };
+        let mut uniforms = HashMap::from([
+            ("u_smooth".to_owned(), number("smooth")),
+            ("u_brighten".to_owned(), number("brighten")),
+            ("u_even".to_owned(), number("even")),
+            ("u_step".to_owned(), number("step")),
+        ]);
+        let ovals = case["ovals"].as_array().unwrap();
+        for slot in 0..3 {
+            let oval: Vec<f32> =
+                ovals.get(slot).map_or(vec![0.0; 4], |o| o.as_array().unwrap().iter().map(|v| v.as_f64().unwrap() as f32).collect());
+            for (axis, value) in ["x", "y", "rx", "ry"].iter().zip(oval) {
+                uniforms.insert(format!("u_face{slot}_{axis}"), UniformValue::Number(value));
+            }
+        }
+        let pass = EffectPass { shader: "retouch".into(), uniforms, lut: None };
         let output = pipeline
             .apply(&context, ApplyEffectsOptions { source: &source, width, height, passes: &[pass] })
             .expect("the effect runs");

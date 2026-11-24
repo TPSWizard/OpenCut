@@ -1033,6 +1033,70 @@ fn retouch_smooths_and_lifts_skin_and_leaves_the_rest_like_the_web() {
     assert!((skin_after.0 - web.0).abs() < 1.0 && (skin_after.1 - web.1).abs() < 1.0, "desktop {skin_after:?} vs web {web:?}");
 }
 
+/// The effects library's sample portrait (the project's own artwork) with
+/// the face FaceFusion's model finds in it, at 640x360: faces only leaves
+/// her hand alone; skin everywhere softens it too. The web check uses the
+/// same picture and face track.
+#[test]
+fn face_only_retouch_leaves_the_hand_alone() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/public/effects/preview.jpg");
+    let mut project = Project::new("Face retouch");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "portrait".to_owned(),
+            name: "preview.jpg".to_owned(),
+            kind: MediaKind::Image,
+            path,
+            duration: None,
+            width: Some(1024),
+            height: Some(1024),
+            fps: None,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let image = Element::from_media(project.media_item("portrait").unwrap(), seconds(0.0));
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    let plain = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+
+    let track = editor::FaceTrack::new("portrait", 0.0, 5.0, &[vec![editor::FaceBox { cx: 0.489, cy: 0.328, w: 0.26, h: 0.347 }]]);
+    let commands = editor::face_retouch_commands(&project, &element_id, &track).unwrap();
+    apply(&mut project, &EditorCommand::Batch(commands)).unwrap();
+    let faces = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+
+    // Skin everywhere: the same effect with its area switched.
+    let effect_id = project.element(&element_id).unwrap().1.effects[0].id.clone();
+    let mut area = editor::Params::new();
+    area.set("area", "skin");
+    apply(&mut project, &EditorCommand::UpdateEffect { element_id, effect_id, params: Some(area), enabled: None }).unwrap();
+    let everywhere = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+
+    let changed = |a: &render::RenderedFrame, b: &render::RenderedFrame, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))).filter(|&(x, y)| pixel(a, x, y) != pixel(b, x, y)).count()
+    };
+    let cheeks = (285, 105, 345, 150);
+    let hand = (255, 198, 335, 215);
+    let (face_with_faces, hand_with_faces) = (changed(&plain, &faces, cheeks), changed(&plain, &faces, hand));
+    let (face_everywhere, hand_everywhere) = (changed(&plain, &everywhere, cheeks), changed(&plain, &everywhere, hand));
+    eprintln!("changed pixels: faces only face {face_with_faces} hand {hand_with_faces}; everywhere face {face_everywhere} hand {hand_everywhere}");
+    assert!(face_with_faces > 1000, "the face is retouched");
+    assert_eq!(hand_with_faces, 0, "faces only leaves the hand alone");
+    assert!(hand_everywhere > 500, "skin everywhere softens the hand too");
+    let lifted = |frame: &render::RenderedFrame| green_stats(frame, cheeks).0;
+    eprintln!("cheek green: plain {:.2} faces {:.2}", lifted(&plain), lifted(&faces));
+    assert!(lifted(&faces) > lifted(&plain), "the face is lifted");
+    // The web editor, same picture, face track and boxes (dev editor,
+    // off-screen render through the WASM compositor): 2616 face and 0 hand
+    // pixels change with faces only, 892 hand pixels with skin everywhere,
+    // cheek green 162.89 -> 166.33.
+    assert!((face_with_faces as i64 - 2616).abs() <= 30 && (hand_everywhere as i64 - 892).abs() <= 30);
+    assert!((lifted(&plain) - 162.89).abs() < 0.2 && (lifted(&faces) - 166.33).abs() < 0.2);
+}
+
 #[test]
 fn curved_text_bends_into_an_arch_in_the_frame() {
     let Some(mut renderer) = renderer(None) else { return };

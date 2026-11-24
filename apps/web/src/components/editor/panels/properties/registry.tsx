@@ -6,6 +6,7 @@ import { ReframeSection } from "@/reframe/components/reframe-section";
 import { AutoZoomSection } from "@/auto-zoom/components/auto-zoom-section";
 import { DeflickerSection } from "@/deflicker/components/deflicker-section";
 import { MulticamSection } from "@/multicam/components/multicam-panels";
+import { FaceRetouchSection } from "@/retouch/components/face-retouch-section";
 import { RichTextSection } from "@/text/components/rich-text-section";
 import { PictureCleanupSection } from "@/picture/components/picture-cleanup-section";
 import { CutoutSection } from "@/cutout/components/cutout-section";
@@ -167,6 +168,9 @@ function buildTransformTab({
 				)}
 				{element.type === "video" && <CutoutSection element={element} trackId={trackId} />}
 				{element.type === "video" && <MulticamSection element={element} trackId={trackId} />}
+				{(element.type === "video" || element.type === "image") && (
+					<FaceRetouchSection element={element} trackId={trackId} />
+				)}
 				{element.type === "video" && <DeflickerSection element={element} trackId={trackId} />}
 				{element.type === "image" && <PictureCleanupSection element={element} trackId={trackId} />}
 				{(element.type === "video" || element.type === "image") && (

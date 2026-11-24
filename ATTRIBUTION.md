@@ -338,6 +338,13 @@ this repository. Templates you save stay in your browser or in
   models, whose licences (mostly non-commercial or research-only; GHOST is
   Apache-2.0) the person installing it accepts. `crates/media/src/faceswap.rs`
   only builds its command line and runs it.
+- Face-only retouch on the desktop (`apps/desktop/src/faces.rs`,
+  `apps/desktop/scripts/find_faces.py`, own code) runs in that same
+  FaceFusion install's Python and reads FaceFusion's YOLO face model
+  (`yoloface_8n.onnx`, by derronqi, GPL-3.0 per FaceFusion's model list)
+  from FaceFusion's own folder; the model is neither shipped nor
+  downloaded by this repository. On the web, faces are found with the
+  BlazeFace model listed under "Auto-reframe face detection".
 - The route (`apps/api/src/faceswap.ts`) and the editor code
   (`apps/web/src/faceswap`) are own code. Swapped media is recorded as
   generated (tool `faceswap`, model "HyperSwap (FaceFusion Labs) via

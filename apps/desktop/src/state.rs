@@ -1799,6 +1799,67 @@ impl EditorState {
     /// length, so trims, speed and keyframes carry over. One undo step;
     /// undo plays the original again. A file already made with the same
     /// settings is reused.
+    /// Face-only retouch on the selected video or picture clip: finds its
+    /// faces (FaceFusion's face model) and sets its Retouch effect to faces
+    /// only, in one undo step.
+    pub(crate) fn retouch_faces_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let still = match &element.kind {
+            editor::ElementKind::Video { .. } => false,
+            editor::ElementKind::Image { .. } => true,
+            _ => {
+                self.set_status(t("Face retouch works on video and picture clips."), cx);
+                return;
+            }
+        };
+        let Some(facefusion) = self.facefusion.clone() else {
+            self.set_status(t("Finding faces on the desktop needs FaceFusion installed (its face model finds them)."), cx);
+            return;
+        };
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        let element_id = element.id.clone();
+        let (a, b) = (
+            element.source_time(element.start_time).to_seconds_f64(),
+            element.source_time(element.end_time() - MediaTime::ONE_TICK).to_seconds_f64(),
+        );
+        let job = crate::faces::FaceJob {
+            facefusion,
+            media_id: media.id.clone(),
+            path: media.path.clone(),
+            still,
+            from: a.min(b).max(0.0),
+            length: (a - b).abs(),
+        };
+        self.set_status(t("Finding faces…"), cx);
+        cx.spawn(async move |this, cx| {
+            let found = cx.background_executor().spawn(async move { crate::faces::find_faces(&job) }).await;
+            this.update(cx, |state, cx| {
+                let track = match found {
+                    Ok(track) => track,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let samples = track.frames.len();
+                let with_faces = track.frames.iter().filter(|faces| !faces.is_empty()).count();
+                if with_faces == 0 {
+                    return state.set_status(t("No faces were found in the clip."), cx);
+                }
+                match editor::face_retouch_commands(state.project(), &element_id, &track) {
+                    Ok(commands) => {
+                        if state.execute(Command::Batch(commands), cx).is_some() {
+                            state.set_status(
+                                tf("Retouching faces: found in {found} of {samples} looks.", &[("found", &with_faces), ("samples", &samples)]),
+                                cx,
+                            );
+                        }
+                    }
+                    Err(message) => state.set_status(message, cx),
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Multicam: lines the selected video clips up by their sound (the
     /// first selected is the one the others line up to) and groups them
     /// as angles, in one undo step.

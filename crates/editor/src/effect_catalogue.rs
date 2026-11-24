@@ -220,6 +220,16 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
             number("brighten", "Brighten", 0.3, 0.0, 1.0, 0.01),
             number("even", "Even tone", 0.4, 0.0, 1.0, 0.01),
             number("radius", "Radius (px)", 12.0, 2.0, 40.0, 1.0),
+            EffectParamSpec {
+                key: "area",
+                label: "Area",
+                default: 0.0,
+                min: 0.0,
+                max: 1.0,
+                step: 1.0,
+                options: &[("skin", "Skin everywhere"), ("faces", "Faces only")],
+                color: None,
+            },
         ],
     },
     EffectSpec {

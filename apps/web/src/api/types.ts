@@ -1050,6 +1050,17 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Face-only retouch: finds the faces in a video (5 looks a second over
+	 * the part it plays) or picture on this device (MediaPipe BlazeFace),
+	 * keeps them on the clip (`faces.track`) and sets its Retouch effect to
+	 * "faces only" (adding it at its defaults if needed), so skin outside
+	 * the faces - hands, arms - is left alone. One undo step.
+	 */
+	"retouch.faces": {
+		params: ApiElementLocator;
+		result: { trackId: string; elementId: string; looks: number; found: number };
+	};
+	/**
 	 * Multicam: lines two or more video clips up by their sound (the first
 	 * stays put; each must be on its own track) and groups them as angles
 	 * 1, 2, 3…; only angle 1's sound plays. Lags are seconds after angle

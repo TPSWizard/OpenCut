@@ -39,6 +39,9 @@ const mediapipeWasm = join(dirname(createRequire(import.meta.url).resolve("@medi
 
 const config = defineConfig({
 	resolve: { tsconfigPaths: true, alias: { "@mediapipe-wasm": mediapipeWasm } },
+	// The dev pre-bundler must not wrap MediaPipe's loader: imported with
+	// `?url`, it has to stay a file the face and person models load.
+	optimizeDeps: { exclude: ["@mediapipe-wasm/vision_wasm_internal.js?url", "@mediapipe-wasm/vision_wasm_internal.js"] },
 	plugins: [
 		devtools(),
 		// `opencut-wasm` is a wasm-pack "bundler" build: it imports its .wasm as an ES module.

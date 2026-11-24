@@ -2,6 +2,7 @@ import { cornerPinAt } from "@/corner-pin/pin";
 import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { deflickerGainAt } from "@/deflicker/levels";
 import { readRichStyles } from "@/text/rich";
+import { faceTrackFacesAt } from "opencut-wasm";
 import { curveAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
@@ -456,6 +457,8 @@ async function resolveVideoNode({
 		sourceHeight: frame.canvas.height,
 		...(matte && { matte }),
 		...(brightnessGain !== null && { brightnessGain }),
+		// The faces in the frame drawn (its own timestamp).
+		...(node.params.faceTrack && { faces: Array.from(faceTrackFacesAt(node.params.faceTrack, frame.timestamp)) }),
 	};
 }
 
@@ -485,6 +488,7 @@ async function resolveImageNode({
 		source: source.source,
 		sourceWidth: source.width,
 		sourceHeight: source.height,
+		...(node.params.faceTrack && { faces: Array.from(faceTrackFacesAt(node.params.faceTrack, 0)) }),
 	};
 }
 

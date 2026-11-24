@@ -1,6 +1,7 @@
 import { layerStyleDescriptor, readLayerStyle } from "@/layer-style/style";
 import { drawCssBackground } from "@/gradients";
 import { canvasQuadFor } from "@/motion-blur/blur";
+import { withFaceOvals } from "@/retouch/track";
 import { getMaskDefinition } from "@/masks";
 import { incrementCounter } from "@/diagnostics/render-perf";
 import type { AnyBaseNode } from "../nodes/base-node";
@@ -166,7 +167,7 @@ async function collectNode({
 		}
 		items.push({
 			type: "sceneEffect",
-			effectPassGroups: [node.resolved.passes],
+			effectPassGroups: withFaceOvals([node.resolved.passes], null, null),
 		});
 		return;
 	}
@@ -316,7 +317,7 @@ async function collectVisualSourceNode({
 		transform,
 		opacity: node.resolved.opacity,
 		blendMode: node.params.blendMode ?? "normal",
-		effectPassGroups: node.resolved.effectPasses,
+		effectPassGroups: withFaceOvals(node.resolved.effectPasses, node.resolved.faces, transform),
 		mask,
 		...(node.params.layerStyle && {
 			style: layerStyleDescriptor({
@@ -383,7 +384,7 @@ function collectTextNode({
 		transform: fullCanvasTransform(renderer),
 		opacity: node.resolved.opacity,
 		blendMode: node.params.blendMode ?? "normal",
-		effectPassGroups: node.resolved.effectPasses,
+		effectPassGroups: withFaceOvals(node.resolved.effectPasses, null, null),
 		mask: null,
 		...(style && { style: layerStyleDescriptor({ style, width: width, height: height }) }),
 		...(from && to && { motionBlur: { from, to } }),

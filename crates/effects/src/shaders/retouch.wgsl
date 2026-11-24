@@ -3,9 +3,11 @@
 // dark); an edge-preserving (bilateral) blur over the centre and two rings
 // of eight taps, `h` and `2h` pixels out, smooths it; the blur's colour
 // evens out blotches while the pixel keeps its own light and shade; skin
-// is lifted a little. s0 = (smooth, brighten, even, h). Pixels that are
-// not skin are left exactly as they are. Checked against
-// `fixtures/retouch/cases.json`.
+// is lifted a little. s0 = (smooth, brighten, even, h). With face ovals
+// (s1, s2, s3 = centre x, y and radii in frame pixels, from a clip's face
+// track: `crates/facetrack`), only skin inside a face counts, fading out
+// over the outer quarter of each oval. Pixels that are not retouched are
+// left exactly as they are. Checked against `fixtures/retouch/cases.json`.
 
 const SKIN_CB: f32 = 0.42;
 const SKIN_CR: f32 = 0.60;
@@ -35,6 +37,16 @@ fn skin_weight(c: vec4f) -> f32 {
     return (1.0 - smoothstep(0.7, 1.0, d)) * smoothstep(0.08, 0.2, y.x) * c.a;
 }
 
+// 1 inside the oval, 0 outside, fading over its outer quarter; 0 for an
+// empty slot.
+fn in_oval(pixel: vec2f, oval: vec4f) -> f32 {
+    if (oval.z <= 0.0 || oval.w <= 0.0) {
+        return 0.0;
+    }
+    let d = length((pixel - oval.xy) / oval.zw);
+    return 1.0 - smoothstep(0.75, 1.0, d);
+}
+
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let smooth_amount = uniforms.s0.x;
@@ -42,7 +54,12 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let even = uniforms.s0.z;
     let h = max(1.0, round(uniforms.s0.w));
     let centre = textureSample(input_texture, input_sampler, input.tex_coord);
-    let w = skin_weight(centre);
+    var face = 1.0;
+    if (uniforms.s1.z > 0.0) {
+        let pixel = input.tex_coord * uniforms.resolution;
+        face = max(in_oval(pixel, uniforms.s1), max(in_oval(pixel, uniforms.s2), in_oval(pixel, uniforms.s3)));
+    }
+    let w = skin_weight(centre) * face;
     if (w <= 0.0) {
         return centre;
     }

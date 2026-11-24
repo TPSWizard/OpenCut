@@ -463,7 +463,13 @@ export function keyColorChannels(value: unknown): [number, number, number] {
  * edge-preserving blur; what is not skin is left as it is. The shared
  * `retouch` shader (`crates/effects`), as on the desktop.
  */
-export const retouchEffectDefinition = singlePass({
+export const RETOUCH_FACE_UNIFORMS = [
+	"u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry",
+	"u_face1_x", "u_face1_y", "u_face1_rx", "u_face1_ry",
+	"u_face2_x", "u_face2_y", "u_face2_rx", "u_face2_ry",
+] as const;
+
+const retouchPass = singlePass({
 	type: "retouch",
 	name: "Retouch",
 	keywords: ["retouch", "beauty", "skin", "smooth", "face", "soften", "complexion"],
@@ -473,14 +479,37 @@ export const retouchEffectDefinition = singlePass({
 		number({ key: "brighten", label: "Brighten", default: 0.3, min: 0, max: 1, step: 0.01 }),
 		number({ key: "even", label: "Even tone", default: 0.4, min: 0, max: 1, step: 0.01 }),
 		number({ key: "radius", label: "Radius (px)", default: 12, min: 2, max: 40, step: 1 }),
+		{
+			key: "area",
+			label: "Area",
+			type: "select",
+			default: "skin",
+			options: [
+				{ value: "skin", label: "Skin everywhere" },
+				{ value: "faces", label: "Faces only" },
+			],
+		},
 	],
 	uniforms: ({ read, pixelScale }) => ({
 		u_smooth: Math.min(1, Math.max(0, read("smooth"))),
 		u_brighten: Math.min(1, Math.max(0, read("brighten"))),
 		u_even: Math.min(1, Math.max(0, read("even"))),
 		u_step: Math.max(1, Math.round((read("radius") * pixelScale) / 2)),
+		...Object.fromEntries(RETOUCH_FACE_UNIFORMS.map((name) => [name, 0])),
 	}),
 });
+
+/** Area "faces": the pass is marked so the frame fills in the layer's face ovals. */
+export const retouchEffectDefinition: EffectDefinition = {
+	...retouchPass,
+	renderer: {
+		...retouchPass.renderer,
+		buildPasses: (context) =>
+			(retouchPass.renderer.buildPasses?.(context) ?? []).map((pass) =>
+				context.effectParams.area === "faces" ? { ...pass, faces: true } : pass,
+			),
+	},
+};
 
 export const chromaKeyEffectDefinition = singlePass({
 	type: "chroma-key",

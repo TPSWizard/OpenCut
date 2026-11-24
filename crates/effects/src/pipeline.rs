@@ -139,7 +139,10 @@ pub const SHADERS: &[ShaderSpec] = &[
     ShaderSpec {
         id: "retouch",
         source: include_str!("shaders/retouch.wgsl"),
-        numbers: &["u_smooth", "u_brighten", "u_even", "u_step"],
+        numbers: &[
+            "u_smooth", "u_brighten", "u_even", "u_step", "u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry", "u_face1_x",
+            "u_face1_y", "u_face1_rx", "u_face1_ry", "u_face2_x", "u_face2_y", "u_face2_rx", "u_face2_ry",
+        ],
     },
     ShaderSpec {
         id: "lut",

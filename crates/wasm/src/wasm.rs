@@ -41,6 +41,8 @@ pub use text_curve::*;
 mod flicker;
 mod rich_text;
 mod multicam_sync;
+mod face_track;
+pub use face_track::*;
 pub use multicam_sync::*;
 pub use rich_text::*;
 pub use flicker::*;

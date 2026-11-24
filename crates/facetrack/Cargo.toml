@@ -1,0 +1,14 @@
+[package]
+name = "facetrack"
+description = "Face tracks: where a clip's faces are over time, the oval each covers in the frame, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

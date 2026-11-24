@@ -14,7 +14,7 @@ use gpu::{GpuContext, wgpu};
 use media::{Ffmpeg, VideoSource, decode_image};
 use time::MediaTime;
 
-use crate::effects::{backdrop_blur_passes, effect_pass_groups};
+use crate::effects::{backdrop_blur_passes, effect_pass_groups_with_faces};
 use crate::error::RenderError;
 use crate::mask::{
     coverage_to_rgba, matte_coverage, rasterize_mask, rasterize_mask_stroke, rasterize_text_mask,
@@ -358,15 +358,29 @@ impl Renderer {
             None => mask,
         };
         let style = style_descriptor(&layer.style, &quad, scale_x, scale_y);
+        let effect_pass_groups = {
+            self.register_luts(&layer.effects);
+            // Faces only effects: the ovals the layer's faces cover here.
+            let ovals: Option<Vec<[f64; 4]>> = layer.faces.as_ref().map(|faces| {
+                let placement = facetrack::Placement {
+                    center_x: quad.center_x as f64,
+                    center_y: quad.center_y as f64,
+                    width: quad.width as f64,
+                    height: quad.height as f64,
+                    rotation_degrees: quad.rotation_degrees as f64,
+                    flip_x: quad.flip_x,
+                    flip_y: quad.flip_y,
+                };
+                faces.iter().map(|face| facetrack::face_oval(face, &placement)).collect()
+            });
+            effect_pass_groups_with_faces(&layer.effects, width, height, layer.local_time.to_seconds_f64(), ovals.as_deref())
+        };
         let mut items = vec![LayerDescriptor {
             texture_id,
             transform: quad,
             opacity: layer.opacity,
             blend_mode: parse_blend_mode(&layer.blend_mode),
-            effect_pass_groups: {
-                self.register_luts(&layer.effects);
-                effect_pass_groups(&layer.effects, width, height, layer.local_time.to_seconds_f64())
-            },
+            effect_pass_groups,
             mask,
             style,
             corner_pin: layer.corner_pin,
