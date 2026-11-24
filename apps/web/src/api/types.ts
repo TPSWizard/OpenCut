@@ -1050,6 +1050,17 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Motion blur on a visual clip: how much of a frame the shutter stays
+	 * open, 0 (off) to 100 (the whole frame; 50 is the film look). Where the
+	 * clip moves (keyframes, one-click animations) it is drawn at evenly
+	 * spaced points along the way and averaged, the same in both editors
+	 * (the shared compositor). One undo step.
+	 */
+	"transform.motionBlur": {
+		params: ApiElementLocator & { amount: number };
+		result: { trackId: string; elementId: string; amount: number };
+	};
+	/**
 	 * Curved text: bends a text element's line along an arc, -100 (a smile:
 	 * the ends rise) to 100 (an arch: the ends drop; the text wraps 350
 	 * degrees); 0 is flat. Drawn the same in both editors (`textwarp`). One

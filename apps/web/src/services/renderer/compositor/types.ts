@@ -28,6 +28,13 @@ export type LayerItemDescriptor = {
 	 * in perspective by the shared compositor. None when left out.
 	 */
 	cornerPin?: [[number, number], [number, number], [number, number], [number, number]];
+	/**
+	 * Motion blur: the quad at shutter open and close. The shared
+	 * compositor draws the layer at evenly spaced points between the two
+	 * and averages them (`compositor::motion_blur_samples` decides how
+	 * many). None when left out.
+	 */
+	motionBlur?: { from: QuadTransformDescriptor; to: QuadTransformDescriptor };
 };
 
 export type SceneEffectItemDescriptor = {

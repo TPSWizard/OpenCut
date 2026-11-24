@@ -72,6 +72,7 @@ fn full_layer(texture_id: &str) -> LayerDescriptor {
         mask: None,
         style: Default::default(),
         corner_pin: None,
+        motion_blur: None,
     }
 }
 

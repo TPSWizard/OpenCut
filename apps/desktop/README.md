@@ -465,6 +465,22 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Motion blur
+
+Every visual clip's inspector has **Motion blur** under Transform: 0 (off)
+to 100, how much of a frame the shutter stays open (100 the whole frame, 50
+the film look). Not keyframed. Where the clip moves during the shutter
+(keyframed position, scale or rotation, or a one-click animation), the
+planner works out its transform half a shutter before and after the frame
+(`editor::motion_blur`), the renderer turns both into quads, and the shared
+compositor draws the layer at evenly spaced points between them in one pass
+and averages them with premultiplied alpha: one draw per pixel of the
+farthest corner's travel, plus one, at most 32
+(`compositor::motion_blur_samples`). A clip that holds still is drawn once,
+as before. Effects, masks and the outline and shadow are applied after the
+blur. The web editor sends the same two quads to the same compositor (WASM),
+so the same clip gives the same pixels in both.
+
 ## Curved text
 
 A text element's inspector has **Curve** (with the other text numbers,

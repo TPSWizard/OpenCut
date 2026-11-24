@@ -1,3 +1,4 @@
+import type { MotionTransforms } from "@/motion-blur/blur";
 import type { ClipZoom } from "@/auto-zoom/zoom";
 import { BaseNode } from "./base-node";
 import type { Effect, EffectPass } from "@/effects/types";
@@ -32,6 +33,8 @@ export interface VisualNodeParams {
 	 * sticker clips); the corners are resolved with their keyframes.
 	 */
 	cornerPinParams?: ParamValues | null;
+	/** Motion blur, 0 (off) to 100 (`@/motion-blur/blur`). */
+	motionBlur?: number;
 	/**
 	 * Resolve at times outside the clip too (a transition's handles): the
 	 * source keeps playing from the material beyond the trim and holds its
@@ -49,6 +52,8 @@ export interface ResolvedVisualNodeState {
 	effectPasses: EffectPass[][];
 	/** The corner pin at this time, if any. */
 	cornerPin?: CornerPin | null;
+	/** The transform at shutter open and close, when motion blurred. */
+	motion?: MotionTransforms | null;
 }
 
 export interface ResolvedVisualSourceNodeState extends ResolvedVisualNodeState {

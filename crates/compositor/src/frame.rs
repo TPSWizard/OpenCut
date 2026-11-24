@@ -77,6 +77,20 @@ pub struct LayerDescriptor {
     /// Corners that cannot be drawn (crossed, dented, flat) are ignored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub corner_pin: Option<crate::CornerPin>,
+    /// Motion blur: where the layer's quad is when the shutter opens and
+    /// when it closes. The layer is drawn at evenly spaced points between
+    /// the two and the draws averaged (`motion_blur_samples` decides how
+    /// many); `transform` is still where it is at the frame's time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub motion_blur: Option<MotionBlurDescriptor>,
+}
+
+/// A layer's quad at shutter open and at shutter close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MotionBlurDescriptor {
+    pub from: QuadTransformDescriptor,
+    pub to: QuadTransformDescriptor,
 }
 
 /// How a layer is dressed after its effects and mask, in frame pixels.
@@ -116,7 +130,7 @@ pub struct LayerShadowDescriptor {
     pub blur: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuadTransformDescriptor {
     pub center_x: f32,

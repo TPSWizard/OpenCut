@@ -1,5 +1,6 @@
 import { layerStyleDescriptor, readLayerStyle } from "@/layer-style/style";
 import { drawCssBackground } from "@/gradients";
+import { canvasQuadFor } from "@/motion-blur/blur";
 import { getMaskDefinition } from "@/masks";
 import { incrementCounter } from "@/diagnostics/render-perf";
 import type { AnyBaseNode } from "../nodes/base-node";
@@ -294,6 +295,13 @@ async function collectVisualSourceNode({
 		sourceWidth,
 		sourceHeight,
 	});
+	const motion = node.resolved.motion;
+	const motionBlur = motion
+		? {
+				from: computeVisualTransform({ renderer, resolved: { transform: motion.from }, sourceWidth, sourceHeight }),
+				to: computeVisualTransform({ renderer, resolved: { transform: motion.to }, sourceWidth, sourceHeight }),
+			}
+		: undefined;
 	const { mask, strokeLayer } = buildMaskArtifacts({
 		node,
 		renderer,
@@ -318,6 +326,7 @@ async function collectVisualSourceNode({
 			}),
 		}),
 		...(resolvedPin(node) && { cornerPin: resolvedPin(node) }),
+		...(motionBlur && { motionBlur }),
 	});
 	if (strokeLayer) {
 		items.push(strokeLayer);
@@ -362,6 +371,10 @@ function collectTextNode({
 		},
 	});
 	const style = readLayerStyle(node.params.params, { isText: true });
+	// Motion blur: the canvas-sized text layer moved as the text moves.
+	const motion = node.resolved.motion;
+	const from = motion && canvasQuadFor({ drawn: node.resolved.transform, other: motion.from, width, height });
+	const to = motion && canvasQuadFor({ drawn: node.resolved.transform, other: motion.to, width, height });
 	items.push({
 		type: "layer",
 		textureId,
@@ -371,6 +384,7 @@ function collectTextNode({
 		effectPassGroups: node.resolved.effectPasses,
 		mask: null,
 		...(style && { style: layerStyleDescriptor({ style, width: width, height: height }) }),
+		...(from && to && { motionBlur: { from, to } }),
 	});
 }
 
@@ -381,7 +395,7 @@ function computeVisualTransform({
 	sourceHeight,
 }: {
 	renderer: CanvasRenderer;
-	resolved: ResolvedVisualSourceNodeState | ResolvedGraphicNodeState;
+	resolved: Pick<ResolvedVisualSourceNodeState | ResolvedGraphicNodeState, "transform">;
 	sourceWidth: number;
 	sourceHeight: number;
 }): QuadTransformDescriptor {

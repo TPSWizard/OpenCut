@@ -79,6 +79,11 @@ struct LayerUniformBuffer {
     pin_row_0: [f32; 4],
     pin_row_1: [f32; 4],
     pin_row_2: [f32; 4],
+    /// Motion blur: the quad at shutter open and close as (centre, size),
+    /// and (open rotation, close rotation, draws, unused) in radians.
+    motion_from: [f32; 4],
+    motion_to: [f32; 4],
+    motion: [f32; 4],
 }
 
 #[repr(C)]
@@ -930,6 +935,10 @@ impl Compositor {
                 ],
             });
         let pin = layer.corner_pin.as_ref().and_then(|pin| crate::pin_matrix(&crate::corner_pin::widen(pin)));
+        let motion = layer.motion_blur.as_ref().and_then(|blur| {
+            let count = crate::motion_blur_samples(&blur.from, &blur.to);
+            (count > 1).then_some((&blur.from, &blur.to, count))
+        });
         let pin_row = |row: usize| match &pin {
             Some(matrix) => [matrix[row][0] as f32, matrix[row][1] as f32, matrix[row][2] as f32, 0.0],
             None => [0.0; 4],
@@ -952,6 +961,20 @@ impl Compositor {
                         pin_row_0: pin_row(0),
                         pin_row_1: pin_row(1),
                         pin_row_2: pin_row(2),
+                        motion_from: motion.as_ref().map_or([0.0; 4], |(from, _, _)| {
+                            [from.center_x, from.center_y, from.width, from.height]
+                        }),
+                        motion_to: motion.as_ref().map_or([0.0; 4], |(_, to, _)| {
+                            [to.center_x, to.center_y, to.width, to.height]
+                        }),
+                        motion: motion.as_ref().map_or([0.0; 4], |(from, to, count)| {
+                            [
+                                from.rotation_degrees.to_radians(),
+                                to.rotation_degrees.to_radians(),
+                                *count as f32,
+                                0.0,
+                            ]
+                        }),
                     }),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 });

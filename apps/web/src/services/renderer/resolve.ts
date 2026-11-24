@@ -1,4 +1,5 @@
 import { cornerPinAt } from "@/corner-pin/pin";
+import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { curveAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
@@ -22,6 +23,7 @@ import {
 } from "@/text/measure-element";
 import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
+import type { Transform } from "@/rendering";
 import {
 	applyClipAnimationState,
 	clipAnimationStateAt,
@@ -250,30 +252,33 @@ function resolveVisualState({
 		elementStartTime: params.timeOffset,
 		elementDuration: params.duration,
 	});
-	const keyed = {
-		transform: resolveTransformAtTime({
-			baseTransform: params.transform,
-			animations: params.animations,
-			localTime,
-		}),
-		opacity: resolveOpacityAtTime({
-			baseOpacity: params.opacity,
-			animations: params.animations,
-			localTime,
-		}),
+	const animatedAt = (at: number) => {
+		const keyed = {
+			transform: resolveTransformAtTime({
+				baseTransform: params.transform,
+				animations: params.animations,
+				localTime: at,
+			}),
+			opacity: resolveOpacityAtTime({
+				baseOpacity: params.opacity,
+				animations: params.animations,
+				localTime: at,
+			}),
+		};
+		return params.clipAnimation
+			? applyClipAnimationState({
+					...keyed,
+					state: clipAnimationStateAt({
+						animations: params.clipAnimation,
+						localSeconds: at / TICKS_PER_SECOND,
+						lengthSeconds: params.duration / TICKS_PER_SECOND,
+						canvasWidth: context.renderer.width,
+						canvasHeight: context.renderer.height,
+					}),
+				})
+			: keyed;
 	};
-	const animated = params.clipAnimation
-		? applyClipAnimationState({
-				...keyed,
-				state: clipAnimationStateAt({
-					animations: params.clipAnimation,
-					localSeconds: localTime / TICKS_PER_SECOND,
-					lengthSeconds: params.duration / TICKS_PER_SECOND,
-					canvasWidth: context.renderer.width,
-					canvasHeight: context.renderer.height,
-				}),
-			})
-		: keyed;
+	const animated = animatedAt(localTime);
 	const containScale = Math.min(
 		context.renderer.width / sourceWidth,
 		context.renderer.height / sourceHeight,
@@ -281,27 +286,37 @@ function resolveVisualState({
 	// An auto zoom punch-in scales the frame about its focus point
 	// (`zoom_offset` in the desktop renderer).
 	const zoomScale = params.clipZoom ? zoomAt({ zoom: params.clipZoom, seconds: localTime / TICKS_PER_SECOND }) : 1;
-	const transform =
+	const zoomed = (base: Transform): Transform =>
 		params.clipZoom && zoomScale !== 1
 			? (() => {
 					const zoom = zoomTransform({
 						zoom: params.clipZoom,
 						scale: zoomScale,
-						width: sourceWidth * containScale * Math.abs(animated.transform.scaleX),
-						height: sourceHeight * containScale * Math.abs(animated.transform.scaleY),
-						rotate: animated.transform.rotate,
+						width: sourceWidth * containScale * Math.abs(base.scaleX),
+						height: sourceHeight * containScale * Math.abs(base.scaleY),
+						rotate: base.rotate,
 					});
 					return {
-						...animated.transform,
+						...base,
 						position: {
-							x: animated.transform.position.x + zoom.offsetX,
-							y: animated.transform.position.y + zoom.offsetY,
+							x: base.position.x + zoom.offsetX,
+							y: base.position.y + zoom.offsetY,
 						},
-						scaleX: animated.transform.scaleX * zoom.scale,
-						scaleY: animated.transform.scaleY * zoom.scale,
+						scaleX: base.scaleX * zoom.scale,
+						scaleY: base.scaleY * zoom.scale,
 					};
 				})()
-			: animated.transform;
+			: base;
+	const transform = zoomed(animated.transform);
+	// Motion blur: the transform half a shutter either side, with this
+	// frame's zoom (as the desktop renderer places them).
+	const motion = motionTransforms({
+		amount: params.motionBlur ?? 0,
+		fps: context.renderer.fps,
+		ticksPerSecond: TICKS_PER_SECOND,
+		localTime,
+		transformAt: (at) => zoomed(animatedAt(at).transform),
+	});
 	const opacity = animated.opacity;
 	const effectWidth = Math.round(
 		Math.abs(sourceWidth * containScale * transform.scaleX),
@@ -314,6 +329,7 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		motion,
 		cornerPin: params.cornerPinParams
 			? cornerPinAt({ params: params.cornerPinParams, animations: params.animations, localTime })
 			: null,
@@ -600,37 +616,49 @@ function resolveTextNode({
 		elementDuration: node.params.duration,
 	});
 	const background = buildTextBackgroundFromElement({ element: node.params });
-	const keyed = {
-		transform: resolveTransformAtTime({
-			baseTransform: node.params.transform,
-			animations: node.params.animations,
-			localTime,
-		}),
-		opacity: resolveOpacityAtTime({
-			baseOpacity: node.params.opacity,
-			animations: node.params.animations,
-			localTime,
-		}),
-	};
 	const clipAnimation = readClipAnimations(node.params.params);
-	const animationState = clipAnimation
-		? clipAnimationStateAt({
-				animations: clipAnimation,
-				localSeconds: localTime / TICKS_PER_SECOND,
-				lengthSeconds: node.params.duration / TICKS_PER_SECOND,
-				canvasWidth: node.params.canvasCenter.x * 2,
-				canvasHeight: node.params.canvasHeight,
-				isText: true,
-			})
-		: null;
-	const { transform, opacity } = animationState
-		? applyClipAnimationState({ ...keyed, state: animationState })
-		: keyed;
+	const stateAt = (at: number) => {
+		const keyed = {
+			transform: resolveTransformAtTime({
+				baseTransform: node.params.transform,
+				animations: node.params.animations,
+				localTime: at,
+			}),
+			opacity: resolveOpacityAtTime({
+				baseOpacity: node.params.opacity,
+				animations: node.params.animations,
+				localTime: at,
+			}),
+		};
+		const animationState = clipAnimation
+			? clipAnimationStateAt({
+					animations: clipAnimation,
+					localSeconds: at / TICKS_PER_SECOND,
+					lengthSeconds: node.params.duration / TICKS_PER_SECOND,
+					canvasWidth: node.params.canvasCenter.x * 2,
+					canvasHeight: node.params.canvasHeight,
+					isText: true,
+				})
+			: null;
+		return {
+			animationState,
+			...(animationState ? applyClipAnimationState({ ...keyed, state: animationState }) : keyed),
+		};
+	};
+	const { transform, opacity, animationState } = stateAt(localTime);
+	const motion = motionTransforms({
+		amount: readMotionBlur(node.params.params),
+		fps: context.renderer.fps,
+		ticksPerSecond: TICKS_PER_SECOND,
+		localTime,
+		transformAt: (at) => stateAt(at).transform,
+	});
 	const content = typeof node.params.params.content === "string" ? node.params.params.content : "";
 
 	return {
 		transform,
 		opacity,
+		motion,
 		revealChars: animationState ? revealedCharCount({ content, reveal: animationState.reveal }) : null,
 		curve: curveAt({ params: node.params.params, animations: node.params.animations, localTime }),
 		textColor: resolveColorAtTime({

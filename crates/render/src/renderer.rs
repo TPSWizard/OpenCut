@@ -200,6 +200,7 @@ impl Renderer {
                 mask: None,
                 style: Default::default(),
                 corner_pin: None,
+                motion_blur: None,
             }));
         }
         let frame_size = (width, height, canvas_width, canvas_height, scale_x, scale_y);
@@ -311,30 +312,36 @@ impl Renderer {
         };
         // An auto zoom punch-in scales the drawn frame about its focus point
         // (the web app's `zoomTransform`).
-        let mut zoomed = layer.transform;
-        if let Some(zoom) = layer.zoom {
-            let (offset_x, offset_y) = editor::zoom_offset(
-                (zoom.focus_x as f64, zoom.focus_y as f64),
-                zoom.scale as f64,
-                (base_width * zoomed.scale_x.abs()) as f64,
-                (base_height * zoomed.scale_y.abs()) as f64,
-                zoomed.rotate_degrees as f64,
-            );
-            zoomed.position_x += offset_x as f32;
-            zoomed.position_y += offset_y as f32;
-            zoomed.scale_x *= zoom.scale;
-            zoomed.scale_y *= zoom.scale;
-        }
-        let transform = &zoomed;
-        let quad = QuadTransformDescriptor {
-            center_x: (canvas_width / 2.0 + transform.position_x) * scale_x,
-            center_y: (canvas_height / 2.0 + transform.position_y) * scale_y,
-            width: (base_width * transform.scale_x.abs() * scale_x).max(1.0),
-            height: (base_height * transform.scale_y.abs() * scale_y).max(1.0),
-            rotation_degrees: transform.rotate_degrees,
-            flip_x: transform.scale_x < 0.0,
-            flip_y: transform.scale_y < 0.0,
+        let place = |transform: editor::LayerTransform| {
+            let mut zoomed = transform;
+            if let Some(zoom) = layer.zoom {
+                let (offset_x, offset_y) = editor::zoom_offset(
+                    (zoom.focus_x as f64, zoom.focus_y as f64),
+                    zoom.scale as f64,
+                    (base_width * zoomed.scale_x.abs()) as f64,
+                    (base_height * zoomed.scale_y.abs()) as f64,
+                    zoomed.rotate_degrees as f64,
+                );
+                zoomed.position_x += offset_x as f32;
+                zoomed.position_y += offset_y as f32;
+                zoomed.scale_x *= zoom.scale;
+                zoomed.scale_y *= zoom.scale;
+            }
+            QuadTransformDescriptor {
+                center_x: (canvas_width / 2.0 + zoomed.position_x) * scale_x,
+                center_y: (canvas_height / 2.0 + zoomed.position_y) * scale_y,
+                width: (base_width * zoomed.scale_x.abs() * scale_x).max(1.0),
+                height: (base_height * zoomed.scale_y.abs() * scale_y).max(1.0),
+                rotation_degrees: zoomed.rotate_degrees,
+                flip_x: zoomed.scale_x < 0.0,
+                flip_y: zoomed.scale_y < 0.0,
+            }
         };
+        let quad = place(layer.transform);
+        // Motion blur: the quad at shutter open and close (the same zoom).
+        let motion_blur = layer
+            .motion
+            .map(|(open, close)| compositor::MotionBlurDescriptor { from: place(open), to: place(close) });
         let (mask, stroke) = match layer.mask.as_ref() {
             Some(mask) => {
                 let (mask, stroke) =
@@ -362,6 +369,7 @@ impl Renderer {
             mask,
             style,
             corner_pin: layer.corner_pin,
+            motion_blur,
         }];
         items.extend(stroke);
         Ok(items)
@@ -660,6 +668,7 @@ impl Renderer {
                 mask: None,
                 style: Default::default(),
                 corner_pin: None,
+                motion_blur: None,
             })
         } else {
             None

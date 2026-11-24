@@ -884,6 +884,20 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+                    // Motion blur (`editor::motion_blur`): how much of a
+                    // frame the shutter stays open, 0 (off) to 100. Not
+                    // keyframed, as in the web editor.
+                    let row = self.row(
+                        t("Motion blur"),
+                        editor::MOTION_BLUR_PARAM,
+                        "0",
+                        number_text(editor::read_motion_blur(&params)),
+                        None,
+                        window,
+                        cx,
+                        set_number_param(editor::MOTION_BLUR_PARAM),
+                    );
+                    content = content.child(row);
 
                     // One-click animations (`editor::clip_animation`): a way
                     // in, a way out and a loop, the web editor's Animation tab.

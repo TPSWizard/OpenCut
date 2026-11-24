@@ -86,6 +86,10 @@ pub struct LayerPlan {
     /// An auto zoom punch-in at this time (video and picture clips); the
     /// renderer scales the drawn frame about the focus point.
     pub zoom: Option<LayerZoom>,
+    /// Motion blur: the clip's transform half a shutter before and after
+    /// the planned time (`motionBlur` param); the renderer draws the clip
+    /// along the way between them.
+    pub motion: Option<(LayerTransform, LayerTransform)>,
 }
 
 /// An auto zoom at the planned time: `scale` (above 1) about the focus
@@ -423,6 +427,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
     let expanded = crate::expand_compounds(project);
     let project: &Project = &expanded;
     let canvas = project.settings.canvas;
+    let fps = project.settings.fps;
     let background = match &project.settings.background {
         Background::Color { color } => parse_hex_color(color).unwrap_or([0.0, 0.0, 0.0, 1.0]),
         Background::Blur { .. } => [0.0, 0.0, 0.0, 1.0],
@@ -482,7 +487,7 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                     progress: window.progress(time),
                     params: transition.params.clone(),
                     from: None,
-                    to: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), false),
+                    to: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), fps, false),
                 }));
                 continue;
             }
@@ -497,15 +502,15 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                     kind: transition.kind.clone(),
                     progress: window.progress(time),
                     params: transition.params.clone(),
-                    from: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), true),
-                    to: next.and_then(|next| layer_plan(track, next, time, (canvas.width as f32, canvas.height as f32), true)),
+                    from: layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), fps, true),
+                    to: next.and_then(|next| layer_plan(track, next, time, (canvas.width as f32, canvas.height as f32), fps, true)),
                 }));
                 continue;
             }
             if !element.contains(time) {
                 continue;
             }
-            if let Some(layer) = layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), false) {
+            if let Some(layer) = layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), fps, false) {
                 items.push(FrameItemPlan::Layer(layer));
             }
         }
@@ -529,6 +534,7 @@ fn layer_plan(
     element: &Element,
     time: MediaTime,
     (canvas_width, canvas_height): (f32, f32),
+    fps: time::FrameRate,
     extended: bool,
 ) -> Option<LayerPlan> {
     let param_time = if extended {
@@ -605,13 +611,18 @@ fn layer_plan(
     let mut transform = LayerTransform::from_params(&params);
     let mut opacity = params.number("opacity", 1.0).clamp(0.0, 1.0) as f32;
     if let Some(state) = animation {
-        transform.position_x += state.offset_x as f32;
-        transform.position_y += state.offset_y as f32;
-        transform.scale_x *= state.scale as f32;
-        transform.scale_y *= state.scale as f32;
-        transform.rotate_degrees += state.rotate as f32;
+        state.apply_to(&mut transform);
         opacity = (opacity * state.opacity as f32).clamp(0.0, 1.0);
     }
+    // Motion blur: the same transform half a shutter either side.
+    let motion = crate::motion_blur_half_shutter(crate::read_motion_blur(&element.params), fps)
+        .and_then(MediaTime::from_seconds_f64)
+        .filter(|half| *half > MediaTime::ZERO)
+        .map(|half| {
+            let at = |time: MediaTime| transform_at(element, time, (canvas_width, canvas_height));
+            (at(param_time - half), at(param_time + half))
+        })
+        .filter(|(open, close)| open != close);
     Some(LayerPlan {
         element_id: element.id.clone(),
         track_id: track.id.clone(),
@@ -635,7 +646,37 @@ fn layer_plan(
                 ((scale - 1.0).abs() > 1e-6)
                     .then_some(LayerZoom { scale: scale as f32, focus_x: zoom.focus_x as f32, focus_y: zoom.focus_y as f32 })
             }),
+        motion,
     })
+}
+
+impl crate::clip_animation::ClipAnimationState {
+    /// Adds the animation's movement to a keyframed transform.
+    fn apply_to(&self, transform: &mut LayerTransform) {
+        transform.position_x += self.offset_x as f32;
+        transform.position_y += self.offset_y as f32;
+        transform.scale_x *= self.scale as f32;
+        transform.scale_y *= self.scale as f32;
+        transform.rotate_degrees += self.rotate as f32;
+    }
+}
+
+/// The element's transform at a timeline time: its keyframes and its
+/// one-click animations (for motion blur, which looks either side of the
+/// planned time; keyframes hold their edge values beyond the clip).
+fn transform_at(element: &Element, time: MediaTime, (canvas_width, canvas_height): (f32, f32)) -> LayerTransform {
+    let mut transform = LayerTransform::from_params(&element.params_at(time));
+    if let Some(animations) = crate::read_clip_animations(&element.params) {
+        crate::clip_animation_state_at(
+            &animations,
+            element.local_time(time).to_seconds_f64(),
+            element.duration.to_seconds_f64(),
+            (canvas_width as f64, canvas_height as f64),
+            matches!(element.kind, ElementKind::Text),
+        )
+        .apply_to(&mut transform);
+    }
+    transform
 }
 
 /// The source time for a timeline time that may lie outside the clip,
@@ -986,6 +1027,33 @@ mod tests {
 
         let plan = plan_frame(&project, seconds(5.0));
         assert_eq!(plan.layers()[0].opacity, 1.0, "held after the last key");
+    }
+    #[test]
+    fn motion_blur_plans_the_transform_half_a_shutter_either_side() {
+        let mut project = Project::new("Blur");
+        let mut text = Element::text("Hi", seconds(1.0));
+        for (at, x) in [(0.0, 0.0), (2.0, 300.0)] {
+            text.animations
+                .entry("transform.positionX".to_owned())
+                .or_default()
+                .upsert(seconds(at), x, None);
+        }
+        apply(&mut project, &Command::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+        let start = project.tracks[0].elements[0].start_time.to_seconds_f64();
+        assert_eq!(plan_frame(&project, seconds(start + 1.0)).layers()[0].motion, None, "off by default");
+
+        project.tracks[0].elements[0].params.set("motionBlur", 100.0);
+        // 30 fps, a whole-frame shutter: 1/60 s either side, 2.5 px at 150 px/s.
+        let plan = plan_frame(&project, seconds(start + 1.0));
+        let layer = &plan.layers()[0];
+        let (open, close) = layer.motion.expect("moving, so blurred");
+        assert!((layer.transform.position_x - 150.0).abs() < 1e-3);
+        assert!((open.position_x - 147.5).abs() < 1e-3, "{open:?}");
+        assert!((close.position_x - 152.5).abs() < 1e-3, "{close:?}");
+        assert_eq!(open.position_y, close.position_y);
+
+        // Past the last key it holds still: nothing to blur.
+        assert_eq!(plan_frame(&project, seconds(start + 2.5)).layers()[0].motion, None);
     }
     #[test]
     fn transitions_replace_both_clips_inside_their_window() {

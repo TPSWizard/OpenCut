@@ -161,6 +161,18 @@ const visualElementParams: ElementParamDefinition[] = [
 		step: 1,
 	},
 	{
+		// Motion blur (`@/motion-blur/blur`): how much of a frame the
+		// shutter stays open, 0 (off) to 100.
+		key: "motionBlur",
+		label: "Motion blur",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 100,
+		step: 1,
+		keyframable: false,
+	},
+	{
 		key: "opacity",
 		label: "Opacity",
 		type: "number",

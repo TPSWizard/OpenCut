@@ -9,6 +9,7 @@ import {
 } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
 import { drawCurvedText, isCurved } from "@/text/curve";
+import type { MotionTransforms } from "@/motion-blur/blur";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -34,6 +35,8 @@ export interface ResolvedTextNodeState {
 	revealChars: number | null;
 	/** Curved text at this time (`@/text/curve`): -100 to 100, 0 flat. */
 	curve?: number;
+	/** The transform at shutter open and close, when motion blurred. */
+	motion?: MotionTransforms | null;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}

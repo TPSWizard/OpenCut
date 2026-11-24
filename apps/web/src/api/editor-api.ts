@@ -159,6 +159,7 @@ import { canCornerPin, cornerPinUpdates, resetCornerPinUpdates } from "@/corner-
 import { CORNER_PIN_ENABLED, PIN_CORNERS, type CornerPin, canvasToBox, cornerPinCorners, isConvexPin, readCornerPin } from "@/corner-pin/pin";
 import { getElementBounds } from "@/preview/element-bounds";
 import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
+import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
 import type { ParamValue } from "@/params";
@@ -2035,6 +2036,28 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"transform.motionBlur": ({ elementId, trackId, amount }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!isVisualElement(element) || !("params" in element)) {
+				throw new EditorApiError({ code: "invalid_params", message: "Motion blur goes on a video, picture, sticker, graphic or text clip" });
+			}
+			if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || amount > MOTION_BLUR_MAX) {
+				throw new EditorApiError({ code: "invalid_params", message: `amount must be 0 to ${MOTION_BLUR_MAX}` });
+			}
+			editor.command.execute({
+				command: new UpdateElementsCommand({
+					updates: [
+						{
+							trackId: track.id,
+							elementId: element.id,
+							patch: { params: { ...element.params, [MOTION_BLUR_PARAM]: amount } } as Partial<TimelineElement>,
+						},
+					],
+				}),
+			});
+			return { trackId: track.id, elementId: element.id, amount };
+		},
 		"text.setCurve": ({ elementId, trackId, curve }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

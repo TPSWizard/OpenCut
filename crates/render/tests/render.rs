@@ -788,6 +788,118 @@ fn corner_pin_draws_the_clip_in_perspective_and_follows_keyframes() {
 }
 
 #[test]
+fn motion_blur_smears_a_moving_clip_along_its_path_only() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Motion blur");
+    project.settings.background = editor::Background::Color { color: "#0000ff".to_owned() };
+    let image_id = add_image(&mut project, dir.path());
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.duration = seconds(2.0);
+    image.params.set("transform.scaleX", 0.2).set("transform.scaleY", 0.2);
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    // 1800 canvas px a second, left to right through the middle.
+    for (time, value) in [(0.0, -900.0), (1.0, 900.0)] {
+        apply(
+            &mut project,
+            &EditorCommand::SetKeyframe {
+                element_id: element_id.clone(),
+                path: "transform.positionX".to_owned(),
+                time: seconds(time),
+                value,
+                segment: None,
+            },
+        )
+        .unwrap();
+    }
+    let set_blur = |project: &mut Project, amount: f64| {
+        let mut params = editor::Params::new();
+        params.set("motionBlur", amount);
+        apply(
+            project,
+            &EditorCommand::UpdateElement {
+                element_id: element_id.clone(),
+                patch: editor::ElementPatch { params: Some(params), ..Default::default() },
+            },
+        )
+        .unwrap();
+    };
+
+    // At 320x180 the 216-px box is 36 px wide, x 142..178, y 72..108.
+    let sharp = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&sharp, 139, 90), [255, 0, 0, 255], "background left of the clip");
+    assert_eq!(pixel(&sharp, 144, 90), [0, 255, 0, 255], "inside the clip");
+
+    // A whole-frame shutter at 30 fps: 60 canvas px of travel, 10 px here,
+    // so each side edge spreads over x 137..147 and 173..183.
+    set_blur(&mut project, 100.0);
+    let blurred = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    let report = |x: u32, y: u32| format!("({x}, {y}): {:?}", pixel(&blurred, x, y));
+    for (x, low, high) in [(139, 30, 110), (144, 150, 230), (175, 150, 230), (180, 30, 110)] {
+        let green = pixel(&blurred, x, 90)[1];
+        assert!((low..=high).contains(&green), "partly covered {}", report(x, 90));
+    }
+    assert_eq!(pixel(&blurred, 135, 90), [255, 0, 0, 255], "{}", report(135, 90));
+    assert_eq!(pixel(&blurred, 160, 90), [0, 255, 0, 255], "{}", report(160, 90));
+    // Up and down it does not move, so the top and bottom stay sharp.
+    assert_eq!(pixel(&blurred, 160, 71), [255, 0, 0, 255], "{}", report(160, 71));
+    assert_eq!(pixel(&blurred, 160, 73), [0, 255, 0, 255], "{}", report(160, 73));
+    // Half the shutter, half the smear: 137..147 becomes 139.5..144.5.
+    set_blur(&mut project, 50.0);
+    let half = renderer.render(&project, seconds(0.5), 320, 180).unwrap();
+    assert_eq!(pixel(&half, 138, 90), [255, 0, 0, 255]);
+    assert!((60..=200).contains(&pixel(&half, 142, 90)[1]), "{:?}", pixel(&half, 142, 90));
+    // After the last key it holds still: sharp again.
+    set_blur(&mut project, 100.0);
+    let still = renderer.render(&project, seconds(1.5), 320, 180).unwrap();
+    assert_eq!(pixel(&still, 160 + 150 - 18 - 2, 90), [255, 0, 0, 255]);
+    assert_eq!(pixel(&still, 160 + 150 - 18 + 1, 90), [0, 255, 0, 255]);
+}
+
+/// The web editor's numbers for the same clip (dev editor, off-screen
+/// render through the WASM compositor): a 90-px square at 640x360 sweeping
+/// 500 px/s, a whole-frame shutter at 30 fps, row 180.
+#[test]
+fn motion_blur_matches_the_web_editor_on_the_same_clip() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let mut project = Project::new("Motion blur parity");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+    let image_id = add_image(&mut project, dir.path());
+    let mut image = Element::from_media(project.media_item(&image_id).unwrap(), seconds(0.0));
+    image.duration = seconds(2.0);
+    image.params.set("transform.scaleX", 0.25).set("transform.scaleY", 0.25).set("motionBlur", 100.0);
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    for (time, value) in [(0.0, -250.0), (1.0, 250.0)] {
+        apply(
+            &mut project,
+            &EditorCommand::SetKeyframe {
+                element_id: element_id.clone(),
+                path: "transform.positionX".to_owned(),
+                time: seconds(time),
+                value,
+                segment: None,
+            },
+        )
+        .unwrap();
+    }
+    let frame = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+    let xs = [262, 266, 267, 270, 274, 279, 283, 284, 300, 320, 356, 360, 365, 370, 373, 374, 378];
+    let web = [0, 0, 14, 57, 113, 198, 255, 255, 255, 255, 255, 198, 113, 42, 0, 0, 0];
+    let desktop: Vec<u8> = xs.iter().map(|&x| pixel(&frame, x, 180)[1]).collect();
+    eprintln!("desktop {desktop:?}");
+    for ((x, d), w) in xs.iter().zip(&desktop).zip(web) {
+        assert!((*d as i32 - w).abs() <= 3, "x {x}: desktop {d}, web {w} ({desktop:?})");
+    }
+    for (y, expected) in [(134, 0), (135, 255), (224, 255), (225, 0)] {
+        assert_eq!(pixel(&frame, 320, y)[1], expected, "y {y}: top and bottom stay sharp");
+    }
+}
+
+#[test]
 fn curved_text_bends_into_an_arch_in_the_frame() {
     let Some(mut renderer) = renderer(None) else { return };
     let mut project = Project::new("Curved text");
