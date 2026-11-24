@@ -596,6 +596,11 @@ impl Render for InspectorPanel {
             .as_ref()
             .and_then(|element| project.media_for(element))
             .is_some_and(|media| media.kind == editor::MediaKind::Lottie);
+        // The multicam group of the selected clip, if any, and its cut count.
+        let multicam_info = selected.as_ref().and_then(|element| editor::multicam_group(project, &element.id)).map(|(_, angles)| {
+            let cuts = editor::multicam_cuts(project, &angles).len();
+            (angles, cuts)
+        });
         let project_name = project.name.clone();
         let (background, blur_intensity) = match &project.settings.background {
             Background::Color { color } => (color.clone(), None),
@@ -2399,6 +2404,44 @@ impl Render for InspectorPanel {
                                 }),
                         );
 
+                    // Multicam (`editor::multicam_group`): switch the group to
+                    // an angle from the playhead on, while playing or not.
+                    if let Some((angles, cuts)) = multicam_info.clone() {
+                        let mut angle_row = div()
+                            .flex()
+                            .flex_wrap()
+                            .items_center()
+                            .gap(px(4.))
+                            .child(Self::label_cell(t("Show"), window));
+                        for angle in &angles {
+                            let state_handle = self.state.clone();
+                            let index = angle.angle;
+                            let label = format!("{} {}", index + 1, angle.name);
+                            angle_row = angle_row.child(
+                                Button::new(eid("multicam-angle", &index.to_string()), label)
+                                    .variant(if angle.element_id == element.id { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        state_handle.update(cx, |state, cx| state.multicam_switch_selected(Some(index), cx))
+                                    }),
+                            );
+                        }
+                        let clear_state = self.state.clone();
+                        angle_row = angle_row.child(
+                            Button::new("multicam-clear", t("Clear cuts"))
+                                .variant(ButtonVariant::Ghost)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| clear_state.update(cx, |state, cx| state.multicam_switch_selected(None, cx))),
+                        );
+                        content = content
+                            .child(self.heading(t("Multicam"), window))
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                                "Click an angle to show it from the playhead on; it works while playing. {cuts} cuts so far.",
+                                &[("cuts", &cuts)],
+                            )))
+                            .child(angle_row);
+                    }
+
                     // Deflicker (`crates/deflicker`): the frames are measured
                     // once, then each is evened out against its neighbours
                     // as it is drawn; the strength can change any time.
@@ -3468,6 +3511,23 @@ impl Render for InspectorPanel {
                             "Puts the selected video and picture clips side by side or in a grid, in the order you selected them, each filling its part of the canvas.",
                         )))
                         .child(row);
+                }
+                // Multicam: line the selected video clips up by their sound.
+                {
+                    let state = self.state.clone();
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Multicam"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Lines the selected camera angles up by their sound (the first one you selected stays put) and groups them, so you can switch between them while playing. Each angle must be on its own track.",
+                        )))
+                        .child(
+                            Button::new("multicam-sync", t("Sync by audio"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.sync_multicam_selection(cx))),
+                        );
                 }
                 // Motion tracking: a video and the clip that follows a spot in it.
                 if selection_count == 2 {

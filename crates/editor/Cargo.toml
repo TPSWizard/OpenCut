@@ -16,6 +16,7 @@ thiserror = { workspace = true }
 time = { workspace = true }
 deflicker = { workspace = true }
 richtext = { workspace = true }
+multicam = { workspace = true }
 voice = { workspace = true }
 uuid = { workspace = true }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }

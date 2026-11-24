@@ -162,6 +162,8 @@ import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
 import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
 import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
+import { cutCount, groupCuts, multicamGroup, multicamSwitchCommand } from "@/multicam/group";
+import { syncMulticam } from "@/multicam/sync";
 import { applyRichStyle, RICH_SCALE_MAX, RICH_SCALE_MIN, type RichPatch } from "@/text/rich";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
@@ -2039,6 +2041,58 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"multicam.sync": async ({ elements }) => {
+			requireProject();
+			if (!Array.isArray(elements) || elements.length < 2) {
+				throw new EditorApiError({ code: "invalid_params", message: "elements must list two or more video clips" });
+			}
+			const refs = elements.map((ref) => {
+				const { track, element } = resolveElement({ elementId: ref.elementId, trackId: ref.trackId });
+				return { trackId: track.id, elementId: element.id };
+			});
+			try {
+				const { lags } = await syncMulticam({ editor, elements: refs });
+				const group = multicamGroup(editor.scenes.getActiveScene().tracks, refs[0].elementId);
+				return {
+					group: group?.group ?? "",
+					angles: lags.map((lag, index) => ({ elementId: lag.elementId, name: lag.name, angle: index + 1, lag: lag.lag, score: lag.score })),
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"multicam.switch": ({ elementId, trackId, angle, at }) => {
+			requireProject();
+			const { element } = resolveElement({ elementId, trackId });
+			if (!Number.isInteger(angle) || angle < 1) {
+				throw new EditorApiError({ code: "invalid_params", message: "angle is a number from 1" });
+			}
+			if (at !== undefined && (typeof at !== "number" || !Number.isFinite(at) || at < 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be timeline seconds" });
+			}
+			const time = at ?? editor.playback.getCurrentTime() / TICKS_PER_SECOND;
+			try {
+				editor.command.execute({
+					command: multicamSwitchCommand({ tracks: editor.scenes.getActiveScene().tracks, elementId: element.id, time, angle: angle - 1 }),
+				});
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+			const group = multicamGroup(editor.scenes.getActiveScene().tracks, element.id);
+			return { cuts: group ? groupCuts(group.angles) : "", count: group ? cutCount(group.angles) : 0 };
+		},
+		"multicam.clearCuts": ({ elementId, trackId }) => {
+			requireProject();
+			const { element } = resolveElement({ elementId, trackId });
+			try {
+				editor.command.execute({
+					command: multicamSwitchCommand({ tracks: editor.scenes.getActiveScene().tracks, elementId: element.id, time: 0, angle: null }),
+				});
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+			return { cleared: true };
+		},
 		"text.styleRange": ({ elementId, trackId, start, end, color, bold, italic, scale }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

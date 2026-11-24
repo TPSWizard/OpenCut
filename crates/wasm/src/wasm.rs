@@ -40,6 +40,8 @@ pub use voice::*;
 pub use text_curve::*;
 mod flicker;
 mod rich_text;
+mod multicam_sync;
+pub use multicam_sync::*;
 pub use rich_text::*;
 pub use flicker::*;
 pub use time::*;

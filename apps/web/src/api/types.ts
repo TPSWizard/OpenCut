@@ -1050,6 +1050,26 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Multicam: lines two or more video clips up by their sound (the first
+	 * stays put; each must be on its own track) and groups them as angles
+	 * 1, 2, 3…; only angle 1's sound plays. Lags are seconds after angle
+	 * 1's start; score is how well the sound matched (0 to 1). One undo step.
+	 */
+	"multicam.sync": {
+		params: { elements: { elementId: string; trackId?: string }[] };
+		result: { group: string; angles: { elementId: string; name: string; angle: number; lag: number; score: number }[] };
+	};
+	/** Shows `angle` (from 1) of the clip's multicam group from timeline second `at` (default: the playhead) on. One undo step. */
+	"multicam.switch": {
+		params: ApiElementLocator & { angle: number; at?: number };
+		result: { cuts: string; count: number };
+	};
+	/** Takes every cut out of the clip's multicam group: angle 1 shows throughout. One undo step. */
+	"multicam.clearCuts": {
+		params: ApiElementLocator;
+		result: { cleared: true };
+	};
+	/**
 	 * Rich text: gives characters `start..end` of a text element's text
 	 * (counting characters, not UTF-16 units; end exclusive) a colour
 	 * (`#rgb` / `#rrggbb`), weight, slant or size (`scale` 0.25 to 4,

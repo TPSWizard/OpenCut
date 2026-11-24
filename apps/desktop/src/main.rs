@@ -34,6 +34,7 @@ mod stickers;
 mod stock;
 mod tracking;
 mod deflicker;
+mod multicam;
 mod templates;
 mod transcribe;
 mod theme;

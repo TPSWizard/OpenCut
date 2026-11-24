@@ -1,0 +1,15 @@
+[package]
+name = "multicam"
+description = "Multicam: lines camera angles up by their sound and turns a cut list into which angle shows, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+
+[dev-dependencies]
+serde_json = { workspace = true }

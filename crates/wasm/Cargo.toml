@@ -27,6 +27,7 @@ tracking = { workspace = true }
 textwarp = { workspace = true }
 deflicker = { workspace = true }
 richtext = { workspace = true }
+multicam = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

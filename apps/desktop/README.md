@@ -465,6 +465,23 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Multicam
+
+Select two or more video clips (each on its own track, the one to line up
+to first) and click **Sync by audio** in the multi-selection inspector.
+Each clip's sound over the part it plays is read with FFmpeg (mono, 8 kHz),
+turned into an onset envelope (log loudness rises, 200 a second) and
+cross-correlated with the first's by FFT (`multicam` crate); each moves by
+its lag (all later if one would start before zero), the clips become angles
+1, 2, 3… of a group (`multicam.group`, `multicam.angle`), and all but angle
+1 are muted. A score under 0.2 is refused. With one angle selected, the
+inspector's **Multicam** row has a button per angle: it shows that angle
+from the playhead on (also while playing) by adding a cut to the group's
+list (`multicam.cuts`) and rewriting every angle's opacity as stepped keys
+(a key 6 ms before each cut, past the 5 ms keyframe snap), so the angles
+stay ordinary clips and render everywhere. **Clear cuts** shows angle 1
+throughout. The web editor does the same through WASM.
+
 ## Rich text
 
 A text element's inspector has a **Selection** row under the Text field:

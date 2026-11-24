@@ -21,6 +21,7 @@ media = { workspace = true }
 tracking = { workspace = true }
 deflicker = { workspace = true }
 richtext = { workspace = true }
+multicam = { workspace = true }
 voice = { workspace = true }
 render = { workspace = true }
 serde = { workspace = true }

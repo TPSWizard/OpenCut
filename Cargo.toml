@@ -19,6 +19,7 @@ members = [
   'crates/textwarp',
   'crates/deflicker',
   'crates/richtext',
+  'crates/multicam',
   'crates/voice',
   'crates/wasm',
 ]
@@ -44,6 +45,7 @@ tracking = { path = "crates/tracking" }
 textwarp = { path = "crates/textwarp" }
 deflicker = { path = "crates/deflicker" }
 richtext = { path = "crates/richtext" }
+multicam = { path = "crates/multicam" }
 voice = { path = "crates/voice" }
 
 # Desktop

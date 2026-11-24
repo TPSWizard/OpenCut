@@ -22,6 +22,11 @@ mod colour_match;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
+mod multicam_group;
+pub use multicam_group::{
+    MULTICAM_ANGLE, MULTICAM_CUTS, MULTICAM_GROUP, MulticamAngle, multicam_clear_commands, multicam_cuts, multicam_group,
+    multicam_switch_commands, multicam_sync_commands,
+};
 
 /// Rich text: the param holding a text clip's styled ranges (`richtext`).
 pub const RICH_TEXT_PARAM: &str = "richText";

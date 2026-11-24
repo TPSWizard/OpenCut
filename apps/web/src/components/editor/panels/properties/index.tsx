@@ -18,6 +18,7 @@ import { useT } from "@/i18n";
 import { ColourMatchPanel } from "@/colour-match/components/colour-match-panel";
 import { FollowMotionPanel } from "@/tracking/components/follow-motion-panel";
 import { SplitScreenPanel } from "@/split-screen/components/split-screen-panel";
+import { MulticamSyncPanel } from "@/multicam/components/multicam-panels";
 
 export function PropertiesPanel() {
 	const t = useT();
@@ -44,6 +45,7 @@ export function PropertiesPanel() {
 				<SplitScreenPanel targets={selectedElements} />
 				<ColourMatchPanel targets={selectedElements} />
 				<FollowMotionPanel targets={selectedElements} />
+				<MulticamSyncPanel targets={selectedElements} />
 			</div>
 		);
 	}

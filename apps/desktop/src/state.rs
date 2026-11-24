@@ -1799,6 +1799,83 @@ impl EditorState {
     /// length, so trims, speed and keyframes carry over. One undo step;
     /// undo plays the original again. A file already made with the same
     /// settings is reused.
+    /// Multicam: lines the selected video clips up by their sound (the
+    /// first selected is the one the others line up to) and groups them
+    /// as angles, in one undo step.
+    pub(crate) fn sync_multicam_selection(&mut self, cx: &mut Context<Self>) {
+        let project = self.project();
+        let mut angles = Vec::new();
+        for id in &self.selection {
+            let Some((_, element)) = project.element(id) else { continue };
+            let Some(media) = project.media_for(element) else { continue };
+            if !matches!(element.kind, editor::ElementKind::Video { .. }) || !media.has_audio {
+                self.set_status(t("Multicam angles must be video clips with sound."), cx);
+                return;
+            }
+            let (a, b) = (
+                element.source_time(element.start_time).to_seconds_f64(),
+                element.source_time(element.end_time() - MediaTime::ONE_TICK).to_seconds_f64(),
+            );
+            angles.push(crate::multicam::SyncAngle {
+                element_id: element.id.clone(),
+                name: element.name.clone(),
+                path: media.path.clone(),
+                from: a.min(b).max(0.0),
+                length: (a - b).abs(),
+            });
+        }
+        if angles.len() < 2 {
+            self.set_status(t("Select two or more video clips to sync."), cx);
+            return;
+        }
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read the clips' sound."), cx);
+            return;
+        };
+        self.set_status(t("Listening to each angle to line them up…"), cx);
+        cx.spawn(async move |this, cx| {
+            let lags = cx.background_executor().spawn(async move { crate::multicam::sync_lags(&ffmpeg, &angles) }).await;
+            this.update(cx, |state, cx| {
+                let lags = match lags {
+                    Ok(lags) => lags,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let count = lags.len();
+                match editor::multicam_sync_commands(state.project(), &lags, &editor::new_id()) {
+                    Ok(commands) => {
+                        if state.execute(Command::Batch(commands), cx).is_some() {
+                            state.set_status(
+                                tf("{count} angles lined up by their sound; only the first one's sound plays.", &[("count", &count)]),
+                                cx,
+                            );
+                        }
+                    }
+                    Err(message) => state.set_status(message, cx),
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Multicam: the selected angle's group shows `angle` from the playhead
+    /// on (one undo step); `None` takes every cut out.
+    pub(crate) fn multicam_switch_selected(&mut self, angle: Option<usize>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let time = self.playhead().to_seconds_f64();
+        let commands = match angle {
+            Some(angle) => editor::multicam_switch_commands(self.project(), &element_id, time, angle),
+            None => editor::multicam_clear_commands(self.project(), &element_id),
+        };
+        match commands {
+            Ok(commands) => {
+                self.execute(Command::Batch(commands), cx);
+            }
+            Err(message) => self.set_status(message, cx),
+        }
+    }
+
     /// Rich text on the selected text clip: `patch` on characters
     /// `start..end` of its text, or those characters back to the clip's own
     /// style when `patch` is `None` (one undo step).

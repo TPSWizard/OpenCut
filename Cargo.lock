@@ -1609,6 +1609,7 @@ name = "editor"
 version = "0.1.0"
 dependencies = [
  "deflicker",
+ "multicam",
  "richtext",
  "serde",
  "serde_json",
@@ -3685,6 +3686,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "multicam"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "naga"
 version = "25.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4217,6 +4225,7 @@ dependencies = [
  "image",
  "lottie",
  "media",
+ "multicam",
  "render",
  "richtext",
  "serde",
@@ -4256,6 +4265,7 @@ dependencies = [
  "js-sys",
  "lottie",
  "masks",
+ "multicam",
  "num-traits",
  "richtext",
  "serde",
