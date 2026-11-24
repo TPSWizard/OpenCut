@@ -946,6 +946,93 @@ fn rich_text_matches_the_web_editor_on_the_same_text() {
     }
 }
 
+/// A noisy skin oval on noisy blue, 640x360, from a seeded generator the
+/// web check builds the same way.
+const WEB_SKIN_MEAN: f64 = 173.06;
+const WEB_SKIN_SPREAD: f64 = 5.45;
+
+fn face_picture(path: &Path) {
+    let mut x: u64 = 79;
+    let mut next = || {
+        x = (1103515245 * x + 12345) % (1 << 31);
+        x as f64 / (1u64 << 31) as f64
+    };
+    let mut picture = image::RgbaImage::new(640, 360);
+    for py in 0..360u32 {
+        for px in 0..640u32 {
+            let (dx, dy) = ((px as f64 - 320.0) / 140.0, (py as f64 - 180.0) / 120.0);
+            let n = (next() - 0.5) * 40.0;
+            let rgb = if dx * dx + dy * dy <= 1.0 {
+                [222.0 + n, 170.0 + n * 0.8, 140.0 + n * 0.6]
+            } else {
+                [60.0 + n, 90.0 + n, 200.0 + n * 0.5]
+            };
+            let c = |v: f64| v.round().clamp(0.0, 255.0) as u8;
+            picture.put_pixel(px, py, image::Rgba([c(rgb[0]), c(rgb[1]), c(rgb[2]), 255]));
+        }
+    }
+    picture.save(path).unwrap();
+}
+
+/// Mean and spread of the green channel over a box, from BGRA.
+fn green_stats(frame: &render::RenderedFrame, (x0, y0, x1, y1): (u32, u32, u32, u32)) -> (f64, f64) {
+    let values: Vec<f64> = (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))).map(|(x, y)| pixel(frame, x, y)[1] as f64).collect();
+    let mean = values.iter().sum::<f64>() / values.len() as f64;
+    let spread = (values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64).sqrt();
+    (mean, spread)
+}
+
+/// The web editor's numbers for the same picture with Retouch at its
+/// defaults (dev editor, off-screen render through the WASM compositor).
+#[test]
+fn retouch_smooths_and_lifts_skin_and_leaves_the_rest_like_the_web() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("face.png");
+    face_picture(&path);
+    let mut project = Project::new("Retouch");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "face".to_owned(),
+            name: "face.png".to_owned(),
+            kind: MediaKind::Image,
+            path: path.clone(),
+            duration: None,
+            width: Some(640),
+            height: Some(360),
+            fps: None,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let image = Element::from_media(project.media_item("face").unwrap(), seconds(0.0));
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    let skin = (270, 140, 370, 220);
+    let blue = (10, 10, 110, 80);
+    let before = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+    apply(
+        &mut project,
+        &EditorCommand::AddEffect { element_id, effect: editor::Effect::from_catalogue("retouch").unwrap() },
+    )
+    .unwrap();
+    let after = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+    let (skin_before, skin_after) = (green_stats(&before, skin), green_stats(&after, skin));
+    eprintln!("skin before {skin_before:?} after {skin_after:?}; blue {:?}", green_stats(&after, blue));
+    assert!(skin_after.1 < skin_before.1 * 0.75, "smoother: {skin_before:?} -> {skin_after:?}");
+    assert!(skin_after.0 > skin_before.0 + 1.0, "lifted: {skin_before:?} -> {skin_after:?}");
+    for y in blue.1..blue.3 {
+        for x in blue.0..blue.2 {
+            assert_eq!(pixel(&before, x, y), pixel(&after, x, y), "not skin, so untouched at ({x}, {y})");
+        }
+    }
+    // The web editor, same picture and settings: skin mean and spread.
+    let web = (WEB_SKIN_MEAN, WEB_SKIN_SPREAD);
+    assert!((skin_after.0 - web.0).abs() < 1.0 && (skin_after.1 - web.1).abs() < 1.0, "desktop {skin_after:?} vs web {web:?}");
+}
+
 #[test]
 fn curved_text_bends_into_an_arch_in_the_frame() {
     let Some(mut renderer) = renderer(None) else { return };

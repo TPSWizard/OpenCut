@@ -212,6 +212,17 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
         ],
     },
     EffectSpec {
+        kind: "retouch",
+        label: "Retouch",
+        description: "Smooths, brightens and evens skin (found by its colour) while keeping edges and everything that is not skin.",
+        params: &[
+            number("smooth", "Smooth", 0.6, 0.0, 1.0, 0.01),
+            number("brighten", "Brighten", 0.3, 0.0, 1.0, 0.01),
+            number("even", "Even tone", 0.4, 0.0, 1.0, 0.01),
+            number("radius", "Radius (px)", 12.0, 2.0, 40.0, 1.0),
+        ],
+    },
+    EffectSpec {
         kind: "chroma-key",
         label: "Chroma key",
         description: "Makes a green or blue screen (or any chosen colour) transparent, with spill removal for the fringe it leaves.",

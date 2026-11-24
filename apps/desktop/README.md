@@ -465,6 +465,19 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Retouch
+
+**Retouch** is in the effects catalogue (Smooth, Brighten, Even tone,
+Radius). The shared `retouch` shader (`crates/effects`) weighs each pixel
+as skin by its chroma (an ellipse around skin tones in Cb/Cr, faded out in
+the dark), runs an edge-preserving bilateral blur over the centre and two
+rings of eight taps (Radius / 2 pixels apart at 1080 high), moves skin
+towards the blur, gives it the blur's colour under its own light and shade
+(Even tone), and lifts it a little (Brighten). Pixels that are not skin are
+left exactly as they are. It needs no model: skin-coloured things that are
+not faces (hands, wood) are softened too. The web editor runs the same
+shader through the WASM compositor.
+
 ## Multicam
 
 Select two or more video clips (each on its own track, the one to line up

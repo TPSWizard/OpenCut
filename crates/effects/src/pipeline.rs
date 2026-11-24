@@ -137,6 +137,11 @@ pub const SHADERS: &[ShaderSpec] = &[
         numbers: &["u_key_r", "u_key_g", "u_key_b", "u_strength", "u_softness", "u_spill"],
     },
     ShaderSpec {
+        id: "retouch",
+        source: include_str!("shaders/retouch.wgsl"),
+        numbers: &["u_smooth", "u_brighten", "u_even", "u_step"],
+    },
+    ShaderSpec {
         id: "lut",
         source: include_str!("shaders/lut.wgsl"),
         numbers: &["u_size", "u_intensity", "u_tetrahedral"],

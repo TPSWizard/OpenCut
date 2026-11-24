@@ -458,6 +458,30 @@ export function keyColorChannels(value: unknown): [number, number, number] {
 	return [0, 2, 4].map((start) => Number.parseInt(full.slice(start, start + 2), 16) / 255) as [number, number, number];
 }
 
+/**
+ * Retouch: smooths, brightens and evens skin, found by its colour, with an
+ * edge-preserving blur; what is not skin is left as it is. The shared
+ * `retouch` shader (`crates/effects`), as on the desktop.
+ */
+export const retouchEffectDefinition = singlePass({
+	type: "retouch",
+	name: "Retouch",
+	keywords: ["retouch", "beauty", "skin", "smooth", "face", "soften", "complexion"],
+	shader: "retouch",
+	params: [
+		number({ key: "smooth", label: "Smooth", default: 0.6, min: 0, max: 1, step: 0.01 }),
+		number({ key: "brighten", label: "Brighten", default: 0.3, min: 0, max: 1, step: 0.01 }),
+		number({ key: "even", label: "Even tone", default: 0.4, min: 0, max: 1, step: 0.01 }),
+		number({ key: "radius", label: "Radius (px)", default: 12, min: 2, max: 40, step: 1 }),
+	],
+	uniforms: ({ read, pixelScale }) => ({
+		u_smooth: Math.min(1, Math.max(0, read("smooth"))),
+		u_brighten: Math.min(1, Math.max(0, read("brighten"))),
+		u_even: Math.min(1, Math.max(0, read("even"))),
+		u_step: Math.max(1, Math.round((read("radius") * pixelScale) / 2)),
+	}),
+});
+
 export const chromaKeyEffectDefinition = singlePass({
 	type: "chroma-key",
 	name: "Chroma key",
@@ -497,5 +521,6 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	levelsEffectDefinition,
 	shadowsHighlightsEffectDefinition,
 	chromaKeyEffectDefinition,
+	retouchEffectDefinition,
 	lutEffectDefinition,
 ];

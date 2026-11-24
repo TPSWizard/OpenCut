@@ -198,6 +198,17 @@ fn effect_passes(effect: &EffectPlan, width: u32, height: u32, time_seconds: f64
                 ("u_range", param("range")),
             ],
         )],
+        // Retouch (`retouch` shader): the bilateral rings are `radius` / 2
+        // pixels apart at a 1080-high frame, whole pixels at least one.
+        "retouch" => vec![numbers_pass(
+            "retouch",
+            &[
+                ("u_smooth", param("smooth").clamp(0.0, 1.0)),
+                ("u_brighten", param("brighten").clamp(0.0, 1.0)),
+                ("u_even", param("even").clamp(0.0, 1.0)),
+                ("u_step", (param("radius") * scale / 2.0).round().max(1.0)),
+            ],
+        )],
         "chroma-key" => {
             let default = spec
                 .and_then(|spec| spec.params.iter().find(|param| param.key == "keyColor"))
