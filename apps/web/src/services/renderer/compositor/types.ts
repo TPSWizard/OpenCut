@@ -35,6 +35,8 @@ export type LayerItemDescriptor = {
 	 * many). None when left out.
 	 */
 	motionBlur?: { from: QuadTransformDescriptor; to: QuadTransformDescriptor };
+	/** Deflicker: the source's colour is multiplied by this before effects; 1 when left out. */
+	brightnessGain?: number;
 };
 
 export type SceneEffectItemDescriptor = {

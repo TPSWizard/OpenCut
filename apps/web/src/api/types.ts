@@ -1050,6 +1050,25 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Deflicker on a video clip: evens out frame-to-frame brightness flicker
+	 * (timelapses, LED or fluorescent light). The first strength other than
+	 * `off` measures the clip's frames (160 px, 30 a second, over the part
+	 * of the file it plays) and stores the levels on the clip; each frame is
+	 * then multiplied by its neighbours' average level over its own (light 5,
+	 * medium 11, strong 25 frames; cuts left alone), the same in both
+	 * editors. One undo step.
+	 */
+	"video.deflicker": {
+		params: ApiElementLocator & { strength: "off" | "light" | "medium" | "strong" };
+		result: {
+			trackId: string;
+			elementId: string;
+			strength: "off" | "light" | "medium" | "strong";
+			frames: number;
+			measured: boolean;
+		};
+	};
+	/**
 	 * Motion blur on a visual clip: how much of a frame the shutter stays
 	 * open, 0 (off) to 100 (the whole frame; 50 is the film look). Where the
 	 * clip moves (keyframes, one-click animations) it is drawn at evenly

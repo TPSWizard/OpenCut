@@ -465,6 +465,22 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Deflicker
+
+A video clip's inspector has **Deflicker** with Off, Light, Medium and
+Strong, for timelapse flicker and LED or fluorescent light. The first
+strength other than Off reads the part of the file the clip plays with
+FFmpeg (160 px wide, 30 frames a second) and measures each frame's mean
+Rec. 709 luma with the shared `deflicker` crate; the levels go on the clip
+(`deflicker.levels`, tagged with the media id, so a replaced file is not
+corrected with old levels) in one undo step with the strength. When a frame
+is drawn, its gain is the average level of its neighbours (5, 11 or 25
+frames, leaving out ones more than half again brighter or darker, so cuts
+and lights switched on stay) over its own, clamped 0.5 to 2, and the shared
+compositor multiplies the source by it before effects. Changing the
+strength later needs no new measuring. The web editor measures and applies
+it the same way (WASM).
+
 ## Motion blur
 
 Every visual clip's inspector has **Motion blur** under Transform: 0 (off)

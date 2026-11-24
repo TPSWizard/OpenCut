@@ -80,7 +80,8 @@ struct LayerUniformBuffer {
     pin_row_1: [f32; 4],
     pin_row_2: [f32; 4],
     /// Motion blur: the quad at shutter open and close as (centre, size),
-    /// and (open rotation, close rotation, draws, unused) in radians.
+    /// and (open rotation, close rotation, draws, brightness gain); the
+    /// gain (deflicker) multiplies the source's colour, 1 for none.
     motion_from: [f32; 4],
     motion_to: [f32; 4],
     motion: [f32; 4],
@@ -967,14 +968,12 @@ impl Compositor {
                         motion_to: motion.as_ref().map_or([0.0; 4], |(_, to, _)| {
                             [to.center_x, to.center_y, to.width, to.height]
                         }),
-                        motion: motion.as_ref().map_or([0.0; 4], |(from, to, count)| {
-                            [
-                                from.rotation_degrees.to_radians(),
-                                to.rotation_degrees.to_radians(),
-                                *count as f32,
-                                0.0,
-                            ]
-                        }),
+                        motion: {
+                            let gain = layer.brightness_gain.filter(|gain| gain.is_finite()).map_or(1.0, |gain| gain.clamp(0.0, 4.0));
+                            motion.as_ref().map_or([0.0, 0.0, 0.0, gain], |(from, to, count)| {
+                                [from.rotation_degrees.to_radians(), to.rotation_degrees.to_radians(), *count as f32, gain]
+                            })
+                        },
                     }),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 });

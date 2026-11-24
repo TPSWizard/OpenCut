@@ -201,6 +201,7 @@ impl Renderer {
                 style: Default::default(),
                 corner_pin: None,
                 motion_blur: None,
+                brightness_gain: None,
             }));
         }
         let frame_size = (width, height, canvas_width, canvas_height, scale_x, scale_y);
@@ -370,6 +371,7 @@ impl Renderer {
             style,
             corner_pin: layer.corner_pin,
             motion_blur,
+            brightness_gain: layer.brightness_gain,
         }];
         items.extend(stroke);
         Ok(items)
@@ -669,6 +671,7 @@ impl Renderer {
                 style: Default::default(),
                 corner_pin: None,
                 motion_blur: None,
+                brightness_gain: None,
             })
         } else {
             None

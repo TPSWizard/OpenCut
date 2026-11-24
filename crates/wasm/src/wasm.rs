@@ -38,4 +38,6 @@ pub use motion_tracking::*;
 pub use voice::*;
 #[allow(unused_imports)]
 pub use text_curve::*;
+mod flicker;
+pub use flicker::*;
 pub use time::*;

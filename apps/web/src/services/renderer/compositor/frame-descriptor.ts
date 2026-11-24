@@ -18,7 +18,7 @@ import { RootNode } from "../nodes/root-node";
 import { StickerNode } from "../nodes/sticker-node";
 import { LottieNode } from "../nodes/lottie-node";
 import { renderTextToContext, TextNode } from "../nodes/text-node";
-import { VideoNode } from "../nodes/video-node";
+import { type ResolvedVideoNodeState, VideoNode } from "../nodes/video-node";
 import { TransitionNode } from "../nodes/transition-node";
 import type { ResolvedVisualSourceNodeState } from "../nodes/visual-node";
 import type {
@@ -327,6 +327,8 @@ async function collectVisualSourceNode({
 		}),
 		...(resolvedPin(node) && { cornerPin: resolvedPin(node) }),
 		...(motionBlur && { motionBlur }),
+		...(node instanceof VideoNode &&
+			node.resolved.brightnessGain !== undefined && { brightnessGain: (node.resolved as ResolvedVideoNodeState).brightnessGain }),
 	});
 	if (strokeLayer) {
 		items.push(strokeLayer);

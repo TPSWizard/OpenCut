@@ -21,6 +21,7 @@ mod caption_keywords;
 mod colour_match;
 mod corner_pin;
 mod motion_blur;
+mod deflicker;
 mod commands;
 mod cover;
 mod compound;
@@ -129,6 +130,7 @@ pub use cover::{
     COVER_SAMPLES, CoverBackground, CoverSettings, CoverShape, CoverScore, CoverStyle, CoverTitle, MAX_TITLE_LINES, cover_project,
     cover_sample_times, cover_size, cover_title, frame_score_bgra, frame_score_rgba, pick_cover_time, wrap_title,
 };
+pub use deflicker::{DEFLICKER_LEVELS, DEFLICKER_STRENGTH, DeflickerStrength, deflicker_gain, read_deflicker_levels, read_deflicker_strength};
 pub use motion_blur::{MOTION_BLUR_MAX, MOTION_BLUR_PARAM, motion_blur_half_shutter, read_motion_blur};
 pub use corner_pin::{
     CORNER_PIN_CORNERS, CORNER_PIN_ENABLED, CORNER_PIN_MAX, CORNER_PIN_MIN, PinBox, box_to_canvas, canvas_to_box,

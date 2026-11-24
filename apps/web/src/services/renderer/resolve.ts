@@ -1,5 +1,6 @@
 import { cornerPinAt } from "@/corner-pin/pin";
 import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
+import { deflickerGainAt } from "@/deflicker/levels";
 import { curveAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
@@ -433,6 +434,12 @@ async function resolveVideoNode({
 		return null;
 	}
 
+	// Deflicker: the gain of the frame actually drawn (its own timestamp; a
+	// time on a frame boundary can return the frame before), as the
+	// desktop's `editor::deflicker_gain`.
+	const brightnessGain = node.params.deflicker
+		? deflickerGainAt({ deflicker: node.params.deflicker, sourceSeconds: frame.timestamp })
+		: null;
 	const matte = node.params.cutout
 		? await resolveMatte({
 				cutout: node.params.cutout,
@@ -446,6 +453,7 @@ async function resolveVideoNode({
 		sourceWidth: frame.canvas.width,
 		sourceHeight: frame.canvas.height,
 		...(matte && { matte }),
+		...(brightnessGain !== null && { brightnessGain }),
 	};
 }
 

@@ -83,6 +83,10 @@ pub struct LayerDescriptor {
     /// many); `transform` is still where it is at the frame's time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub motion_blur: Option<MotionBlurDescriptor>,
+    /// Deflicker: the source's colour is multiplied by this before effects
+    /// (`deflicker::Levels::gain_at`); 1 when left out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brightness_gain: Option<f32>,
 }
 
 /// A layer's quad at shutter open and at shutter close.

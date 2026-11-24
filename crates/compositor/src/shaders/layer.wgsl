@@ -20,7 +20,9 @@ struct LayerUniforms {
     pin_row_2: vec4f,
     /// Motion blur (`crates/compositor/src/motion_blur.rs`): the quad at
     /// shutter open and close as (centre, size), and (open rotation, close
-    /// rotation, draws, unused). Fewer than two draws is no blur.
+    /// rotation, draws, brightness gain). Fewer than two draws is no blur.
+    /// The gain (deflicker, `crates/deflicker`) multiplies the source's
+    /// colour; 1 leaves it as it is.
     motion_from: vec4f,
     motion_to: vec4f,
     motion: vec4f,
@@ -87,7 +89,8 @@ fn layer_sample(pixel: vec2f, center: vec2f, size: vec2f, rotation: f32, uv_per_
         select(clamped_uv.x, 1.0 - clamped_uv.x, uniforms.flip_x > 0.5),
         select(clamped_uv.y, 1.0 - clamped_uv.y, uniforms.flip_y > 0.5),
     );
-    let color = textureSampleLevel(source_texture, source_sampler, sample_uv, 0.0);
+    let sampled = textureSampleLevel(source_texture, source_sampler, sample_uv, 0.0);
+    let color = vec4f(min(sampled.rgb * uniforms.motion.w, vec3f(1.0)), sampled.a);
     var coverage = edge;
     let half_size = abs(size) * 0.5;
     let radius = min(uniforms.corner_radius, min(half_size.x, half_size.y));

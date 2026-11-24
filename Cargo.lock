@@ -1432,6 +1432,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac6b926516df9c60bfa16e107b21086399f8285a44ca9711344b9e553c5146e2"
 
 [[package]]
+name = "deflicker"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1601,6 +1608,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "editor"
 version = "0.1.0"
 dependencies = [
+ "deflicker",
  "serde",
  "serde_json",
  "tempfile",
@@ -4201,6 +4209,7 @@ version = "0.1.0"
 dependencies = [
  "compositor",
  "cpal",
+ "deflicker",
  "editor",
  "futures",
  "gpui",
@@ -4239,6 +4248,7 @@ dependencies = [
  "bridge",
  "compositor",
  "console_error_panic_hook",
+ "deflicker",
  "effects",
  "gpu",
  "js-sys",

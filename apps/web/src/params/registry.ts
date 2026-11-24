@@ -688,9 +688,26 @@ export const elementParamRegistry = new DefinitionRegistry<
 	readonly ElementParamDefinition[]
 >("element params");
 
+/** Deflicker (`@/deflicker/levels`): shown in its own section, not the params lists. */
+const deflickerParamDefinitions: ElementParamDefinition[] = [
+	{
+		key: "deflicker.strength",
+		label: "Deflicker",
+		type: "select",
+		default: "off",
+		keyframable: false,
+		options: [
+			{ value: "off", label: "Off" },
+			{ value: "light", label: "Light" },
+			{ value: "medium", label: "Medium" },
+			{ value: "strong", label: "Strong" },
+		],
+	},
+];
+
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...cornerPinParamDefinitions, ...audioElementParams],
+	definition: [...deflickerParamDefinitions, ...visualElementParams, ...animationParams({ isText: false }), ...styleParams({ isText: false }), ...zoomParams, ...cornerPinParamDefinitions, ...audioElementParams],
 });
 elementParamRegistry.register({
 	key: "image",

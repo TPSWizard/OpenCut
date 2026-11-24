@@ -2331,6 +2331,50 @@ impl Render for InspectorPanel {
                                 }),
                         );
 
+                    // Deflicker (`crates/deflicker`): the frames are measured
+                    // once, then each is evened out against its neighbours
+                    // as it is drawn; the strength can change any time.
+                    let current = editor::read_deflicker_strength(&element.params);
+                    let measured = match &element.kind {
+                        ElementKind::Video { media_id } => {
+                            editor::read_deflicker_levels(&element.params, media_id).map(|levels| levels.values.len())
+                        }
+                        _ => None,
+                    };
+                    let mut deflicker_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Strength"), window));
+                    for strength in editor::DeflickerStrength::ALL {
+                        let label = match strength {
+                            editor::DeflickerStrength::Off => "Off",
+                            editor::DeflickerStrength::Light => "Light",
+                            editor::DeflickerStrength::Medium => "Medium",
+                            editor::DeflickerStrength::Strong => "Strong",
+                        };
+                        let state = self.state.clone();
+                        deflicker_row = deflicker_row.child(
+                            Button::new(eid("deflicker-strength", label), t(label))
+                                .variant(if current == strength { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .disabled(strength != editor::DeflickerStrength::Off && measured.is_none() && !has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.set_deflicker_selected(strength, cx));
+                                }),
+                        );
+                    }
+                    content = content
+                        .child(self.heading(t("Deflicker"), window))
+                        .child(
+                            div().text_xs().text_color(colors.muted_foreground).child(match measured {
+                                Some(frames) => tf("Evens out flicker from timelapses and LED or fluorescent light. {frames} frames measured.", &[("frames", &frames)]),
+                                None => t("Evens out flicker from timelapses and LED or fluorescent light. The clip's frames are measured once when you pick a strength.").to_owned(),
+                            }),
+                        )
+                        .child(deflicker_row);
+
                     // Stabilising (vid.stab) and in-between frames
                     // (minterpolate): a rewritten copy the clip then plays.
                     let mut strength_row = div()

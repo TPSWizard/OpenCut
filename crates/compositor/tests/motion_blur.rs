@@ -42,6 +42,7 @@ fn layer(transform: QuadTransformDescriptor, motion_blur: Option<MotionBlurDescr
         style: Default::default(),
         corner_pin: None,
         motion_blur,
+        brightness_gain: None,
     })
 }
 
@@ -118,5 +119,25 @@ fn without_movement_the_quad_is_drawn_once_with_hard_edges() {
         let row = &pixels[16 * 64..17 * 64];
         assert_eq!(&row[20..24], &[0, 0, 255, 255]);
         assert_eq!(&row[40..44], &[255, 255, 0, 0]);
+    }
+}
+
+#[test]
+fn a_brightness_gain_scales_the_source_and_stops_at_white() {
+    let square = QuadTransformDescriptor {
+        center_x: 32.0,
+        center_y: 16.0,
+        width: 20.0,
+        height: 10.0,
+        rotation_degrees: 0.0,
+        flip_x: false,
+        flip_y: false,
+    };
+    for (gain, expected) in [(Some(0.5), 128), (Some(2.0), 255), (None, 255)] {
+        let FrameItemDescriptor::Layer(mut layer) = layer(square.clone(), None) else { unreachable!() };
+        layer.brightness_gain = gain;
+        let Some(pixels) = render(64, 32, FrameItemDescriptor::Layer(layer)) else { return };
+        let got = pixels[16 * 64 + 32] as i32;
+        assert!((got - expected).abs() <= 1, "gain {gain:?}: {got}");
     }
 }

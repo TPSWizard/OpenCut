@@ -1799,6 +1799,67 @@ impl EditorState {
     /// length, so trims, speed and keyframes carry over. One undo step;
     /// undo plays the original again. A file already made with the same
     /// settings is reused.
+    /// Deflicker on the selected video clip: sets the strength, measuring
+    /// the clip's frames first when they have not been measured from this
+    /// file (one undo step either way).
+    pub(crate) fn set_deflicker_selected(&mut self, strength: editor::DeflickerStrength, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let editor::ElementKind::Video { media_id } = &element.kind else {
+            self.set_status(t("This needs a video clip."), cx);
+            return;
+        };
+        let element_id = element.id.clone();
+        let mut params = editor::Params::new();
+        params.set(editor::DEFLICKER_STRENGTH, strength.as_str());
+        if strength == editor::DeflickerStrength::Off || editor::read_deflicker_levels(&element.params, media_id).is_some() {
+            self.execute(
+                Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+                cx,
+            );
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read video frames."), cx);
+            return;
+        };
+        let (Some(width), Some(height)) = (media.width, media.height) else {
+            self.set_status(t("The clip's frame size is unknown."), cx);
+            return;
+        };
+        let (a, b) = (
+            element.source_time(element.start_time).to_seconds_f64(),
+            element.source_time(element.end_time() - MediaTime::ONE_TICK).to_seconds_f64(),
+        );
+        let job = crate::deflicker::MeasureJob {
+            path: media.path.clone(),
+            size: (width, height),
+            media_id: media.id.clone(),
+            from: a.min(b).max(0.0),
+            to: a.max(b),
+        };
+        self.set_status(t("Measuring the clip's brightness, frame by frame…"), cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx.background_executor().spawn(async move { crate::deflicker::measure(&ffmpeg, &job) }).await;
+            this.update(cx, |state, cx| match measured {
+                Ok(levels) => {
+                    let frames = levels.values.len();
+                    params.set(editor::DEFLICKER_LEVELS, levels.encode());
+                    let done = state.execute(
+                        Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+                        cx,
+                    );
+                    if done.is_some() {
+                        state.set_status(tf("Deflicker on: {frames} frames measured.", &[("frames", &frames)]), cx);
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn rewrite_video_selected(&mut self, tool: VideoTool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         if !matches!(element.kind, editor::ElementKind::Video { .. }) {

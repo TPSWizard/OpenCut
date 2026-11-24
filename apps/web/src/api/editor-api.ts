@@ -160,6 +160,8 @@ import { CORNER_PIN_ENABLED, PIN_CORNERS, type CornerPin, canvasToBox, cornerPin
 import { getElementBounds } from "@/preview/element-bounds";
 import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
 import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
+import { isDeflickerStrength } from "@/deflicker/levels";
+import { setDeflicker } from "@/deflicker/measure";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
 import type { ParamValue } from "@/params";
@@ -2036,6 +2038,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"video.deflicker": async ({ elementId, trackId, strength }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Deflicker works on video clips" });
+			}
+			if (!isDeflickerStrength(strength)) {
+				throw new EditorApiError({ code: "invalid_params", message: "strength must be off, light, medium or strong" });
+			}
+			const result = await setDeflicker({ editor, trackId: track.id, elementId: element.id, strength });
+			return { trackId: track.id, elementId: element.id, ...result };
+		},
 		"transform.motionBlur": ({ elementId, trackId, amount }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

@@ -33,6 +33,7 @@ mod state;
 mod stickers;
 mod stock;
 mod tracking;
+mod deflicker;
 mod templates;
 mod transcribe;
 mod theme;

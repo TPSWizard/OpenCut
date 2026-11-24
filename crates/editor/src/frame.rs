@@ -90,6 +90,9 @@ pub struct LayerPlan {
     /// the planned time (`motionBlur` param); the renderer draws the clip
     /// along the way between them.
     pub motion: Option<(LayerTransform, LayerTransform)>,
+    /// Deflicker: the frame's brightness gain (video clips with
+    /// `deflicker.strength` on and measured levels), applied before effects.
+    pub brightness_gain: Option<f32>,
 }
 
 /// An auto zoom at the planned time: `scale` (above 1) about the focus
@@ -623,6 +626,13 @@ fn layer_plan(
             (at(param_time - half), at(param_time + half))
         })
         .filter(|(open, close)| open != close);
+    // Deflicker: the measured frame's gain at this source time.
+    let brightness_gain = match &source {
+        LayerSource::Video { media_id, time } => {
+            crate::deflicker_gain(&element.params, media_id, time.to_seconds_f64()).map(|gain| gain as f32)
+        }
+        _ => None,
+    };
     Some(LayerPlan {
         element_id: element.id.clone(),
         track_id: track.id.clone(),
@@ -647,6 +657,7 @@ fn layer_plan(
                     .then_some(LayerZoom { scale: scale as f32, focus_x: zoom.focus_x as f32, focus_y: zoom.focus_y as f32 })
             }),
         motion,
+        brightness_gain,
     })
 }
 

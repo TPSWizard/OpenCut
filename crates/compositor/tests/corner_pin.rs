@@ -69,6 +69,7 @@ fn layer(pin: Option<CornerPin>, rotation_degrees: f32) -> FrameItemDescriptor {
         style: Default::default(),
         corner_pin: pin,
         motion_blur: None,
+        brightness_gain: None,
     })
 }
 

@@ -57,6 +57,7 @@ fn square(style: LayerStyleDescriptor) -> FrameItemDescriptor {
         style,
         corner_pin: None,
         motion_blur: None,
+        brightness_gain: None,
     })
 }
 
