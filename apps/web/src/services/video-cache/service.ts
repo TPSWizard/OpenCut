@@ -17,6 +17,16 @@ interface VideoSinkData {
 	prefetchPromise: Promise<void> | null;
 }
 
+/**
+ * How close (seconds) a requested time may be to a frame's start and still
+ * count as that frame. Timeline times (ticks / 120000) and container
+ * timestamps can differ by ~1e-15, so a time exactly on a frame boundary
+ * would otherwise land on the frame before (repeating one frame and
+ * skipping the next when the source and project frame rates match).
+ * Far below any real frame duration.
+ */
+export const FRAME_TIME_EPSILON = 1e-6;
+
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
@@ -66,11 +76,14 @@ export class VideoCache {
 
 	private async resolveFrame({
 		sinkData,
-		time,
+		time: requestedTime,
 	}: {
 		sinkData: VideoSinkData;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
+		// Nudge once so every comparison below (and the decoder's own seek)
+		// treats a time on a frame boundary as the frame that starts there.
+		const time = requestedTime + FRAME_TIME_EPSILON;
 		if (sinkData.nextFrame && sinkData.nextFrame.timestamp <= time) {
 			sinkData.currentFrame = sinkData.nextFrame;
 			sinkData.nextFrame = null;
