@@ -6,8 +6,10 @@ import { resolveNumberAtTime } from "@/animation/values";
 import {
 	getTextVisualRect,
 } from "./layout";
+import { readRichStyles } from "./rich";
 import {
 	measureTextLayout,
+	styledLineRuns,
 	type MeasuredTextLayout,
 	type TextAlign,
 	type TextDecoration,
@@ -115,15 +117,37 @@ export function measureTextElement({
 		}),
 	};
 
-	const visualRect = getTextVisualRect({
+	// Rich text: styled pieces can widen a line and bigger letters reach
+	// above and below it, so the bounds (selection box, curved-text raster)
+	// take the styled widths and the largest size.
+	const rich = readRichStyles(element.params);
+	const block = rich
+		? {
+				...measuredLayout.block,
+				maxWidth: Math.max(
+					measuredLayout.block.maxWidth,
+					...styledLineRuns({ ctx, layout: measuredLayout, keywords: null, rich }).map((run) => run.width),
+				),
+			}
+		: measuredLayout.block;
+	const measuredVisual = getTextVisualRect({
 		textAlign: text.textAlign,
-		block: measuredLayout.block,
+		block,
 		background: resolvedBackground,
 		fontSizeRatio: measuredLayout.fontSizeRatio,
 	});
+	// Bigger letters share the line's baseline: the line drops a little and
+	// their tops rise above it (about 0.4 and 0.6 of the extra size).
+	const biggest = rich ? Math.max(1, ...rich.map((style) => style.scale ?? 1)) : 1;
+	const extra = (biggest - 1) * measuredLayout.scaledFontSize;
+	const visualRect =
+		extra > 0
+			? { ...measuredVisual, top: measuredVisual.top - 0.4 * extra, height: measuredVisual.height + extra }
+			: measuredVisual;
 
 	return {
 		...measuredLayout,
+		block,
 		resolvedBackground,
 		visualRect,
 	};

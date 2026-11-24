@@ -1050,6 +1050,30 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Rich text: gives characters `start..end` of a text element's text
+	 * (counting characters, not UTF-16 units; end exclusive) a colour
+	 * (`#rgb` / `#rrggbb`), weight, slant or size (`scale` 0.25 to 4,
+	 * relative to the clip's font size; the line keeps its height). Fields
+	 * left out are not changed. The styles follow later edits to the text;
+	 * drawn the same in both editors (`richtext`). One undo step.
+	 */
+	"text.styleRange": {
+		params: ApiElementLocator & {
+			start: number;
+			end: number;
+			color?: string;
+			bold?: boolean;
+			italic?: boolean;
+			scale?: number;
+		};
+		result: { trackId: string; elementId: string; richText: { text: string; spans: unknown[] } };
+	};
+	/** Puts characters `start..end` (default: all) of a text element back to its own style. One undo step. */
+	"text.clearStyles": {
+		params: ApiElementLocator & { start?: number; end?: number };
+		result: { trackId: string; elementId: string; richText: { text: string; spans: unknown[] } };
+	};
+	/**
 	 * Deflicker on a video clip: evens out frame-to-frame brightness flicker
 	 * (timelapses, LED or fluorescent light). The first strength other than
 	 * `off` measures the clip's frames (160 px, 30 a second, over the part

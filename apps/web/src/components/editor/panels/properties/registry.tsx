@@ -5,6 +5,7 @@ import { ShotsSection } from "@/shots/components/shots-section";
 import { ReframeSection } from "@/reframe/components/reframe-section";
 import { AutoZoomSection } from "@/auto-zoom/components/auto-zoom-section";
 import { DeflickerSection } from "@/deflicker/components/deflicker-section";
+import { RichTextSection } from "@/text/components/rich-text-section";
 import { PictureCleanupSection } from "@/picture/components/picture-cleanup-section";
 import { CutoutSection } from "@/cutout/components/cutout-section";
 import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
@@ -335,12 +336,15 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		label: "Text",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TEXT_PARAM_KEYS}
-				sectionKey="text"
-			/>
+			<>
+				<ElementParamsTab
+					element={element}
+					trackId={trackId}
+					paramKeys={TEXT_PARAM_KEYS}
+					sectionKey="text"
+				/>
+				<RichTextSection element={element} trackId={trackId} />
+			</>
 		),
 	};
 }

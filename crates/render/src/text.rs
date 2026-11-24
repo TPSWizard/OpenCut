@@ -128,62 +128,90 @@ impl TextRasterizer {
             .as_ref()
             .map(TextHighlight::highlighted_indices)
             .unwrap_or_default();
-        if let Some(reveal) = style.reveal_chars {
-            // A typewriter or word-by-word animation: the text keeps its
-            // layout and the characters not shown yet are drawn clear.
-            let hidden = attrs.clone().color(cosmic_text::Color::rgba(0, 0, 0, 0));
-            let split = content
-                .char_indices()
-                .filter(|(_, c)| *c != '\n')
-                .nth(reveal)
-                .map_or(content.len(), |(index, _)| index);
-            let mut rich: Vec<(&str, Attrs)> = Vec::new();
-            for (index, line) in content[..split].split('\n').enumerate() {
-                if index > 0 {
-                    rich.push(("\n", attrs.clone()));
-                }
-                rich.push((line, attrs.clone()));
+        let rich = style.rich.as_deref();
+        if style.reveal_chars.is_some() || !highlighted.is_empty() || style.keywords.is_some() || rich.is_some() {
+            // Every character's look: its rich-text style, then the caption
+            // keyword colour and size, then the spoken word's colour. While
+            // a typewriter or word-by-word animation reveals the text, the
+            // keywords and spoken word are not shown (as before) and the
+            // characters not shown yet are drawn clear, keeping the layout.
+            #[derive(Clone, Copy, PartialEq)]
+            struct Look {
+                color: Option<Color>,
+                bold: bool,
+                italic: bool,
+                size: f32,
             }
-            for (index, line) in content[split..].split('\n').enumerate() {
-                if index > 0 {
-                    rich.push(("\n", attrs.clone()));
+            let look_attrs = |look: Look| {
+                let mut out = attrs
+                    .clone()
+                    .weight(if look.bold { Weight::BOLD } else { Weight::NORMAL })
+                    .style(if look.italic { Style::Italic } else { Style::Normal });
+                if let Some(color) = look.color {
+                    out = out.color(color);
                 }
-                rich.push((line, hidden.clone()));
-            }
-            buffer.set_rich_text(&mut self.font_system, rich, &attrs, Shaping::Advanced, None);
-        } else if !highlighted.is_empty() || style.keywords.is_some() {
-            // Keywords take the keyword colour at their own size (the line
-            // keeps its height); the spoken-word highlight still wins on colour.
-            let active = style.highlight.as_ref().map(|highlight| to_color(highlight.active_color));
-            let keyword = style.keywords.as_ref().map(|keywords| {
-                let size = (font_size * keywords.scale.clamp(1.0, 4.0)).max(1.0);
-                (keywords, attrs.clone().color(to_color(keywords.color)).metrics(Metrics::new(size, line_height)))
-            });
-            let mut rich: Vec<(&str, Attrs)> = Vec::new();
+                if (look.size - font_size).abs() > 1e-3 {
+                    // The line keeps its height; letter spacing stays in pixels.
+                    out = out.metrics(Metrics::new(look.size, line_height)).letter_spacing(style.letter_spacing / look.size);
+                }
+                out
+            };
+            let revealing = style.reveal_chars.is_some();
+            let reveal = style.reveal_chars.unwrap_or(usize::MAX);
+            let active = style.highlight.as_ref().filter(|_| !revealing).map(|highlight| to_color(highlight.active_color));
+            let keywords = style.keywords.as_ref().filter(|_| !revealing);
+            let mut runs: Vec<(&str, Attrs)> = Vec::new();
+            let mut char_index = 0usize;
+            let mut shown = 0usize;
             for (line_index, line) in content.split('\n').enumerate() {
                 if line_index > 0 {
-                    rich.push(("\n", attrs.clone()));
+                    runs.push(("\n", attrs.clone()));
+                    char_index += 1;
                 }
-                let mut cursor = 0;
-                for (word_index, span) in spans.iter().enumerate().filter(|(_, span)| span.line == line_index) {
-                    if span.start > cursor {
-                        rich.push((&line[cursor..span.start], attrs.clone()));
+                let line_words: Vec<(usize, &WordSpan)> =
+                    spans.iter().enumerate().filter(|(_, span)| span.line == line_index).collect();
+                let mut run: Option<(usize, Look)> = None;
+                for (byte, _) in line.char_indices() {
+                    let word = line_words.iter().find(|(_, span)| byte >= span.start && byte < span.end).map(|(index, _)| *index);
+                    let mut look = Look { color: None, bold: style.bold, italic: style.italic, size: font_size };
+                    if let Some(own) = rich.and_then(|styles| styles.get(char_index)) {
+                        if let Some(color) = own.color.as_deref().and_then(editor::parse_hex_color) {
+                            look.color = Some(to_color(color));
+                        }
+                        look.bold = own.bold.unwrap_or(look.bold);
+                        look.italic = own.italic.unwrap_or(look.italic);
+                        look.size = (font_size * own.size() as f32).max(1.0);
                     }
-                    let mut word_attrs = match &keyword {
-                        Some((keywords, keyword_attrs)) if keywords.indices.contains(&word_index) => keyword_attrs.clone(),
-                        _ => attrs.clone(),
-                    };
-                    if let (true, Some(active)) = (highlighted.contains(&word_index), active) {
-                        word_attrs = word_attrs.color(active);
+                    if let (Some(keywords), Some(word)) = (keywords, word)
+                        && keywords.indices.contains(&word)
+                    {
+                        look.color = Some(to_color(keywords.color));
+                        look.size = (look.size * keywords.scale.clamp(1.0, 4.0)).max(1.0);
                     }
-                    rich.push((&line[span.start..span.end], word_attrs));
-                    cursor = span.end;
+                    if let (Some(active), Some(word)) = (active, word)
+                        && highlighted.contains(&word)
+                    {
+                        look.color = Some(active);
+                    }
+                    if shown >= reveal {
+                        look.color = Some(Color::rgba(0, 0, 0, 0));
+                    }
+                    shown += 1;
+                    char_index += 1;
+                    match run {
+                        Some((_, current)) if current == look => {}
+                        Some((from, current)) => {
+                            runs.push((&line[from..byte], look_attrs(current)));
+                            run = Some((byte, look));
+                        }
+                        None => run = Some((byte, look)),
+                    }
                 }
-                if cursor < line.len() {
-                    rich.push((&line[cursor..], attrs.clone()));
+                if let Some((from, current)) = run {
+                    runs.push((&line[from..], look_attrs(current)));
                 }
             }
-            buffer.set_rich_text(&mut self.font_system, rich, &attrs, Shaping::Advanced, None);
+            buffer.set_rich_text(&mut self.font_system, runs, &attrs, Shaping::Advanced, None);
         } else {
             buffer.set_text(&mut self.font_system, content, &attrs, Shaping::Advanced);
         }
@@ -305,6 +333,22 @@ impl TextRasterizer {
             let (cx, cy) = (text_width / 2.0, text_height / 2.0);
             half_width = half_width.max((left - cx).abs()).max((left + box_width - cx).abs());
             half_height = half_height.max((top - cy).abs()).max((top + box_height - cy).abs());
+        }
+        // Glyphs larger than their line (rich text, caption keywords) reach
+        // past the line box; keep their ink inside the raster, still
+        // centred on the text.
+        {
+            let cy = text_height / 2.0;
+            for run in buffer.layout_runs() {
+                for glyph in run.glyphs {
+                    let physical = glyph.physical((0.0, 0.0), 1.0);
+                    if let Some(image) = self.cache.get_image(&mut self.font_system, physical.cache_key) {
+                        let top = run.line_y + physical.y as f32 - image.placement.top as f32;
+                        let bottom = top + image.placement.height as f32;
+                        half_height = half_height.max(cy - top).max(bottom - cy);
+                    }
+                }
+            }
         }
         // Bounded so a wild size cannot ask for gigabytes; glyphs past the
         // edge are simply cut.
@@ -515,6 +559,7 @@ mod tests {
             keywords: None,
             reveal_chars: None,
             curve: 0.0,
+            rich: None,
         }
     }
 
@@ -617,6 +662,39 @@ mod tests {
         assert!(columns_of(&spoken, [0, 255, 0]).is_empty(), "no keyword green while it is spoken");
         assert!(!columns_of(&spoken, [255, 0, 0]).is_empty());
         assert_eq!(spoken.width, raster.width, "it keeps the keyword size");
+    }
+
+    #[test]
+    fn rich_text_colours_and_sizes_part_of_the_line() {
+        let mut rasterizer = TextRasterizer::new();
+        let plain = rasterizer.rasterize(&style("one two three"));
+        let mut rich = style("one two three");
+        let stored = richtext::style_range(
+            None,
+            "one two three",
+            4,
+            7,
+            &richtext::Patch { color: Some("#00ff00".into()), bold: Some(true), scale: Some(1.5), ..Default::default() },
+        );
+        rich.rich = richtext::styles_for(&richtext::encode(&stored), "one two three");
+        let raster = rasterizer.rasterize(&rich);
+        let green = columns_of(&raster, [0, 255, 0]);
+        let red = columns_of(&raster, [0, 0, 255]);
+        assert!(!green.is_empty() && !red.is_empty());
+        let (g0, g1) = (*green.first().unwrap(), *green.last().unwrap());
+        assert!(red.iter().any(|&x| x < g0) && red.iter().any(|&x| x > g1), "the styled word sits between plain words");
+        assert!(raster.width > plain.width, "a larger styled word widens the line: {} vs {}", raster.width, plain.width);
+        assert!(raster.height >= plain.height, "the raster holds the bigger letters");
+
+        // Typed inside the styled word, the new letters take its style.
+        let edited = richtext::styles_for(&richtext::encode(&stored), "one twwo three").expect("still styled");
+        assert_eq!(edited.iter().filter(|style| !style.is_plain()).count(), 4);
+
+        // While a typewriter animation reveals it, the hidden part is clear.
+        rich.reveal_chars = Some(5);
+        let revealing = rasterizer.rasterize(&rich);
+        assert_eq!(revealing.width, raster.width, "the layout is kept");
+        assert!(columns_of(&revealing, [0, 0, 255]).iter().all(|&x| x < g0), "only the revealed start is drawn");
     }
 
     /// Opaque pixels in row `y`.

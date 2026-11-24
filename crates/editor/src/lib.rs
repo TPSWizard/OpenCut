@@ -22,6 +22,10 @@ mod colour_match;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
+
+/// Rich text: the param holding a text clip's styled ranges (`richtext`).
+pub const RICH_TEXT_PARAM: &str = "richText";
+pub use richtext::{CharStyle as RichCharStyle, Patch as RichPatch, RichText};
 mod commands;
 mod cover;
 mod compound;

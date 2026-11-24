@@ -1609,6 +1609,7 @@ name = "editor"
 version = "0.1.0"
 dependencies = [
  "deflicker",
+ "richtext",
  "serde",
  "serde_json",
  "tempfile",
@@ -4217,6 +4218,7 @@ dependencies = [
  "lottie",
  "media",
  "render",
+ "richtext",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -4255,8 +4257,10 @@ dependencies = [
  "lottie",
  "masks",
  "num-traits",
+ "richtext",
  "serde",
  "serde-wasm-bindgen",
+ "serde_json",
  "textwarp",
  "time",
  "tracking",
@@ -5105,6 +5109,7 @@ dependencies = [
  "media",
  "pollster 0.4.0",
  "resvg 0.49.0",
+ "richtext",
  "serde_json",
  "tempfile",
  "textwarp",
@@ -5158,6 +5163,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "richtext"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

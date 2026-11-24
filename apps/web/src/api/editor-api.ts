@@ -162,6 +162,7 @@ import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
 import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
 import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
+import { applyRichStyle, RICH_SCALE_MAX, RICH_SCALE_MIN, type RichPatch } from "@/text/rich";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
 import type { ParamValue } from "@/params";
@@ -2038,6 +2039,51 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"text.styleRange": ({ elementId, trackId, start, end, color, bold, italic, scale }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "text") {
+				throw new EditorApiError({ code: "invalid_params", message: "Styles go on text" });
+			}
+			const content = typeof element.params.content === "string" ? element.params.content : "";
+			const length = Array.from(content).length;
+			if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > length || start >= end) {
+				throw new EditorApiError({ code: "invalid_params", message: `start and end must be characters 0 to ${length}, start before end` });
+			}
+			if (color !== undefined && (typeof color !== "string" || !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color))) {
+				throw new EditorApiError({ code: "invalid_params", message: "color must be #rgb or #rrggbb" });
+			}
+			if (scale !== undefined && (typeof scale !== "number" || !Number.isFinite(scale) || scale < RICH_SCALE_MIN || scale > RICH_SCALE_MAX)) {
+				throw new EditorApiError({ code: "invalid_params", message: `scale must be ${RICH_SCALE_MIN} to ${RICH_SCALE_MAX}` });
+			}
+			const patch: RichPatch = {
+				...(color !== undefined && { color }),
+				...(bold !== undefined && { bold: Boolean(bold) }),
+				...(italic !== undefined && { italic: Boolean(italic) }),
+				...(scale !== undefined && { scale }),
+			};
+			if (Object.keys(patch).length === 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "Give at least one of color, bold, italic or scale" });
+			}
+			const richText = applyRichStyle({ editor, trackId: track.id, element, start, end, patch });
+			return { trackId: track.id, elementId: element.id, richText: JSON.parse(richText) };
+		},
+		"text.clearStyles": ({ elementId, trackId, start, end }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "text") {
+				throw new EditorApiError({ code: "invalid_params", message: "Styles go on text" });
+			}
+			const content = typeof element.params.content === "string" ? element.params.content : "";
+			const length = Array.from(content).length;
+			const from = start ?? 0;
+			const to = end ?? length;
+			if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > length || from > to) {
+				throw new EditorApiError({ code: "invalid_params", message: `start and end must be characters 0 to ${length}` });
+			}
+			const richText = applyRichStyle({ editor, trackId: track.id, element, start: from, end: to, patch: null });
+			return { trackId: track.id, elementId: element.id, richText: JSON.parse(richText) };
+		},
 		"video.deflicker": async ({ elementId, trackId, strength }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

@@ -1,6 +1,7 @@
 import { cornerPinAt } from "@/corner-pin/pin";
 import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { deflickerGainAt } from "@/deflicker/levels";
+import { readRichStyles } from "@/text/rich";
 import { curveAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
@@ -670,6 +671,7 @@ function resolveTextNode({
 		motion,
 		revealChars: animationState ? revealedCharCount({ content, reveal: animationState.reveal }) : null,
 		curve: curveAt({ params: node.params.params, animations: node.params.animations, localTime }),
+		rich: readRichStyles(node.params.params),
 		textColor: resolveColorAtTime({
 			baseColor:
 				typeof node.params.params.color === "string"

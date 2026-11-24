@@ -330,6 +330,10 @@ pub struct TextStyle {
     /// Curved text: the `curve` param, -100 (a smile) to 100 (an arch); 0
     /// is flat. The renderer bends the raster with `textwarp`.
     pub curve: f32,
+    /// Rich text (`richText` param, `richtext` crate): each character's own
+    /// colour, weight, slant and size, already moved with any edits to the
+    /// text; `None` when nothing is styled.
+    pub rich: Option<Vec<richtext::CharStyle>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -391,6 +395,7 @@ impl TextStyle {
                 let curve = params.number("curve", 0.0);
                 if curve.is_finite() { curve.clamp(-100.0, 100.0) as f32 } else { 0.0 }
             },
+            rich: richtext::styles_for(&params.text(crate::RICH_TEXT_PARAM, ""), &params.text("content", "")),
         }
     }
 }

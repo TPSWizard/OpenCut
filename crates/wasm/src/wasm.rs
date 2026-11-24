@@ -39,5 +39,7 @@ pub use voice::*;
 #[allow(unused_imports)]
 pub use text_curve::*;
 mod flicker;
+mod rich_text;
+pub use rich_text::*;
 pub use flicker::*;
 pub use time::*;

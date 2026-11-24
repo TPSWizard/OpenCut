@@ -1278,6 +1278,74 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+                    // Rich text (`richtext`): select part of the Text field,
+                    // then give it a colour, weight, slant or size.
+                    if let Some(content_field) = self.fields.get("content").cloned() {
+                        let rich_button = |id: &'static str, label: String, patch: Option<editor::RichPatch>| {
+                            let state = self.state.clone();
+                            let field = content_field.clone();
+                            Button::new(id, label).variant(ButtonVariant::Outline).size(ButtonSize::XSmall).on_click(
+                                move |_, _, cx| {
+                                    let selection = field.read(cx).selection_chars();
+                                    let patch = patch.clone();
+                                    state.update(cx, |state, cx| state.style_text_selected(selection, patch, cx));
+                                },
+                            )
+                        };
+                        let patch = |f: fn(&mut editor::RichPatch)| {
+                            let mut patch = editor::RichPatch::default();
+                            f(&mut patch);
+                            Some(patch)
+                        };
+                        let mut styles_row = div()
+                            .flex()
+                            .flex_wrap()
+                            .items_center()
+                            .gap(px(4.))
+                            .child(Self::label_cell(t("Selection"), window))
+                            .child(rich_button("rich-bold", t("Bold").to_owned(), patch(|p| p.bold = Some(true))))
+                            .child(rich_button("rich-italic", t("Italic").to_owned(), patch(|p| p.italic = Some(true))))
+                            .child(rich_button("rich-smaller", t("Smaller").to_owned(), patch(|p| p.scale = Some(0.75))))
+                            .child(rich_button("rich-bigger", t("Bigger").to_owned(), patch(|p| p.scale = Some(1.5))))
+                            .child(rich_button("rich-biggest", t("Biggest").to_owned(), patch(|p| p.scale = Some(2.0))));
+                        for (id, color) in [
+                            ("rich-red", "#ff3b30"),
+                            ("rich-yellow", "#ffd60a"),
+                            ("rich-green", "#34c759"),
+                            ("rich-blue", "#0a84ff"),
+                            ("rich-white", "#ffffff"),
+                        ] {
+                            let state = self.state.clone();
+                            let field = content_field.clone();
+                            let rgba = editor::parse_hex_color(color).unwrap_or([1.0; 4]);
+                            styles_row = styles_row.child(
+                                div()
+                                    .id(id)
+                                    .size(px(18.))
+                                    .rounded(px(4.))
+                                    .border_1()
+                                    .border_color(colors.border)
+                                    .bg(gpui::rgba(
+                                        ((rgba[0] * 255.0) as u32) << 24
+                                            | ((rgba[1] * 255.0) as u32) << 16
+                                            | ((rgba[2] * 255.0) as u32) << 8
+                                            | 0xff,
+                                    ))
+                                    .cursor_pointer()
+                                    .on_click(move |_, _, cx| {
+                                        let selection = field.read(cx).selection_chars();
+                                        let patch = editor::RichPatch { color: Some(color.to_owned()), ..Default::default() };
+                                        state.update(cx, |state, cx| state.style_text_selected(selection, Some(patch), cx));
+                                    }),
+                            );
+                        }
+                        styles_row = styles_row.child(rich_button("rich-clear", t("Clear styles").to_owned(), None));
+                        content = content
+                            .child(styles_row)
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                                "Select words in the Text field, then pick a colour, weight or size for just those words.",
+                            )));
+                    }
                     // A family the machine lacks can be fetched from Fontsource
                     // (open licences, files kept beside the projects).
                     let family = params.text("fontFamily", "Arial").into_owned();

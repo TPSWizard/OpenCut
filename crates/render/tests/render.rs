@@ -899,6 +899,53 @@ fn motion_blur_matches_the_web_editor_on_the_same_clip() {
     }
 }
 
+/// The web editor's numbers for the same text (dev editor, off-screen
+/// render): Arial 9 white at 640x360, "WORKS" yellow at twice the size.
+#[test]
+fn rich_text_matches_the_web_editor_on_the_same_text() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let mut project = Project::new("Rich text");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+    let mut text = Element::text("RICH TEXT WORKS", seconds(0.0));
+    let rich = editor::RichText {
+        text: "RICH TEXT WORKS".to_owned(),
+        spans: vec![richtext::Span { start: 10, end: 15, color: Some("#ffd60a".into()), scale: Some(2.0), ..Default::default() }],
+    };
+    text.params
+        .set("fontSize", 9.0)
+        .set("fontFamily", "Arial")
+        .set("color", "#ffffff")
+        .set(editor::RICH_TEXT_PARAM, richtext::encode(&rich));
+    apply(&mut project, &EditorCommand::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+    let frame = renderer.render(&project, seconds(1.0), 640, 360).unwrap();
+    let (mut all, mut yellow, mut white) =
+        ([u32::MAX, u32::MAX, 0, 0], [u32::MAX, u32::MAX, 0, 0], [u32::MAX, u32::MAX, 0, 0]);
+    for y in 0..360 {
+        for x in 0..640 {
+            let [b, g, r, _] = pixel(&frame, x, y);
+            let grow = |rect: &mut [u32; 4]| *rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x), rect[3].max(y)];
+            if r as u32 + g as u32 + b as u32 > 200 {
+                grow(&mut all);
+            }
+            if r > 180 && g > 150 && b < 90 {
+                grow(&mut yellow);
+            }
+            if r > 200 && g > 200 && b > 200 {
+                grow(&mut white);
+            }
+        }
+    }
+    eprintln!("desktop all {all:?} yellow {yellow:?} white {white:?}");
+    // The larger word shares the line's baseline and rises above it.
+    let web = ([86, 149, 552, 202], [285, 149, 551, 202], [87, 176, 272, 201]);
+    for (got, want, what) in [(all, web.0, "text"), (yellow, web.1, "yellow word"), (white, web.2, "plain words")] {
+        for (g, w) in got.iter().zip(want) {
+            assert!((*g as i32 - w).abs() <= 3, "{what}: desktop {got:?} vs web {want:?}");
+        }
+    }
+}
+
 #[test]
 fn curved_text_bends_into_an_arch_in_the_frame() {
     let Some(mut renderer) = renderer(None) else { return };

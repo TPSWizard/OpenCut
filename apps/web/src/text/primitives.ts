@@ -11,6 +11,7 @@ import {
 import { FONT_SIZE_SCALE_REFERENCE } from "./typography";
 import { placeWords } from "@/captions/word-layout";
 import type { CaptionHighlight } from "@/captions/types";
+import type { RichCharStyle } from "./rich";
 
 export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
@@ -181,6 +182,7 @@ export function drawMeasuredTextLayout({
 	highlight,
 	keywords = null,
 	revealChars = null,
+	rich = null,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -197,6 +199,8 @@ export function drawMeasuredTextLayout({
 	 * draws everything.
 	 */
 	revealChars?: number | null;
+	/** Each character's rich-text style (`@/text/rich`); null for none. */
+	rich?: RichCharStyle[] | null;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -204,9 +208,14 @@ export function drawMeasuredTextLayout({
 	ctx.fillStyle = textColor;
 	setCanvasLetterSpacing({ ctx, letterSpacingPx: layout.letterSpacing });
 
-	// With keywords every line is laid out word by word, since a larger
-	// keyword widens its line; the background grows to the widest one.
-	const keyed = keywords && keywords.indices.length > 0 && revealChars === null ? keywordLineRuns({ ctx, layout, keywords }) : null;
+	// With keywords or rich text every line is laid out piece by piece,
+	// since a larger piece widens its line; the background grows to the
+	// widest one. While a typewriter animation reveals the text, keywords
+	// and the spoken word are not shown (as on the desktop).
+	const revealing = revealChars !== null;
+	const activeKeywords = keywords && keywords.indices.length > 0 && !revealing ? keywords : null;
+	const keyed =
+		activeKeywords || (rich && rich.length > 0) ? styledLineRuns({ ctx, layout, keywords: activeKeywords, rich }) : null;
 	const block = keyed
 		? { ...layout.block, maxWidth: Math.max(layout.block.maxWidth, ...keyed.map((run) => run.width)) }
 		: layout.block;
@@ -249,8 +258,16 @@ export function drawMeasuredTextLayout({
 		}
 	}
 
-	if (keyed && keywords) {
-		drawKeywordLines({ ctx, layout, runs: keyed, keywords, highlight: highlight ?? null, textColor });
+	if (keyed) {
+		drawStyledLines({
+			ctx,
+			layout,
+			runs: keyed,
+			keywords: activeKeywords,
+			highlight: revealing ? null : (highlight ?? null),
+			textColor,
+			revealChars,
+		});
 		return;
 	}
 
@@ -289,43 +306,78 @@ export function drawMeasuredTextLayout({
 	}
 }
 
-interface KeywordPiece {
+interface StyledPiece {
 	text: string;
 	/** Offset from the line's left edge. */
 	x: number;
 	width: number;
 	font: string;
+	/** Font size in pixels. */
+	size: number;
+	/** Its own rich-text colour, if any. */
+	color: string | null;
 	/** The caption word index, or null for the space between words. */
 	wordIndex: number | null;
 	keyword: boolean;
 }
 
-/** Each line as measured pieces (words in their own font, the spaces between them). */
-export function keywordLineRuns({
+/** The base font with another weight, slant and size. */
+function fontWith(base: string, { bold, italic, size }: { bold: boolean; italic: boolean; size: number }): string {
+	return base.replace(/^(normal|italic) (normal|bold) (\d+(?:\.\d+)?)px/, `${italic ? "italic" : "normal"} ${bold ? "bold" : "normal"} ${size}px`);
+}
+
+function sameRich(a: RichCharStyle | undefined, b: RichCharStyle | undefined): boolean {
+	return a?.color === b?.color && a?.bold === b?.bold && a?.italic === b?.italic && a?.scale === b?.scale;
+}
+
+/**
+ * Each line as measured pieces: words split where their rich-text style
+ * changes, each in its own font, and the spaces between words. Keywords
+ * take their size on top of any rich-text size (`editor` draws the same).
+ */
+export function styledLineRuns({
 	ctx,
 	layout,
 	keywords,
+	rich,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
-	keywords: TextKeywords;
-}): { width: number; pieces: KeywordPiece[] }[] {
-	const wanted = new Set(keywords.indices);
+	keywords: TextKeywords | null;
+	rich: RichCharStyle[] | null;
+}): { width: number; pieces: StyledPiece[] }[] {
+	const wanted = new Set(keywords?.indices ?? []);
 	const baseFont = layout.fontString;
-	const keywordFont = baseFont.replace(/(\d+(?:\.\d+)?)px/, (_, size: string) => `${Number(size) * keywords.scale}px`);
+	const baseMatch = /^(normal|italic) (normal|bold) /.exec(baseFont);
+	const baseItalic = baseMatch?.[1] === "italic";
+	const baseBold = baseMatch?.[2] === "bold";
+	const em = layout.scaledFontSize;
 	let wordIndex = 0;
-	const runs = layout.lines.map((line) => {
-		const pieces: KeywordPiece[] = [];
+	let charIndex = 0;
+	const runs = layout.lines.map((line, lineNumber) => {
+		if (lineNumber > 0) charIndex += 1; // the newline
+		const pieces: StyledPiece[] = [];
 		let x = 0;
 		for (const match of line.matchAll(/\S+|\s+/g)) {
 			const isWord = /\S/.test(match[0]);
 			const keyword = isWord && wanted.has(wordIndex);
-			const font = keyword ? keywordFont : baseFont;
-			ctx.font = font;
-			const width = ctx.measureText(match[0]).width;
-			pieces.push({ text: match[0], x, width, font, wordIndex: isWord ? wordIndex : null, keyword });
+			const chars = Array.from(match[0]);
+			let from = 0;
+			while (from < chars.length) {
+				const own = rich?.[charIndex + from];
+				let to = from + 1;
+				while (to < chars.length && sameRich(rich?.[charIndex + to], own)) to += 1;
+				const text = chars.slice(from, to).join("");
+				const size = em * (own?.scale ?? 1) * (keyword && keywords ? keywords.scale : 1);
+				const font = fontWith(baseFont, { bold: own?.bold ?? baseBold, italic: own?.italic ?? baseItalic, size });
+				ctx.font = font;
+				const width = ctx.measureText(text).width;
+				pieces.push({ text, x, width, font, size, color: own?.color ?? null, wordIndex: isWord ? wordIndex : null, keyword });
+				x += width;
+				from = to;
+			}
+			charIndex += chars.length;
 			if (isWord) wordIndex += 1;
-			x += width;
 		}
 		return { width: x, pieces };
 	});
@@ -333,57 +385,101 @@ export function keywordLineRuns({
 	return runs;
 }
 
-/** Draws the lines word by word: keywords in their colour and size, the spoken word (and its box) on top. */
-function drawKeywordLines({
+/**
+ * Draws the lines piece by piece: rich-text styles, keywords in their
+ * colour and size, the spoken word (and its box) on top; with a reveal,
+ * only the characters shown so far.
+ */
+function drawStyledLines({
 	ctx,
 	layout,
 	runs,
 	keywords,
 	highlight,
 	textColor,
+	revealChars,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
-	runs: { width: number; pieces: KeywordPiece[] }[];
-	keywords: TextKeywords;
+	runs: { width: number; pieces: StyledPiece[] }[];
+	keywords: TextKeywords | null;
 	highlight: TextWordHighlight | null;
 	textColor: string;
+	revealChars: number | null;
 }): void {
 	const spoken = new Set(highlight && highlight.mode !== "none" ? highlightedWordIndices({ highlight }) : []);
+	let remaining = revealChars ?? Number.POSITIVE_INFINITY;
+	// Pieces of a line share one baseline, set by the largest piece, as
+	// cosmic-text lays out the desktop's text: a larger piece drops the
+	// line's baseline by half its extra ascent less descent (`drop`), and
+	// each piece is drawn (textBaseline middle) so its own baseline, `rise`
+	// below its middle, lands there. Both scale with the size.
 	const em = layout.scaledFontSize;
+	const drawnBaseline = ctx.textBaseline;
+	ctx.textBaseline = "alphabetic";
+	const fromBaseline = ctx.measureText("Hg");
+	ctx.textBaseline = "middle";
+	const fromMiddle = ctx.measureText("Hg");
+	ctx.textBaseline = drawnBaseline;
+	const drop =
+		em > 0 && fromBaseline.fontBoundingBoxAscent !== undefined && fromBaseline.fontBoundingBoxDescent !== undefined
+			? (fromBaseline.fontBoundingBoxAscent - fromBaseline.fontBoundingBoxDescent) / 2 / em
+			: 0.3465;
+	const rise = em > 0 && Number.isFinite(fromMiddle.alphabeticBaseline) ? -fromMiddle.alphabeticBaseline / em : 0.2756;
 	ctx.save();
 	ctx.textAlign = "left";
 	runs.forEach((run, line) => {
-		const lineY = line * layout.lineHeightPx - layout.block.visualCenterOffset;
+		const middleY = line * layout.lineHeightPx - layout.block.visualCenterOffset;
+		const largest = Math.max(em, ...run.pieces.map((piece) => piece.size));
+		// Where a piece of `size` is drawn (textBaseline middle) to sit on the line's baseline.
+		const pieceY = (size: number) => middleY + rise * em + drop * (largest - em) - rise * size;
+		const lineY = pieceY(em);
 		const left = layout.textAlign === "center" ? -run.width / 2 : layout.textAlign === "right" ? -run.width : 0;
-		for (const piece of run.pieces) {
-			if (piece.wordIndex === null) continue;
-			const isSpoken = spoken.has(piece.wordIndex);
-			if (isSpoken && highlight?.mode === "box" && piece.wordIndex === highlight.activeIndex) {
-				const size = piece.keyword ? em * keywords.scale : em;
+		if (highlight?.mode === "box" && highlight.activeIndex >= 0) {
+			const active = run.pieces.filter((piece) => piece.wordIndex === highlight.activeIndex);
+			if (active.length > 0) {
+				const size = Math.max(...active.map((piece) => piece.size));
+				const from = active[0].x;
+				const to = active[active.length - 1].x + active[active.length - 1].width;
 				const padX = size * HIGHLIGHT_BOX_PADDING_X;
 				const height = size * HIGHLIGHT_BOX_HEIGHT + 2 * size * HIGHLIGHT_BOX_PADDING_Y;
+				const boxY = pieceY(size);
 				ctx.fillStyle = highlight.boxColor;
 				ctx.beginPath();
-				ctx.roundRect(left + piece.x - padX, lineY - height / 2, piece.width + 2 * padX, height, size * HIGHLIGHT_BOX_RADIUS);
+				ctx.roundRect(left + from - padX, boxY - height / 2, to - from + 2 * padX, height, size * HIGHLIGHT_BOX_RADIUS);
 				ctx.fill();
 			}
+		}
+		for (const piece of run.pieces) {
+			const chars = Array.from(piece.text);
+			const shown = Math.min(chars.length, Math.max(0, remaining));
+			remaining -= chars.length;
+			if (piece.wordIndex === null && piece.color === null) continue;
+			if (shown <= 0) continue;
+			const isSpoken = piece.wordIndex !== null && spoken.has(piece.wordIndex);
 			ctx.font = piece.font;
-			ctx.fillStyle = isSpoken && highlight ? highlight.activeColor : piece.keyword ? keywords.color : textColor;
-			ctx.fillText(piece.text, left + piece.x, lineY);
+			ctx.fillStyle =
+				isSpoken && highlight
+					? highlight.activeColor
+					: piece.keyword && keywords
+						? keywords.color
+						: (piece.color ?? textColor);
+			ctx.fillText(shown < chars.length ? chars.slice(0, shown).join("") : piece.text, left + piece.x, pieceY(piece.size));
 		}
 		ctx.font = layout.fontString;
 		ctx.textAlign = layout.textAlign;
 		ctx.fillStyle = textColor;
-		drawTextDecoration({
-			ctx,
-			textDecoration: layout.textDecoration,
-			lineWidth: run.width,
-			lineY,
-			metrics: layout.lineMetrics[line],
-			scaledFontSize: layout.scaledFontSize,
-			textAlign: layout.textAlign,
-		});
+		if (revealChars === null) {
+			drawTextDecoration({
+				ctx,
+				textDecoration: layout.textDecoration,
+				lineWidth: run.width,
+				lineY,
+				metrics: layout.lineMetrics[line],
+				scaledFontSize: layout.scaledFontSize,
+				textAlign: layout.textAlign,
+			});
+		}
 		ctx.textAlign = "left";
 	});
 	ctx.restore();

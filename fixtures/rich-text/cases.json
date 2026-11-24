@@ -1,0 +1,753 @@
+{
+ "about": "Rich text (row 77): reference cases from an independent Python script (char styles, rebasing onto edited text, styling and clearing ranges).",
+ "charStyles": [
+  {
+   "name": "one styled word",
+   "json": "{\"text\": \"Hello big world\", \"spans\": [{\"start\": 6, \"end\": 9, \"color\": \"#ff0000\", \"bold\": true, \"scale\": 1.5}]}",
+   "text": "Hello big world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "overlapping spans, later wins per field",
+   "json": "{\"text\": \"abcdef\", \"spans\": [{\"start\": 0, \"end\": 4, \"color\": \"#00f\", \"italic\": true}, {\"start\": 2, \"end\": 6, \"color\": \"#0F0\", \"scale\": 9}]}",
+   "text": "abcdef",
+   "styles": [
+    {
+     "color": "#0000ff",
+     "italic": true
+    },
+    {
+     "color": "#0000ff",
+     "italic": true
+    },
+    {
+     "color": "#00ff00",
+     "italic": true,
+     "scale": 4.0
+    },
+    {
+     "color": "#00ff00",
+     "italic": true,
+     "scale": 4.0
+    },
+    {
+     "color": "#00ff00",
+     "scale": 4.0
+    },
+    {
+     "color": "#00ff00",
+     "scale": 4.0
+    }
+   ]
+  },
+  {
+   "name": "bad colour dropped, tiny size clamped, empty span dropped",
+   "json": "{\"text\": \"xyz\", \"spans\": [{\"start\": 0, \"end\": 2, \"color\": \"red\", \"scale\": 0.01}, {\"start\": 2, \"end\": 2, \"bold\": true}]}",
+   "text": "xyz",
+   "styles": [
+    {
+     "scale": 0.25
+    },
+    {
+     "scale": 0.25
+    },
+    {}
+   ]
+  },
+  {
+   "name": "span past the end is cut",
+   "json": "{\"text\": \"ab\", \"spans\": [{\"start\": 1, \"end\": 9, \"bold\": false}]}",
+   "text": "ab",
+   "styles": [
+    {},
+    {
+     "bold": false
+    }
+   ]
+  },
+  {
+   "name": "emoji count as one character",
+   "json": "{\"text\": \"a😀b\", \"spans\": [{\"start\": 1, \"end\": 2, \"color\": \"#abcdef\"}]}",
+   "text": "a😀b",
+   "styles": [
+    {},
+    {
+     "color": "#abcdef"
+    },
+    {}
+   ]
+  },
+  {
+   "name": "multi-line",
+   "json": "{\"text\": \"one\\ntwo\", \"spans\": [{\"start\": 2, \"end\": 6, \"italic\": true}]}",
+   "text": "one\ntwo",
+   "styles": [
+    {},
+    {},
+    {
+     "italic": true
+    },
+    {
+     "italic": true
+    },
+    {
+     "italic": true
+    },
+    {
+     "italic": true
+    },
+    {}
+   ]
+  },
+  {
+   "name": "invalid ",
+   "json": "",
+   "valid": false
+  },
+  {
+   "name": "invalid nope",
+   "json": "nope",
+   "valid": false
+  },
+  {
+   "name": "invalid {\"text\": 1, \"spans\": []}",
+   "json": "{\"text\": 1, \"spans\": []}",
+   "valid": false
+  },
+  {
+   "name": "invalid {\"text\": \"a\", \"spans\": [{\"start\": -1, \"end\": 2}]}",
+   "json": "{\"text\": \"a\", \"spans\": [{\"start\": -1, \"end\": 2}]}",
+   "valid": false
+  },
+  {
+   "name": "invalid {\"text\": \"a\"}",
+   "json": "{\"text\": \"a\"}",
+   "valid": false
+  }
+ ],
+ "rebase": [
+  {
+   "name": "unchanged",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "typed inside the styled word",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello biiig world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "typed right after the styled word",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big! world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "typed before",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Oh Hello big world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "typed after",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big world!!",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {
+     "color": "#ff0000",
+     "bold": true,
+     "scale": 1.5
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "styled word deleted",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello  world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "styled word replaced",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello small world",
+   "styles": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "everything replaced",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Bye",
+   "styles": [
+    {},
+    {},
+    {}
+   ]
+  },
+  {
+   "name": "emptied",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "",
+   "styles": []
+  }
+ ],
+ "edits": [
+  {
+   "name": "style plain text",
+   "stored": null,
+   "text": "Big news today",
+   "start": 0,
+   "end": 3,
+   "patch": {
+    "color": "#FFD60A",
+    "scale": 2
+   },
+   "result": {
+    "text": "Big news today",
+    "spans": [
+     {
+      "start": 0,
+      "end": 3,
+      "color": "#ffd60a",
+      "scale": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "bold over a styled word",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big world",
+   "start": 4,
+   "end": 11,
+   "patch": {
+    "bold": true
+   },
+   "result": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 4,
+      "end": 6,
+      "bold": true
+     },
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     },
+     {
+      "start": 9,
+      "end": 11,
+      "bold": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "colour after an edit",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello biiig world",
+   "start": 0,
+   "end": 5,
+   "patch": {
+    "color": "#0a84ff"
+   },
+   "result": {
+    "text": "Hello biiig world",
+    "spans": [
+     {
+      "start": 0,
+      "end": 5,
+      "color": "#0a84ff"
+     },
+     {
+      "start": 6,
+      "end": 11,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   }
+  },
+  {
+   "name": "size clamped",
+   "stored": null,
+   "text": "abc",
+   "start": 1,
+   "end": 2,
+   "patch": {
+    "scale": 10
+   },
+   "result": {
+    "text": "abc",
+    "spans": [
+     {
+      "start": 1,
+      "end": 2,
+      "scale": 4.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "range clamped to the text",
+   "stored": null,
+   "text": "abc",
+   "start": 2,
+   "end": 99,
+   "patch": {
+    "italic": true
+   },
+   "result": {
+    "text": "abc",
+    "spans": [
+     {
+      "start": 2,
+      "end": 3,
+      "italic": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "bad colour ignored",
+   "stored": null,
+   "text": "abc",
+   "start": 0,
+   "end": 3,
+   "patch": {
+    "color": "blue",
+    "bold": false
+   },
+   "result": {
+    "text": "abc",
+    "spans": [
+     {
+      "start": 0,
+      "end": 3,
+      "bold": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "clear part of a styled word",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big world",
+   "start": 7,
+   "end": 9,
+   "patch": null,
+   "result": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 7,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   }
+  },
+  {
+   "name": "clear everything",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Hello big world",
+   "start": 0,
+   "end": 15,
+   "patch": null,
+   "result": {
+    "text": "Hello big world",
+    "spans": []
+   }
+  },
+  {
+   "name": "clear on edited text",
+   "stored": {
+    "text": "Hello big world",
+    "spans": [
+     {
+      "start": 6,
+      "end": 9,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   },
+   "text": "Oh Hello big world",
+   "start": 0,
+   "end": 2,
+   "patch": null,
+   "result": {
+    "text": "Oh Hello big world",
+    "spans": [
+     {
+      "start": 9,
+      "end": 12,
+      "color": "#ff0000",
+      "bold": true,
+      "scale": 1.5
+     }
+    ]
+   }
+  }
+ ]
+}

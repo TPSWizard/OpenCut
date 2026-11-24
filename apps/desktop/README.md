@@ -465,6 +465,21 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Rich text
+
+A text element's inspector has a **Selection** row under the Text field:
+select words in the field, then Bold, Italic, Smaller (75%), Bigger (150%),
+Biggest (200%), a colour swatch, or Clear styles. The styled ranges are
+kept in the `richText` param with the text they were made for
+(`richtext` crate); when the text is edited anywhere, the unchanged start
+and end keep their styles and letters typed inside a styled run take its
+style. The rasterizer builds one cosmic-text run per change of look (rich
+style, then caption keyword colour and size, then the spoken word), so
+pieces share the line's baseline and a larger piece drops the baseline and
+rises above it; the raster grows to hold glyphs taller than their line
+(this also stops big caption keywords being clipped). The web editor draws
+the same layout (the same text at 640×360 lands within 3 pixels).
+
 ## Deflicker
 
 A video clip's inspector has **Deflicker** with Off, Light, Medium and

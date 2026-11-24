@@ -10,6 +10,7 @@ import {
 import type { MeasuredTextElement } from "@/text/measure-element";
 import { drawCurvedText, isCurved } from "@/text/curve";
 import type { MotionTransforms } from "@/motion-blur/blur";
+import type { RichCharStyle } from "@/text/rich";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -37,6 +38,8 @@ export interface ResolvedTextNodeState {
 	curve?: number;
 	/** The transform at shutter open and close, when motion blurred. */
 	motion?: MotionTransforms | null;
+	/** Each character's rich-text style (`@/text/rich`); null for none. */
+	rich?: RichCharStyle[] | null;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -75,6 +78,7 @@ export function renderTextToContext({
 			highlight: resolved.highlight,
 			keywords: resolved.keywords,
 			revealChars: resolved.revealChars,
+			rich: resolved.rich ?? null,
 		});
 	if (resolved.curve !== undefined && isCurved(resolved.curve)) {
 		drawCurvedText({ ctx, curve: resolved.curve, rect: resolved.measuredText.visualRect, drawFlat });

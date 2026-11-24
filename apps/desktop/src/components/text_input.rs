@@ -126,6 +126,13 @@ impl TextInput {
         self
     }
 
+    /// The selection as character positions in the text (start, end).
+    pub(crate) fn selection_chars(&self) -> (usize, usize) {
+        let to_chars = |byte: usize| self.content[..byte.min(self.content.len())].chars().count();
+        let (a, b) = (to_chars(self.selected_range.start), to_chars(self.selected_range.end));
+        (a.min(b), a.max(b))
+    }
+
     pub(crate) fn is_focused(&self, window: &Window) -> bool {
         self.focus_handle.is_focused(window)
     }

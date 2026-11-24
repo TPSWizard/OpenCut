@@ -1799,6 +1799,39 @@ impl EditorState {
     /// length, so trims, speed and keyframes carry over. One undo step;
     /// undo plays the original again. A file already made with the same
     /// settings is reused.
+    /// Rich text on the selected text clip: `patch` on characters
+    /// `start..end` of its text, or those characters back to the clip's own
+    /// style when `patch` is `None` (one undo step).
+    pub(crate) fn style_text_selected(
+        &mut self,
+        (start, end): (usize, usize),
+        patch: Option<editor::RichPatch>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(element) = self.selected_element() else { return };
+        if !matches!(element.kind, editor::ElementKind::Text) {
+            self.set_status(t("This needs a text clip."), cx);
+            return;
+        }
+        if start >= end {
+            self.set_status(t("Select part of the text in the Text field first."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let content = element.params.text("content", "").into_owned();
+        let stored = richtext::parse(&element.params.text(editor::RICH_TEXT_PARAM, ""));
+        let rich = match &patch {
+            Some(patch) => richtext::style_range(stored.as_ref(), &content, start, end, patch),
+            None => richtext::clear_range(stored.as_ref(), &content, start, end),
+        };
+        let mut params = editor::Params::new();
+        params.set(editor::RICH_TEXT_PARAM, richtext::encode(&rich));
+        self.execute(
+            Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+            cx,
+        );
+    }
+
     /// Deflicker on the selected video clip: sets the strength, measuring
     /// the clip's frames first when they have not been measured from this
     /// file (one undo step either way).

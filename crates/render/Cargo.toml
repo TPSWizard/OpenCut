@@ -20,11 +20,13 @@ lottie = { workspace = true }
 media = { workspace = true }
 pollster = { workspace = true }
 serde_json = { workspace = true }
+richtext = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 voice = { workspace = true }
 textwarp = { workspace = true }
 
 [dev-dependencies]
+richtext = { workspace = true }
 effects = { workspace = true }
 tempfile = { workspace = true }
