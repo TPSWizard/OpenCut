@@ -434,8 +434,9 @@ async function resolveVideoNode({
 		return null;
 	}
 
-	// Deflicker: the gain of the frame actually drawn (its own timestamp; a
-	// time on a frame boundary can return the frame before), as the
+	// Deflicker: the gain of the frame actually drawn, looked up by that
+	// frame's own timestamp (the decoder hands back the frame that covers
+	// the requested time, which need not start exactly there), as the
 	// desktop's `editor::deflicker_gain`.
 	const brightnessGain = node.params.deflicker
 		? deflickerGainAt({ deflicker: node.params.deflicker, sourceSeconds: frame.timestamp })
