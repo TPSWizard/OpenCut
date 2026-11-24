@@ -16,6 +16,8 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"background.offsetX",
 	"background.offsetY",
 	"background.cornerRadius",
+	// Curved text (`@/text/curve`).
+	"curve",
 	// Corner pin (`@/corner-pin/pin`): each corner's place in percent of the box.
 	"cornerPin.topLeftX",
 	"cornerPin.topLeftY",

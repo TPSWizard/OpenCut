@@ -377,6 +377,11 @@ impl TextRasterizer {
             }
         }
 
+        // Curved text: the whole raster (glyphs, boxes, lines) bent along
+        // an arc, centred where the flat raster was.
+        if let Some(bent) = textwarp::warp(style.curve as f64, width, height, &bgra) {
+            return TextRaster { width: bent.width, height: bent.height, bgra: bent.pixels };
+        }
         TextRaster {
             width,
             height,
@@ -509,6 +514,7 @@ mod tests {
             highlight: None,
             keywords: None,
             reveal_chars: None,
+            curve: 0.0,
         }
     }
 
@@ -649,6 +655,42 @@ mod tests {
             .unwrap();
         assert!(widest as f32 > struck.width as f32 * 0.8, "strike covers {widest} of {}", struck.width);
         assert!(strike_row < last_glyph_row && strike_row > last_glyph_row / 2, "strike row {strike_row} crosses the glyphs");
+    }
+
+    /// The mean row of red-ish pixels in a band of columns.
+    fn mean_row(raster: &TextRaster, columns: std::ops::Range<u32>) -> f32 {
+        let (mut sum, mut count) = (0.0f32, 0u32);
+        for y in 0..raster.height {
+            for x in columns.clone() {
+                let index = ((y * raster.width + x) * 4) as usize;
+                if raster.bgra[index + 3] > 128 && raster.bgra[index + 2] > 128 {
+                    sum += y as f32;
+                    count += 1;
+                }
+            }
+        }
+        assert!(count > 0, "no text in columns {columns:?}");
+        sum / count as f32
+    }
+
+    #[test]
+    fn curves_the_line_into_an_arch_or_a_smile() {
+        let mut rasterizer = TextRasterizer::new();
+        let mut flat_style = style("CURVED CURVED CURVED");
+        let flat = rasterizer.rasterize(&flat_style);
+        flat_style.curve = 50.0;
+        let arch = rasterizer.rasterize(&flat_style);
+        assert!(arch.height > flat.height * 2, "an arch is taller: {} vs {}", arch.height, flat.height);
+        let edge = arch.width / 6;
+        let middle = arch.width / 2;
+        let (ends, centre) = (mean_row(&arch, edge..edge + 8), mean_row(&arch, middle - 4..middle + 4));
+        assert!(ends > centre + 10.0, "the ends drop: ends {ends}, middle {centre}");
+        flat_style.curve = -50.0;
+        let smile = rasterizer.rasterize(&flat_style);
+        let edge = smile.width / 6;
+        let middle = smile.width / 2;
+        let (ends, centre) = (mean_row(&smile, edge..edge + 8), mean_row(&smile, middle - 4..middle + 4));
+        assert!(ends + 10.0 < centre, "the ends rise: ends {ends}, middle {centre}");
     }
 
     #[test]

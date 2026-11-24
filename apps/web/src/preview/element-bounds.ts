@@ -1,6 +1,7 @@
 import type { SceneTracks, TimelineElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { STICKER_INTRINSIC_SIZE_FALLBACK } from "@/stickers/intrinsic-size";
+import { bentRect, curveAt } from "@/text/curve";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/graphics";
 import { measureTextElement } from "@/text/measure-element";
 import {
@@ -187,10 +188,12 @@ export function getElementBounds({
 			ctx,
 		});
 
+		// Curved text takes the room of its bent raster.
+		const curve = curveAt({ params: element.params, animations: element.animations, localTime });
 		return getTransformedRectBounds({
 			canvasWidth,
 			canvasHeight,
-			rect: measured.visualRect,
+			rect: bentRect(measured.visualRect, curve),
 			transform,
 		});
 	}

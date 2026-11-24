@@ -14,6 +14,7 @@ mod perf;
 mod transitions;
 #[cfg(target_arch = "wasm32")]
 mod motion_tracking;
+mod text_curve;
 #[cfg(target_arch = "wasm32")]
 mod voice;
 
@@ -35,4 +36,6 @@ pub use transitions::*;
 pub use motion_tracking::*;
 #[cfg(target_arch = "wasm32")]
 pub use voice::*;
+#[allow(unused_imports)]
+pub use text_curve::*;
 pub use time::*;

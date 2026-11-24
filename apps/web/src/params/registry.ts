@@ -600,6 +600,16 @@ const textElementParams: ElementParamDefinition[] = [
 		step: 0.1,
 	},
 	{
+		// Curved text (`@/text/curve`): an arch above 0, a smile below.
+		key: "curve",
+		label: "Curve",
+		type: "number",
+		default: 0,
+		min: -100,
+		max: 100,
+		step: 1,
+	},
+	{
 		key: "background.enabled",
 		label: "Background Enabled",
 		type: "boolean",

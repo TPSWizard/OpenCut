@@ -8,6 +8,7 @@ import {
 	type TextWordHighlight,
 } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
+import { drawCurvedText, isCurved } from "@/text/curve";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -31,6 +32,8 @@ export interface ResolvedTextNodeState {
 	keywords: TextKeywords | null;
 	/** Characters shown by a typewriter or word-by-word animation (newlines not counted), or null for all. */
 	revealChars: number | null;
+	/** Curved text at this time (`@/text/curve`): -100 to 100, 0 flat. */
+	curve?: number;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -58,17 +61,23 @@ export function renderTextToContext({
 		ctx.rotate((resolved.transform.rotate * Math.PI) / 180);
 	}
 
-	drawMeasuredTextLayout({
-		ctx,
-		layout: resolved.measuredText,
-		textColor: resolved.textColor,
-		background: resolved.measuredText.resolvedBackground,
-		backgroundColor: resolved.backgroundColor,
-		textBaseline: baseline,
-		highlight: resolved.highlight,
-		keywords: resolved.keywords,
-		revealChars: resolved.revealChars,
-	});
+	const drawFlat = (target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) =>
+		drawMeasuredTextLayout({
+			ctx: target,
+			layout: resolved.measuredText,
+			textColor: resolved.textColor,
+			background: resolved.measuredText.resolvedBackground,
+			backgroundColor: resolved.backgroundColor,
+			textBaseline: baseline,
+			highlight: resolved.highlight,
+			keywords: resolved.keywords,
+			revealChars: resolved.revealChars,
+		});
+	if (resolved.curve !== undefined && isCurved(resolved.curve)) {
+		drawCurvedText({ ctx, curve: resolved.curve, rect: resolved.measuredText.visualRect, drawFlat });
+	} else {
+		drawFlat(ctx);
+	}
 
 	ctx.restore();
 }

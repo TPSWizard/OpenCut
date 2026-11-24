@@ -1,4 +1,5 @@
 import { cornerPinAt } from "@/corner-pin/pin";
+import { curveAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
@@ -631,6 +632,7 @@ function resolveTextNode({
 		transform,
 		opacity,
 		revealChars: animationState ? revealedCharCount({ content, reveal: animationState.reveal }) : null,
+		curve: curveAt({ params: node.params.params, animations: node.params.animations, localTime }),
 		textColor: resolveColorAtTime({
 			baseColor:
 				typeof node.params.params.color === "string"

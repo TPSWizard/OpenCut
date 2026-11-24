@@ -77,6 +77,7 @@ const TEXT_PARAM_KEYS = [
 	"textDecoration",
 	"letterSpacing",
 	"lineHeight",
+	"curve",
 	"background.enabled",
 	"background.color",
 	"background.cornerRadius",

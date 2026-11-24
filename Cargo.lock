@@ -4247,6 +4247,7 @@ dependencies = [
  "num-traits",
  "serde",
  "serde-wasm-bindgen",
+ "textwarp",
  "time",
  "tracking",
  "voice",
@@ -5096,6 +5097,7 @@ dependencies = [
  "resvg 0.49.0",
  "serde_json",
  "tempfile",
+ "textwarp",
  "thiserror 2.0.19",
  "time",
  "voice",
@@ -6174,6 +6176,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "textwarp"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

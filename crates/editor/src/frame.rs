@@ -320,6 +320,9 @@ pub struct TextStyle {
     /// Characters a typewriter or word-by-word animation shows (newlines
     /// not counted), each where it sits in the whole text; `None` for all.
     pub reveal_chars: Option<usize>,
+    /// Curved text: the `curve` param, -100 (a smile) to 100 (an arch); 0
+    /// is flat. The renderer bends the raster with `textwarp`.
+    pub curve: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -377,6 +380,10 @@ impl TextStyle {
             highlight: None,
             keywords: None,
             reveal_chars: None,
+            curve: {
+                let curve = params.number("curve", 0.0);
+                if curve.is_finite() { curve.clamp(-100.0, 100.0) as f32 } else { 0.0 }
+            },
         }
     }
 }

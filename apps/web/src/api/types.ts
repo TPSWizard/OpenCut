@@ -1050,6 +1050,16 @@ export interface EditorApiMethods {
 		};
 	};
 	/**
+	 * Curved text: bends a text element's line along an arc, -100 (a smile:
+	 * the ends rise) to 100 (an arch: the ends drop; the text wraps 350
+	 * degrees); 0 is flat. Drawn the same in both editors (`textwarp`). One
+	 * undo step; refused while the curve has keyframes.
+	 */
+	"text.setCurve": {
+		params: ApiElementLocator & { curve: number };
+		result: { trackId: string; elementId: string; curve: number };
+	};
+	/**
 	 * Corner pin on a video, picture or sticker clip: its corners pinned in
 	 * perspective (drawn by the shared compositor). `corners` are each
 	 * corner's place in percent of the clip's own box before rotation

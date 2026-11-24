@@ -465,6 +465,18 @@ media is not changed: when a clip has any, its audio is prepared through
 change), which both the preview mixer and the export play, so what you hear
 is what is exported. The web editor runs the same code as WASM.
 
+## Curved text
+
+A text element's inspector has **Curve** (with the other text numbers,
+keyframable): -100 to 100, 0 flat. Above 0 the line bends up like an arch
+(the ends drop), below 0 like a smile; at 100 the text's width wraps 350
+degrees. The renderer draws the flat text (glyphs, background box,
+highlights, underline) as before and bends the whole raster along the arc
+with `textwarp::warp` (bilinear, alpha-weighted), centred where the flat
+text was; letters stretch a little on the outside of the bend. The web
+editor runs the same crate as WASM, so both draw the same curve (the same
+text at 640×360 lands within 2 pixels in both).
+
 ## Corner pin
 
 A video, picture or sticker clip's inspector has **Corner pin**: **Pin

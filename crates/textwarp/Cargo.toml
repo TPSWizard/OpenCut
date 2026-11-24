@@ -1,0 +1,15 @@
+[package]
+name = "textwarp"
+description = "Curved text: bends a flat text raster along a circular arc, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+
+[dev-dependencies]
+serde_json = { workspace = true }

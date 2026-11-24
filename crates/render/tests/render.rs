@@ -786,3 +786,47 @@ fn corner_pin_draws_the_clip_in_perspective_and_follows_keyframes() {
     let off = renderer.render(&project, seconds(0.0), 320, 180).unwrap();
     assert_eq!(at(&off, 0.1, 0.05), GREEN, "no pin, no gap");
 }
+
+#[test]
+fn curved_text_bends_into_an_arch_in_the_frame() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let mut project = Project::new("Curved text");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+    let mut text = Element::text("CURVED TEXT ROUND THE TOP", seconds(0.0));
+    text.params.set("fontSize", 7.0).set("fontFamily", "Arial").set("color", "#ffffff").set("curve", 60.0);
+    apply(&mut project, &EditorCommand::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+    let white = |x: u32, y: u32| {
+        let p = pixel(&frame, x, y);
+        p[0] > 128 && p[1] > 128 && p[2] > 128
+    };
+    let (mut min_x, mut max_x, mut min_y, mut max_y) = (640, 0, 360, 0);
+    for y in 0..360 {
+        for x in 0..640 {
+            if white(x, y) {
+                (min_x, max_x, min_y, max_y) = (min_x.min(x), max_x.max(x), min_y.min(y), max_y.max(y));
+            }
+        }
+    }
+    let mean_row = |x0: u32, x1: u32| {
+        let (mut sum, mut count) = (0.0, 0.0);
+        for y in 0..360 {
+            for x in x0..x1 {
+                if white(x, y) {
+                    sum += y as f64;
+                    count += 1.0;
+                }
+            }
+        }
+        sum / count
+    };
+    let (middle, left, right) = (mean_row(315, 325), mean_row(min_x, min_x + 12), mean_row(max_x - 12, max_x + 1));
+    eprintln!("desktop curved text: bbox ({min_x}, {min_y})-({max_x}, {max_y}), middle {middle:.1}, left {left:.1}, right {right:.1}");
+    // The top of the arch stays at the text's place (the canvas middle)
+    // and the ends drop well below it, symmetrically.
+    assert!((middle - 180.0).abs() < 12.0, "middle row {middle}");
+    assert!(left > middle + 80.0 && right > middle + 80.0, "ends {left} / {right} vs middle {middle}");
+    assert!((left - right).abs() < 12.0, "symmetric: {left} vs {right}");
+    assert!(((min_x + max_x) as f64 / 2.0 - 320.0).abs() < 8.0, "centred: {min_x}..{max_x}");
+}

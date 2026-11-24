@@ -16,6 +16,7 @@ members = [
   'crates/render',
   'crates/time',
   'crates/tracking',
+  'crates/textwarp',
   'crates/voice',
   'crates/wasm',
 ]
@@ -38,6 +39,7 @@ media = { path = "crates/media" }
 render = { path = "crates/render" }
 time = { path = "crates/time" }
 tracking = { path = "crates/tracking" }
+textwarp = { path = "crates/textwarp" }
 voice = { path = "crates/voice" }
 
 # Desktop

@@ -78,6 +78,8 @@ const TEXT_NUMBER_PARAMS: &[(&str, &str, f64)] = &[
     ("fontSize", "Font size", 15.0),
     ("lineHeight", "Line height", 1.2),
     ("letterSpacing", "Letter spacing", 0.0),
+    // Curved text (`textwarp`): an arch above 0, a smile below, -100 to 100.
+    ("curve", "Curve", 0.0),
 ];
 
 /// Caption colours, shown for text elements that carry timed words.

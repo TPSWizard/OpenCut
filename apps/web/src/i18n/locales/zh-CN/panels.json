@@ -423,5 +423,10 @@
   "Bottom right X (%)": "右下 X（%）",
   "Bottom right Y (%)": "右下 Y（%）",
   "Bottom left X (%)": "左下 X（%）",
-  "Bottom left Y (%)": "左下 Y（%）"
+  "Bottom left Y (%)": "左下 Y（%）",
+  "Curve": "弯曲",
+  "Arch": "拱形",
+  "Smile": "微笑弧",
+  "Flat": "平直",
+  "Circle": "圆形"
 }

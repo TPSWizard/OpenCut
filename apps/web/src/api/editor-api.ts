@@ -158,7 +158,8 @@ import { isRippleScope } from "@/silence/detect";
 import { canCornerPin, cornerPinUpdates, resetCornerPinUpdates } from "@/corner-pin/apply";
 import { CORNER_PIN_ENABLED, PIN_CORNERS, type CornerPin, canvasToBox, cornerPinCorners, isConvexPin, readCornerPin } from "@/corner-pin/pin";
 import { getElementBounds } from "@/preview/element-bounds";
-import { getElementLocalTime } from "@/animation";
+import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
+import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
 import type { ParamValue } from "@/params";
 
@@ -2034,6 +2035,25 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
+		"text.setCurve": ({ elementId, trackId, curve }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "text") {
+				throw new EditorApiError({ code: "invalid_params", message: "Curve goes on text" });
+			}
+			if (typeof curve !== "number" || !Number.isFinite(curve) || curve < CURVE_MIN || curve > CURVE_MAX) {
+				throw new EditorApiError({ code: "invalid_params", message: `curve must be ${CURVE_MIN} to ${CURVE_MAX}` });
+			}
+			if (hasKeyframesForPath({ animations: element.animations, propertyPath: "curve" })) {
+				throw new EditorApiError({ code: "invalid_params", message: "The curve is keyframed; change its keyframes instead" });
+			}
+			editor.command.execute({
+				command: new UpdateElementsCommand({
+					updates: [{ trackId: track.id, elementId: element.id, patch: { params: { ...element.params, curve } } as Partial<TimelineElement> }],
+				}),
+			});
+			return { trackId: track.id, elementId: element.id, curve };
+		},
 		"transform.cornerPin": ({ elementId, trackId, enabled, corners, canvasCorners, reset }) => {
 			requireProject();
 			const { track, element } = resolveElement({ elementId, trackId });

@@ -38,6 +38,7 @@ const PROPERTY_LABELS: Partial<Record<string, string>> = {
 	"background.offsetX": "BG Offset X",
 	"background.offsetY": "BG Offset Y",
 	"background.cornerRadius": "Corner Radius",
+	curve: "Curve",
 	"cornerPin.topLeftX": "Pin TL X",
 	"cornerPin.topLeftY": "Pin TL Y",
 	"cornerPin.topRightX": "Pin TR X",
