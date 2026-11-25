@@ -39,6 +39,15 @@ const fn color(key: &'static str, label: &'static str, default: &'static str) ->
     EffectParamSpec { key, label, default: 0.0, min: 0.0, max: 0.0, step: 0.0, options: &[], color: Some(default) }
 }
 
+/// The light leak's colour choices: two colours each (0 to 1), in the order
+/// of its `colours` options. The web app's effect definition has the same.
+pub const LIGHT_LEAK_COLOURS: [(&str, [f64; 3], [f64; 3]); 4] = [
+    ("warm", [1.0, 0.55, 0.16], [1.0, 0.24, 0.12]),
+    ("golden", [1.0, 0.78, 0.35], [1.0, 0.47, 0.16]),
+    ("rose", [1.0, 0.35, 0.55], [1.0, 0.67, 0.35]),
+    ("cool", [0.35, 0.63, 1.0], [0.63, 0.35, 1.0]),
+];
+
 pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
     EffectSpec {
         kind: "blur",
@@ -222,6 +231,40 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
             number("magentaHue", "Magenta hue", 0.0, -100.0, 100.0, 1.0),
             number("magentaSaturation", "Magenta saturation", 0.0, -100.0, 100.0, 1.0),
             number("magentaLightness", "Magenta lightness", 0.0, -100.0, 100.0, 1.0),
+        ],
+    },
+    EffectSpec {
+        kind: "bloom",
+        label: "Bloom",
+        description: "Highlights glow and spill softly into their surroundings: what is brighter than the threshold is blurred and added back.",
+        params: &[
+            number("threshold", "Threshold", 0.7, 0.0, 1.0, 0.01),
+            number("intensity", "Intensity", 0.8, 0.0, 2.0, 0.01),
+            number("radius", "Radius (px)", 24.0, 1.0, 100.0, 1.0),
+            number("softness", "Softness", 0.15, 0.0, 0.5, 0.01),
+            color("tint", "Tint", "#ffffff"),
+        ],
+    },
+    EffectSpec {
+        kind: "light-leak",
+        label: "Light leak",
+        description: "Soft glows of warm or cool light that drift in from an edge and flicker, made on the fly (no footage).",
+        params: &[
+            EffectParamSpec {
+                key: "colours",
+                label: "Colours",
+                default: 0.0,
+                min: 0.0,
+                max: 3.0,
+                step: 1.0,
+                options: &[("warm", "Warm"), ("golden", "Golden"), ("rose", "Rose"), ("cool", "Cool")],
+                color: None,
+            },
+            number("intensity", "Intensity", 0.6, 0.0, 1.0, 0.01),
+            number("size", "Size", 0.7, 0.2, 1.5, 0.01),
+            number("angle", "From (°)", 30.0, 0.0, 360.0, 1.0),
+            number("speed", "Speed", 0.5, 0.0, 2.0, 0.01),
+            number("seed", "Seed", 0.0, 0.0, 100.0, 1.0),
         ],
     },
     EffectSpec {

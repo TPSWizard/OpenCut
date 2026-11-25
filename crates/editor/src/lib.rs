@@ -134,7 +134,7 @@ pub use colour_tools::{
     COLOUR_WHEEL_ANGLES, COLOUR_WHEEL_RANGE, COLOUR_WHEELS, HSL_BANDS, HSL_CONTROLS, HSL_HUE_RANGE, colour_wheel_move,
     colour_wheel_offsets, colour_wheel_point, colour_wheel_rgba, hsl_band_swatch, hsl_band_value, hsl_param_key,
 };
-pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect_spec};
+pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, LIGHT_LEAK_COLOURS, effect_spec};
 pub use error::EditorError;
 pub use frame::{
     BackdropPlan, EffectPlan, background_blur_layer, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, CutoutPlan, TextAlign,

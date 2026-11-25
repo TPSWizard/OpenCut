@@ -512,6 +512,12 @@ The **HSL** effect moves the hue (up to 30° either way), saturation and lightne
 
 **Lift, gamma, gain** shows three colour wheels over its red, green and blue offsets: drag a wheel's dot to tint the shadows, midtones or highlights (one undo step, written on release), or **Centre** to take the tint off. The wheel's offsets add up to zero, so it tints without brightening; red, green and blue sit about where the vectorscope shows them (`editor::colour_wheel_offsets`, shared with the web editor).
 
+## Bloom and light leaks
+
+**Bloom** makes highlights glow: what is brighter than the **Threshold** (with **Softness** ramping it in) is blurred by **Radius** (pixels at 1080 high), tinted and added back onto the frame as it came in, at **Intensity**. It runs as passes in the shared effects crate: keep the highlights, the shared Gaussian blur, then add them back; the last pass reads the effect's untouched input through the `@source` table key (`effects::SOURCE_TABLE`). Frames darker than the threshold come out unchanged.
+
+**Light leak** lays two soft glows of colour (Warm, Golden, Rose or Cool) over the frame, drifting in from the edge at **From** and flickering at **Speed**, screen-blended. It is drawn on the fly by one shader; no footage is bundled. Both are checked against an independent reference (`fixtures/glow/cases.json`) on a real GPU and through the renderer (`crates/render/tests/glow.rs`); the web editor reads the same frames identically.
+
 ## Video scopes
 
 **Scopes** in the preview's bottom bar opens a column beside the frame with a **Waveform** (luma of every column, left to right as in the frame), an **RGB parade** (the waveform of red, green and blue side by side), a **Vectorscope** (Rec. 709 Cb across, Cr up; boxes where 75% colour bars land and a skin tone line) or a **Histogram** (red, green and blue levels; clipped levels drawn to the top). Under it: the luma of the darkest and brightest 1% and the share of pixels with a channel at 0 or 255. The renderer draws the scope from each preview frame it makes, with the shared `scopes` crate, so the web editor's scopes are the same picture from the same pixels. Checked against an independent reference (`fixtures/scopes/cases.json`) and on a real frame of colour bars (`crates/render/tests/scopes.rs`; desktop and web read the same levels).

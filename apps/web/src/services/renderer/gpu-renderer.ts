@@ -83,7 +83,8 @@ export const gpuRenderer = {
 const registeredLuts = new Set<string>();
 
 function ensureLutRegistered(lut: NonNullable<EffectPass["lut"]>): void {
-	if (!gpuAvailable || registeredLuts.has(lut.key)) return;
+	// "@source" (Bloom) is the effect's own input, not a table to upload.
+	if (!gpuAvailable || registeredLuts.has(lut.key) || lut.key.startsWith("@")) return;
 	registerEffectLut({ key: lut.key, size: lut.size, data: lut.data });
 	registeredLuts.add(lut.key);
 }

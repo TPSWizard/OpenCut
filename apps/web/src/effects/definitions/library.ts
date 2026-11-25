@@ -10,6 +10,7 @@ import type { ParamDefinition, ParamValues } from "@/params";
 import type { EffectDefinition, EffectPass } from "@/effects/types";
 import { decodeLutParam, lutKey, lutTextureRgba } from "@/luts/parse";
 import { HSL_BANDS, HSL_CONTROLS, hslParamKey } from "@/effects/colour-tools";
+import { buildGaussianBlurPasses } from "./blur";
 
 const REFERENCE_HEIGHT = 1080;
 
@@ -380,6 +381,110 @@ export const hslEffectDefinition = singlePass({
 	},
 });
 
+/**
+ * A pass's table key that reads the effect's input (the frame before its
+ * first pass) instead of a registered table: `effects::SOURCE_TABLE`.
+ */
+export const SOURCE_TABLE = "@source";
+const SOURCE_TABLE_PAYLOAD = { key: SOURCE_TABLE, size: 0, data: new Uint8Array(0) };
+
+function tintChannels(value: unknown): [number, number, number] {
+	return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(value ?? "").trim()) ? keyColorChannels(value) : [1, 1, 1];
+}
+
+/**
+ * Bloom: the highlights (brighter than the threshold) blurred and added
+ * back onto the frame. Passes as `crates/render`: bloom-extract, the
+ * shared Gaussian blur (radius = 2 sigma at 1080 high), bloom-combine
+ * reading the untouched frame through the `@source` table.
+ */
+export const bloomEffectDefinition: EffectDefinition = (() => {
+	const params: ParamDefinition[] = [
+		number({ key: "threshold", label: "Threshold", default: 0.7, min: 0, max: 1, step: 0.01 }),
+		number({ key: "intensity", label: "Intensity", default: 0.8, min: 0, max: 2, step: 0.01 }),
+		number({ key: "radius", label: "Radius (px)", default: 24, min: 1, max: 100, step: 1 }),
+		number({ key: "softness", label: "Softness", default: 0.15, min: 0, max: 0.5, step: 0.01 }),
+		{ key: "tint", label: "Tint", type: "color", default: "#ffffff" },
+	];
+	const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
+	const buildPasses = ({ effectParams, height }: { effectParams: ParamValues; width: number; height: number; timeSeconds: number }): EffectPass[] => {
+		const read = (key: string, fallback: number) => readNumber({ params: effectParams, key, fallback });
+		const sigma = clamp(read("radius", 24), 1, 100) * 0.5 * (height / REFERENCE_HEIGHT);
+		const [red, green, blue] = tintChannels(effectParams.tint);
+		return [
+			{ shader: "bloom-extract", uniforms: { u_threshold: clamp(read("threshold", 0.7), 0, 1), u_knee: clamp(read("softness", 0.15), 0, 0.5) } },
+			...buildGaussianBlurPasses({ sigmaX: sigma, sigmaY: sigma }),
+			{
+				shader: "bloom-combine",
+				uniforms: { u_intensity: clamp(read("intensity", 0.8), 0, 2), u_tint_r: red, u_tint_g: green, u_tint_b: blue },
+				lut: SOURCE_TABLE_PAYLOAD,
+			},
+		];
+	};
+	return {
+		type: "bloom",
+		name: "Bloom",
+		keywords: ["bloom", "glow", "highlights", "dreamy", "soft light", "halation"],
+		params,
+		renderer: {
+			passes: [{ shader: "bloom-extract", uniforms: () => ({ u_threshold: 0.7, u_knee: 0.15 }) }],
+			buildPasses,
+		},
+	};
+})();
+
+/** The light leak's colour choices, as `editor::LIGHT_LEAK_COLOURS`. */
+export const LIGHT_LEAK_COLOURS: Record<string, [[number, number, number], [number, number, number]]> = {
+	warm: [[1.0, 0.55, 0.16], [1.0, 0.24, 0.12]],
+	golden: [[1.0, 0.78, 0.35], [1.0, 0.47, 0.16]],
+	rose: [[1.0, 0.35, 0.55], [1.0, 0.67, 0.35]],
+	cool: [[0.35, 0.63, 1.0], [0.63, 0.35, 1.0]],
+};
+
+/** Light leak: drifting, flickering glows of colour from one edge, made on the fly. */
+export const lightLeakEffectDefinition = singlePass({
+	type: "light-leak",
+	name: "Light leak",
+	keywords: ["light leak", "leak", "flare", "film", "vintage", "warm", "glow"],
+	shader: "light-leak",
+	params: [
+		{
+			key: "colours",
+			label: "Colours",
+			type: "select",
+			default: "warm",
+			options: [
+				{ value: "warm", label: "Warm" },
+				{ value: "golden", label: "Golden" },
+				{ value: "rose", label: "Rose" },
+				{ value: "cool", label: "Cool" },
+			],
+		},
+		number({ key: "intensity", label: "Intensity", default: 0.6, min: 0, max: 1, step: 0.01 }),
+		number({ key: "size", label: "Size", default: 0.7, min: 0.2, max: 1.5, step: 0.01 }),
+		number({ key: "angle", label: "From (°)", default: 30, min: 0, max: 360, step: 1 }),
+		number({ key: "speed", label: "Speed", default: 0.5, min: 0, max: 2, step: 0.01 }),
+		number({ key: "seed", label: "Seed", default: 0, min: 0, max: 100, step: 1 }),
+	],
+	uniforms: ({ read, params, timeSeconds }) => {
+		const [first, second] = LIGHT_LEAK_COLOURS[String(params.colours)] ?? LIGHT_LEAK_COLOURS.warm;
+		return {
+			u_intensity: Math.min(1, Math.max(0, read("intensity"))),
+			u_size: Math.min(1.5, Math.max(0.2, read("size"))),
+			u_angle: degreesToRadians(read("angle")),
+			u_time: timeSeconds,
+			u_speed: Math.min(2, Math.max(0, read("speed"))),
+			u_seed: read("seed"),
+			u_colour1_r: first[0],
+			u_colour1_g: first[1],
+			u_colour1_b: first[2],
+			u_colour2_r: second[0],
+			u_colour2_g: second[1],
+			u_colour2_b: second[2],
+		};
+	},
+});
+
 export const levelsEffectDefinition = singlePass({
 	type: "levels",
 	name: "Levels",
@@ -630,6 +735,8 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	liftGammaGainEffectDefinition,
 	curvesEffectDefinition,
 	hslEffectDefinition,
+	bloomEffectDefinition,
+	lightLeakEffectDefinition,
 	levelsEffectDefinition,
 	shadowsHighlightsEffectDefinition,
 	chromaKeyEffectDefinition,

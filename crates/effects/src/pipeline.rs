@@ -183,6 +183,34 @@ pub const SHADERS: &[ShaderSpec] = &[
         ],
     },
     ShaderSpec {
+        id: "bloom-extract",
+        source: include_str!("shaders/bloom_extract.wgsl"),
+        numbers: &["u_threshold", "u_knee"],
+    },
+    ShaderSpec {
+        id: "bloom-combine",
+        source: include_str!("shaders/bloom_combine.wgsl"),
+        numbers: &["u_intensity", "u_tint_r", "u_tint_g", "u_tint_b"],
+    },
+    ShaderSpec {
+        id: "light-leak",
+        source: include_str!("shaders/light_leak.wgsl"),
+        numbers: &[
+            "u_intensity",
+            "u_size",
+            "u_angle",
+            "u_time",
+            "u_speed",
+            "u_seed",
+            "u_colour1_r",
+            "u_colour1_g",
+            "u_colour1_b",
+            "u_colour2_r",
+            "u_colour2_g",
+            "u_colour2_b",
+        ],
+    },
+    ShaderSpec {
         id: "lut",
         source: include_str!("shaders/lut.wgsl"),
         numbers: &["u_size", "u_intensity", "u_tetrahedral"],
@@ -190,6 +218,10 @@ pub const SHADERS: &[ShaderSpec] = &[
 ];
 
 const DIRECTION_UNIFORM: &str = "u_direction";
+/// A pass whose table is this key reads the effect's input (the frame as
+/// it was before the effect's first pass) instead of a registered table:
+/// how Bloom adds its blurred highlights back onto the untouched frame.
+pub const SOURCE_TABLE: &str = "@source";
 const SCALAR_SLOTS: usize = 24;
 
 pub fn shader_spec(id: &str) -> Option<&'static ShaderSpec> {
@@ -451,6 +483,7 @@ impl EffectPipeline {
             })?;
             let luts = self.luts.lock().expect("lut registry");
             let lut_texture = match &pass.lut {
+                Some(key) if key == SOURCE_TABLE => source,
                 Some(key) => luts.get(key).ok_or_else(|| EffectsError::MissingLut { key: key.clone() })?,
                 None => &self.dummy_lut,
             };

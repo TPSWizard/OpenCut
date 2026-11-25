@@ -987,5 +987,16 @@
   "Colour": "颜色",
   "Curves across the hues: hue (white), saturation (yellow), lightness (blue).": "沿色相的曲线：色相（白）、饱和度（黄）、亮度（蓝）。",
   "Centre": "居中",
-  "Drag a dot to tint the shadows, midtones or highlights; the rows below show the numbers.": "拖动圆点为阴影、中间调或高光着色；下方各行显示数值。"
+  "Drag a dot to tint the shadows, midtones or highlights; the rows below show the numbers.": "拖动圆点为阴影、中间调或高光着色；下方各行显示数值。",
+  "Bloom": "泛光",
+  "Light leak": "漏光",
+  "Highlights glow and spill softly into their surroundings: what is brighter than the threshold is blurred and added back.": "高光柔和地发光并向四周溢出：高于阈值的部分被模糊后叠加回画面。",
+  "Soft glows of warm or cool light that drift in from an edge and flicker, made on the fly (no footage).": "从画面边缘飘入并闪烁的柔和暖色或冷色光晕，实时生成（不使用素材）。",
+  "Threshold": "阈值",
+  "Radius (px)": "半径（像素）",
+  "Colours": "颜色",
+  "Golden": "金色",
+  "Rose": "玫瑰色",
+  "Cool": "冷色",
+  "From (°)": "来自（°）"
 }

@@ -843,6 +843,9 @@ function resolveEffectLayerNode({
 		effectParams: node.params.effectParams,
 		width: context.renderer.width,
 		height: context.renderer.height,
+		// Time into the effect element, so grain, glitch and light leaks move
+		// on an effect track as they do on a clip.
+		timeSeconds: Math.max(0, time - node.params.timeOffset) / TICKS_PER_SECOND,
 	});
 	if (passes.length === 0) {
 		return null;

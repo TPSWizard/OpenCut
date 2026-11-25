@@ -8,6 +8,8 @@ mod texture_store;
 mod transitions;
 
 pub use blend_mode::BlendMode;
+/// The table key a pass uses to read its effect's input (Bloom); see `effects::SOURCE_TABLE`.
+pub use effects::SOURCE_TABLE as EFFECT_SOURCE_TABLE;
 pub use compositor::{Compositor, CompositorError, RenderFrameOptions};
 pub use corner_pin::{CornerPin, Matrix3, apply as apply_pin_matrix, is_drawable_pin, pin_matrix, square_to_pin};
 pub use motion_blur::{MOTION_BLUR_MAX_SAMPLES, motion_blur_samples, quad_corners};

@@ -194,6 +194,53 @@ fn effect_passes(
             let numbers: Vec<(&str, f64)> = numbers.iter().map(|(name, value)| (name.as_str(), *value)).collect();
             vec![numbers_pass("hsl", &numbers)]
         }
+        "bloom" => {
+            // Keep the highlights, blur them (radius = 2 sigma, at 1080 high),
+            // add them back onto the frame as it came in (`@source`).
+            let tint = editor::parse_hex_color(&effect.params.text("tint", "#ffffff")).unwrap_or([1.0; 4]);
+            let sigma = param("radius").clamp(1.0, 100.0) * 0.5 * scale;
+            let mut passes = vec![numbers_pass(
+                "bloom-extract",
+                &[("u_threshold", param("threshold").clamp(0.0, 1.0)), ("u_knee", param("softness").clamp(0.0, 0.5))],
+            )];
+            passes.extend(gaussian_blur_passes(sigma, sigma));
+            let mut combine = numbers_pass(
+                "bloom-combine",
+                &[
+                    ("u_intensity", param("intensity").clamp(0.0, 2.0)),
+                    ("u_tint_r", tint[0] as f64),
+                    ("u_tint_g", tint[1] as f64),
+                    ("u_tint_b", tint[2] as f64),
+                ],
+            );
+            combine.lut = Some(compositor::EFFECT_SOURCE_TABLE.to_owned());
+            passes.push(combine);
+            passes
+        }
+        "light-leak" => {
+            let choice = spec
+                .and_then(|spec| spec.params.first())
+                .map(|param| param.choice_index(&effect.params.text("colours", "warm")))
+                .unwrap_or(0);
+            let (_, first, second) = editor::LIGHT_LEAK_COLOURS[choice.min(editor::LIGHT_LEAK_COLOURS.len() - 1)];
+            vec![numbers_pass(
+                "light-leak",
+                &[
+                    ("u_intensity", param("intensity").clamp(0.0, 1.0)),
+                    ("u_size", param("size").clamp(0.2, 1.5)),
+                    ("u_angle", param("angle").to_radians()),
+                    ("u_time", time_seconds),
+                    ("u_speed", param("speed").clamp(0.0, 2.0)),
+                    ("u_seed", param("seed")),
+                    ("u_colour1_r", first[0]),
+                    ("u_colour1_g", first[1]),
+                    ("u_colour1_b", first[2]),
+                    ("u_colour2_r", second[0]),
+                    ("u_colour2_g", second[1]),
+                    ("u_colour2_b", second[2]),
+                ],
+            )]
+        }
         "levels" => vec![numbers_pass(
             "levels",
             &[
@@ -503,7 +550,14 @@ mod tests {
                 let mut declared: Vec<&str> = shader.numbers.to_vec();
                 declared.sort_unstable();
                 assert_eq!(names, declared, "{} sets exactly the uniforms {} declares", spec.kind, pass.shader);
-                assert_eq!(pass.lut.is_some(), spec.kind == "lut", "{} names a table only for the LUT shader", spec.kind);
+                // Only the LUT shader reads a registered table; Bloom's last
+                // pass reads the effect's input through `@source`.
+                let table_ok = match pass.shader.as_str() {
+                    "lut" => pass.lut.as_deref().is_some_and(|key| key != compositor::EFFECT_SOURCE_TABLE),
+                    "bloom-combine" => pass.lut.as_deref() == Some(compositor::EFFECT_SOURCE_TABLE),
+                    _ => pass.lut.is_none(),
+                };
+                assert!(table_ok, "{} pass {} names the wrong table: {:?}", spec.kind, pass.shader, pass.lut);
             }
         }
     }
