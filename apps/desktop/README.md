@@ -401,6 +401,20 @@ straddles it. The piece after the first cut stays selected so editing goes
 on. The arithmetic is `crates/editor/src/transcript.rs`, the twin of the
 web app's `src/transcript/cuts.ts`. Transcribe the clip to captions first.
 
+**Find retakes** strikes the earlier takes of a line and false starts for
+review, so cutting the struck words keeps only the last take. The shared
+`retakes` crate splits the transcript into phrases at sentence ends and
+pauses of 0.7 s or more; a phrase is an earlier take of one of the next
+three (starting within 30 s) when both open with the same words (its first
+three, or all of a shorter one) and at least 60% of its words come back in
+order (longest common subsequence). Short chatter between the takes ("sorry,
+let me redo that", up to eight words) and hesitations before the kept take
+go with it. Inside a phrase, a run whose opening words repeat a few words
+later ("I think we should I think we should go") is a false start when
+nearly all of it comes back. Hesitations ("um", "ähm", …) are skipped when
+comparing. No model is needed; the web app runs the same crate through
+WASM. Checked against `fixtures/retakes/cases.json`.
+
 ## Noise reduction
 
 The inspector's **Noise** section (audio and video clips) runs FFmpeg's

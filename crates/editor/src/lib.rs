@@ -108,7 +108,8 @@ pub use layer_style::{
     SHADOW_OFFSET_DEFAULT, SHADOW_OFFSET_MAX, SHADOW_OPACITY_DEFAULT,
 };
 pub use freeze::{FREEZE_DEFAULT_SECONDS, FREEZE_MAX_SECONDS, FREEZE_MIN_SECONDS, freeze_still};
-pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts};
+pub use retakes::{Retake, RetakeKind, RetakeOptions, retake_words};
+pub use transcript::{TRANSCRIPT_EDGE_PADDING, retime_captions, transcript_cuts, transcript_retakes};
 pub use freeform::{
     ElementQuad, FreeformPoint, canvas_to_freeform_local, closest_on_freeform_segment, cubic_point, element_quad,
     freeform_local_to_canvas, freeform_segment_count, insert_freeform_point, read_freeform_path,

@@ -130,6 +130,15 @@ pub const FILLER_PROMPT: &str = "Um, uh, so, like, hmm, erm... okay, you know, I
 mod tests {
     use super::*;
 
+    #[test]
+    fn retakes_skip_the_same_hesitations() {
+        let mut ours: Vec<&str> = filler_set("auto").into_iter().collect();
+        let mut theirs: Vec<&str> = retakes::HESITATIONS.to_vec();
+        ours.sort_unstable();
+        theirs.sort_unstable();
+        assert_eq!(ours, theirs, "retakes::HESITATIONS follows the automatic filler set");
+    }
+
     fn word(text: &str, start: f64, end: f64) -> TimedWord {
         TimedWord { text: text.to_owned(), start, end }
     }

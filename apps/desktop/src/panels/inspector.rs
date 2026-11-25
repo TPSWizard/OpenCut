@@ -1889,7 +1889,7 @@ impl Render for InspectorPanel {
                         div()
                             .text_xs()
                             .text_color(colors.muted_foreground)
-                            .child(t("Click words to strike them (Shift-click strikes a run), then cut them out. Uses the captions over this clip; the captions are retimed with the cut and gaps close as the Silence setting says.")),
+                            .child(t("Click words to strike them (Shift-click strikes a run), or find retakes (earlier takes of a line and false starts; the last take is kept), then cut them out. Uses the captions over this clip; the captions are retimed with the cut and gaps close as the Silence setting says.")),
                     );
                     if transcript_words.is_empty() {
                         content = content.child(
@@ -1934,6 +1934,34 @@ impl Render for InspectorPanel {
                                         cx.notify();
                                     })),
                             )
+                            .child({
+                                // Retakes (`retakes` crate): strike the earlier
+                                // takes and false starts for review.
+                                let words = transcript_words.clone();
+                                Button::new("find-retakes", t("Find retakes"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        let found = editor::transcript_retakes(&words, &editor::RetakeOptions::default());
+                                        let indices = editor::retake_words(&found);
+                                        let seconds = editor::transcript_cuts(&words, &indices, f64::NEG_INFINITY, f64::INFINITY)
+                                            .iter()
+                                            .map(|(start, end)| end - start)
+                                            .sum::<f64>();
+                                        this.struck_words.extend(indices.iter().copied().filter(|index| *index < words.len()));
+                                        this.transcript_anchor = None;
+                                        let message = if found.is_empty() {
+                                            t("No retakes found in this clip's transcript.").to_owned()
+                                        } else {
+                                            tf(
+                                                "{count} retake(s) found ({seconds} s), struck for review: cut them with the button beside.",
+                                                &[("count", &found.len()), ("seconds", &format!("{seconds:.1}"))],
+                                            )
+                                        };
+                                        this.state.update(cx, |state, cx| state.set_status(message, cx));
+                                        cx.notify();
+                                    }))
+                            })
                             .child(
                                 Button::new("clear-transcript", t("Clear"))
                                     .variant(ButtonVariant::Outline)

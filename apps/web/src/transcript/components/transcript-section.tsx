@@ -13,6 +13,7 @@ import { TICKS_PER_SECOND, roundMediaTime } from "@/wasm";
 import { cn } from "@/utils/ui";
 import { transcriptCuts } from "../cuts";
 import { clipTranscript, cutTranscriptWords, pieceAfter } from "../edit";
+import { retakeWords, transcriptRetakes } from "../retakes";
 
 const RIPPLE_LABELS: Record<RippleScope, string> = {
 	all: "Close gaps on every track",
@@ -23,7 +24,8 @@ const RIPPLE_LABELS: Record<RippleScope, string> = {
 /**
  * Text-based editing for a clip: its transcript (the word-timed captions
  * over it) as text; struck words are cut out of the clip, with the
- * captions retimed to match.
+ * captions retimed to match. "Find retakes" strikes the earlier takes of
+ * a line and false starts (`../retakes`) for review.
  */
 export function TranscriptSection({ element, trackId }: { element: AudioCapableElement; trackId: string }) {
 	const editor = useEditor();
@@ -84,6 +86,27 @@ export function TranscriptSection({ element, trackId }: { element: AudioCapableE
 		}
 	};
 
+	const findRetakes = () => {
+		try {
+			const found = transcriptRetakes(words);
+			const indices = retakeWords(found);
+			setStruck((previous) => new Set([...previous, ...indices]));
+			anchor.current = null;
+			const seconds = transcript
+				? transcriptCuts({ words, deleted: indices, from: transcript.from, to: transcript.to }).reduce((sum, cut) => sum + (cut.end - cut.start), 0)
+				: 0;
+			setStatus(
+				found.length === 0
+					? "No retakes found in this transcript."
+					: `${found.length} retake${found.length === 1 ? "" : "s"} found (${seconds.toFixed(1)} s), struck for review: ${found
+							.map((retake) => `"${retake.text}"`)
+							.join(", ")}. Cut them with "Cut struck words"; the last take of each line stays.`,
+			);
+		} catch (error) {
+			setStatus(error instanceof Error ? error.message : "Could not look for retakes");
+		}
+	};
+
 	const cut = () => {
 		try {
 			const result = cutTranscriptWords({ editor, trackId, elementId: element.id, deleted: struck, ripple });
@@ -106,8 +129,9 @@ export function TranscriptSection({ element, trackId }: { element: AudioCapableE
 			<SectionContent>
 				<div className="flex flex-col gap-3" data-testid="transcript-section">
 					<p className="text-muted-foreground text-xs">
-						Click words to strike them (Shift-click strikes a run, Alt-click jumps there), then cut. Uses the captions
-						over this clip; they are retimed with the cut.
+						Click words to strike them (Shift-click strikes a run, Alt-click jumps there), or find retakes (earlier
+						takes of a line and false starts; the last take stays), then cut. Uses the captions over this clip; they are
+						retimed with the cut.
 					</p>
 					{words.length === 0 ? (
 						<div className="flex flex-col gap-2">
@@ -154,9 +178,12 @@ export function TranscriptSection({ element, trackId }: { element: AudioCapableE
 									</SelectContent>
 								</Select>
 							</div>
-							<div className="flex gap-2">
+							<div className="flex flex-wrap gap-2">
 								<Button size="sm" onClick={cut} disabled={struck.size === 0}>
 									{struck.size === 0 ? "Cut struck words" : `Cut ${struck.size} word${struck.size === 1 ? "" : "s"} (${cutSeconds.toFixed(1)} s)`}
+								</Button>
+								<Button size="sm" variant="outline" onClick={findRetakes} data-testid="find-retakes">
+									Find retakes
 								</Button>
 								<Button size="sm" variant="outline" onClick={() => setStruck(new Set())} disabled={struck.size === 0}>
 									Clear

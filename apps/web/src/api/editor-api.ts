@@ -145,6 +145,7 @@ import {
 } from "@/captions/keyword-commands";
 import { SHORT_PADDING_SECONDS, makeShorts, pickShorts, projectLines } from "@/shorts/make";
 import { clipTranscript, cutTranscriptWords } from "@/transcript/edit";
+import { retakeWords, transcriptRetakes } from "@/transcript/retakes";
 import { encodeLutParam, parseLutFile } from "@/luts/parse";
 import { cutSilence, detectSilence } from "@/silence/cut";
 import { effectsRegistry } from "@/effects";
@@ -2608,6 +2609,25 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				to: transcript.to,
 				words: transcript.words.map((word, index) => ({ index, text: word.text, start: word.start, end: word.end })),
 			};
+		},
+		"transcript.retakes": ({ elementId, trackId, pauseSeconds, similarity, windowSeconds, restarts }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			const transcript = clipTranscript({ tracks: editor.scenes.getActiveScene().tracks, trackId: track.id, elementId: element.id });
+			if (!transcript) throw new EditorApiError({ code: "invalid_params", message: "transcript.retakes needs an audio or video clip" });
+			const numberOr = (value: unknown, name: string) => {
+				if (value === undefined) return undefined;
+				if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+					throw new EditorApiError({ code: "invalid_params", message: `${name} must be a number of at least 0` });
+				}
+				return value;
+			};
+			const retakes = transcriptRetakes(transcript.words, {
+				pauseSeconds: numberOr(pauseSeconds, "pauseSeconds"),
+				similarity: numberOr(similarity, "similarity"),
+				windowSeconds: numberOr(windowSeconds, "windowSeconds"),
+				restarts: restarts === undefined ? undefined : Boolean(restarts),
+			});
+			return { retakes, delete: retakeWords(retakes) };
 		},
 		"transcript.cut": ({ elementId, trackId, delete: deleted, ripple, apply }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

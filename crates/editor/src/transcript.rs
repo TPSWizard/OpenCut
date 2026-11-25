@@ -14,6 +14,15 @@ use crate::captions::TimedWord;
 use crate::silence::RippleScope;
 use crate::document::{CaptionWord, ElementKind, Project};
 
+/// The retakes in a clip's transcript (the shared `retakes` crate): earlier
+/// takes of a line and false starts, as indices into `words`, to strike
+/// and cut with [`transcript_cuts`].
+pub fn transcript_retakes(words: &[TimedWord], options: &retakes::RetakeOptions) -> Vec<retakes::Retake> {
+    let words: Vec<retakes::Word> =
+        words.iter().map(|word| retakes::Word { text: word.text.clone(), start: word.start, end: word.end }).collect();
+    retakes::find_retakes(&words, options)
+}
+
 /// Seconds kept around a deleted word that has no neighbour on that side.
 pub const TRANSCRIPT_EDGE_PADDING: f64 = 0.08;
 
@@ -181,5 +190,25 @@ mod tests {
         shuffled.reverse();
         let cuts = transcript_cuts(&shuffled, &[2, 3], 0.0, 10.0);
         assert!((cuts[0].0 - 1.3).abs() < 1e-9 && (cuts[0].1 - 2.0).abs() < 1e-9, "{cuts:?}");
+    }
+
+    #[test]
+    fn retakes_become_one_cut_up_to_the_kept_take() {
+        // "So the plan is... um, So the plan is to launch." at 10 s on the timeline.
+        let texts = ["So", "the", "plan", "is...", "um,", "So", "the", "plan", "is", "to", "launch."];
+        let words: Vec<TimedWord> = texts
+            .iter()
+            .enumerate()
+            .map(|(index, text)| TimedWord { text: (*text).to_owned(), start: 10.0 + index as f64 * 0.4, end: 10.3 + index as f64 * 0.4 })
+            .collect();
+        let found = transcript_retakes(&words, &retakes::RetakeOptions::default());
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].kept, 5, "the hesitation goes with the earlier take");
+        let deleted = retakes::retake_words(&found);
+        assert_eq!(deleted, vec![0, 1, 2, 3, 4]);
+        let cuts = transcript_cuts(&words, &deleted, 9.0, 20.0);
+        // From a little before the first word to halfway through the pause before "So" again.
+        assert_eq!(cuts.len(), 1);
+        assert!((cuts[0].0 - (10.0 - TRANSCRIPT_EDGE_PADDING)).abs() < 1e-9 && (cuts[0].1 - 11.95).abs() < 1e-9, "{cuts:?}");
     }
 }

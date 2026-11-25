@@ -2125,6 +2125,84 @@ mod tests {
         assert_eq!(title.start_time.to_seconds_f64(), 6.0);
     }
 
+    /// Retakes on the desktop: the same synthetic clip and captions as the
+    /// web check (7 s of audio, "So the plan is... um," then "So the plan is
+    /// to launch in May." at 0.4 s a word from 1 s), found and cut as the
+    /// inspector's Find retakes and Cut struck words do.
+    #[test]
+    fn retakes_cut_the_earlier_take_like_the_web() {
+        use crate::captions::{CaptionChunk, TimedWord, caption_element};
+        use crate::document::{CanvasSize, Element, MediaItem, MediaKind};
+        let mut project = Project::new("Retakes");
+        apply(
+            &mut project,
+            &Command::AddMedia(MediaItem {
+                id: "take".to_owned(),
+                name: "take.wav".to_owned(),
+                kind: MediaKind::Audio,
+                path: "take.wav".into(),
+                duration: MediaTime::from_seconds_f64(7.0),
+                width: None,
+                height: None,
+                fps: None,
+                has_audio: true,
+            }),
+        )
+        .unwrap();
+        let clip = Element::from_media(project.media_item("take").unwrap(), MediaTime::ZERO);
+        let clip_id = clip.id.clone();
+        apply(&mut project, &Command::InsertElement { element: clip, placement: TrackPlacement::Auto }).unwrap();
+        let texts = ["So", "the", "plan", "is...", "um,", "So", "the", "plan", "is", "to", "launch", "in", "May."];
+        let words: Vec<TimedWord> = texts
+            .iter()
+            .enumerate()
+            .map(|(i, text)| TimedWord { text: (*text).to_owned(), start: 1.0 + i as f64 * 0.4, end: 1.3 + i as f64 * 0.4 })
+            .collect();
+        let chunk = |text: &str, range: std::ops::Range<usize>| {
+            let words = words[range].to_vec();
+            let start = words[0].start;
+            CaptionChunk { text: text.to_owned(), start, duration: words.last().unwrap().end - start, words }
+        };
+        let canvas = CanvasSize { width: 1920, height: 1080 };
+        let captions =
+            vec![caption_element(0, &chunk("So the plan is... um,", 0..5), canvas), caption_element(1, &chunk("So the plan is to launch in May.", 5..13), canvas)];
+        let ids: Vec<String> = captions.iter().map(|caption| caption.id.clone()).collect();
+        apply(&mut project, &Command::InsertCaptions { elements: captions }).unwrap();
+
+        let found = crate::transcript_retakes(&words, &crate::RetakeOptions::default());
+        let deleted = crate::retake_words(&found);
+        assert_eq!(deleted, vec![0, 1, 2, 3, 4]);
+        let cuts = crate::transcript_cuts(&words, &deleted, 0.0, 7.0);
+        assert_eq!(cuts.len(), 1);
+        assert!((cuts[0].0 - 0.92).abs() < 1e-9 && (cuts[0].1 - 2.95).abs() < 1e-9, "{cuts:?}");
+        let ranges: Vec<(MediaTime, MediaTime)> = cuts
+            .iter()
+            .map(|(start, end)| (MediaTime::from_seconds_f64(*start).unwrap(), MediaTime::from_seconds_f64(*end).unwrap()))
+            .collect();
+        apply(
+            &mut project,
+            &Command::Batch(vec![
+                Command::RetimeCaptions { ranges: ranges.clone(), ripple: RippleScope::All },
+                Command::RemoveRanges { element_id: clip_id.clone(), ranges, ripple: RippleScope::All },
+            ]),
+        )
+        .unwrap();
+        // The web editor after the same clicks: the first caption gone, the
+        // kept one at 0.97 s for 3.1 s, the clip in pieces 0-0.92 and 0.92-4.97.
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-3;
+        assert!(project.element(&ids[0]).is_none(), "the earlier take's caption goes");
+        let (_, kept) = project.element(&ids[1]).unwrap();
+        assert!(close(kept.start_time.to_seconds_f64(), 0.97) && close(kept.duration.to_seconds_f64(), 3.1));
+        let mut pieces: Vec<(f64, f64)> = project
+            .elements()
+            .filter(|(_, element)| matches!(element.kind, crate::document::ElementKind::Audio { .. }))
+            .map(|(_, element)| (element.start_time.to_seconds_f64(), element.duration.to_seconds_f64()))
+            .collect();
+        pieces.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert_eq!(pieces.len(), 2, "{pieces:?}");
+        assert!(close(pieces[0].0, 0.0) && close(pieces[0].1, 0.92) && close(pieces[1].0, 0.92) && close(pieces[1].1, 4.05), "{pieces:?}");
+    }
+
     #[test]
     fn cutting_transcript_words_keeps_the_captions_in_step() {
         use crate::captions::{CaptionChunk, TimedWord, caption_element};

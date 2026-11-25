@@ -1384,6 +1384,20 @@ export interface EditorApiMethods {
 		result: { from: number; to: number; words: { index: number; text: string; start: number; end: number }[] };
 	};
 	/**
+	 * Retakes in a clip's transcript (the shared `retakes` crate): earlier
+	 * takes of a line (a phrase opening like one of the next three and
+	 * mostly said again in it, with short chatter between) and false starts
+	 * inside a phrase. `delete` lists every word index to cut; pass it to
+	 * `transcript.cut` to keep only the last take of each line.
+	 */
+	"transcript.retakes": {
+		params: ApiElementLocator & { pauseSeconds?: number; similarity?: number; windowSeconds?: number; restarts?: boolean };
+		result: {
+			retakes: { kind: "retake" | "restart"; words: number[]; kept: number; similarity: number; start: number; end: number; text: string; keptText: string }[];
+			delete: number[];
+		};
+	};
+	/**
 	 * Text-based editing: cuts the words at `delete` (indices from
 	 * `transcript.get`) out of the clip in one undo step, from the middle of
 	 * the pause before each run to the middle of the pause after it, with

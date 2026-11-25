@@ -1611,6 +1611,7 @@ dependencies = [
  "deflicker",
  "facetrack",
  "multicam",
+ "retakes",
  "richtext",
  "serde",
  "serde_json",
@@ -4280,6 +4281,7 @@ dependencies = [
  "masks",
  "multicam",
  "num-traits",
+ "retakes",
  "richtext",
  "serde",
  "serde-wasm-bindgen",
@@ -5178,6 +5180,14 @@ dependencies = [
  "tiny-skia 0.12.0",
  "usvg 0.49.0",
  "zune-jpeg",
+]
+
+[[package]]
+name = "retakes"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

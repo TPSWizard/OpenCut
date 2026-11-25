@@ -17,6 +17,7 @@ time = { workspace = true }
 deflicker = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
+retakes = { workspace = true }
 facetrack = { workspace = true }
 voice = { workspace = true }
 uuid = { workspace = true }

@@ -1,0 +1,1198 @@
+{
+ "about": "Retake finding (row 80): synthetic transcripts with timed words and the retakes an independent Python script finds under the documented rules (phrases at sentence ends and pauses; an earlier phrase opening like one of the next three and mostly found again in it; restarts inside a phrase). Word indices are into the words as given.",
+ "cases": [
+  {
+   "name": "false start then the full line",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "So",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "the",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "plan",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "is...",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "So",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "the",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "plan",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "is",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "to",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "launch",
+     "start": 3.42,
+     "end": 3.72
+    },
+    {
+     "text": "in",
+     "start": 3.8,
+     "end": 4.1
+    },
+    {
+     "text": "May.",
+     "start": 4.18,
+     "end": 4.48
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "kept": 4,
+     "similarity": 1.0
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "name": "line said again with a change, after a pause",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "We",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "ship",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "on",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "Monday.",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "We",
+     "start": 2.72,
+     "end": 3.02
+    },
+    {
+     "text": "ship",
+     "start": 3.1,
+     "end": 3.4
+    },
+    {
+     "text": "on",
+     "start": 3.48,
+     "end": 3.78
+    },
+    {
+     "text": "Tuesday,",
+     "start": 3.86,
+     "end": 4.16
+    },
+    {
+     "text": "sorry.",
+     "start": 4.24,
+     "end": 4.54
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "kept": 4,
+     "similarity": 0.75
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "name": "three takes, the last kept",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "Welcome",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "to",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "the",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "show.",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "Welcome",
+     "start": 2.72,
+     "end": 3.02
+    },
+    {
+     "text": "to",
+     "start": 3.1,
+     "end": 3.4
+    },
+    {
+     "text": "the,",
+     "start": 3.48,
+     "end": 3.78
+    },
+    {
+     "text": "um,",
+     "start": 3.86,
+     "end": 4.16
+    },
+    {
+     "text": "Welcome",
+     "start": 5.44,
+     "end": 5.74
+    },
+    {
+     "text": "to",
+     "start": 5.82,
+     "end": 6.12
+    },
+    {
+     "text": "the",
+     "start": 6.2,
+     "end": 6.5
+    },
+    {
+     "text": "show,",
+     "start": 6.58,
+     "end": 6.88
+    },
+    {
+     "text": "everyone.",
+     "start": 6.96,
+     "end": 7.26
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "kept": 4,
+     "similarity": 0.75
+    },
+    {
+     "kind": "retake",
+     "words": [
+      4,
+      5,
+      6,
+      7
+     ],
+     "kept": 8,
+     "similarity": 1.0
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ]
+  },
+  {
+   "name": "chatter between the takes goes too",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "Our",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "numbers",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "grew",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "by",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "ten",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "percent.",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "Sorry,",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "let",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "me",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "redo",
+     "start": 3.42,
+     "end": 3.72
+    },
+    {
+     "text": "that.",
+     "start": 3.8,
+     "end": 4.1
+    },
+    {
+     "text": "Our",
+     "start": 4.18,
+     "end": 4.48
+    },
+    {
+     "text": "numbers",
+     "start": 4.56,
+     "end": 4.86
+    },
+    {
+     "text": "grew",
+     "start": 4.94,
+     "end": 5.24
+    },
+    {
+     "text": "by",
+     "start": 5.32,
+     "end": 5.62
+    },
+    {
+     "text": "twelve",
+     "start": 5.7,
+     "end": 6.0
+    },
+    {
+     "text": "percent.",
+     "start": 6.08,
+     "end": 6.38
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "kept": 11,
+     "similarity": 0.833
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  {
+   "name": "long talk between stays",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "Our",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "numbers",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "grew",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "by",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "ten",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "percent.",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "Then",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "we",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "hired",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "four",
+     "start": 3.42,
+     "end": 3.72
+    },
+    {
+     "text": "people",
+     "start": 3.8,
+     "end": 4.1
+    },
+    {
+     "text": "and",
+     "start": 4.18,
+     "end": 4.48
+    },
+    {
+     "text": "opened",
+     "start": 4.56,
+     "end": 4.86
+    },
+    {
+     "text": "two",
+     "start": 4.94,
+     "end": 5.24
+    },
+    {
+     "text": "new",
+     "start": 5.32,
+     "end": 5.62
+    },
+    {
+     "text": "offices",
+     "start": 5.7,
+     "end": 6.0
+    },
+    {
+     "text": "across",
+     "start": 6.08,
+     "end": 6.38
+    },
+    {
+     "text": "the",
+     "start": 6.46,
+     "end": 6.76
+    },
+    {
+     "text": "country.",
+     "start": 6.84,
+     "end": 7.14
+    },
+    {
+     "text": "Our",
+     "start": 7.22,
+     "end": 7.52
+    },
+    {
+     "text": "numbers",
+     "start": 7.6,
+     "end": 7.9
+    },
+    {
+     "text": "grew",
+     "start": 7.98,
+     "end": 8.28
+    },
+    {
+     "text": "by",
+     "start": 8.36,
+     "end": 8.66
+    },
+    {
+     "text": "twelve",
+     "start": 8.74,
+     "end": 9.04
+    },
+    {
+     "text": "percent.",
+     "start": 9.12,
+     "end": 9.42
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "kept": 19,
+     "similarity": 0.833
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "name": "restart inside a phrase",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "I",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "think",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "we",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "should",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "I",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "think",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "we",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "should",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "go",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "now.",
+     "start": 3.42,
+     "end": 3.72
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "restart",
+     "words": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "kept": 4,
+     "similarity": 1.0
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "name": "stutter restart twice",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "And",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "so",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "the",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "so",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "the",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "so",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "the",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "plan",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "works.",
+     "start": 3.04,
+     "end": 3.34
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "restart",
+     "words": [
+      1,
+      2
+     ],
+     "kept": 3,
+     "similarity": 1.0
+    },
+    {
+     "kind": "restart",
+     "words": [
+      3,
+      4
+     ],
+     "kept": 5,
+     "similarity": 1.0
+    }
+   ],
+   "cut": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "name": "no retakes in ordinary talk",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "I",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "think",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "so.",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "I",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "think",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "we",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "should",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "go.",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "We",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "need",
+     "start": 3.42,
+     "end": 3.72
+    },
+    {
+     "text": "to",
+     "start": 3.8,
+     "end": 4.1
+    },
+    {
+     "text": "do",
+     "start": 4.18,
+     "end": 4.48
+    },
+    {
+     "text": "this",
+     "start": 4.56,
+     "end": 4.86
+    },
+    {
+     "text": "and",
+     "start": 4.94,
+     "end": 5.24
+    },
+    {
+     "text": "we",
+     "start": 5.32,
+     "end": 5.62
+    },
+    {
+     "text": "need",
+     "start": 5.7,
+     "end": 6.0
+    },
+    {
+     "text": "to",
+     "start": 6.08,
+     "end": 6.38
+    },
+    {
+     "text": "do",
+     "start": 6.46,
+     "end": 6.76
+    },
+    {
+     "text": "that.",
+     "start": 6.84,
+     "end": 7.14
+    },
+    {
+     "text": "Then",
+     "start": 7.22,
+     "end": 7.52
+    },
+    {
+     "text": "it",
+     "start": 7.6,
+     "end": 7.9
+    },
+    {
+     "text": "rains.",
+     "start": 7.98,
+     "end": 8.28
+    }
+   ],
+   "retakes": [],
+   "cut": []
+  },
+  {
+   "name": "too far apart",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "We",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "ship",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "on",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "Monday.",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "We",
+     "start": 40.0,
+     "end": 40.3
+    },
+    {
+     "text": "ship",
+     "start": 40.38,
+     "end": 40.68
+    },
+    {
+     "text": "on",
+     "start": 40.76,
+     "end": 41.06
+    },
+    {
+     "text": "Monday.",
+     "start": 41.14,
+     "end": 41.44
+    }
+   ],
+   "retakes": [],
+   "cut": []
+  },
+  {
+   "name": "hesitations skipped, German",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "Wir",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "starten",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "im",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "Mai.",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "Äh,",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "wir",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "starten",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "im",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "Juni.",
+     "start": 3.04,
+     "end": 3.34
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "kept": 5,
+     "similarity": 0.75
+    }
+   ],
+   "cut": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "name": "words given out of order",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "dashboard.",
+     "start": 4.18,
+     "end": 4.48
+    },
+    {
+     "text": "the",
+     "start": 3.8,
+     "end": 4.1
+    },
+    {
+     "text": "you",
+     "start": 3.42,
+     "end": 3.72
+    },
+    {
+     "text": "show",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "me",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "Let",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "the...",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "the,",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "you",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "show",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "me",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "Let",
+     "start": 0.0,
+     "end": 0.3
+    }
+   ],
+   "retakes": [
+    {
+     "kind": "retake",
+     "words": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6
+     ],
+     "kept": 5,
+     "similarity": 0.833
+    }
+   ],
+   "cut": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
+   "name": "restarts off",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.6,
+    "windowSeconds": 30.0,
+    "restarts": false
+   },
+   "words": [
+    {
+     "text": "I",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "think",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "we",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "should",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "I",
+     "start": 1.52,
+     "end": 1.82
+    },
+    {
+     "text": "think",
+     "start": 1.9,
+     "end": 2.2
+    },
+    {
+     "text": "we",
+     "start": 2.28,
+     "end": 2.58
+    },
+    {
+     "text": "should",
+     "start": 2.66,
+     "end": 2.96
+    },
+    {
+     "text": "go",
+     "start": 3.04,
+     "end": 3.34
+    },
+    {
+     "text": "now.",
+     "start": 3.42,
+     "end": 3.72
+    }
+   ],
+   "retakes": [],
+   "cut": []
+  },
+  {
+   "name": "stricter similarity",
+   "options": {
+    "pauseSeconds": 0.7,
+    "similarity": 0.8,
+    "windowSeconds": 30.0,
+    "restarts": true
+   },
+   "words": [
+    {
+     "text": "We",
+     "start": 0.0,
+     "end": 0.3
+    },
+    {
+     "text": "ship",
+     "start": 0.38,
+     "end": 0.68
+    },
+    {
+     "text": "on",
+     "start": 0.76,
+     "end": 1.06
+    },
+    {
+     "text": "Monday.",
+     "start": 1.14,
+     "end": 1.44
+    },
+    {
+     "text": "We",
+     "start": 2.72,
+     "end": 3.02
+    },
+    {
+     "text": "ship",
+     "start": 3.1,
+     "end": 3.4
+    },
+    {
+     "text": "on",
+     "start": 3.48,
+     "end": 3.78
+    },
+    {
+     "text": "Tuesday,",
+     "start": 3.86,
+     "end": 4.16
+    },
+    {
+     "text": "sorry.",
+     "start": 4.24,
+     "end": 4.54
+    }
+   ],
+   "retakes": [],
+   "cut": []
+  }
+ ]
+}
