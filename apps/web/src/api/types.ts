@@ -1061,6 +1061,17 @@ export interface EditorApiMethods {
 		result: { trackId: string; elementId: string; looks: number; found: number };
 	};
 	/**
+	 * Face blur: finds the faces in a video or picture as `retouch.faces`
+	 * does, keeps them on the clip (`faces.track`) and turns on its Face
+	 * blur effect (added at its defaults: blur, strength 1, size 1.2), which
+	 * hides each face as it moves. Change the style (blur, pixelate, black)
+	 * with `timeline.updateEffect`. One undo step.
+	 */
+	"faces.blur": {
+		params: ApiElementLocator;
+		result: { trackId: string; elementId: string; looks: number; found: number };
+	};
+	/**
 	 * Multicam: lines two or more video clips up by their sound (the first
 	 * stays put; each must be on its own track) and groups them as angles
 	 * 1, 2, 3…; only angle 1's sound plays. Lags are seconds after angle

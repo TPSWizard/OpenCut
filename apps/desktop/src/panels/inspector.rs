@@ -2572,28 +2572,41 @@ impl Render for InspectorPanel {
 
                 let is_lottie = state_media_is_lottie;
                 if matches!(element.kind, ElementKind::Video { .. } | ElementKind::Image { .. }) && !is_lottie {
-                    // Face-only retouch (`facetrack`): find the clip's faces,
-                    // then its Retouch effect works inside them only.
+                    // Faces (`facetrack`): find the clip's faces, then its
+                    // Retouch works inside them only, or Face blur hides them.
                     {
-                        let state = self.state.clone();
+                        let retouch_state = self.state.clone();
+                        let blur_state = self.state.clone();
                         let faces = editor::FaceTrack::parse(&element.params.text(editor::FACE_TRACK_PARAM, "")).map(|track| {
                             track.frames.iter().filter(|faces| !faces.is_empty()).count()
                         });
                         content = content
-                            .child(self.heading(t("Face retouch"), window))
+                            .child(self.heading(t("Faces"), window))
                             .child(div().text_xs().text_color(colors.muted_foreground).child(match faces {
                                 Some(found) => tf(
-                                    "Smooths and brightens faces only, not hands or the background. Faces found in {found} looks; find them again after changing the clip.",
+                                    "Retouch smooths and brightens faces only; blur hides them for privacy. Faces found in {found} looks; find them again after changing the clip.",
                                     &[("found", &found)],
                                 ),
-                                None => t("Smooths and brightens faces only, not hands or the background. Uses FaceFusion's face model on this computer.").to_owned(),
+                                None => t("Retouch smooths and brightens faces only; blur hides them for privacy. Uses FaceFusion's face model on this computer.").to_owned(),
                             }))
                             .child(
-                                Button::new("retouch-faces", t("Retouch faces"))
-                                    .variant(ButtonVariant::Outline)
-                                    .size(ButtonSize::XSmall)
-                                    .disabled(!has_facefusion)
-                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.retouch_faces_selected(cx))),
+                                div()
+                                    .flex()
+                                    .gap_1()
+                                    .child(
+                                        Button::new("retouch-faces", t("Retouch faces"))
+                                            .variant(ButtonVariant::Outline)
+                                            .size(ButtonSize::XSmall)
+                                            .disabled(!has_facefusion)
+                                            .on_click(move |_, _, cx| retouch_state.update(cx, |state, cx| state.retouch_faces_selected(cx))),
+                                    )
+                                    .child(
+                                        Button::new("blur-faces", t("Blur faces"))
+                                            .variant(ButtonVariant::Outline)
+                                            .size(ButtonSize::XSmall)
+                                            .disabled(!has_facefusion)
+                                            .on_click(move |_, _, cx| blur_state.update(cx, |state, cx| state.blur_faces_selected(cx))),
+                                    ),
                             );
                     }
                     // AI upscaling with Real-ESRGAN: a copy the clip then plays.

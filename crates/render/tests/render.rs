@@ -1097,6 +1097,85 @@ fn face_only_retouch_leaves_the_hand_alone() {
     assert!((lifted(&plain) - 162.89).abs() < 0.2 && (lifted(&faces) - 166.33).abs() < 0.2);
 }
 
+/// Face blur on the sample portrait with the same face track: the face is
+/// hidden, the far background is untouched, and the three styles differ.
+/// The web check renders the same picture, track and settings.
+#[test]
+fn face_blur_hides_the_face_only() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/public/effects/preview.jpg");
+    let mut project = Project::new("Face blur");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    apply(
+        &mut project,
+        &EditorCommand::AddMedia(MediaItem {
+            id: "portrait".to_owned(),
+            name: "preview.jpg".to_owned(),
+            kind: MediaKind::Image,
+            path,
+            duration: None,
+            width: Some(1024),
+            height: Some(1024),
+            fps: None,
+            has_audio: false,
+        }),
+    )
+    .unwrap();
+    let image = Element::from_media(project.media_item("portrait").unwrap(), seconds(0.0));
+    let element_id = image.id.clone();
+    apply(&mut project, &EditorCommand::InsertElement { element: image, placement: TrackPlacement::Auto }).unwrap();
+    let plain = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+
+    let track = editor::FaceTrack::new("portrait", 0.0, 5.0, &[vec![editor::FaceBox { cx: 0.489, cy: 0.328, w: 0.26, h: 0.347 }]]);
+    let commands = editor::face_blur_commands(&project, &element_id, &track).unwrap();
+    apply(&mut project, &EditorCommand::Batch(commands)).unwrap();
+    let effect_id = project.element(&element_id).unwrap().1.effects[0].id.clone();
+    assert_eq!(project.element(&element_id).unwrap().1.effects[0].kind, "face-blur");
+    let mut frames = vec![renderer.render(&project, seconds(0.5), 640, 360).unwrap()];
+    for style in ["pixelate", "black"] {
+        let mut set = editor::Params::new();
+        set.set("style", style);
+        apply(
+            &mut project,
+            &EditorCommand::UpdateEffect { element_id: element_id.clone(), effect_id: effect_id.clone(), params: Some(set), enabled: None },
+        )
+        .unwrap();
+        frames.push(renderer.render(&project, seconds(0.5), 640, 360).unwrap());
+    }
+
+    let region = |(x0, y0, x1, y1): (u32, u32, u32, u32)| (y0..y1).flat_map(move |y| (x0..x1).map(move |x| (x, y)));
+    let whole = (0, 0, 640, 360);
+    let cheeks = (285, 105, 345, 150);
+    let far = (0, 0, 120, 360);
+    let mut results = Vec::new();
+    for (name, frame) in ["blur", "pixelate", "black"].iter().zip(&frames) {
+        let changed = region(whole).filter(|&(x, y)| pixel(&plain, x, y) != pixel(frame, x, y)).count();
+        let far_changed = region(far).filter(|&(x, y)| pixel(&plain, x, y) != pixel(frame, x, y)).count();
+        let (mean, spread) = green_stats(frame, cheeks);
+        eprintln!("{name}: changed {changed}, far {far_changed}, cheek green mean {mean:.2} spread {spread:.2}");
+        if let Ok(dir) = std::env::var("OPENCUT_SAVE_FRAMES") {
+            let rgba: Vec<u8> = frame.bgra.chunks(4).flat_map(|p| [p[2], p[1], p[0], p[3]]).collect();
+            image::RgbaImage::from_raw(640, 360, rgba).unwrap().save(Path::new(&dir).join(format!("face-blur-{name}.png"))).unwrap();
+        }
+        assert_eq!(far_changed, 0, "{name}: the background is left alone");
+        assert!(changed > 15_000, "{name}: the face is covered");
+        results.push((changed, mean, spread));
+    }
+    let (_, plain_spread) = green_stats(&plain, cheeks);
+    eprintln!("plain cheek spread {plain_spread:.2}");
+    assert!(results[0].2 < plain_spread * 0.6, "blur flattens the face's detail");
+    assert!(results[2].1 < 5.0, "black covers the face");
+    // The web editor, same picture, face track and settings (dev editor,
+    // off-screen render through the WASM compositor): blur changes 19256
+    // pixels (cheek green 151.92, spread 14.96), pixelate 19244 (143.68,
+    // 18.94), black 19076; none in the far background.
+    let web = [(19256, 151.92, 14.96), (19244, 143.68, 18.94), (19076, 0.0, 0.0)];
+    for ((changed, mean, spread), (web_changed, web_mean, web_spread)) in results.iter().zip(web) {
+        assert!((*changed as i64 - web_changed).abs() <= 30, "desktop {changed} vs web {web_changed}");
+        assert!((mean - web_mean).abs() < 0.2 && (spread - web_spread).abs() < 0.2, "desktop {mean} {spread} vs web {web_mean} {web_spread}");
+    }
+}
+
 #[test]
 fn curved_text_bends_into_an_arch_in_the_frame() {
     let Some(mut renderer) = renderer(None) else { return };

@@ -476,7 +476,7 @@ towards the blur, gives it the blur's colour under its own light and shade
 (Even tone), and lifts it a little (Brighten). Pixels that are not skin are
 left exactly as they are. It needs no model: skin-coloured things that are
 not faces (hands, wood) are softened too, unless **Area** is "Faces
-only". **Face retouch → Retouch faces** in the inspector (video and
+only". **Faces → Retouch faces** in the inspector (video and
 picture clips) finds the clip's faces, 5 looks a second over the part a
 video plays, with FaceFusion's YOLO face model in FaceFusion's own Python
 (`scripts/find_faces.py`; needs a FaceFusion install that has downloaded
@@ -487,6 +487,21 @@ renderer turns them into soft ovals in frame pixels (up to three) and the
 shader retouches skin inside them only. The web editor finds faces with
 MediaPipe's BlazeFace and renders the same track the same way. The web
 editor runs the same shader through the WASM compositor.
+
+## Face blur
+
+**Faces → Blur faces** in the inspector finds the clip's faces the same
+way and turns on the **Face blur** effect (catalogue: Style blur, pixelate
+or black; Strength; Size; Soft edge), in one undo step. The shared
+`face-blur` shader (`crates/effects`) hides each face's oval (the same
+ovals as face-only retouch, grown by Size, up to three) with a Gaussian
+blur in two passes (across, then down), blocks that are each the mean of
+4 x 4 taps, or black, fading out over the oval's outer Soft edge. The reach
+is Strength x half the grown oval's smaller radius, so a face far away and
+a close-up are hidden alike. Frames without faces, and everything outside
+the ovals, are left exactly as they are. Checked against
+`fixtures/face-blur/cases.json` on a real GPU; the web editor draws the same
+pixels through the WASM compositor.
 
 ## Multicam
 

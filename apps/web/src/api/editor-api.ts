@@ -855,6 +855,24 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		};
 	};
 
+	/** Finds a video or picture clip's faces, then retouches or blurs them (`@/retouch/faces`). */
+	const faceEffectCall = async ({ elementId, trackId, blur }: ApiElementLocator & { blur: boolean }) => {
+		requireProject();
+		const { track, element } = resolveElement({ elementId, trackId });
+		if (element.type !== "video" && element.type !== "image") {
+			throw new EditorApiError({ code: "invalid_params", message: "Faces can be found in video and picture clips only" });
+		}
+		try {
+			// Loaded on use: face finding brings MediaPipe.
+			const { blurFaces, retouchFaces } = await import("@/retouch/faces");
+			const apply = blur ? blurFaces : retouchFaces;
+			const result = await apply({ editor, trackId: track.id, elementId: element.id });
+			return { trackId: track.id, elementId: element.id, ...result };
+		} catch (error) {
+			throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+		}
+	};
+
 	const handlers: Handlers = {
 		"app.info": () => ({
 			apiVersion: EDITOR_API_VERSION,
@@ -2041,21 +2059,8 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"audio.fxPresets": () => audioFxPresetList().map((preset) => ({ id: preset.id, label: preset.label, ...preset.fx })),
-		"retouch.faces": async ({ elementId, trackId }) => {
-			requireProject();
-			const { track, element } = resolveElement({ elementId, trackId });
-			if (element.type !== "video" && element.type !== "image") {
-				throw new EditorApiError({ code: "invalid_params", message: "Face retouch works on video and picture clips" });
-			}
-			try {
-				// Loaded on use: face finding brings MediaPipe.
-				const { retouchFaces } = await import("@/retouch/faces");
-				const result = await retouchFaces({ editor, trackId: track.id, elementId: element.id });
-				return { trackId: track.id, elementId: element.id, ...result };
-			} catch (error) {
-				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
-			}
-		},
+		"retouch.faces": ({ elementId, trackId }) => faceEffectCall({ elementId, trackId, blur: false }),
+		"faces.blur": ({ elementId, trackId }) => faceEffectCall({ elementId, trackId, blur: true }),
 		"multicam.sync": async ({ elements }) => {
 			requireProject();
 			if (!Array.isArray(elements) || elements.length < 2) {

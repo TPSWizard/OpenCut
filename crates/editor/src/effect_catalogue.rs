@@ -233,6 +233,26 @@ pub const EFFECT_CATALOGUE: &[EffectSpec] = &[
         ],
     },
     EffectSpec {
+        kind: "face-blur",
+        label: "Face blur",
+        description: "Hides the clip's faces (found once, then followed) with a blur, pixels or black, for privacy.",
+        params: &[
+            EffectParamSpec {
+                key: "style",
+                label: "Style",
+                default: 0.0,
+                min: 0.0,
+                max: 2.0,
+                step: 1.0,
+                options: &[("blur", "Blur"), ("pixelate", "Pixelate"), ("black", "Black")],
+                color: None,
+            },
+            number("strength", "Strength", 1.0, 0.1, 2.0, 0.05),
+            number("size", "Size", 1.2, 0.8, 2.5, 0.05),
+            number("feather", "Soft edge", 0.2, 0.0, 0.6, 0.01),
+        ],
+    },
+    EffectSpec {
         kind: "chroma-key",
         label: "Chroma key",
         description: "Makes a green or blue screen (or any chosen colour) transparent, with spill removal for the fringe it leaves.",

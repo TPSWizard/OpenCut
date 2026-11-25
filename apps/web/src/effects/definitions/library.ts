@@ -511,6 +511,61 @@ export const retouchEffectDefinition: EffectDefinition = {
 	},
 };
 
+/** Face blur's styles, in the shader's order (`u_style`). */
+const FACE_BLUR_STYLES = ["blur", "pixelate", "black"] as const;
+
+const faceBlurPass = singlePass({
+	type: "face-blur",
+	name: "Face blur",
+	keywords: ["face blur", "blur faces", "privacy", "anonymise", "anonymize", "mosaic", "pixelate face", "censor", "hide face"],
+	shader: "face-blur",
+	params: [
+		{
+			key: "style",
+			label: "Style",
+			type: "select",
+			default: "blur",
+			options: [
+				{ value: "blur", label: "Blur" },
+				{ value: "pixelate", label: "Pixelate" },
+				{ value: "black", label: "Black" },
+			],
+		},
+		number({ key: "strength", label: "Strength", default: 1, min: 0.1, max: 2, step: 0.05 }),
+		number({ key: "size", label: "Size", default: 1.2, min: 0.8, max: 2.5, step: 0.05 }),
+		number({ key: "feather", label: "Soft edge", default: 0.2, min: 0, max: 0.6, step: 0.01 }),
+	],
+	uniforms: ({ read, params }) => ({
+		u_style: Math.max(0, FACE_BLUR_STYLES.indexOf(params.style as (typeof FACE_BLUR_STYLES)[number])),
+		u_strength: Math.min(2, Math.max(0, read("strength"))),
+		u_size: Math.min(4, Math.max(0.1, read("size"))),
+		u_feather: Math.min(1, Math.max(0, read("feather"))),
+		...Object.fromEntries(RETOUCH_FACE_UNIFORMS.map((name) => [name, 0])),
+	}),
+});
+
+/**
+ * Face blur (`face-blur` shader, `crates/effects`): hides the faces of the
+ * clip's face track with a blur (two passes, across then down), pixels or
+ * black, as on the desktop. Its passes always work on faces only, so the
+ * frame fills in the layer's face ovals and leaves them out with none.
+ */
+export const faceBlurEffectDefinition: EffectDefinition = {
+	...faceBlurPass,
+	renderer: {
+		...faceBlurPass.renderer,
+		buildPasses: (context) =>
+			(faceBlurPass.renderer.buildPasses?.(context) ?? []).flatMap((pass) => {
+				const marked = { ...pass, faces: true };
+				if (pass.uniforms.u_style !== 0) return [marked];
+				return [
+					{ ...marked, uniforms: { ...marked.uniforms, u_direction: [1, 0] } },
+					{ ...marked, uniforms: { ...marked.uniforms, u_direction: [0, 1] } },
+				];
+			}),
+	},
+};
+
 export const chromaKeyEffectDefinition = singlePass({
 	type: "chroma-key",
 	name: "Chroma key",
@@ -551,5 +606,6 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	shadowsHighlightsEffectDefinition,
 	chromaKeyEffectDefinition,
 	retouchEffectDefinition,
+	faceBlurEffectDefinition,
 	lutEffectDefinition,
 ];

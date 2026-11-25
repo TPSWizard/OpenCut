@@ -1803,12 +1803,23 @@ impl EditorState {
     /// faces (FaceFusion's face model) and sets its Retouch effect to faces
     /// only, in one undo step.
     pub(crate) fn retouch_faces_selected(&mut self, cx: &mut Context<Self>) {
+        self.face_effect_selected(false, cx);
+    }
+
+    /// Face blur on the selected video or picture clip: finds its faces
+    /// (FaceFusion's face model) and turns on its Face blur effect, in one
+    /// undo step.
+    pub(crate) fn blur_faces_selected(&mut self, cx: &mut Context<Self>) {
+        self.face_effect_selected(true, cx);
+    }
+
+    fn face_effect_selected(&mut self, blur: bool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let still = match &element.kind {
             editor::ElementKind::Video { .. } => false,
             editor::ElementKind::Image { .. } => true,
             _ => {
-                self.set_status(t("Face retouch works on video and picture clips."), cx);
+                self.set_status(t("Faces can be found in video and picture clips only."), cx);
                 return;
             }
         };
@@ -1843,13 +1854,20 @@ impl EditorState {
                 if with_faces == 0 {
                     return state.set_status(t("No faces were found in the clip."), cx);
                 }
-                match editor::face_retouch_commands(state.project(), &element_id, &track) {
+                let commands = if blur {
+                    editor::face_blur_commands(state.project(), &element_id, &track)
+                } else {
+                    editor::face_retouch_commands(state.project(), &element_id, &track)
+                };
+                match commands {
                     Ok(commands) => {
                         if state.execute(Command::Batch(commands), cx).is_some() {
-                            state.set_status(
-                                tf("Retouching faces: found in {found} of {samples} looks.", &[("found", &with_faces), ("samples", &samples)]),
-                                cx,
-                            );
+                            let message = if blur {
+                                "Blurring faces: found in {found} of {samples} looks."
+                            } else {
+                                "Retouching faces: found in {found} of {samples} looks."
+                            };
+                            state.set_status(tf(message, &[("found", &with_faces), ("samples", &samples)]), cx);
                         }
                     }
                     Err(message) => state.set_status(message, cx),

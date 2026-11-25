@@ -24,7 +24,7 @@ mod motion_blur;
 mod deflicker;
 mod multicam_group;
 mod face_retouch;
-pub use face_retouch::face_retouch_commands;
+pub use face_retouch::{face_blur_commands, face_retouch_commands};
 pub use facetrack::{FACE_TRACK_PARAM, FaceBox, FaceTrack};
 pub use multicam_group::{
     MULTICAM_ANGLE, MULTICAM_CUTS, MULTICAM_GROUP, MulticamAngle, multicam_clear_commands, multicam_cuts, multicam_group,

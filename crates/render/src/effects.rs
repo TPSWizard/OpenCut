@@ -49,6 +49,14 @@ pub fn effect_pass_groups_with_faces(
 
 /// Pixel-sized settings are given at a 1080-high reference frame and
 /// scale with the frame's height, as the web app does.
+/// The face ovals' uniforms of the shaders that work on faces (Retouch
+/// with Area "faces only", Face blur), in `facetrack::retouch_face_uniforms`
+/// order.
+const FACE_UNIFORMS: [&str; 12] = [
+    "u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry", "u_face1_x", "u_face1_y", "u_face1_rx", "u_face1_ry", "u_face2_x",
+    "u_face2_y", "u_face2_rx", "u_face2_ry",
+];
+
 fn pixel_scale(height: u32) -> f64 {
     height as f64 / REFERENCE_HEIGHT
 }
@@ -241,12 +249,39 @@ fn effect_passes(
                 ("u_even", param("even").clamp(0.0, 1.0)),
                 ("u_step", (param("radius") * scale / 2.0).round().max(1.0)),
             ];
-            const FACE_UNIFORMS: [&str; 12] = [
-                "u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry", "u_face1_x", "u_face1_y", "u_face1_rx", "u_face1_ry",
-                "u_face2_x", "u_face2_y", "u_face2_rx", "u_face2_ry",
-            ];
             numbers.extend(FACE_UNIFORMS.iter().copied().zip(ovals));
             vec![numbers_pass("retouch", &numbers)]
+        }
+        // Face blur (`face-blur` shader): blur (two passes), pixelate or black inside the
+        // layer's face ovals grown by `size`, reaching `strength` x half each
+        // oval's smaller radius (so it follows the face's size, not the
+        // frame's); nothing at all on a frame without faces.
+        "face-blur" => {
+            let Some(faces) = faces.filter(|faces| !faces.is_empty()) else { return Vec::new() };
+            let style = spec
+                .and_then(|spec| spec.params.iter().find(|param| param.key == "style"))
+                .map(|param| param.choice_index(&effect.params.text("style", "blur")))
+                .unwrap_or(0);
+            let mut numbers = vec![
+                ("u_style", style as f64),
+                ("u_strength", param("strength").clamp(0.0, 2.0)),
+                ("u_size", param("size").clamp(0.1, 4.0)),
+                ("u_feather", param("feather").clamp(0.0, 1.0)),
+            ];
+            numbers.extend(FACE_UNIFORMS.iter().copied().zip(facetrack::retouch_face_uniforms(faces)));
+            let pass = numbers_pass("face-blur", &numbers);
+            if style != 0 {
+                return vec![pass];
+            }
+            // Blur: across, then down.
+            [[1.0, 0.0], [0.0, 1.0]]
+                .iter()
+                .map(|direction| {
+                    let mut pass = pass.clone();
+                    pass.uniforms.insert("u_direction".to_owned(), EffectUniformValueDescriptor::Vector(direction.to_vec()));
+                    pass
+                })
+                .collect()
         }
         "chroma-key" => {
             let default = spec
@@ -445,11 +480,14 @@ mod tests {
                 effect.params.set("lut", editor::encode_lut_param("t", &editor::LutTable::identity(2)));
             }
             let plan = EffectPlan { id: effect.id.clone(), kind: effect.kind.clone(), params: effect.params.clone() };
-            let groups = effect_pass_groups(&[plan], 1920, 1080, 0.0);
+            // Face blur draws on faces only: give it one.
+            let face = [[960.0, 540.0, 100.0, 120.0]];
+            let groups = effect_pass_groups_with_faces(&[plan], 1920, 1080, 0.0, Some(&face));
             assert_eq!(groups.len(), 1, "{} builds one pass group", spec.kind);
             for pass in &groups[0] {
                 let shader = effects::shader_spec(&pass.shader).unwrap_or_else(|| panic!("{} names shader {}", spec.kind, pass.shader));
-                let mut names: Vec<&str> = pass.uniforms.keys().map(String::as_str).collect();
+                // `u_direction` (separable passes) is outside the numbers.
+                let mut names: Vec<&str> = pass.uniforms.keys().map(String::as_str).filter(|name| *name != "u_direction").collect();
                 names.sort_unstable();
                 let mut declared: Vec<&str> = shader.numbers.to_vec();
                 declared.sort_unstable();
@@ -457,6 +495,23 @@ mod tests {
                 assert_eq!(pass.lut.is_some(), spec.kind == "lut", "{} names a table only for the LUT shader", spec.kind);
             }
         }
+    }
+
+    #[test]
+    fn face_blur_needs_faces_and_blurs_in_two_passes() {
+        let effect = Effect::from_catalogue("face-blur").unwrap();
+        let plan = EffectPlan { id: effect.id.clone(), kind: effect.kind.clone(), params: effect.params.clone() };
+        assert!(effect_pass_groups(&[plan.clone()], 1920, 1080, 0.0).is_empty(), "no faces: nothing drawn");
+        let face = [[960.0, 540.0, 100.0, 120.0]];
+        let groups = effect_pass_groups_with_faces(&[plan.clone()], 1920, 1080, 0.0, Some(&face));
+        assert_eq!(groups[0].len(), 2, "blur: across, then down");
+        assert_eq!(number(&groups[0][0], "u_face0_rx"), 100.0);
+        assert_eq!(number(&groups[0][0], "u_strength"), 1.0);
+        let mut pixelate = plan;
+        pixelate.params.set("style", "pixelate");
+        let groups = effect_pass_groups_with_faces(&[pixelate], 1920, 1080, 0.0, Some(&face));
+        assert_eq!(groups[0].len(), 1);
+        assert_eq!(number(&groups[0][0], "u_style"), 1.0);
     }
 
     #[test]

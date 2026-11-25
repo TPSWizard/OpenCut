@@ -1,11 +1,13 @@
 /**
- * Face-only retouch in the web editor: a video's played part (5 looks a
- * second) or a picture is searched for faces with MediaPipe's BlazeFace
- * (`@/reframe/faces`, served from this site); the boxes become the clip's
- * face track (`faces.track`, the shared `facetrack` crate through WASM) and
- * its Retouch effect is set to "faces only" (added at its defaults when it
- * has none), in one undo step. The desktop finds faces with FaceFusion's
- * model and builds the same change (`editor::face_retouch_commands`).
+ * Effects on a clip's faces in the web editor: a video's played part (5
+ * looks a second) or a picture is searched for faces with MediaPipe's
+ * BlazeFace (`@/reframe/faces`, served from this site); the boxes become the
+ * clip's face track (`faces.track`, the shared `facetrack` crate through
+ * WASM) and an effect that reads it is turned on (added at its defaults when
+ * the clip has none), in one undo step: Retouch set to "faces only"
+ * (`retouchFaces`) or Face blur (`blurFaces`). The desktop finds faces with
+ * FaceFusion's model and builds the same changes
+ * (`editor::face_retouch_commands`, `editor::face_blur_commands`).
  */
 
 import { ALL_FORMATS, BlobSource, CanvasSink, Input } from "mediabunny";
@@ -33,23 +35,33 @@ async function look(image: HTMLCanvasElement | OffscreenCanvas | ImageBitmap, wi
 	return found.map((face) => [face.x + face.width / 2, face.y + face.height / 2, face.width, face.height]);
 }
 
-/** Finds the clip's faces and sets its Retouch to faces only; returns how many looks found one. */
-export async function retouchFaces({
-	editor,
-	trackId,
-	elementId,
-	onProgress,
-}: {
+interface FaceEffectOptions {
 	editor: EditorCore;
 	trackId: string;
 	elementId: string;
 	onProgress?: (fraction: number) => void;
-}): Promise<{ looks: number; found: number }> {
+}
+
+/** Finds the clip's faces and sets its Retouch to faces only; returns how many looks found one. */
+export function retouchFaces(options: FaceEffectOptions): Promise<{ looks: number; found: number }> {
+	return faceEffect(options, "retouch", { area: "faces" });
+}
+
+/** Finds the clip's faces and turns on its Face blur; returns how many looks found one. */
+export function blurFaces(options: FaceEffectOptions): Promise<{ looks: number; found: number }> {
+	return faceEffect(options, "face-blur", {});
+}
+
+async function faceEffect(
+	{ editor, trackId, elementId, onProgress }: FaceEffectOptions,
+	effectType: string,
+	set: Record<string, string>,
+): Promise<{ looks: number; found: number }> {
 	const find = () => {
 		const track = allTracks(editor.scenes.getActiveScene().tracks).find((candidate) => candidate.id === trackId);
 		const element = (track?.elements as TimelineElement[] | undefined)?.find((candidate) => candidate.id === elementId);
 		if (!element) throw new Error("The clip is no longer on the timeline");
-		if (element.type !== "video" && element.type !== "image") throw new Error("Face retouch works on video and picture clips");
+		if (element.type !== "video" && element.type !== "image") throw new Error("Faces can be found in video and picture clips only");
 		return element;
 	};
 	const element = find();
@@ -97,12 +109,12 @@ export async function retouchFaces({
 
 	const current = find();
 	const effects = [...(current.effects ?? [])];
-	const index = effects.findIndex((effect) => effect.type === "retouch");
+	const index = effects.findIndex((effect) => effect.type === effectType);
 	if (index >= 0) {
-		effects[index] = { ...effects[index], enabled: true, params: { ...effects[index].params, area: "faces" } };
+		effects[index] = { ...effects[index], enabled: true, params: { ...effects[index].params, ...set } };
 	} else {
-		const added = buildDefaultEffectInstance({ effectType: "retouch" });
-		effects.push({ ...added, params: { ...added.params, area: "faces" } });
+		const added = buildDefaultEffectInstance({ effectType });
+		effects.push({ ...added, params: { ...added.params, ...set } });
 	}
 	editor.command.execute({
 		command: new UpdateElementsCommand({

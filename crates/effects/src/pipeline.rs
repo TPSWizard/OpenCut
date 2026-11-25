@@ -145,6 +145,14 @@ pub const SHADERS: &[ShaderSpec] = &[
         ],
     },
     ShaderSpec {
+        id: "face-blur",
+        source: include_str!("shaders/face_blur.wgsl"),
+        numbers: &[
+            "u_style", "u_strength", "u_size", "u_feather", "u_face0_x", "u_face0_y", "u_face0_rx", "u_face0_ry", "u_face1_x",
+            "u_face1_y", "u_face1_rx", "u_face1_ry", "u_face2_x", "u_face2_y", "u_face2_rx", "u_face2_ry",
+        ],
+    },
+    ShaderSpec {
         id: "lut",
         source: include_str!("shaders/lut.wgsl"),
         numbers: &["u_size", "u_intensity", "u_tetrahedral"],
