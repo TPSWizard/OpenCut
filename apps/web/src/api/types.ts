@@ -1049,6 +1049,13 @@ export interface EditorApiMethods {
 	};
 	/** Keeps the background and hides the person instead (or back). */
 	"cutout.setInverted": { params: ApiElementLocator & { inverted: boolean }; result: ApiElementInfo };
+	/**
+	 * Portrait mode: shows what the matte leaves out blurred (`blur`, the
+	 * Blur effect's 1 to 100; default 60) instead of hiding it, or hides it
+	 * again with `blur: 0`. Drawn by both editors as the whole clip blurred
+	 * under the sharp cut-out.
+	 */
+	"cutout.setBackgroundBlur": { params: ApiElementLocator & { blur?: number }; result: ApiElementInfo };
 	/** Shows the whole clip again; the matte stays in the media. */
 	"cutout.clear": { params: ApiElementLocator; result: ApiElementInfo };
 	/**

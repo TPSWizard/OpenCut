@@ -484,5 +484,8 @@
   "Solo": "独奏",
   "Pan": "声像",
   "Solo track": "独奏轨道",
-  "Unsolo track": "取消独奏轨道"
+  "Unsolo track": "取消独奏轨道",
+  "Blur the background instead of hiding it": "模糊背景而不是隐藏",
+  "Blur the person instead of hiding them": "模糊人物而不是隐藏",
+  "Blur amount": "模糊程度"
 }

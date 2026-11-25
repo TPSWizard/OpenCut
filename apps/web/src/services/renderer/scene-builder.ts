@@ -233,6 +233,27 @@ function buildElementNode({
 	return null;
 }
 
+/**
+ * The clip drawn under a cut-out with a background blur (portrait mode):
+ * the same clip whole, without its cut-out, through the Blur effect at the
+ * cut-out's `backgroundBlur` intensity after its own effects; the sharp
+ * cut-out is drawn over it. `null` without one. The desktop's
+ * `editor::background_blur_layer` is the same.
+ */
+export function backgroundBlurElement(element: TimelineElement): TimelineElement | null {
+	if (element.type !== "video" || !element.cutout) return null;
+	const intensity = element.cutout.backgroundBlur;
+	if (typeof intensity !== "number" || !Number.isFinite(intensity) || intensity <= 0) return null;
+	return {
+		...element,
+		cutout: undefined,
+		effects: [
+			...(element.effects ?? []),
+			{ id: "background-blur", type: "blur", params: { intensity: Math.min(100, intensity) }, enabled: true },
+		],
+	};
+}
+
 function buildTrackNodes({
 	tracks,
 	mediaMap,
@@ -271,6 +292,19 @@ function buildTrackNodes({
 			const suppressedWindows = [outgoing, incoming, intro]
 				.filter((window): window is NonNullable<typeof window> => window !== null)
 				.map((window) => ({ start: window.start, end: window.end }));
+
+			// Background blur: the whole clip blurred underneath the sharp cut-out.
+			const background = backgroundBlurElement(element);
+			if (background) {
+				const backgroundNode = buildElementNode({
+					element: background,
+					mediaMap,
+					canvasSize,
+					isPreview,
+					options: suppressedWindows.length > 0 ? { suppressedWindows } : undefined,
+				});
+				if (backgroundNode) nodes.push(backgroundNode);
+			}
 
 			const node = buildElementNode({
 				element,

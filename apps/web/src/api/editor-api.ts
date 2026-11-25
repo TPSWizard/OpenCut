@@ -133,7 +133,13 @@ import { projectAssetManifest, projectCreditsText } from "@/project/project-asse
 import { bundleUrlFromLink, fetchLinkedBundle } from "@/project/open-link";
 import { rememberedPasscode, shareCurrentProject } from "@/project/share";
 import { createProjectFromTemplate, findTemplate, listMyTemplates, loadStarterTemplates, saveProjectAsTemplate } from "@/templates/templates";
-import { clearCutout, removeBackground, setCutoutInverted } from "@/cutout/remove";
+import {
+	CUTOUT_BACKGROUND_BLUR_DEFAULT,
+	clearCutout,
+	removeBackground,
+	setCutoutBackgroundBlur,
+	setCutoutInverted,
+} from "@/cutout/remove";
 import { analyzeClipBeats, beatTimes, bookmarkBeats } from "@/beats/analyze";
 import { reduceNoiseOnElement } from "@/denoise/apply";
 import { cutIntervals, findClipFillers } from "@/fillers/remove";
@@ -2040,6 +2046,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Background removal failed" });
 			}
+		},
+		"cutout.setBackgroundBlur": ({ elementId, trackId, blur }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video" || !element.cutout) {
+				throw new EditorApiError({ code: "invalid_params", message: "The clip has no cut-out; remove its background first" });
+			}
+			if (blur !== undefined && (typeof blur !== "number" || !Number.isFinite(blur) || blur < 0 || blur > 100)) {
+				throw new EditorApiError({ code: "invalid_params", message: "blur must be from 0 to 100" });
+			}
+			setCutoutBackgroundBlur({ editor, trackId: track.id, elementId: element.id, blur: blur ?? CUTOUT_BACKGROUND_BLUR_DEFAULT });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id });
+			return toElementInfo({ element: updated.element, trackId: track.id });
 		},
 		"cutout.setInverted": ({ elementId, trackId, inverted }) => {
 			const { track, element } = resolveElement({ elementId, trackId });

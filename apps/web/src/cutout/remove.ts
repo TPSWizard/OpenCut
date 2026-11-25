@@ -200,6 +200,31 @@ export function setCutoutInverted({
 	setCutout({ editor, trackId, elementId, cutout: { ...element.cutout, inverted } });
 }
 
+/** A suggested background blur when it is first turned on (the Blur effect's 0 to 100). */
+export const CUTOUT_BACKGROUND_BLUR_DEFAULT = 60;
+
+/**
+ * Hides what the matte leaves out (`blur` 0) or shows it blurred at this
+ * intensity (1 to 100): portrait mode. One undo step.
+ */
+export function setCutoutBackgroundBlur({
+	editor,
+	trackId,
+	elementId,
+	blur,
+}: {
+	editor: EditorCore;
+	trackId: string;
+	elementId: string;
+	blur: number;
+}): void {
+	const element = findVideo({ editor, trackId, elementId });
+	if (!element.cutout) throw new Error("The clip has no cut-out");
+	const value = Number.isFinite(blur) && blur > 0 ? Math.min(100, Math.max(1, blur)) : 0;
+	const { backgroundBlur: _old, ...rest } = element.cutout;
+	setCutout({ editor, trackId, elementId, cutout: value > 0 ? { ...rest, backgroundBlur: value } : rest });
+}
+
 /** Shows the whole clip again (the matte stays in the project's media). */
 export function clearCutout({ editor, trackId, elementId }: { editor: EditorCore; trackId: string; elementId: string }): void {
 	findVideo({ editor, trackId, elementId });

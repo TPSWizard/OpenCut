@@ -523,6 +523,10 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
                 continue;
             }
             if let Some(layer) = layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), fps, false) {
+                // Background blur: the whole clip blurred underneath the sharp cut-out.
+                if let Some(background) = background_blur_layer(element, &layer) {
+                    items.push(FrameItemPlan::Layer(background));
+                }
                 items.push(FrameItemPlan::Layer(layer));
             }
         }
@@ -535,6 +539,25 @@ pub fn plan_frame(project: &Project, time: MediaTime) -> FramePlan {
         backdrops,
         items,
     }
+}
+
+/// The layer drawn under a cut-out with a background blur (portrait mode):
+/// the same clip whole, without its cut-out, through the shared Blur effect
+/// at the cut-out's `background_blur` intensity after its own effects. The
+/// sharp cut-out is drawn over it. `None` without a background blur. The
+/// web editor's scene builder adds the same node.
+pub fn background_blur_layer(element: &Element, layer: &LayerPlan) -> Option<LayerPlan> {
+    let intensity = element.cutout.as_ref()?.background_blur;
+    if !(intensity.is_finite() && intensity > 0.0) || layer.cutout.is_none() {
+        return None;
+    }
+    let mut background = layer.clone();
+    background.element_id = format!("{}#background", layer.element_id);
+    background.cutout = None;
+    let mut params = crate::Params::new();
+    params.set("intensity", intensity.min(100.0));
+    background.effects.push(EffectPlan { id: "background-blur".to_owned(), kind: "blur".to_owned(), params });
+    Some(background)
 }
 
 /// A visual element as a layer at `time`. With `extended`, the time may fall

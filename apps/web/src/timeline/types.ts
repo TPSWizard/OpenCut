@@ -164,6 +164,11 @@ export interface Cutout {
 	offset: number;
 	/** Keeps the background and hides the person instead. */
 	inverted?: boolean;
+	/**
+	 * Instead of hiding what the matte leaves out, show it through the Blur
+	 * effect at this intensity (0 to 100): portrait mode. 0 or missing hides it.
+	 */
+	backgroundBlur?: number;
 }
 
 export interface ImageElement extends BaseTimelineElement {

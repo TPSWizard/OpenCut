@@ -486,7 +486,9 @@ pub struct Transition {
 /// A cut-out (background removal): the clip shows only where its matte,
 /// a greyscale video in the project made by the web editor's background
 /// removal (white keeps, black hides), is light. The matte's first frame
-/// belongs to `offset` seconds of the clip's source.
+/// belongs to `offset` seconds of the clip's source. With a
+/// `background_blur`, what the matte hides is shown blurred instead
+/// (portrait mode; see [`crate::background_blur_layer`]).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cutout {
@@ -496,7 +498,14 @@ pub struct Cutout {
     /// Keeps the background and hides the person instead.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub inverted: bool,
+    /// Instead of hiding what the matte leaves out, show it through the
+    /// Blur effect at this intensity (its 0 to 100 scale); 0 hides it.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub background_blur: f64,
 }
+
+/// A suggested background blur when it is first turned on.
+pub const CUTOUT_BACKGROUND_BLUR_DEFAULT: f64 = 60.0;
 
 /// One spoken word of a caption: `start` and `end` are relative to the
 /// element's start. The words are the whitespace-separated tokens of the

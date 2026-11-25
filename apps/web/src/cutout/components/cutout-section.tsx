@@ -7,7 +7,13 @@ import { Section, SectionContent, SectionHeader, SectionTitle } from "@/componen
 import { useEditor } from "@/editor/use-editor";
 import { useT } from "@/i18n";
 import type { VideoElement } from "@/timeline/types";
-import { clearCutout, removeBackground, setCutoutInverted } from "../remove";
+import {
+	CUTOUT_BACKGROUND_BLUR_DEFAULT,
+	clearCutout,
+	removeBackground,
+	setCutoutBackgroundBlur,
+	setCutoutInverted,
+} from "../remove";
 
 /** Background removal for a video clip: a person cut-out from an on-device matte. */
 export function CutoutSection({ element, trackId }: { element: VideoElement; trackId: string }) {
@@ -66,6 +72,48 @@ export function CutoutSection({ element, trackId }: { element: VideoElement; tra
 									}
 								/>
 							</label>
+							<label className="flex items-center justify-between gap-2 text-xs">
+								<span>
+									{cutout.inverted
+										? t("Blur the person instead of hiding them")
+										: t("Blur the background instead of hiding it")}
+								</span>
+								<Switch
+									checked={(cutout.backgroundBlur ?? 0) > 0}
+									data-testid="cutout-blur-switch"
+									onCheckedChange={(on) =>
+										setCutoutBackgroundBlur({
+											editor,
+											trackId,
+											elementId: element.id,
+											blur: on ? CUTOUT_BACKGROUND_BLUR_DEFAULT : 0,
+										})
+									}
+								/>
+							</label>
+							{(cutout.backgroundBlur ?? 0) > 0 && (
+								<label className="flex items-center gap-2 text-xs">
+									<span className="shrink-0">{t("Blur amount")}</span>
+									<input
+										type="range"
+										min={1}
+										max={100}
+										step={1}
+										className="min-w-0 flex-1"
+										value={cutout.backgroundBlur}
+										data-testid="cutout-blur-amount"
+										onChange={(event) =>
+											setCutoutBackgroundBlur({
+												editor,
+												trackId,
+												elementId: element.id,
+												blur: Number(event.target.value),
+											})
+										}
+									/>
+									<span className="w-7 text-right font-mono">{Math.round(cutout.backgroundBlur ?? 0)}</span>
+								</label>
+							)}
 						</>
 					) : null}
 					<div className="flex flex-wrap gap-2">

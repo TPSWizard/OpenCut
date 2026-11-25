@@ -3005,8 +3005,64 @@ impl Render for InspectorPanel {
                             let clear_state = self.state.clone();
                             let inverted = cutout.inverted;
                             let next = editor::Cutout { inverted: !inverted, ..cutout.clone() };
+                            // What the matte leaves out: hidden, or shown blurred (portrait mode).
+                            let blur = cutout.background_blur;
+                            let (hide_state, blur_state) = (self.state.clone(), self.state.clone());
+                            let (hidden_cutout, blurred_cutout) = (
+                                editor::Cutout { background_blur: 0.0, ..cutout.clone() },
+                                editor::Cutout {
+                                    background_blur: if blur > 0.0 { blur } else { editor::CUTOUT_BACKGROUND_BLUR_DEFAULT },
+                                    ..cutout.clone()
+                                },
+                            );
+                            let background_row = div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(4.))
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(if inverted { t("The person:") } else { t("The background:") }))
+                                .child(
+                                    Button::new("cutout-hide", t("Hidden"))
+                                        .variant(if blur > 0.0 { ButtonVariant::Outline } else { ButtonVariant::Default })
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            let next = hidden_cutout.clone();
+                                            hide_state.update(cx, |state, cx| state.set_cutout_selected(Some(next), cx));
+                                        }),
+                                )
+                                .child(
+                                    Button::new("cutout-blur", t("Blurred"))
+                                        .variant(if blur > 0.0 { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            let next = blurred_cutout.clone();
+                                            blur_state.update(cx, |state, cx| state.set_cutout_selected(Some(next), cx));
+                                        }),
+                                );
+                            let blur_row = (blur > 0.0).then(|| {
+                                let base = cutout.clone();
+                                self.row(
+                                    t("Blur amount"),
+                                    "cutout.backgroundBlur",
+                                    "60",
+                                    number_text(blur),
+                                    None,
+                                    window,
+                                    cx,
+                                    Box::new(move |text, state, cx| {
+                                        if let Ok(value) = text.trim().parse::<f64>() {
+                                            if value.is_finite() {
+                                                let next = editor::Cutout { background_blur: value.clamp(1.0, 100.0), ..base.clone() };
+                                                state.set_cutout_selected(Some(next), cx);
+                                            }
+                                        }
+                                    }),
+                                )
+                            });
                             content = content
                                 .child(div().text_xs().text_color(colors.muted_foreground).child(note))
+                                .child(background_row)
+                                .children(blur_row)
                                 .child(
                                     div()
                                         .flex()

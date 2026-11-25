@@ -936,5 +936,10 @@
   "Mixer": "混音器",
   "Each track's volume (dB, -60 is silent) and pan, after each clip's own. Solo plays only the soloed tracks; mute wins.": "每条轨道的音量（dB，-60 为静音）和声像，作用于各片段自身设置之后。独奏时只播放独奏轨道；静音优先。",
   "dB": "dB",
-  "Pan": "声像"
+  "Pan": "声像",
+  "The person:": "人物：",
+  "The background:": "背景：",
+  "Hidden": "隐藏",
+  "Blurred": "模糊",
+  "Blur amount": "模糊程度"
 }

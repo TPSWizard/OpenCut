@@ -525,7 +525,7 @@ fn cutout_mattes_hide_the_background() {
         .unwrap();
     }
     let mut element = Element::from_media(project.media_item("red").unwrap(), seconds(0.0));
-    element.cutout = Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: false });
+    element.cutout = Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: false, background_blur: 0.0 });
     let element_id = element.id.clone();
     apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
     // The canvas is 16:9 like the clip, so it fills the frame.
@@ -540,7 +540,7 @@ fn cutout_mattes_hide_the_background() {
         &EditorCommand::UpdateElement {
             element_id,
             patch: editor::ElementPatch {
-                cutout: Some(Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: true })),
+                cutout: Some(Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: true, background_blur: 0.0 })),
                 ..Default::default()
             },
         },
@@ -550,6 +550,63 @@ fn cutout_mattes_hide_the_background() {
     let (left, right) = (pixel(&frame, 40, 54), pixel(&frame, 150, 54));
     assert!(left[2] < 30, "inverted hides the left: {left:?}");
     assert!(right[2] > 200, "inverted keeps the right: {right:?}");
+}
+
+/// Background blur (portrait mode): over a striped clip, a matte whose
+/// left half is white keeps the left half sharp and shows the right half
+/// blurred instead of hiding it.
+#[test]
+fn background_blur_keeps_the_person_sharp() {
+    let Ok(ffmpeg) = Ffmpeg::locate() else {
+        eprintln!("ffmpeg not installed; skipping");
+        return;
+    };
+    let Some(mut renderer) = renderer(Some(ffmpeg.clone())) else { return };
+    let dir = tempfile::tempdir().unwrap();
+    let clip = dir.path().join("stripes.mp4");
+    lavfi_clip(&ffmpeg, &clip, r"nullsrc=size=640x360:rate=30:duration=2,geq=lum='255*mod(floor(X/4)\,2)':cb=128:cr=128");
+    let matte = dir.path().join("matte.mp4");
+    lavfi_clip(
+        &ffmpeg,
+        &matte,
+        "color=c=black:size=640x360:rate=15:duration=2,drawbox=x=0:y=0:w=320:h=360:color=white:t=fill",
+    );
+    let mut project = Project::new("Portrait");
+    for (id, path) in [("stripes", &clip), ("matte", &matte)] {
+        let info = probe(&ffmpeg, path).unwrap();
+        apply(
+            &mut project,
+            &EditorCommand::AddMedia(MediaItem {
+                id: id.to_owned(),
+                name: format!("{id}.mp4"),
+                kind: MediaKind::Video,
+                path: path.clone(),
+                duration: info.duration,
+                width: info.width,
+                height: info.height,
+                fps: info.fps,
+                has_audio: false,
+            }),
+        )
+        .unwrap();
+    }
+    let mut element = Element::from_media(project.media_item("stripes").unwrap(), seconds(0.0));
+    element.cutout = Some(editor::Cutout { matte_id: "matte".to_owned(), offset: 0.0, inverted: false, background_blur: 60.0 });
+    apply(&mut project, &EditorCommand::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+    let frame = renderer.render(&project, seconds(1.0), 640, 360).unwrap();
+    // Mean and spread of the green channel over a region (x0..x1, rows 60..300).
+    let stats = |x0: u32, x1: u32| {
+        let values: Vec<f64> = (60..300).flat_map(|y| (x0..x1).map(move |x| (x, y))).map(|(x, y)| pixel(&frame, x, y)[1] as f64).collect();
+        let mean = values.iter().sum::<f64>() / values.len() as f64;
+        let spread = (values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64).sqrt();
+        (mean, spread)
+    };
+    let (left_mean, left_spread) = stats(20, 280);
+    let (right_mean, right_spread) = stats(380, 620);
+    eprintln!("left {left_mean:.1} ± {left_spread:.1}, right {right_mean:.1} ± {right_spread:.1}");
+    assert!(left_spread > 90.0, "the kept half stays sharp: {left_spread}");
+    assert!(right_mean > 90.0 && right_mean < 165.0, "the background shows, blurred to grey: {right_mean}");
+    assert!(right_spread < 25.0, "and soft: {right_spread}");
 }
 
 /// A clip's own start transition fades it in from nothing, rising steadily
