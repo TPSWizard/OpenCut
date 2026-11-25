@@ -63,6 +63,7 @@ import { storageService } from "@/services/storage/service";
 import { isPreviewQuality } from "@/media/proxy";
 import { usePreviewStore } from "@/preview/preview-store";
 import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
+import { textPathPoints } from "opencut-wasm";
 import { DRAW_TOOLS, DRAW_TOOL_WIDTHS, addDrawingStroke, isDrawing, removeLastStroke, strokeCount, type DrawTool } from "@/drawing/strokes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
@@ -2332,6 +2333,36 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				}),
 			});
 			return { trackId: track.id, elementId: element.id, curve };
+		},
+		"text.setPath": ({ elementId, trackId, path, amount, points }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "text") throw new EditorApiError({ code: "invalid_params", message: "A path goes on text" });
+			const presets = ["none", "wave", "rise", "swoosh", "circle"];
+			const chosen = points !== undefined ? "custom" : path;
+			if (chosen !== "custom" && !presets.includes(chosen)) {
+				throw new EditorApiError({ code: "invalid_params", message: "path is none, wave, rise, swoosh or circle (or give points)" });
+			}
+			const level = amount ?? (typeof element.params.textPathAmount === "number" ? element.params.textPathAmount : 50);
+			if (typeof level !== "number" || !Number.isFinite(level) || level < 0 || level > 100) {
+				throw new EditorApiError({ code: "invalid_params", message: "amount must be 0 to 100" });
+			}
+			const custom = points !== undefined ? JSON.stringify(points) : typeof element.params.textPathPoints === "string" ? element.params.textPathPoints : "";
+			if (chosen === "custom" && textPathPoints("custom", level, custom).length < 8) {
+				throw new EditorApiError({ code: "invalid_params", message: "points must be 3k + 1 (at least 4) finite [x, y] pairs" });
+			}
+			editor.command.execute({
+				command: new UpdateElementsCommand({
+					updates: [
+						{
+							trackId: track.id,
+							elementId: element.id,
+							patch: { params: { ...element.params, textPath: chosen, textPathAmount: level, textPathPoints: custom } } as Partial<TimelineElement>,
+						},
+					],
+				}),
+			});
+			return { trackId: track.id, elementId: element.id, path: chosen, amount: level };
 		},
 		"transform.cornerPin": ({ elementId, trackId, enabled, corners, canvasCorners, reset }) => {
 			requireProject();

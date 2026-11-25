@@ -1627,6 +1627,7 @@ dependencies = [
  "serde_json",
  "strokes",
  "tempfile",
+ "textwarp",
  "thiserror 2.0.19",
  "time",
  "trackmix",

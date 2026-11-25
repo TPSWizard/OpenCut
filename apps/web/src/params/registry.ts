@@ -622,6 +622,34 @@ const textElementParams: ElementParamDefinition[] = [
 		step: 1,
 	},
 	{
+		// Text on a path (`@/text/curve`, `textwarp::warp_path`): a shape the
+		// text runs along, in place of the curve. `textPathPoints` holds a
+		// custom path's control points (set through the API).
+		key: "textPath",
+		label: "Path",
+		type: "select",
+		default: "none",
+		keyframable: false,
+		options: [
+			{ value: "none", label: "None" },
+			{ value: "wave", label: "Wave" },
+			{ value: "rise", label: "Rise" },
+			{ value: "swoosh", label: "Swoosh" },
+			{ value: "circle", label: "Circle" },
+			{ value: "custom", label: "Custom" },
+		],
+	},
+	{
+		key: "textPathAmount",
+		label: "Path amount",
+		type: "number",
+		default: 50,
+		min: 0,
+		max: 100,
+		step: 1,
+		keyframable: false,
+	},
+	{
 		key: "background.enabled",
 		label: "Background Enabled",
 		type: "boolean",

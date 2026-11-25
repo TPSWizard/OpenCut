@@ -1,4 +1,4 @@
-import { bendText, bentTextSize } from "opencut-wasm";
+import { bendText, bendTextAlongPath, bentTextSize, textPathPoints, textPathSize } from "opencut-wasm";
 import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
 import type { ElementAnimations } from "@/animation/types";
 import type { ParamValues } from "@/params";
@@ -50,8 +50,29 @@ export interface Rect {
 	height: number;
 }
 
-/** The rect of `rect` bent by `curve`, centred on the same point. */
-export function bentRect(rect: Rect, curve: number): Rect {
+/**
+ * Text on a path (row 91): the control points (flattened x, y pairs, in
+ * units of the text's width around its anchor) of the text's `textPath`
+ * shape, or null for none. Laid along it by `textwarp::warp_path`, the
+ * same as the desktop; it takes the place of the curve.
+ */
+export function textPathAt(params: ParamValues | undefined): Float64Array | null {
+	const preset = typeof params?.textPath === "string" ? params.textPath : "none";
+	if (preset === "none") return null;
+	const amount = typeof params?.textPathAmount === "number" ? params.textPathAmount : 50;
+	const custom = typeof params?.textPathPoints === "string" ? params.textPathPoints : "";
+	const points = textPathPoints(preset, amount, custom);
+	return points.length >= 8 ? points : null;
+}
+
+/** The rect of `rect` bent by `curve` (or laid along `path`), centred on the same point. */
+export function bentRect(rect: Rect, curve: number, path?: Float64Array | null): Rect {
+	if (path) {
+		const [width, height] = textPathSize(path, Math.max(1, Math.round(rect.width)), Math.max(1, Math.round(rect.height)));
+		const cx = rect.left + rect.width / 2;
+		const cy = rect.top + rect.height / 2;
+		return { left: cx - width / 2, top: cy - height / 2, width, height };
+	}
 	if (!isCurved(curve)) return rect;
 	const [width, height] = bentTextSize(curve, Math.max(1, Math.round(rect.width)), Math.max(1, Math.round(rect.height)));
 	const cx = rect.left + rect.width / 2;
@@ -79,11 +100,14 @@ function makeCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvas
 export function drawCurvedText({
 	ctx,
 	curve,
+	path = null,
 	rect,
 	drawFlat,
 }: {
 	ctx: Context2D;
 	curve: number;
+	/** Text on a path: lays the text along it instead of the arc. */
+	path?: Float64Array | null;
 	rect: Rect;
 	drawFlat: (ctx: Context2D) => void;
 }): void {
@@ -103,6 +127,21 @@ export function drawCurvedText({
 	if (!flatCtx) return;
 	flatCtx.setTransform(scale, 0, 0, scale, width / 2 - cx * scale, height / 2 - cy * scale);
 	drawFlat(flatCtx);
+	if (path) {
+		const flatPixels = flatCtx.getImageData(0, 0, width, height);
+		const [pathWidth, pathHeight] = textPathSize(path, width, height);
+		const laid = bendTextAlongPath(path, width, height, new Uint8Array(flatPixels.data.buffer));
+		if (laid.length === pathWidth * pathHeight * 4) {
+			const out = makeCanvas(pathWidth, pathHeight);
+			const outCtx = out.getContext("2d") as Context2D | null;
+			if (!outCtx) return;
+			const data = new Uint8ClampedArray(laid.length);
+			data.set(laid);
+			outCtx.putImageData(new ImageData(data, pathWidth, pathHeight), 0, 0);
+			ctx.drawImage(out, cx - pathWidth / 2 / scale, cy - pathHeight / 2 / scale, pathWidth / scale, pathHeight / scale);
+			return;
+		}
+	}
 	if (!isCurved(curve)) {
 		ctx.drawImage(flat, cx - width / 2 / scale, cy - height / 2 / scale, width / scale, height / scale);
 		return;

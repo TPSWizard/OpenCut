@@ -84,6 +84,8 @@ const TEXT_PARAM_KEYS = [
 	"letterSpacing",
 	"lineHeight",
 	"curve",
+	"textPath",
+	"textPathAmount",
 	"background.enabled",
 	"background.color",
 	"background.cornerRadius",

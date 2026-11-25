@@ -36,6 +36,8 @@ export interface ResolvedTextNodeState {
 	revealChars: number | null;
 	/** Curved text at this time (`@/text/curve`): -100 to 100, 0 flat. */
 	curve?: number;
+	/** Text on a path (`textPathAt`): control points, or null. */
+	path?: Float64Array | null;
 	/** The transform at shutter open and close, when motion blurred. */
 	motion?: MotionTransforms | null;
 	/** Each character's rich-text style (`@/text/rich`); null for none. */
@@ -80,8 +82,8 @@ export function renderTextToContext({
 			revealChars: resolved.revealChars,
 			rich: resolved.rich ?? null,
 		});
-	if (resolved.curve !== undefined && isCurved(resolved.curve)) {
-		drawCurvedText({ ctx, curve: resolved.curve, rect: resolved.measuredText.visualRect, drawFlat });
+	if (resolved.path || (resolved.curve !== undefined && isCurved(resolved.curve))) {
+		drawCurvedText({ ctx, curve: resolved.curve ?? 0, path: resolved.path, rect: resolved.measuredText.visualRect, drawFlat });
 	} else {
 		drawFlat(ctx);
 	}

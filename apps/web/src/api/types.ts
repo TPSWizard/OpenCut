@@ -1236,6 +1236,18 @@ export interface EditorApiMethods {
 		result: { trackId: string; elementId: string; curve: number };
 	};
 	/**
+	 * Text on a path (row 91): lays a text element along a shape (`wave`,
+	 * `rise`, `swoosh`, `circle`; `amount` 0 to 100, default 50), along
+	 * `points` (cubic Bézier control points, 3k + 1 of them, in units of the
+	 * text's width around its anchor, y down), or flat again with
+	 * `path: "none"`. Takes the place of the curve; drawn the same in both
+	 * editors (`textwarp::warp_path`). One undo step.
+	 */
+	"text.setPath": {
+		params: ApiElementLocator & { path: string; amount?: number; points?: [number, number][] };
+		result: { trackId: string; elementId: string; path: string; amount: number };
+	};
+	/**
 	 * Corner pin on a video, picture or sticker clip: its corners pinned in
 	 * perspective (drawn by the shared compositor). `corners` are each
 	 * corner's place in percent of the clip's own box before rotation

@@ -3,7 +3,7 @@ import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { deflickerGainAt } from "@/deflicker/levels";
 import { readRichStyles } from "@/text/rich";
 import { faceTrackFacesAt } from "opencut-wasm";
-import { curveAt } from "@/text/curve";
+import { curveAt, textPathAt } from "@/text/curve";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
@@ -688,6 +688,7 @@ function resolveTextNode({
 		motion,
 		revealChars: animationState ? revealedCharCount({ content, reveal: animationState.reveal }) : null,
 		curve: curveAt({ params: node.params.params, animations: node.params.animations, localTime }),
+		path: textPathAt(node.params.params),
 		rich: readRichStyles(node.params.params),
 		textColor: resolveColorAtTime({
 			baseColor:

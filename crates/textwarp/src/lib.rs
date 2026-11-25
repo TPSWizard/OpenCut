@@ -177,6 +177,222 @@ pub fn read_curve(value: Option<f64>) -> f64 {
     }
 }
 
+// ---------------------------------------------------------------------
+// Text on a path (row 91): the flat raster laid along a path of cubic
+// Bézier segments instead of an arc. The path is scaled so its length is
+// the raster's width (the text fills it end to end); its origin is the
+// text's anchor, so the bent raster comes back centred there. Each output
+// pixel finds its nearest point on the path (sampled into short straight
+// pieces): how far along the path that is gives the flat x, and its side
+// distance the flat y. Checked against `fixtures/text-path/cases.json`.
+
+/// Path shapes offered (`textPath` param); `custom` reads `textPathPoints`.
+pub const PATH_PRESETS: [&str; 5] = ["wave", "rise", "swoosh", "circle", "custom"];
+/// Straight pieces each Bézier segment is sampled into.
+pub const SAMPLES_PER_SEGMENT: usize = 32;
+
+/// The control points (cubic segments: 3k + 1 points, units of the text's
+/// width around its anchor, y down) of a path shape at `amount` (0 to 100),
+/// or `None` for no path. `custom` is JSON `[[x, y], ...]`.
+pub fn path_points(preset: &str, amount: f64, custom: &str) -> Option<Vec<[f64; 2]>> {
+    let a = if amount.is_finite() { amount.clamp(0.0, 100.0) / 100.0 } else { 0.5 };
+    match preset {
+        "wave" => Some(vec![[-0.5, 0.0], [-0.15, -0.45 * a], [0.15, 0.45 * a], [0.5, 0.0]]),
+        "rise" => Some(vec![[-0.5, 0.25 * a], [-0.2, 0.25 * a], [0.2, -0.25 * a], [0.5, -0.25 * a]]),
+        "swoosh" => Some(vec![[-0.5, -0.05 * a], [-0.2, 0.35 * a], [0.25, 0.3 * a], [0.5, -0.35 * a]]),
+        "circle" => Some(circle_points(a.max(0.05))),
+        "custom" => {
+            let points: Vec<[f64; 2]> = serde_json::from_str(custom).ok()?;
+            (points.len() >= 4 && (points.len() - 1) % 3 == 0 && points.iter().flatten().all(|v| v.is_finite())).then_some(points)
+        }
+        _ => None,
+    }
+}
+
+/// An arc over the top of a unit circle centred on the anchor, `share` of
+/// a full turn long and centred on the top, clockwise so the text reads
+/// upright over it: cubic pieces of at most a quarter turn.
+fn circle_points(share: f64) -> Vec<[f64; 2]> {
+    let span = std::f64::consts::TAU * share.min(1.0);
+    let pieces = (span / std::f64::consts::FRAC_PI_2).ceil().max(1.0) as usize;
+    let at = |theta: f64| [theta.sin(), -theta.cos()];
+    let tangent = |theta: f64| [theta.cos(), theta.sin()];
+    let start = -span / 2.0;
+    let step = span / pieces as f64;
+    let k = 4.0 / 3.0 * (step / 4.0).tan();
+    let mut points = vec![at(start)];
+    for piece in 0..pieces {
+        let (t0, t1) = (start + step * piece as f64, start + step * (piece + 1) as f64);
+        let (p0, p3) = (at(t0), at(t1));
+        let (d0, d1) = (tangent(t0), tangent(t1));
+        points.push([p0[0] + k * d0[0], p0[1] + k * d0[1]]);
+        points.push([p3[0] - k * d1[0], p3[1] - k * d1[1]]);
+        points.push(p3);
+    }
+    points
+}
+
+/// The path sampled into straight pieces and scaled about the anchor so
+/// its length is `width`; `None` when it has no length.
+pub fn path_polyline(points: &[[f64; 2]], width: f64) -> Option<Vec<[f64; 2]>> {
+    if points.len() < 4 || !(width > 0.0) {
+        return None;
+    }
+    let mut line = vec![points[0]];
+    for segment in 0..(points.len() - 1) / 3 {
+        let (p0, p1, p2, p3) = (points[3 * segment], points[3 * segment + 1], points[3 * segment + 2], points[3 * segment + 3]);
+        for step in 1..=SAMPLES_PER_SEGMENT {
+            let t = step as f64 / SAMPLES_PER_SEGMENT as f64;
+            let u = 1.0 - t;
+            let (b0, b1, b2, b3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+            line.push([
+                b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0],
+                b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1],
+            ]);
+        }
+    }
+    let length: f64 = line.windows(2).map(|pair| (pair[1][0] - pair[0][0]).hypot(pair[1][1] - pair[0][1])).sum();
+    if !(length > 1e-9) {
+        return None;
+    }
+    let scale = width / length;
+    Some(line.into_iter().map(|[x, y]| [x * scale, y * scale]).collect())
+}
+
+/// The size of a `width` x `height` raster laid along `points`, centred on
+/// the anchor (the flat size when the path has no length).
+pub fn path_size(points: &[[f64; 2]], width: u32, height: u32) -> (u32, u32) {
+    let Some(line) = path_polyline(points, width as f64) else { return (width, height) };
+    let band = height as f64 / 2.0 + 1.0;
+    let reach_x = line.iter().map(|p| p[0].abs()).fold(0.0, f64::max) + band;
+    let reach_y = line.iter().map(|p| p[1].abs()).fold(0.0, f64::max) + band;
+    let side = |reach: f64| ((2.0 * reach.ceil()) as u32).clamp(1, MAX_SIDE);
+    (side(reach_x), side(reach_y))
+}
+
+/// Lays a raster of straight-alpha pixels (RGBA or BGRA) along the path.
+/// `None` when the path has no length (draw the raster as it is).
+pub fn warp_path(points: &[[f64; 2]], width: u32, height: u32, pixels: &[u8]) -> Option<Bent> {
+    let line = path_polyline(points, width as f64)?;
+    if pixels.len() < (width as usize) * (height as usize) * 4 {
+        return None;
+    }
+    let (out_width, out_height) = path_size(points, width, height);
+    let mut out = vec![0u8; out_width as usize * out_height as usize * 4];
+    let half_height = height as f64 / 2.0;
+    let band = half_height + 1.0;
+    let (out_half_width, out_half_height) = (out_width as f64 / 2.0, out_height as f64 / 2.0);
+    // Pieces: start, end, length so far.
+    let mut along = Vec::with_capacity(line.len());
+    let mut total = 0.0;
+    for pair in line.windows(2) {
+        along.push(total);
+        total += (pair[1][0] - pair[0][0]).hypot(pair[1][1] - pair[0][1]);
+    }
+    let last = line.len() - 2;
+    // A grid of cells a band wide, each listing the pieces that pass near.
+    let cell = band.max(4.0);
+    let columns = ((out_width as f64 / cell).ceil() as usize).max(1);
+    let rows = ((out_height as f64 / cell).ceil() as usize).max(1);
+    let mut grid: Vec<Vec<usize>> = vec![Vec::new(); columns * rows];
+    let to_cell = |x: f64, y: f64| (((x + out_half_width) / cell).floor(), ((y + out_half_height) / cell).floor());
+    for (index, pair) in line.windows(2).enumerate() {
+        let (x0, y0) = to_cell(pair[0][0].min(pair[1][0]) - band, pair[0][1].min(pair[1][1]) - band);
+        let (x1, y1) = to_cell(pair[0][0].max(pair[1][0]) + band, pair[0][1].max(pair[1][1]) + band);
+        for row in (y0.max(0.0) as usize)..=(y1.max(0.0) as usize).min(rows - 1) {
+            for column in (x0.max(0.0) as usize)..=(x1.max(0.0) as usize).min(columns - 1) {
+                grid[row * columns + column].push(index);
+            }
+        }
+    }
+    let texel = |x: i64, y: i64| -> [f64; 4] {
+        if x < 0 || y < 0 || x >= width as i64 || y >= height as i64 {
+            return [0.0; 4];
+        }
+        let index = (y as usize * width as usize + x as usize) * 4;
+        let alpha = pixels[index + 3] as f64;
+        [pixels[index] as f64 * alpha, pixels[index + 1] as f64 * alpha, pixels[index + 2] as f64 * alpha, alpha]
+    };
+    for oy in 0..out_height {
+        for ox in 0..out_width {
+            let q = [ox as f64 + 0.5 - out_half_width, oy as f64 + 0.5 - out_half_height];
+            let (column, row) = to_cell(q[0], q[1]);
+            let (column, row) = (column.max(0.0) as usize, row.max(0.0) as usize);
+            // The nearest piece (ties to the earlier one).
+            let mut best: Option<(f64, usize, f64, f64)> = None;
+            for &index in &grid[row.min(rows - 1) * columns + column.min(columns - 1)] {
+                let (a, b) = (line[index], line[index + 1]);
+                let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+                let length2 = dx * dx + dy * dy;
+                let raw = if length2 > 0.0 { ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / length2 } else { 0.0 };
+                let t = raw.clamp(0.0, 1.0);
+                let (cx, cy) = (a[0] + dx * t, a[1] + dy * t);
+                let distance2 = (q[0] - cx) * (q[0] - cx) + (q[1] - cy) * (q[1] - cy);
+                let better = match best {
+                    None => true,
+                    Some((d2, i, _, _)) => distance2 < d2 || (distance2 == d2 && index < i),
+                };
+                if better {
+                    best = Some((distance2, index, t, raw));
+                }
+            }
+            let Some((distance2, index, t, raw)) = best else { continue };
+            // Only pixels within a band of the path show text.
+            if distance2 > band * band {
+                continue;
+            }
+            // Past either end of the path: nothing there.
+            if (index == 0 && raw < 0.0) || (index == last && raw > 1.0) {
+                continue;
+            }
+            let (a, b) = (line[index], line[index + 1]);
+            let length = (b[0] - a[0]).hypot(b[1] - a[1]);
+            if length <= 0.0 {
+                continue;
+            }
+            let (tx, ty) = ((b[0] - a[0]) / length, (b[1] - a[1]) / length);
+            let (cx, cy) = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
+            let side = (q[0] - cx) * -ty + (q[1] - cy) * tx;
+            if side.abs() > band {
+                continue;
+            }
+            let sx = along[index] + t * length - 0.5;
+            let sy = side + half_height - 0.5;
+            let (x0, y0) = (sx.floor(), sy.floor());
+            let (fx, fy) = (sx - x0, sy - y0);
+            let (x0, y0) = (x0 as i64, y0 as i64);
+            let mut sum = [0.0f64; 4];
+            for (dx, dy, weight) in [(0, 0, (1.0 - fx) * (1.0 - fy)), (1, 0, fx * (1.0 - fy)), (0, 1, (1.0 - fx) * fy), (1, 1, fx * fy)] {
+                if weight <= 0.0 {
+                    continue;
+                }
+                let sample = texel(x0 + dx, y0 + dy);
+                for (total, value) in sum.iter_mut().zip(sample) {
+                    *total += value * weight;
+                }
+            }
+            if sum[3] <= 0.0 {
+                continue;
+            }
+            let index = (oy as usize * out_width as usize + ox as usize) * 4;
+            out[index] = (sum[0] / sum[3]).round().clamp(0.0, 255.0) as u8;
+            out[index + 1] = (sum[1] / sum[3]).round().clamp(0.0, 255.0) as u8;
+            out[index + 2] = (sum[2] / sum[3]).round().clamp(0.0, 255.0) as u8;
+            out[index + 3] = sum[3].round().clamp(0.0, 255.0) as u8;
+        }
+    }
+    Some(Bent { width: out_width, height: out_height, pixels: out })
+}
+
+/// The path a text's params ask for (`textPath`, `textPathAmount`,
+/// `textPathPoints`), or `None` for none.
+pub fn read_path(preset: &str, amount: Option<f64>, custom: &str) -> Option<Vec<[f64; 2]>> {
+    if preset.is_empty() || preset == "none" {
+        return None;
+    }
+    path_points(preset, amount.unwrap_or(50.0), custom)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,5 +524,30 @@ mod tests {
         for pixel in bent.pixels.chunks(4).filter(|pixel| pixel[3] > 0) {
             assert_eq!(&pixel[..3], &[255, 0, 0], "edge pixel {pixel:?}");
         }
+    }
+
+    #[test]
+    fn lays_text_along_paths_like_the_reference() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../fixtures/text-path/cases.json");
+        let fixture: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let (width, height) = (fixture["width"].as_u64().unwrap() as u32, fixture["height"].as_u64().unwrap() as u32);
+        let flat: Vec<u8> = fixture["flat"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u8).collect();
+        for case in fixture["cases"].as_array().unwrap() {
+            let name = format!("{} {}", case["preset"], case["amount"]);
+            let points = path_points(case["preset"].as_str().unwrap(), case["amount"].as_f64().unwrap(), case["custom"].as_str().unwrap()).unwrap();
+            let want: Vec<[f64; 2]> = case["points"].as_array().unwrap().iter().map(pair).collect();
+            assert_eq!(points.len(), want.len(), "{name}");
+            for (got, want) in points.iter().zip(&want) {
+                assert!((got[0] - want[0]).abs() < 1e-12 && (got[1] - want[1]).abs() < 1e-12, "{name}: {got:?} vs {want:?}");
+            }
+            let bent = warp_path(&points, width, height, &flat).unwrap();
+            assert_eq!((bent.width as u64, bent.height as u64), (case["width"].as_u64().unwrap(), case["height"].as_u64().unwrap()), "{name}");
+            let expected: Vec<u8> = case["rgba"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u8).collect();
+            let worst = bent.pixels.iter().zip(&expected).map(|(a, b)| (*a as i32 - *b as i32).abs()).max().unwrap();
+            assert!(worst <= 1, "{name}: off by {worst}");
+        }
+        assert_eq!(read_path("none", Some(50.0), ""), None);
+        assert_eq!(read_path("custom", Some(50.0), "[[0,0],[1,1]]"), None, "a custom path needs 3k + 1 points");
+        assert!(read_path("wave", None, "").is_some());
     }
 }

@@ -421,6 +421,13 @@ impl TextRasterizer {
             }
         }
 
+        // Text on a path: the whole raster laid along it, centred on the
+        // anchor (it takes the place of the arc).
+        if let Some(path) = &style.path {
+            if let Some(bent) = textwarp::warp_path(path, width, height, &bgra) {
+                return TextRaster { width: bent.width, height: bent.height, bgra: bent.pixels };
+            }
+        }
         // Curved text: the whole raster (glyphs, boxes, lines) bent along
         // an arc, centred where the flat raster was.
         if let Some(bent) = textwarp::warp(style.curve as f64, width, height, &bgra) {
@@ -559,6 +566,7 @@ mod tests {
             keywords: None,
             reveal_chars: None,
             curve: 0.0,
+            path: None,
             rich: None,
         }
     }

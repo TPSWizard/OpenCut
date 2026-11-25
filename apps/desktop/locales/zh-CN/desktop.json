@@ -1008,5 +1008,12 @@
   "Done": "完成",
   "Drawing": "绘图",
   "Draw on over (s)": "逐笔显现时长（秒）",
-  "{count} stroke(s). Turn on Draw under the preview and draw on the frame; strokes join this drawing while it is selected. Draw on over plays them back as they were drawn (0 shows it whole).": "{count} 笔。打开预览下方的“绘制”并在画面上绘制；选中此绘图时，新笔画会加入其中。“逐笔显现时长”按绘制顺序回放笔画（0 表示整体显示）。"
+  "{count} stroke(s). Turn on Draw under the preview and draw on the frame; strokes join this drawing while it is selected. Draw on over plays them back as they were drawn (0 shows it whole).": "{count} 笔。打开预览下方的“绘制”并在画面上绘制；选中此绘图时，新笔画会加入其中。“逐笔显现时长”按绘制顺序回放笔画（0 表示整体显示）。",
+  "Path": "路径",
+  "Wave": "波浪",
+  "Rise": "上升",
+  "Swoosh": "弧线",
+  "Circle": "圆形",
+  "Path amount": "路径弯曲度",
+  "Custom (set in the web editor or the API)": "自定义（在网页编辑器或 API 中设置）"
 }

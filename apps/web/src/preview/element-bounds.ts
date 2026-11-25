@@ -1,7 +1,7 @@
 import type { SceneTracks, TimelineElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { STICKER_INTRINSIC_SIZE_FALLBACK } from "@/stickers/intrinsic-size";
-import { bentRect, curveAt } from "@/text/curve";
+import { bentRect, curveAt, textPathAt } from "@/text/curve";
 import { graphicSourceSize } from "@/graphics";
 import { measureTextElement } from "@/text/measure-element";
 import {
@@ -194,7 +194,7 @@ export function getElementBounds({
 		return getTransformedRectBounds({
 			canvasWidth,
 			canvasHeight,
-			rect: bentRect(measured.visualRect, curve),
+			rect: bentRect(measured.visualRect, curve, textPathAt(element.params)),
 			transform,
 		});
 	}

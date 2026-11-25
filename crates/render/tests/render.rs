@@ -1276,3 +1276,45 @@ fn curved_text_bends_into_an_arch_in_the_frame() {
     assert!((left - right).abs() < 12.0, "symmetric: {left} vs {right}");
     assert!(((min_x + max_x) as f64 / 2.0 - 320.0).abs() < 8.0, "centred: {min_x}..{max_x}");
 }
+
+/// Text on a path (row 91): a rising path lifts the end of the line and
+/// lowers its start, about the text's place.
+#[test]
+fn text_on_a_rising_path_climbs_left_to_right() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let mut project = Project::new("Text on a path");
+    project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+    project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+    let mut text = Element::text("TEXT CLIMBS UP THE PATH", seconds(0.0));
+    text.params.set("fontSize", 7.0).set("fontFamily", "Arial").set("color", "#ffffff").set("textPath", "rise").set("textPathAmount", 100.0);
+    apply(&mut project, &EditorCommand::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+    let frame = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+    let white = |x: u32, y: u32| {
+        let p = pixel(&frame, x, y);
+        p[0] > 128 && p[1] > 128 && p[2] > 128
+    };
+    let (mut min_x, mut max_x) = (640, 0);
+    for y in 0..360 {
+        for x in 0..640 {
+            if white(x, y) {
+                (min_x, max_x) = (min_x.min(x), max_x.max(x));
+            }
+        }
+    }
+    let mean_row = |x0: u32, x1: u32| {
+        let (mut sum, mut count) = (0.0f64, 0.0f64);
+        for y in 0..360 {
+            for x in x0..x1 {
+                if white(x, y) {
+                    sum += y as f64;
+                    count += 1.0;
+                }
+            }
+        }
+        sum / count.max(1.0)
+    };
+    let (left, middle, right) = (mean_row(min_x, min_x + 20), mean_row(310, 330), mean_row(max_x - 19, max_x + 1));
+    eprintln!("desktop text on a path: x {min_x}-{max_x}, left {left:.1}, middle {middle:.1}, right {right:.1}");
+    assert!((middle - 180.0).abs() < 15.0, "the middle stays at the text's place: {middle}");
+    assert!(left > middle + 25.0 && right < middle - 25.0, "it climbs: {left} / {middle} / {right}");
+}

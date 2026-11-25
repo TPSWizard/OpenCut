@@ -89,6 +89,8 @@ const TEXT_NUMBER_PARAMS: &[(&str, &str, f64)] = &[
     ("letterSpacing", "Letter spacing", 0.0),
     // Curved text (`textwarp`): an arch above 0, a smile below, -100 to 100.
     ("curve", "Curve", 0.0),
+    // Text on a path: how strongly the path shape bends (0 to 100).
+    ("textPathAmount", "Path amount", 50.0),
 ];
 
 /// Caption colours, shown for text elements that carry timed words.
@@ -1398,6 +1400,28 @@ impl Render for InspectorPanel {
                         );
                         content = content.child(row);
                     }
+                    // Text on a path (row 91): a shape the text runs along.
+                    let current_path = params.text("textPath", "none").into_owned();
+                    let mut path_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Path"), window));
+                    for (option, label) in
+                        [("none", "None"), ("wave", "Wave"), ("rise", "Rise"), ("swoosh", "Swoosh"), ("circle", "Circle")]
+                    {
+                        let state = self.state.clone();
+                        path_row = path_row.child(
+                            Button::new(eid("text-path", option), t(label))
+                                .variant(if current_path == option { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set("textPath", option);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    if current_path == "custom" {
+                        path_row = path_row.child(div().text_xs().text_color(colors.muted_foreground).child(t("Custom (set in the web editor or the API)")));
+                    }
+                    content = content.child(path_row);
                     let mut align_row = div()
                         .flex()
                         .items_center()
