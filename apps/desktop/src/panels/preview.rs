@@ -367,6 +367,7 @@ impl Render for PreviewPanel {
             .flex()
             .flex_1()
             .min_h_0()
+            .min_w_0()
             .items_center()
             .justify_center()
             .bg(gpui::black())
@@ -618,6 +619,71 @@ impl Render for PreviewPanel {
         });
         let canvas_label = tf("{canvas} · preview {width}×{height}", &[("canvas", &canvas_label), ("width", &pixels_w), ("height", &pixels_h)]);
 
+        // Video scopes beside the frame, drawn from each preview frame by
+        // the shared `scopes` crate (the web editor draws the same picture).
+        let scope = state.scope;
+        let scope_toggle = {
+            let state = self.state.clone();
+            Button::new("scopes-toggle", t("Scopes"))
+                .variant(if scope.is_some() { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                .size(ButtonSize::XSmall)
+                .on_click(move |_, _, cx| {
+                    let next = if scope.is_some() { None } else { Some(scopes::Scope::Waveform) };
+                    state.update(cx, |state, cx| state.set_scope(next, cx));
+                })
+        };
+        let scope_panel = scope.map(|current| {
+            let mut choices = div().flex().flex_wrap().gap(px(2.));
+            for (choice, label) in [
+                (scopes::Scope::Waveform, "Waveform"),
+                (scopes::Scope::Parade, "RGB parade"),
+                (scopes::Scope::Vectorscope, "Vectorscope"),
+                (scopes::Scope::Histogram, "Histogram"),
+            ] {
+                let state = self.state.clone();
+                choices = choices.child(
+                    Button::new(crate::components::eid("scope", choice.id()), t(label))
+                        .variant(if choice == current { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::XSmall)
+                        .on_click(move |_, _, cx| {
+                            state.update(cx, |state, cx| state.set_scope(Some(choice), cx));
+                        }),
+                );
+            }
+            let body = match state.scope_frame.clone() {
+                Some(frame) => {
+                    let percent = |share: f64| format!("{:.1}", share * 100.0);
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.))
+                        .child(img(frame.image).w_full().h(px(200.)).object_fit(ObjectFit::Contain))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "Luma 1%: {black} · 99%: {white} (0–255)",
+                            &[("black", &frame.stats.black_level), ("white", &frame.stats.white_level)],
+                        )))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "A channel at 0: {black}% · at 255: {white}%",
+                            &[("black", &percent(frame.stats.at_black)), ("white", &percent(frame.stats.at_white))],
+                        )))
+                }
+                None => div().text_xs().text_color(colors.muted_foreground).child(t("Drawing…")),
+            };
+            div()
+                .id("scope-panel")
+                .flex()
+                .flex_col()
+                .flex_none()
+                .gap(px(6.))
+                .w(px(300.))
+                .p(px(8.))
+                .border_l_1()
+                .border_color(colors.border)
+                .bg(colors.background)
+                .child(choices)
+                .child(body)
+        });
+
         let transport = |id: &'static str, label: &'static str, action: fn(&mut EditorState, &mut Context<EditorState>)| {
             let state = self.state.clone();
             let focus_handle = focus_handle.clone();
@@ -635,7 +701,7 @@ impl Render for PreviewPanel {
             .flex_col()
             .size_full()
             .bg(colors.background)
-            .child(frame_area)
+            .child(div().flex().flex_1().min_h_0().child(frame_area).children(scope_panel))
             .child(
                 div()
                     .flex()
@@ -703,6 +769,7 @@ impl Render for PreviewPanel {
                             )))
                     }))
                     .child(div().flex_1())
+                    .child(scope_toggle)
                     .child(guide_row)
                     .child(quality_row)
                     .child(div().flex_1())

@@ -45,6 +45,8 @@ pub(crate) enum RenderRequest {
         width: u32,
         height: u32,
         generation: u64,
+        /// Also draw this video scope of the frame.
+        scope: Option<scopes::Scope>,
     },
     Thumbnail {
         media: MediaItem,
@@ -72,11 +74,20 @@ pub(crate) enum RenderRequest {
     },
 }
 
+/// A video scope drawn from a preview frame (`scopes`, shared with the web).
+#[derive(Clone)]
+pub(crate) struct ScopeFrame {
+    pub scope: scopes::Scope,
+    pub image: Arc<RenderImage>,
+    pub stats: scopes::ScopeStats,
+}
+
 pub(crate) enum RenderEvent {
     Frame {
         image: Arc<RenderImage>,
         time: MediaTime,
         generation: u64,
+        scope: Option<ScopeFrame>,
     },
     Thumbnail {
         media_id: String,
@@ -197,16 +208,28 @@ fn handle(
             width,
             height,
             generation,
+            scope,
         } => {
             let Some(renderer) = renderer.as_mut() else { return };
             match renderer.render(&project, time, width, height) {
                 Ok(frame) => {
+                    let scope = scope.and_then(|scope| {
+                        let drawn = scopes::draw(scope, &frame.bgra, frame.width as usize, frame.height as usize, scopes::PixelOrder::Bgra);
+                        // The picture is RGBA; GPUI images are BGRA.
+                        let mut bgra = drawn.rgba;
+                        for pixel in bgra.chunks_exact_mut(4) {
+                            pixel.swap(0, 2);
+                        }
+                        let image = image_from_bgra(drawn.width as u32, drawn.height as u32, bgra)?;
+                        Some(ScopeFrame { scope, image, stats: drawn.stats })
+                    });
                     if let Some(image) = image_from_bgra(frame.width, frame.height, frame.bgra) {
                         events
                             .unbounded_send(RenderEvent::Frame {
                                 image,
                                 time,
                                 generation,
+                                scope,
                             })
                             .ok();
                     }

@@ -506,6 +506,10 @@ editor runs the same shader through the WASM compositor.
 
 A video clip with a cut-out (background removal, made in the web editor) shows what its matte leaves out blurred instead of hidden when the inspector's **Background removal** row is set to **Blurred** (portrait mode); **Blur amount** is the Blur effect's 1 to 100 (60 to start). The clip is drawn twice: whole, without its cut-out, through the shared Blur effect, then the sharp cut-out over it, exactly as the web editor draws it. With **Keeping the background** the person is blurred instead. Checked with a striped clip and a half-frame matte: desktop and web give the same picture (`crates/render/tests/render.rs`).
 
+## Video scopes
+
+**Scopes** in the preview's bottom bar opens a column beside the frame with a **Waveform** (luma of every column, left to right as in the frame), an **RGB parade** (the waveform of red, green and blue side by side), a **Vectorscope** (Rec. 709 Cb across, Cr up; boxes where 75% colour bars land and a skin tone line) or a **Histogram** (red, green and blue levels; clipped levels drawn to the top). Under it: the luma of the darkest and brightest 1% and the share of pixels with a channel at 0 or 255. The renderer draws the scope from each preview frame it makes, with the shared `scopes` crate, so the web editor's scopes are the same picture from the same pixels. Checked against an independent reference (`fixtures/scopes/cases.json`) and on a real frame of colour bars (`crates/render/tests/scopes.rs`; desktop and web read the same levels).
+
 ## Face blur
 
 **Faces → Blur faces** in the inspector finds the clip's faces the same

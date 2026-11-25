@@ -7,6 +7,7 @@ import { invokeAction } from "@/actions";
 import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
 import {
+	ChartHistogramIcon,
 	FullScreenIcon,
 	GridTableIcon,
 	PauseIcon,
@@ -29,6 +30,7 @@ import { GridPopover } from "./guide-popover";
 import { getGuideById } from "@/guides";
 import type { MediaTime } from "@/wasm";
 import { useT } from "@/i18n";
+import { useScopeStore } from "@/scopes/capture";
 import { formatMeterLufs, meterFraction, type MeterReadings } from "@/loudness/mix";
 
 /** Preview quality names (PREVIEW_QUALITIES holds the English; fractions stay as they are). */
@@ -73,11 +75,34 @@ export function PreviewToolbar({
 						)}
 					</Button>
 				</GridPopover>
+				<ScopesButton />
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+/** Shows or hides the video scopes beside the preview. */
+function ScopesButton() {
+	const t = useT();
+	const editor = useEditor();
+	const scope = useScopeStore((state) => state.scope);
+	return (
+		<Button
+			variant={scope ? "secondary" : "text"}
+			size="icon"
+			aria-label={t("Scopes")}
+			title={t("Video scopes: waveform, RGB parade, vectorscope, histogram")}
+			data-testid="scopes-toggle"
+			onClick={() => {
+				useScopeStore.getState().setScope(scope ? null : "waveform");
+				editor.renderer.requestRedraw();
+			}}
+		>
+			<HugeiconsIcon icon={ChartHistogramIcon} />
+		</Button>
 	);
 }
 

@@ -132,6 +132,27 @@ export interface ApiPreviewSettings {
 	quality: ApiPreviewQuality;
 	useProxies: boolean;
 	autoProxies: boolean;
+	/** The video scope shown beside the preview, or null when hidden. */
+	scope: ApiVideoScope | null;
+}
+
+export type ApiVideoScope = "waveform" | "parade" | "vectorscope" | "histogram";
+
+export interface ApiScopeReading {
+	scope: ApiVideoScope;
+	/** Size of the drawn scope picture. */
+	width: number;
+	height: number;
+	/** Pixels sampled from the frame. */
+	samples: number;
+	/** Share (0 to 1) of samples with a channel at 0. */
+	atBlack: number;
+	/** Share of samples with a channel at 255. */
+	atWhite: number;
+	/** Luma (0 to 255) the darkest 1% of samples sit at or below. */
+	blackLevel: number;
+	/** Luma the brightest 1% sit at or above. */
+	whiteLevel: number;
 }
 
 export interface ApiRetime {
@@ -632,6 +653,13 @@ export interface EditorApiMethods {
 	 * `time` seconds (default: the playhead) and reports which decoders it
 	 * used; `sample` returns the average colour of a centred box.
 	 */
+	/**
+	 * Renders the preview's scene at `time` seconds (default: the playhead)
+	 * and draws a video scope of it (shared with the desktop): the luma
+	 * levels and clipped share it read. `show` also opens it beside the
+	 * preview.
+	 */
+	"preview.scope": { params: { scope: ApiVideoScope; time?: number; show?: boolean }; result: ApiScopeReading };
 	"preview.capture": {
 		params: { time?: number };
 		result: {

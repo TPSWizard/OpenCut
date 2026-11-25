@@ -62,6 +62,7 @@ import { readStorageQuotaStatus } from "@/services/storage/quota";
 import { storageService } from "@/services/storage/service";
 import { isPreviewQuality } from "@/media/proxy";
 import { usePreviewStore } from "@/preview/preview-store";
+import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { videoCache } from "@/services/video-cache/service";
@@ -477,7 +478,12 @@ async function storageStatus(): Promise<ApiStorageStatus> {
 
 function previewSettings(): ApiPreviewSettings {
 	const state = usePreviewStore.getState();
-	return { quality: state.previewQuality, useProxies: state.useProxies, autoProxies: state.autoProxies };
+	return {
+		quality: state.previewQuality,
+		useProxies: state.useProxies,
+		autoProxies: state.autoProxies,
+		scope: useScopeStore.getState().scope,
+	};
 }
 
 function fileNameFromUrl(url: string): string {
@@ -518,6 +524,28 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			});
 		}
 		return project;
+	};
+
+	/** Renders the preview's own scene (proxies and quality applied) at `time` seconds (default: the playhead). */
+	const renderPreviewFrame = async (time: unknown): Promise<HTMLCanvasElement> => {
+		const project = requireProject();
+		const { canvasSize, fps, background } = project.settings;
+		const tree = buildScene({
+			tracks: editor.scenes.getActiveScene().tracks,
+			mediaAssets: editor.media.getAssets(),
+			duration: editor.timeline.getTotalDuration(),
+			canvasSize,
+			background,
+			isPreview: true,
+			previewSource: { quality: usePreviewStore.getState().previewQuality, useProxies: usePreviewStore.getState().useProxies },
+		});
+		const at = time === undefined ? editor.playback.getCurrentTime() : Math.round(Number(time) * TICKS_PER_SECOND);
+		const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps });
+		const canvas = document.createElement("canvas");
+		canvas.width = canvasSize.width;
+		canvas.height = canvasSize.height;
+		await renderer.renderToCanvas({ node: tree, time: at, targetCanvas: canvas });
+		return canvas;
 	};
 
 	const tracksOf = (): SceneTracks => {
@@ -1290,8 +1318,15 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 		},
 		"preview.getSettings": () => previewSettings(),
-		"preview.setSettings": ({ quality, useProxies, autoProxies }) => {
+		"preview.setSettings": ({ quality, useProxies, autoProxies, scope }) => {
 			const store = usePreviewStore.getState();
+			if (scope !== undefined) {
+				if (scope !== null && !isVideoScope(scope)) {
+					throw new EditorApiError({ code: "invalid_params", message: "scope is waveform, parade, vectorscope, histogram or null" });
+				}
+				useScopeStore.getState().setScope(scope);
+				editor.renderer.requestRedraw();
+			}
 			if (quality !== undefined) {
 				if (!isPreviewQuality(quality)) {
 					throw new EditorApiError({ code: "invalid_params", message: "quality is auto, full, half or quarter" });
@@ -1302,27 +1337,22 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			if (autoProxies !== undefined) store.setAutoProxies(Boolean(autoProxies));
 			return previewSettings();
 		},
+		"preview.scope": async ({ scope, time, show }) => {
+			if (!isVideoScope(scope)) {
+				throw new EditorApiError({ code: "invalid_params", message: "scope is waveform, parade, vectorscope or histogram" });
+			}
+			const canvas = await renderPreviewFrame(time);
+			const reading = scopeOfCanvas({ scope, source: canvas });
+			if (!reading) throw new EditorApiError({ code: "failed", message: "The frame could not be read" });
+			if (show) {
+				useScopeStore.getState().setScope(scope);
+				useScopeStore.setState({ result: reading });
+			}
+			const { rgba: _picture, ...rest } = reading;
+			return rest;
+		},
 		"preview.capture": async ({ time }) => {
-			const project = requireProject();
-			const { canvasSize, fps, background } = project.settings;
-			const tree = buildScene({
-				tracks: editor.scenes.getActiveScene().tracks,
-				mediaAssets: editor.media.getAssets(),
-				duration: editor.timeline.getTotalDuration(),
-				canvasSize,
-				background,
-				isPreview: true,
-				previewSource: { quality: usePreviewStore.getState().previewQuality, useProxies: usePreviewStore.getState().useProxies },
-			});
-			const at =
-				time === undefined
-					? editor.playback.getCurrentTime()
-					: Math.round(Number(time) * TICKS_PER_SECOND);
-			const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps });
-			const canvas = document.createElement("canvas");
-			canvas.width = canvasSize.width;
-			canvas.height = canvasSize.height;
-			await renderer.renderToCanvas({ node: tree, time: at, targetCanvas: canvas });
+			const canvas = await renderPreviewFrame(time);
 			const context = canvas.getContext("2d");
 			let centre: [number, number, number] = [0, 0, 0];
 			if (context) {

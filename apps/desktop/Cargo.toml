@@ -20,6 +20,7 @@ image = { workspace = true }
 media = { workspace = true }
 tracking = { workspace = true }
 deflicker = { workspace = true }
+scopes = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 facetrack = { workspace = true }

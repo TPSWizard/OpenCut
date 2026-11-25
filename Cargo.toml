@@ -24,6 +24,7 @@ members = [
   'crates/crossfade',
   'crates/loudness',
   'crates/trackmix',
+  'crates/scopes',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -55,6 +56,7 @@ retakes = { path = "crates/retakes" }
 crossfade = { path = "crates/crossfade" }
 loudness = { path = "crates/loudness" }
 trackmix = { path = "crates/trackmix" }
+scopes = { path = "crates/scopes" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 

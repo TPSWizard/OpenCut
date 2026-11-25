@@ -182,5 +182,14 @@
   "{count} elements selected": "已选择 {count} 个元素",
   "{count} results": "{count} 个结果",
   "{credit}: credit it where your video is published.": "{credit}：发布视频时请注明出处。",
-  "{quality} · originals": "{quality} · 原始素材"
+  "{quality} · originals": "{quality} · 原始素材",
+  "Scopes": "示波器",
+  "Video scopes: waveform, RGB parade, vectorscope, histogram": "视频示波器：波形图、RGB 分量图、矢量示波器、直方图",
+  "Waveform": "波形图",
+  "RGB parade": "RGB 分量图",
+  "Vectorscope": "矢量示波器",
+  "Histogram": "直方图",
+  "Drawing…": "绘制中…",
+  "Luma 1%: {black} · 99%: {white} (0–255)": "亮度 1%：{black} · 99%：{white}（0–255）",
+  "A channel at 0: {black}% · at 255: {white}%": "有通道为 0：{black}% · 为 255：{white}%"
 }

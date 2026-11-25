@@ -20,6 +20,8 @@ import type {
 } from "@/preview/overlays";
 import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
+import { captureScope } from "@/scopes/capture";
+import { ScopesPanel } from "@/scopes/components/scopes-panel";
 import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
@@ -225,6 +227,8 @@ function PreviewCanvas({
 			.render({ node: renderTree, time: renderTime })
 			.then(() => {
 				renderingRef.current = false;
+				// The open video scope reads the frame just drawn.
+				captureScope({ source: renderer.getOutputCanvas(), playing: editor.playback.getIsPlaying() });
 			});
 	}, [renderer, renderTree, redraws, editor.playback, editor.timeline]);
 
@@ -357,6 +361,7 @@ function PreviewCanvas({
 							onOverlayVisibilityChange={onOverlayVisibilityChange}
 						/>
 					</ContextMenu>
+					<ScopesPanel />
 				</div>
 				<PreviewToolbar onToggleFullscreen={onToggleFullscreen} />
 			</div>

@@ -136,6 +136,10 @@ pub(crate) struct EditorState {
     pub corner_pin_editing: bool,
     /// Platform preset whose safe area the preview shades.
     pub guide: Option<&'static editor::PlatformPreset>,
+    /// The video scope shown beside the preview, if any.
+    pub scope: Option<scopes::Scope>,
+    /// The scope drawn from the last preview frame.
+    pub scope_frame: Option<crate::render_thread::ScopeFrame>,
     /// The last loudness measurement: the clip's id and its report.
     pub loudness: Option<(String, editor::LoudnessReport)>,
     /// In and out marks: a stretch of the timeline to ripple-delete.
@@ -229,6 +233,8 @@ impl EditorState {
             selected_mask_points: Vec::new(),
             corner_pin_editing: false,
             guide: None,
+            scope: None,
+            scope_frame: None,
             loudness: None,
             mark_in: None,
             mark_out: None,
@@ -4291,6 +4297,7 @@ impl EditorState {
             width,
             height,
             generation: self.render_generation,
+            scope: self.scope,
         });
     }
 
@@ -4313,12 +4320,17 @@ impl EditorState {
                 image,
                 time,
                 generation,
+                scope,
             } => {
                 // Older frames can arrive after newer ones were requested;
                 // they are still the newest we have.
                 if generation + 2 >= self.render_generation || self.preview.is_none() {
                     self.preview = Some(image);
                     self.preview_time = Some(time);
+                    // A frame asked for before the scope changed brings the old one.
+                    if self.scope.is_some() && scope.as_ref().map(|frame| frame.scope) == self.scope {
+                        self.scope_frame = scope;
+                    }
                     cx.notify();
                 }
             }
@@ -4793,6 +4805,20 @@ impl EditorState {
             .ok();
         })
         .detach();
+    }
+
+    /// Shows a video scope beside the preview (drawn from each preview
+    /// frame), or hides it.
+    pub(crate) fn set_scope(&mut self, scope: Option<scopes::Scope>, cx: &mut Context<Self>) {
+        if self.scope == scope {
+            return;
+        }
+        self.scope = scope;
+        if scope.is_none() || self.scope_frame.as_ref().map(|frame| frame.scope) != scope {
+            self.scope_frame = None;
+        }
+        self.request_render(cx);
+        cx.notify();
     }
 
     /// Shades a platform's safe area over the preview, or clears it.

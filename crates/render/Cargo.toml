@@ -28,6 +28,7 @@ voice = { workspace = true }
 textwarp = { workspace = true }
 
 [dev-dependencies]
+scopes = { workspace = true }
 richtext = { workspace = true }
 effects = { workspace = true }
 tempfile = { workspace = true }

@@ -33,6 +33,7 @@ retakes = { workspace = true }
 crossfade = { workspace = true }
 loudness = { workspace = true }
 trackmix = { workspace = true }
+scopes = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

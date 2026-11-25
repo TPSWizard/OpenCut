@@ -941,5 +941,13 @@
   "The background:": "背景：",
   "Hidden": "隐藏",
   "Blurred": "模糊",
-  "Blur amount": "模糊程度"
+  "Blur amount": "模糊程度",
+  "Scopes": "示波器",
+  "Waveform": "波形图",
+  "RGB parade": "RGB 分量图",
+  "Vectorscope": "矢量示波器",
+  "Histogram": "直方图",
+  "Drawing…": "绘制中…",
+  "Luma 1%: {black} · 99%: {white} (0–255)": "亮度 1%：{black} · 99%：{white}（0–255）",
+  "A channel at 0: {black}% · at 255: {white}%": "有通道为 0：{black}% · 为 255：{white}%"
 }
