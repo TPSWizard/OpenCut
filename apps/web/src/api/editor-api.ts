@@ -102,6 +102,7 @@ import {
 	getPlatformPreset,
 	platformEncodeSettings,
 } from "@/platforms";
+import { crossfadeElement, removeCrossfade } from "@/crossfade/apply";
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
@@ -2677,6 +2678,29 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return await enhanceVoiceOfElement({ editor, trackId: track.id, elementId: element.id });
 			} catch (error) {
 				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : "Enhance voice failed" });
+			}
+		},
+		"audio.crossfade": ({ elementId, trackId, seconds, curve }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "audio" && element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "audio.crossfade needs an audio or video clip" });
+			}
+			if (seconds !== undefined && (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0 || seconds > 10)) {
+				throw new EditorApiError({ code: "invalid_params", message: "seconds must be between 0 and 10" });
+			}
+			if (curve !== undefined && curve !== "equalPower" && curve !== "linear") {
+				throw new EditorApiError({ code: "invalid_params", message: 'curve must be "equalPower" or "linear"' });
+			}
+			const chosen = curve ?? "equalPower";
+			if (seconds === 0) {
+				removeCrossfade({ editor, trackId: track.id, elementId: element.id });
+				return { seconds: 0, trimmedSeconds: 0, curve: chosen, nextElementId: null };
+			}
+			try {
+				const result = crossfadeElement({ editor, trackId: track.id, elementId: element.id, seconds: seconds ?? 1, curve: chosen });
+				return { seconds: result.seconds, trimmedSeconds: result.trimmedSeconds, curve: chosen, nextElementId: result.nextElementId };
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
 			}
 		},
 		"audio.reduceNoise": async ({ elementId, trackId, reductionDb }) => {

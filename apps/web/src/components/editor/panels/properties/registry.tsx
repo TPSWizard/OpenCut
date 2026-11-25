@@ -1,4 +1,5 @@
 import { DuckingSection } from "@/ducking/components/ducking-section";
+import { CrossfadeSection } from "@/crossfade/components/crossfade-section";
 import { LoudnessSection } from "@/loudness/components/loudness-section";
 import { SilenceSection } from "@/silence/components/silence-section";
 import { ShotsSection } from "@/shots/components/shots-section";
@@ -257,6 +258,7 @@ function buildAudioTab({
 					paramKeys={AUDIO_PARAM_KEYS}
 					sectionKey="audio"
 				/>
+				<CrossfadeSection element={element} trackId={trackId} />
 				<AudioFxSection element={element} trackId={trackId} />
 				<LoudnessSection element={element} trackId={trackId} />
 				<DenoiseSection element={element} trackId={trackId} />

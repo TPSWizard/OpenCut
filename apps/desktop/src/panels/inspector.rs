@@ -1591,11 +1591,93 @@ impl Render for InspectorPanel {
                             }),
                         ));
                     }
+                    // Crossfade into the next clip on the track (`crossfade` /
+                    // `crossfadeCurve`), made in one step by the state.
+                    let (crossfade_seconds, crossfade_curve) = editor::clip_crossfade(&params);
+                    let crossfade_row = self.row(
+                        t("Crossfade (s)"),
+                        "crossfade",
+                        "1",
+                        if crossfade_seconds > 0.0 { number_text(crossfade_seconds) } else { String::new() },
+                        None,
+                        window,
+                        cx,
+                        Box::new(move |text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                if value.is_finite() && value > 0.0 {
+                                    state.crossfade_selected(value, crossfade_curve, cx);
+                                }
+                            }
+                        }),
+                    );
+                    let crossfade_buttons = {
+                        let (apply_state, linear_state, power_state, remove_state) =
+                            (self.state.clone(), self.state.clone(), self.state.clone(), self.state.clone());
+                        let length = if crossfade_seconds > 0.0 { crossfade_seconds } else { 1.0 };
+                        let equal_power = crossfade_curve == editor::CrossfadeCurve::EqualPower;
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(
+                                Button::new("crossfade-apply", t("Crossfade into next"))
+                                    .variant(ButtonVariant::Outline)
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        apply_state.update(cx, |state, cx| state.crossfade_selected(length, crossfade_curve, cx));
+                                    }),
+                            )
+                            .child(
+                                Button::new("crossfade-equal-power", t("Equal power"))
+                                    .variant(if equal_power { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        power_state.update(cx, |state, cx| {
+                                            if crossfade_seconds > 0.0 {
+                                                state.crossfade_selected(crossfade_seconds, editor::CrossfadeCurve::EqualPower, cx);
+                                            } else {
+                                                let mut params = Params::new();
+                                                params.set(editor::CROSSFADE_CURVE_PARAM, "equalPower");
+                                                state.update_selected_params(params, cx);
+                                            }
+                                        });
+                                    }),
+                            )
+                            .child(
+                                Button::new("crossfade-linear", t("Linear"))
+                                    .variant(if equal_power { ButtonVariant::Outline } else { ButtonVariant::Default })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        linear_state.update(cx, |state, cx| {
+                                            if crossfade_seconds > 0.0 {
+                                                state.crossfade_selected(crossfade_seconds, editor::CrossfadeCurve::Linear, cx);
+                                            } else {
+                                                let mut params = Params::new();
+                                                params.set(editor::CROSSFADE_CURVE_PARAM, "linear");
+                                                state.update_selected_params(params, cx);
+                                            }
+                                        });
+                                    }),
+                            )
+                            .when(crossfade_seconds > 0.0, |row| {
+                                row.child(
+                                    Button::new("crossfade-remove", t("Remove crossfade"))
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| {
+                                            remove_state.update(cx, |state, cx| state.remove_crossfade_selected(cx));
+                                        }),
+                                )
+                            })
+                    };
                     content = content
                         .child(Separator::horizontal())
                         .child(self.heading(t("Audio"), window))
                         .child(volume_row)
                         .children(audio_rows)
+                        .child(crossfade_row)
+                        .child(crossfade_buttons)
                         .child({
                             let state = self.state.clone();
                             div()

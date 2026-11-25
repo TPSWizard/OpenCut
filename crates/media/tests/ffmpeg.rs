@@ -115,6 +115,8 @@ fn probes_decodes_and_encodes() {
             // Fades and a pan to the right, so ffmpeg parses `afade` and `pan`.
             fade_in_seconds: 0.1,
             fade_out_seconds: 0.2,
+            fade_in_equal_power: false,
+            fade_out_equal_power: false,
             pan: 0.6,
             // A fade-in, so ffmpeg parses the keyframed volume expression.
             gain_keys: vec![

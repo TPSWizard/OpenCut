@@ -24,6 +24,7 @@ import { mediaSupportsAudio } from "@/media/media-utils";
 import { getSourceTimeAtClipTime, hasVariableRetime, renderRetimedBuffer } from "@/retime";
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { expandCompounds } from "@/timeline/compound";
+import { withAudioCrossfades } from "@/timeline/audio-crossfade";
 import { TICKS_PER_SECOND } from "@/wasm";
 import {
 	computeRmsBuckets,
@@ -102,8 +103,8 @@ export function collectAudibleCandidates({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): AudibleElementCandidate[] {
-	// Compound clips play as their children.
-	const expanded = expandCompounds(tracks);
+	// Compound clips play as their children; crossfaded clips stretched over their cuts.
+	const expanded = withAudioCrossfades(expandCompounds(tracks));
 	const allTracks = [...expanded.overlay, expanded.main, ...expanded.audio];
 	const mediaMap = new Map(mediaAssets.map((a) => [a.id, a]));
 	const candidates: AudibleElementCandidate[] = [];
@@ -496,7 +497,8 @@ export async function collectAudioMixSources({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): Promise<AudioMixSource[]> {
-	const expanded = expandCompounds(tracks);
+	// Compound clips play as their children; crossfaded clips stretched over their cuts.
+	const expanded = withAudioCrossfades(expandCompounds(tracks));
 	const orderedTracks = [...expanded.overlay, expanded.main, ...expanded.audio];
 	const audioMixSources: AudioMixSource[] = [];
 	const mediaMap = new Map<string, MediaAsset>(
@@ -560,7 +562,8 @@ export async function collectAudioClips({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): Promise<AudioClipSource[]> {
-	const expanded = expandCompounds(tracks);
+	// Compound clips play as their children; crossfaded clips stretched over their cuts.
+	const expanded = withAudioCrossfades(expandCompounds(tracks));
 	const orderedTracks = [...expanded.overlay, expanded.main, ...expanded.audio];
 	const clips: AudioClipSource[] = [];
 	const mediaMap = new Map<string, MediaAsset>(

@@ -32,6 +32,10 @@ pub struct AudioClipPlan {
     /// [`clip_fades`]).
     pub fade_in_seconds: f64,
     pub fade_out_seconds: f64,
+    /// The fades' curves: linear, or equal power under a crossfade (see
+    /// [`crate::crossfaded_elements`]).
+    pub fade_in_curve: crate::CrossfadeCurve,
+    pub fade_out_curve: crate::CrossfadeCurve,
     /// Stereo pan from -1 (left) to 1 (right); see [`pan_stereo`].
     pub pan: f64,
     /// Equaliser, compressor and limiter (`audio.*` params); see [`clip_audio_fx`].
@@ -105,15 +109,16 @@ impl AudioClipPlan {
         !self.volume.is_empty() || self.fade_in_seconds > 0.0 || self.fade_out_seconds > 0.0
     }
 
-    /// The fade's linear gain (0 to 1) `local` seconds into the clip.
+    /// The fade's linear gain (0 to 1) `local` seconds into the clip, on
+    /// each fade's curve.
     pub fn fade_gain_at(&self, local: f64) -> f64 {
         let length = self.timeline_duration.to_seconds_f64();
         let mut gain = 1.0;
         if self.fade_in_seconds > 0.0 && local < self.fade_in_seconds {
-            gain *= local.max(0.0) / self.fade_in_seconds;
+            gain *= self.fade_in_curve.gain(local.max(0.0) / self.fade_in_seconds);
         }
         if self.fade_out_seconds > 0.0 && local > length - self.fade_out_seconds {
-            gain *= (length - local).max(0.0) / self.fade_out_seconds;
+            gain *= self.fade_out_curve.gain((length - local).max(0.0) / self.fade_out_seconds);
         }
         gain.clamp(0.0, 1.0)
     }
@@ -140,6 +145,8 @@ fn db_to_gain(db: f64) -> f64 {
 
 /// Every audible clip in the project, in timeline order. Muted tracks and
 /// elements are left out, as are video clips whose source has no audio.
+/// Clips joined by a crossfade play stretched over the cut into their
+/// handles ([`crate::crossfaded_elements`]).
 pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
     // Compound clips play as their children.
     let expanded = crate::expand_compounds(project);
@@ -149,7 +156,7 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
         if track.muted {
             continue;
         }
-        for element in &track.elements {
+        for element in &crate::crossfaded_elements(track) {
             if element.hidden || element.params.bool("muted", false) {
                 continue;
             }
@@ -177,6 +184,8 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
                 volume: element.animations.get("volume").cloned().unwrap_or_default(),
                 fade_in_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).0,
                 fade_out_seconds: clip_fades(&element.params, element.duration.to_seconds_f64()).1,
+                fade_in_curve: crate::fade_curve(&element.params, "fadeInCurve"),
+                fade_out_curve: crate::fade_curve(&element.params, "fadeOutCurve"),
                 pan: clip_pan(&element.params),
                 fx: clip_audio_fx(&element.params),
             });

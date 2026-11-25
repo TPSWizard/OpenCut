@@ -916,5 +916,16 @@
   "Measuring the clip's brightness, frame by frame…": "正在逐帧测量片段亮度…",
   "Deflicker on: {frames} frames measured.": "去频闪已开启：已测量 {frames} 帧。",
   "Evens out flicker from timelapses and LED or fluorescent light. {frames} frames measured.": "消除延时摄影和 LED 或荧光灯造成的闪烁。已测量 {frames} 帧。",
-  "Evens out flicker from timelapses and LED or fluorescent light. The clip's frames are measured once when you pick a strength.": "消除延时摄影和 LED 或荧光灯造成的闪烁。选择强度时会测量一次片段的各帧。"
+  "Evens out flicker from timelapses and LED or fluorescent light. The clip's frames are measured once when you pick a strength.": "消除延时摄影和 LED 或荧光灯造成的闪烁。选择强度时会测量一次片段的各帧。",
+  "equal power": "等功率",
+  "linear": "线性",
+  "Crossfade into the next clip:": "交叉淡化到下一个片段：",
+  "Trimmed": "已从两个片段共修剪",
+  "off the two clips for spare audio; the clips after moved left to match.": "以留出备用音频；其后的片段随之左移。",
+  "Crossfade removed.": "已移除交叉淡化。",
+  "Crossfade (s)": "交叉淡化（秒）",
+  "Crossfade into next": "交叉淡化到下一个",
+  "Equal power": "等功率",
+  "Linear": "线性",
+  "Remove crossfade": "移除交叉淡化"
 }

@@ -138,25 +138,31 @@ pub struct AudioMixClip {
     /// Keyframed volume; the value is held before the first and after the
     /// last key.
     pub gain_keys: Vec<GainKey>,
-    /// Linear fades from and to silence at the clip's start and end.
+    /// Fades from and to silence at the clip's start and end: straight
+    /// ramps, or equal power (a quarter sine, as under a crossfade).
     pub fade_in_seconds: f64,
     pub fade_out_seconds: f64,
+    pub fade_in_equal_power: bool,
+    pub fade_out_equal_power: bool,
     /// Stereo pan from -1 (left) to 1 (right), as Web Audio's
     /// StereoPannerNode pans two channels.
     pub pan: f64,
 }
 
-/// `afade` filters for a clip's fades (`tri` is a straight ramp), each
-/// with a leading comma; empty without fades.
+/// `afade` filters for a clip's fades (`tri` is a straight ramp, `qsin`
+/// the equal-power quarter sine), each with a leading comma; empty without
+/// fades.
 fn fade_filters(clip: &AudioMixClip) -> String {
     let length = (clip.source_end_seconds - clip.source_start_seconds).max(0.0);
     let mut filters = String::new();
     if clip.fade_in_seconds > 0.0 {
-        filters.push_str(&format!(",afade=t=in:st=0:d={:.6}:curve=tri", clip.fade_in_seconds));
+        let curve = if clip.fade_in_equal_power { "qsin" } else { "tri" };
+        filters.push_str(&format!(",afade=t=in:st=0:d={:.6}:curve={curve}", clip.fade_in_seconds));
     }
     if clip.fade_out_seconds > 0.0 {
+        let curve = if clip.fade_out_equal_power { "qsin" } else { "tri" };
         filters.push_str(&format!(
-            ",afade=t=out:st={:.6}:d={:.6}:curve=tri",
+            ",afade=t=out:st={:.6}:d={:.6}:curve={curve}",
             (length - clip.fade_out_seconds).max(0.0),
             clip.fade_out_seconds
         ));
@@ -564,6 +570,8 @@ mod tests {
                     gain: 1.0,
                     fade_in_seconds: 0.0,
                     fade_out_seconds: 0.0,
+                    fade_in_equal_power: false,
+                    fade_out_equal_power: false,
                     pan: 0.0,
                     gain_keys: Vec::new(),
                 },
@@ -575,6 +583,8 @@ mod tests {
                     gain: 0.5,
                     fade_in_seconds: 0.0,
                     fade_out_seconds: 0.0,
+                    fade_in_equal_power: false,
+                    fade_out_equal_power: false,
                     pan: 0.0,
                     gain_keys: Vec::new(),
                 },
@@ -608,6 +618,8 @@ mod tests {
             // Out of order on purpose: keys are sorted by time.
             fade_in_seconds: 0.0,
             fade_out_seconds: 0.0,
+            fade_in_equal_power: false,
+            fade_out_equal_power: false,
             pan: 0.0,
             gain_keys: vec![
                 key(2.0, 0.0, GainEase::Smooth),
@@ -670,6 +682,8 @@ mod tests {
                 gain: 1.0,
                 fade_in_seconds: 0.0,
                 fade_out_seconds: 0.0,
+                fade_in_equal_power: false,
+                fade_out_equal_power: false,
                 pan: 0.0,
                 gain_keys: Vec::new(),
             }],

@@ -12,6 +12,11 @@ mod animation;
 mod auto_zoom;
 mod assets;
 mod audio;
+mod audio_crossfade;
+pub use audio_crossfade::{
+    CROSSFADE_CURVE_PARAM, CROSSFADE_MAX_SECONDS, CROSSFADE_PARAM, CrossfadeCurve, CrossfadeOutcome, clip_crossfade, crossfade_commands,
+    crossfaded_elements, fade_curve, remove_crossfade_command, track_clips,
+};
 mod beats;
 mod clip_animation;
 mod broll;

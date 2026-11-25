@@ -424,7 +424,7 @@
   "Bottom right Y (%)": "右下 Y（%）",
   "Bottom left X (%)": "左下 X（%）",
   "Bottom left Y (%)": "左下 Y（%）",
-  "Curve": "弯曲",
+  "Curve": "曲线",
   "Motion blur": "运动模糊",
   "Deflicker": "去频闪",
   "Style words": "字词样式",
@@ -460,5 +460,13 @@
   "Arch": "拱形",
   "Smile": "微笑弧",
   "Flat": "平直",
-  "Circle": "圆形"
+  "Circle": "圆形",
+  "Crossfade": "交叉淡化",
+  "Equal power": "等功率",
+  "Linear": "线性",
+  "No audio or video clip starts where this one ends on its track.": "此轨道上没有在此片段结束处开始的音频或视频片段。",
+  "Update crossfade": "更新交叉淡化",
+  "Crossfade into next": "交叉淡化到下一个",
+  "Remove": "移除",
+  "Crossfade removed.": "已移除交叉淡化。"
 }

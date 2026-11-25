@@ -1290,6 +1290,18 @@ export interface EditorApiMethods {
 	 * the steady background, `reductionDb` default 12) as a new media asset
 	 * and points the clip at it; a video clip's audio is separated first.
 	 */
+	/**
+	 * Crossfades a clip into the next audio or video clip on its track over
+	 * `seconds` (default 1, at most 10) on `curve` (`equalPower`, the
+	 * default, or `linear`), in one undo step; the shared `crossfade` crate,
+	 * as on the desktop. Both play over the cut from their spare source
+	 * audio; where that is short the two are trimmed to make room and the
+	 * clips after move left (`trimmedSeconds`). `seconds: 0` removes it.
+	 */
+	"audio.crossfade": {
+		params: ApiElementLocator & { seconds?: number; curve?: "equalPower" | "linear" };
+		result: { seconds: number; trimmedSeconds: number; curve: "equalPower" | "linear"; nextElementId: string | null };
+	};
 	"audio.reduceNoise": {
 		params: ApiElementLocator & { reductionDb?: number };
 		result: { assetId: string; assetName: string; elementId: string; trackId: string; seconds: number; channels: number };

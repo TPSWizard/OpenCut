@@ -21,6 +21,7 @@ members = [
   'crates/richtext',
   'crates/multicam',
   'crates/retakes',
+  'crates/crossfade',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -49,6 +50,7 @@ deflicker = { path = "crates/deflicker" }
 richtext = { path = "crates/richtext" }
 multicam = { path = "crates/multicam" }
 retakes = { path = "crates/retakes" }
+crossfade = { path = "crates/crossfade" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 

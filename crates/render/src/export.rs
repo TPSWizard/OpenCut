@@ -78,6 +78,8 @@ pub fn export_project(
                 gain_keys: gain_keys(&clip.volume),
                 fade_in_seconds: clip.fade_in_seconds,
                 fade_out_seconds: clip.fade_out_seconds,
+                fade_in_equal_power: clip.fade_in_curve == editor::CrossfadeCurve::EqualPower,
+                fade_out_equal_power: clip.fade_out_curve == editor::CrossfadeCurve::EqualPower,
                 pan: clip.pan,
             })
             .collect()

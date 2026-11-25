@@ -30,6 +30,7 @@ richtext = { workspace = true }
 multicam = { workspace = true }
 facetrack = { workspace = true }
 retakes = { workspace = true }
+crossfade = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

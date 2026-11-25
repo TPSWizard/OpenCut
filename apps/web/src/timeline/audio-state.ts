@@ -1,6 +1,7 @@
 import { hasKeyframesForPath } from "@/animation/keyframe-query";
 import { resolveNumberAtTime } from "@/animation/values";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "./audio-constants";
+import { asCurve, curveGain } from "./audio-crossfade";
 import type { TimelineElement } from "./types";
 const DEFAULT_STEP_SECONDS = 1 / 60;
 
@@ -67,13 +68,19 @@ export function hasAudioFades({ element }: { element: AudioCapableElement }): bo
 	return fadeIn > 0 || fadeOut > 0;
 }
 
-/** The fade's linear gain (0 to 1) `localTime` seconds into the clip: a straight ramp up, then down. */
+/**
+ * The fade's linear gain (0 to 1) `localTime` seconds into the clip: a
+ * ramp up, then down, each on its curve (`fadeInCurve` / `fadeOutCurve`:
+ * straight, or equal power under a crossfade; see `./audio-crossfade`).
+ */
 export function fadeGainAt({ element, localTime }: { element: AudioCapableElement; localTime: number }): number {
 	const { fadeIn, fadeOut } = getAudioFades({ element });
 	const length = element.duration / TICKS_PER_SECOND;
 	let gain = 1;
-	if (fadeIn > 0 && localTime < fadeIn) gain *= Math.max(0, localTime) / fadeIn;
-	if (fadeOut > 0 && localTime > length - fadeOut) gain *= Math.max(0, length - localTime) / fadeOut;
+	if (fadeIn > 0 && localTime < fadeIn) gain *= curveGain(asCurve(element.params.fadeInCurve), Math.max(0, localTime) / fadeIn);
+	if (fadeOut > 0 && localTime > length - fadeOut) {
+		gain *= curveGain(asCurve(element.params.fadeOutCurve), Math.max(0, length - localTime) / fadeOut);
+	}
 	return Math.min(1, Math.max(0, gain));
 }
 

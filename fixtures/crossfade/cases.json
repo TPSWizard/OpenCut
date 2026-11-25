@@ -1,0 +1,1279 @@
+{
+ "source": "scratchpad crossfade_ref.py, an independent reference",
+ "ticksPerSecond": 120000,
+ "cases": [
+  {
+   "name": "centred with handles",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "equalPower"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 60000,
+     "right": 60000,
+     "curve": "equalPower"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 540000,
+     "trimStart": 0,
+     "trimEnd": 180000,
+     "fadeIn": 0.0,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "equalPower"
+    },
+    {
+     "start": 420000,
+     "duration": 540000,
+     "trimStart": 180000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "equalPower",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "leans on the side with handle",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 24000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 360000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 96000,
+     "right": 24000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 504000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "fadeIn": 0.0,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 384000,
+     "duration": 576000,
+     "trimStart": 264000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "no handles plays a plain cut",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ]
+  },
+  {
+   "name": "gap too wide",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 482400,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ]
+  },
+  {
+   "name": "within 10 ms counts",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 480600,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 60000,
+     "right": 60000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 540000,
+     "trimStart": 0,
+     "trimEnd": 180000,
+     "fadeIn": 0.0,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 420600,
+     "duration": 540000,
+     "trimStart": 180000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "limited by the shorter clip",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 720000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 480000,
+     "curve": "linear"
+    },
+    {
+     "start": 720000,
+     "duration": 180000,
+     "trimStart": 600000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 90000,
+     "right": 90000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 810000,
+     "trimStart": 0,
+     "trimEnd": 510000,
+     "fadeIn": 0.0,
+     "fadeOut": 1.5,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 630000,
+     "duration": 270000,
+     "trimStart": 510000,
+     "trimEnd": 0,
+     "fadeIn": 1.5,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "capped at 10 s",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 3600000,
+     "trimStart": 0,
+     "trimEnd": 2400000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 1800000,
+     "curve": "linear"
+    },
+    {
+     "start": 3600000,
+     "duration": 3600000,
+     "trimStart": 2400000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 600000,
+     "right": 600000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 4200000,
+     "trimStart": 0,
+     "trimEnd": 1800000,
+     "fadeIn": 0.0,
+     "fadeOut": 10.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 3000000,
+     "duration": 4200000,
+     "trimStart": 1800000,
+     "trimEnd": 0,
+     "fadeIn": 10.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "own fades kept on the far side, shortened",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 360000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 1.8,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 240000,
+     "duration": 240000,
+     "trimStart": 360000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 2.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 60000,
+     "right": 60000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 300000,
+     "trimStart": 0,
+     "trimEnd": 300000,
+     "fadeIn": 1.5,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 180000,
+     "duration": 300000,
+     "trimStart": 300000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 1.5,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "speed change has none",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": true,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ]
+  },
+  {
+   "name": "hidden neighbour has none",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": false,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ]
+  },
+  {
+   "name": "chain of three",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 240000,
+     "curve": "linear"
+    },
+    {
+     "start": 360000,
+     "duration": 240000,
+     "trimStart": 240000,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 240000,
+     "curve": "linear"
+    },
+    {
+     "start": 600000,
+     "duration": 360000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 120000,
+     "right": 120000,
+     "curve": "linear"
+    },
+    {
+     "from": 1,
+     "to": 2,
+     "left": 60000,
+     "right": 60000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 120000,
+     "fadeIn": 0.0,
+     "fadeOut": 2.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 240000,
+     "duration": 420000,
+     "trimStart": 120000,
+     "trimEnd": 180000,
+     "fadeIn": 2.0,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 540000,
+     "duration": 420000,
+     "trimStart": 180000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    }
+   ]
+  },
+  {
+   "name": "unsorted input",
+   "clips": [
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 120000,
+     "curve": "equalPower"
+    }
+   ],
+   "joins": [
+    {
+     "from": 1,
+     "to": 0,
+     "left": 60000,
+     "right": 60000,
+     "curve": "equalPower"
+    }
+   ],
+   "played": [
+    {
+     "start": 420000,
+     "duration": 540000,
+     "trimStart": 180000,
+     "trimEnd": 0,
+     "fadeIn": 1.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "equalPower",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 0,
+     "duration": 540000,
+     "trimStart": 0,
+     "trimEnd": 180000,
+     "fadeIn": 0.0,
+     "fadeOut": 1.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "equalPower"
+    }
+   ]
+  },
+  {
+   "name": "plan: no handles trims both and ripples",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 960000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 1260000,
+     "duration": 120000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 120000,
+    "result": {
+     "to": 1,
+     "length": 120000,
+     "trimOut": 60000,
+     "trimIn": 60000,
+     "shift": 120000,
+     "fromEdit": {
+      "start": 0,
+      "duration": 420000,
+      "trimStart": 0,
+      "trimEnd": 60000
+     },
+     "toEdit": {
+      "start": 420000,
+      "duration": 420000,
+      "trimStart": 60000,
+      "trimEnd": 0
+     },
+     "moved": [
+      2,
+      3
+     ]
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 60000,
+      "right": 60000,
+      "curve": "equalPower"
+     }
+    ]
+   }
+  },
+  {
+   "name": "plan: handles enough, nothing moves",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 360000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 360000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 960000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 240000,
+    "result": {
+     "to": 1,
+     "length": 240000,
+     "trimOut": 0,
+     "trimIn": 0,
+     "shift": 0,
+     "fromEdit": {
+      "start": 0,
+      "duration": 480000,
+      "trimStart": 0,
+      "trimEnd": 360000
+     },
+     "toEdit": {
+      "start": 480000,
+      "duration": 480000,
+      "trimStart": 360000,
+      "trimEnd": 0
+     },
+     "moved": []
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 120000,
+      "right": 120000,
+      "curve": "linear"
+     }
+    ]
+   }
+  },
+  {
+   "name": "plan: one side short",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 30000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 600000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 960000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 240000,
+    "result": {
+     "to": 1,
+     "length": 240000,
+     "trimOut": 90000,
+     "trimIn": 0,
+     "shift": 90000,
+     "fromEdit": {
+      "start": 0,
+      "duration": 390000,
+      "trimStart": 0,
+      "trimEnd": 120000
+     },
+     "toEdit": {
+      "start": 390000,
+      "duration": 480000,
+      "trimStart": 600000,
+      "trimEnd": 0
+     },
+     "moved": [
+      2
+     ]
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 120000,
+      "right": 120000,
+      "curve": "linear"
+     }
+    ]
+   }
+  },
+  {
+   "name": "plan: short clips shrink it",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 108000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 108000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 240000,
+    "result": {
+     "to": 1,
+     "length": 72000,
+     "trimOut": 36000,
+     "trimIn": 36000,
+     "shift": 72000,
+     "fromEdit": {
+      "start": 0,
+      "duration": 72000,
+      "trimStart": 0,
+      "trimEnd": 36000
+     },
+     "toEdit": {
+      "start": 72000,
+      "duration": 324000,
+      "trimStart": 36000,
+      "trimEnd": 0
+     },
+     "moved": []
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 36000,
+      "right": 36000,
+      "curve": "linear"
+     }
+    ]
+   }
+  },
+  {
+   "name": "plan: too short",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 1200,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 1200,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 120000,
+    "result": {
+     "error": "tooShort"
+    }
+   }
+  },
+  {
+   "name": "plan: no neighbour",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 600000,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 120000,
+    "result": {
+     "error": "noNeighbour"
+    }
+   }
+  },
+  {
+   "name": "plan: speed change",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": true,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 120000,
+    "result": {
+     "error": "retimed"
+    }
+   }
+  },
+  {
+   "name": "plan: after a crossfade into it",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 240000,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 240000,
+     "curve": "linear"
+    },
+    {
+     "start": 360000,
+     "duration": 240000,
+     "trimStart": 240000,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 600000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [
+    {
+     "from": 0,
+     "to": 1,
+     "left": 120000,
+     "right": 120000,
+     "curve": "linear"
+    }
+   ],
+   "played": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 120000,
+     "fadeIn": 0.0,
+     "fadeOut": 2.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    {
+     "start": 240000,
+     "duration": 360000,
+     "trimStart": 120000,
+     "trimEnd": 0,
+     "fadeIn": 2.0,
+     "fadeOut": 0.0,
+     "fadeInCurve": "linear",
+     "fadeOutCurve": "linear"
+    },
+    null
+   ],
+   "plan": {
+    "index": 1,
+    "ticks": 360000,
+    "result": {
+     "to": 2,
+     "length": 80000,
+     "trimOut": 40000,
+     "trimIn": 40000,
+     "shift": 80000,
+     "fromEdit": {
+      "start": 360000,
+      "duration": 200000,
+      "trimStart": 240000,
+      "trimEnd": 40000
+     },
+     "toEdit": {
+      "start": 560000,
+      "duration": 320000,
+      "trimStart": 40000,
+      "trimEnd": 0
+     },
+     "moved": []
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 100000,
+      "right": 100000,
+      "curve": "linear"
+     },
+     {
+      "from": 1,
+      "to": 2,
+      "left": 40000,
+      "right": 40000,
+      "curve": "linear"
+     }
+    ]
+   }
+  },
+  {
+   "name": "plan: odd ticks",
+   "clips": [
+    {
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    },
+    {
+     "start": 480000,
+     "duration": 480000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "retimed": false,
+     "eligible": true,
+     "fadeIn": 0.0,
+     "fadeOut": 0.0,
+     "crossfade": 0,
+     "curve": "linear"
+    }
+   ],
+   "joins": [],
+   "played": [
+    null,
+    null
+   ],
+   "plan": {
+    "index": 0,
+    "ticks": 120001,
+    "result": {
+     "to": 1,
+     "length": 120001,
+     "trimOut": 60001,
+     "trimIn": 60000,
+     "shift": 120001,
+     "fromEdit": {
+      "start": 0,
+      "duration": 419999,
+      "trimStart": 0,
+      "trimEnd": 60001
+     },
+     "toEdit": {
+      "start": 419999,
+      "duration": 420000,
+      "trimStart": 60000,
+      "trimEnd": 0
+     },
+     "moved": []
+    },
+    "afterJoins": [
+     {
+      "from": 0,
+      "to": 1,
+      "left": 60000,
+      "right": 60001,
+      "curve": "linear"
+     }
+    ]
+   }
+  }
+ ]
+}

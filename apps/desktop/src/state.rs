@@ -1813,6 +1813,45 @@ impl EditorState {
         self.face_effect_selected(true, cx);
     }
 
+    /// Crossfades the selected audio or video clip into the next one on its
+    /// track over `seconds`, in one undo step: trimmed for spare audio
+    /// where the clips have too little, the clips after moved left to
+    /// close the gap (`editor::crossfade_commands`).
+    pub(crate) fn crossfade_selected(&mut self, seconds: f64, curve: editor::CrossfadeCurve, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let element_id = element.id.clone();
+        let outcome = match editor::crossfade_commands(self.project(), &element_id, seconds, curve) {
+            Ok(outcome) => outcome,
+            Err(message) => return self.set_status(format!("{message}."), cx),
+        };
+        if self.execute(outcome.command, cx).is_none() {
+            return;
+        }
+        let curve_name = if curve == editor::CrossfadeCurve::EqualPower { t("equal power") } else { t("linear") };
+        let message = if outcome.trimmed_seconds > 0.0 {
+            format!(
+                "{} {:.2} s ({curve_name}). {} {:.2} s {}",
+                t("Crossfade into the next clip:"),
+                outcome.seconds,
+                t("Trimmed"),
+                outcome.trimmed_seconds,
+                t("off the two clips for spare audio; the clips after moved left to match.")
+            )
+        } else {
+            format!("{} {:.2} s ({curve_name}).", t("Crossfade into the next clip:"), outcome.seconds)
+        };
+        self.set_status(message, cx);
+    }
+
+    /// Removes the selected clip's crossfade into the next one (its trims stay).
+    pub(crate) fn remove_crossfade_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let command = editor::remove_crossfade_command(&element.id);
+        if self.execute(command, cx).is_some() {
+            self.set_status(t("Crossfade removed."), cx);
+        }
+    }
+
     fn face_effect_selected(&mut self, blur: bool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         let still = match &element.kind {

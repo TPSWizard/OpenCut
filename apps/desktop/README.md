@@ -723,6 +723,30 @@ StereoPannerNode (at 0 nothing changes), so playback here, the export
 (`afade` and `pan` filters) and the web preview and export all sound the
 same.
 
+## Audio crossfade
+
+Select an audio or video clip and, under **Audio**, click **Crossfade into
+next** (or type a length in **Crossfade (s)** and press Enter) to join it to
+the clip that starts where it ends on the same track. **Equal power** (the
+default) keeps the loudness steady through the join; **Linear** is a
+straight ramp, about 3 dB quieter in the middle. **Remove crossfade** takes
+it off. It is one undo step.
+
+The timeline itself never overlaps: for playback both clips run over the
+cut into their spare source audio (the outgoing clip's trimmed end, the
+incoming clip's trimmed start), half each side when both have it, so they
+play together for the crossfade's length. Where a clip has too little spare
+audio (two whole files butted together have none) the command trims the two
+to make room and moves the incoming clip and those after it on the track
+left to close the gap; nothing is lost, the trimmed audio is what plays under
+the crossfade. The shared `crossfade` crate works this out in ticks for both
+editors (the web through WASM), stored as the clip's `crossfade` and
+`crossfadeCurve` params; clips with a speed change cannot be crossfaded, and
+a crossfade is at most 10 s. The live mixer follows the curve and the export
+uses FFmpeg's `afade` quarter-sine for equal power. Checked against
+`fixtures/crossfade/cases.json` and, with real tones, through the live mixer
+and an export (`crates/render/tests/crossfade.rs`).
+
 ## Enhance voice
 
 The inspector's **Enhance voice** button (audio and video clips) cleans

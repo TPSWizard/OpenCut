@@ -1372,6 +1372,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
+name = "crossfade"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1608,6 +1616,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "editor"
 version = "0.1.0"
 dependencies = [
+ "crossfade",
  "deflicker",
  "facetrack",
  "multicam",
@@ -4272,6 +4281,7 @@ dependencies = [
  "bridge",
  "compositor",
  "console_error_panic_hook",
+ "crossfade",
  "deflicker",
  "effects",
  "facetrack",
