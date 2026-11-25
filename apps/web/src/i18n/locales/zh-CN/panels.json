@@ -468,5 +468,14 @@
   "Update crossfade": "更新交叉淡化",
   "Crossfade into next": "交叉淡化到下一个",
   "Remove": "移除",
-  "Crossfade removed.": "已移除交叉淡化。"
+  "Crossfade removed.": "已移除交叉淡化。",
+  "Mix loudness": "混音响度",
+  "Off: as it plays": "关：按播放时",
+  "Streaming (−14 LUFS, −1 dBTP)": "流媒体（−14 LUFS，−1 dBTP）",
+  "Podcast (−16 LUFS, −1 dBTP)": "播客（−16 LUFS，−1 dBTP）",
+  "Broadcast EBU R128 (−23 LUFS, −1 dBTP)": "广播 EBU R128（−23 LUFS，−1 dBTP）",
+  "Loud social (−11 LUFS, −1 dBTP)": "高响度社交（−11 LUFS，−1 dBTP）",
+  "The mix is exported as it plays, with only overs caught.": "按播放时的混音导出，仅拦截过载。",
+  "The whole mix is measured and brought to the target; a limiter holds true peaks under -1 dBTP.": "测量整个混音并调整到目标响度；限制器将真峰值保持在 -1 dBTP 以下。",
+  "Mix loudness: {from} → {to} LUFS ({gain} dB), true peak {peak} dBTP": "混音响度：{from} → {to} LUFS（{gain} dB），真峰值 {peak} dBTP"
 }

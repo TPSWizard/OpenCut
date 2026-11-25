@@ -795,11 +795,28 @@ loudest momentary and short-term windows, on the clip's source after
 trims and before its own volume. **Normalise** sets the clip's volume so
 the integrated loudness meets the chosen target (streaming −14, podcast
 −16, broadcast −23 or loud −11 LUFS) without the true peak passing −1
-dBTP, in one undo step. The arithmetic is `crates/editor/src/loudness.rs`,
-written from the standard (the same code as the web app's
-`src/loudness/r128.ts`); channels are weighted equally, so surround
-material is measured as if every channel were a front channel. A live
-meter during playback is not there yet.
+dBTP, in one undo step. The arithmetic is the shared `crates/loudness`
+crate, written from the standard (the web app's `src/loudness/r128.ts` is
+the same arithmetic, and its mix mastering and meter run the crate through
+WASM); channels are weighted equally, so surround material is measured as
+if every channel were a front channel.
+
+**Whole-mix loudness at export.** The export dialog's **Loudness** row is
+off by default (the mix is exported as it plays) or one of the delivery
+targets (−14, −16, −23, −11 LUFS). With a target, the mix is first rendered
+by FFmpeg exactly as the export would mix it, measured, given one gain to
+the target and passed through a look-ahead true-peak limiter (the gain
+each sample needs is held 5 ms ahead, released over 50 ms and smoothed,
+the same on both channels, aiming 0.1 dB under −1 dBTP); limiting takes a
+little loudness off, so up to three passes raise the gain until the result
+is within 0.2 LU of the target. The mastered mix is then encoded with the
+picture, and the finished dialog says what was done ("Mix loudness: −24.3 →
+−14.1 LUFS (+14.5 dB, peaks limited), true peak −1.1 dBTP"). The AAC
+encoder can move the true peak a few hundredths of a decibel.
+
+**Meter.** While the preview plays, the transport shows a peak bar (green,
+yellow from −6 dBFS, red from −1) and the momentary (400 ms) and
+short-term (3 s) loudness of what the audio device is playing.
 
 ## Exporting captions
 
@@ -827,7 +844,8 @@ burn an exported `.ass` onto a finished video yourself
 window: it takes a project directory (`--project ~/.opencut/projects/<id>`)
 or a bundle (`--bundle promo.opencut.zip`) and writes a video (`--out
 promo.mp4`, `--format`, `--quality`, `--codec h264|hevc|av1|vp9`,
-`--bitrate <Mbps>`, `--hardware`, `--no-audio`), applies a platform
+`--bitrate <Mbps>`, `--hardware`, `--no-audio`, `--loudness
+streaming|podcast|broadcast|loud|<LUFS>` for whole-mix loudness), applies a platform
 preset (`--preset youtube-shorts`, which sets the canvas and frame rate and
 encodes H.264 High with a closed GOP and faststart), overrides the canvas
 and rate (`--size 1080x1920`, `--fps 30`), writes one still (`--frame-at

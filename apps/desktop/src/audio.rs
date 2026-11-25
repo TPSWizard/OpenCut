@@ -2,6 +2,8 @@
 //! device callback, which only copies samples out. The callback also
 //! counts the frames it has played, which is the clock the picture
 //! follows while audio is running (see [`AudioOutput::position_seconds`]).
+//! What the callback plays also goes through a loudness meter (the shared
+//! `loudness` crate, as the web preview's), read by the preview's meter.
 
 use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
@@ -29,15 +31,18 @@ struct Ring {
     /// Frames the device has taken since then (silence on underrun
     /// counts too: time still passes).
     played_frames: u64,
+    /// Loudness of what has been played since the last seek or pause.
+    meter: editor::LoudnessMeter,
 }
 
 impl Ring {
-    fn new(sample_rate: u32) -> Self {
+    fn new(sample_rate: u32, channels: usize) -> Self {
         Self {
             samples: VecDeque::with_capacity(sample_rate as usize),
             playing: false,
             base_seconds: 0.0,
             played_frames: 0,
+            meter: editor::LoudnessMeter::new(sample_rate, channels),
         }
     }
 
@@ -51,12 +56,14 @@ impl Ring {
             *sample = self.samples.pop_front().unwrap_or(0.0);
         }
         self.played_frames += (data.len() / channels.max(1)) as u64;
+        self.meter.push_interleaved(data);
     }
 
     fn seek(&mut self, seconds: f64) {
         self.samples.clear();
         self.base_seconds = seconds;
         self.played_frames = 0;
+        self.meter.reset();
     }
 
     /// Drops buffered sound without touching the clock (the mixer's part
@@ -107,7 +114,7 @@ impl AudioOutput {
             channels,
         };
 
-        let ring = Arc::new(Mutex::new(Ring::new(sample_rate)));
+        let ring = Arc::new(Mutex::new(Ring::new(sample_rate, channels as usize)));
         let callback_ring = Arc::clone(&ring);
         let callback_channels = channels as usize;
         let stream = device
@@ -155,8 +162,17 @@ impl AudioOutput {
     }
 
     pub(crate) fn pause(&self) {
-        self.ring.lock().unwrap_or_else(|e| e.into_inner()).playing = false;
+        let mut ring = self.ring.lock().unwrap_or_else(|e| e.into_inner());
+        ring.playing = false;
+        ring.meter.reset();
+        drop(ring);
         self.commands.send(AudioCommand::Pause).ok();
+    }
+
+    /// The loudness meter's readings while playing; `None` while paused.
+    pub(crate) fn meter_readings(&self) -> Option<editor::MeterReadings> {
+        let ring = self.ring.lock().unwrap_or_else(|e| e.into_inner());
+        ring.playing.then(|| ring.meter.readings())
     }
 
     /// Where the device is on the timeline, from the frames it has played
@@ -242,7 +258,7 @@ mod tests {
 
     #[test]
     fn the_ring_clock_counts_played_frames_from_the_last_seek() {
-        let mut ring = Ring::new(48_000);
+        let mut ring = Ring::new(48_000, 2);
         assert_eq!(ring.position_seconds(48_000), None, "paused: no clock");
         ring.seek(2.0);
         ring.playing = true;

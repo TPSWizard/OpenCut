@@ -2,12 +2,14 @@
 //! gated integrated loudness, loudness range (EBU Tech 3342), true peak
 //! (4× oversampled) and the loudest momentary (400 ms) and short-term
 //! (3 s) windows, plus the gain that normalises a clip to a target. The
-//! web app's `src/loudness/r128.ts` is the same arithmetic.
+//! web app's `src/loudness/r128.ts` is the same arithmetic (its whole-mix
+//! mastering and meters use this crate through WASM).
 //!
 //! Channels are weighted equally (1.0, as for left, right and centre);
 //! surround weights are not applied.
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoudnessReport {
     /// Gated integrated loudness in LUFS; `-inf` when nothing passes the gate.
     pub integrated_lufs: f64,
@@ -44,19 +46,19 @@ const RANGE_RELATIVE_GATE_LU: f64 = -20.0;
 const MOMENTARY_SECONDS: f64 = 0.4;
 const SHORT_TERM_SECONDS: f64 = 3.0;
 const HOP_SECONDS: f64 = 0.1;
-const LOUDNESS_OFFSET: f64 = -0.691;
+pub(crate) const LOUDNESS_OFFSET: f64 = -0.691;
 
 #[derive(Clone, Copy, Debug)]
-struct Biquad {
-    b0: f64,
-    b1: f64,
-    b2: f64,
-    a1: f64,
-    a2: f64,
+pub(crate) struct Biquad {
+    pub(crate) b0: f64,
+    pub(crate) b1: f64,
+    pub(crate) b2: f64,
+    pub(crate) a1: f64,
+    pub(crate) a2: f64,
 }
 
 /// The two K-weighting stages (high shelf, high-pass) for a sample rate.
-fn k_weighting(sample_rate: f64) -> [Biquad; 2] {
+pub(crate) fn k_weighting(sample_rate: f64) -> [Biquad; 2] {
     let f0 = 1681.974450955533;
     let gain_db: f64 = 3.999843853973347;
     let q = 0.7071752369554196;
@@ -100,7 +102,7 @@ fn filter_in_place(samples: &mut [f64], stages: &[Biquad]) {
     }
 }
 
-fn lufs(mean_square: f64) -> f64 {
+pub(crate) fn lufs(mean_square: f64) -> f64 {
     if mean_square > 0.0 { LOUDNESS_OFFSET + 10.0 * mean_square.log10() } else { f64::NEG_INFINITY }
 }
 
@@ -196,25 +198,37 @@ pub fn oversampling_phases(factor: usize, taps: usize) -> Vec<Vec<f64>> {
         .collect()
 }
 
+/// The oversampling phases true peak uses at a sample rate (4×, or 2× at
+/// 96 kHz and above; 12 taps a phase).
+pub fn true_peak_phases(sample_rate: u32) -> Vec<Vec<f64>> {
+    oversampling_phases(if sample_rate >= 96_000 { 2 } else { 4 }, 12)
+}
+
+/// The true peak (linear) around sample `index` of one channel: the
+/// sample itself and the oversampled values the phases put next to it.
+pub fn true_peak_at(channel: &[f32], index: usize, phases: &[Vec<f64>]) -> f64 {
+    let mut peak = (channel[index] as f64).abs();
+    for coefficients in phases {
+        let half = coefficients.len() / 2;
+        let mut value = 0.0;
+        for (tap, coefficient) in coefficients.iter().enumerate() {
+            let at = index as i64 - tap as i64 + half as i64;
+            if at >= 0 && (at as usize) < channel.len() {
+                value += coefficient * channel[at as usize] as f64;
+            }
+        }
+        peak = peak.max(value.abs());
+    }
+    peak
+}
+
 /// The highest absolute sample after oversampling, in dBTP.
 pub fn true_peak(channels: &[Vec<f32>], sample_rate: u32) -> f64 {
-    let factor = if sample_rate >= 96_000 { 2 } else { 4 };
-    let phases = oversampling_phases(factor, 12);
+    let phases = true_peak_phases(sample_rate);
     let mut peak = 0.0f64;
     for channel in channels {
         for index in 0..channel.len() {
-            peak = peak.max((channel[index] as f64).abs());
-            for coefficients in &phases {
-                let half = coefficients.len() / 2;
-                let mut value = 0.0;
-                for (tap, coefficient) in coefficients.iter().enumerate() {
-                    let at = index as i64 - tap as i64 + half as i64;
-                    if at >= 0 && (at as usize) < channel.len() {
-                        value += coefficient * channel[at as usize] as f64;
-                    }
-                }
-                peak = peak.max(value.abs());
-            }
+            peak = peak.max(true_peak_at(channel, index, &phases));
         }
     }
     if peak > 0.0 { 20.0 * peak.log10() } else { f64::NEG_INFINITY }

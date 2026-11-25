@@ -1,0 +1,16 @@
+[package]
+name = "loudness"
+description = "Loudness after ITU-R BS.1770 / EBU R128: measurement, whole-mix mastering to a target with a true-peak limiter, and live meters; shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

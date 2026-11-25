@@ -34,6 +34,8 @@ pub(crate) struct ExportSettings {
     pub video_bitrate: Option<u64>,
     /// Use a hardware encoder when one works.
     pub hardware: bool,
+    /// Whole-mix loudness target; `None` leaves the mix as it is.
+    pub loudness: Option<render::MixLoudness>,
 }
 
 pub(crate) enum RenderRequest {
@@ -94,6 +96,8 @@ pub(crate) enum RenderEvent {
         frames_total: u64,
     },
     ExportFinished(Result<PathBuf, String>),
+    /// What whole-mix loudness did, before the export finishes.
+    MixMastered(editor::MasterReport),
 }
 
 pub(crate) struct RenderHandle {
@@ -375,8 +379,9 @@ fn export(
         hardware: settings.hardware,
         include_audio: settings.include_audio,
         cache_dir: None,
+        loudness: settings.loudness,
     };
-    render::export_project(
+    render::export_project_with_report(
         &mut renderer,
         &ffmpeg,
         project,
@@ -386,6 +391,12 @@ fn export(
             events.unbounded_send(RenderEvent::ExportProgress { frames_done, frames_total }).ok();
         },
     )
+    .map(|(path, report)| {
+        if let Some(report) = report {
+            events.unbounded_send(RenderEvent::MixMastered(report)).ok();
+        }
+        path
+    })
 }
 
 #[cfg(test)]
@@ -509,6 +520,7 @@ mod tests {
                 codec: None,
                 video_bitrate: None,
                 hardware: false,
+                loudness: None,
             },
             &cancel,
             &events,
@@ -536,7 +548,7 @@ mod tests {
         let cancel = AtomicBool::new(true);
         let result = export(
             &project,
-            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false },
+            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None },
             &cancel,
             &events,
             Some(ffmpeg),
@@ -592,6 +604,7 @@ mod tests {
                 codec: None,
                 video_bitrate: None,
                 hardware: false,
+                loudness: None,
             },
             &cancel,
             &events,

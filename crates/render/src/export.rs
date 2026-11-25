@@ -30,6 +30,62 @@ pub struct ExportJob {
     pub include_audio: bool,
     /// Where retimed audio is rendered to (`default_cache_dir()` when none).
     pub cache_dir: Option<PathBuf>,
+    /// Bring the whole mix to this loudness with true peaks under its
+    /// ceiling (see [`MixLoudness`]); `None` leaves the mix as it is.
+    pub loudness: Option<MixLoudness>,
+}
+
+/// A whole-mix loudness target for export: the mix is rendered, measured
+/// and mastered (`editor::master_mix`: one gain and a true-peak limiter)
+/// before it is encoded.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MixLoudness {
+    pub target_lufs: f64,
+    pub ceiling_dbtp: f64,
+}
+
+impl MixLoudness {
+    /// The delivery target with this id (`streaming` −14, `podcast` −16,
+    /// `broadcast` −23, `loud` −11; all −1 dBTP), if there is one.
+    pub fn target(id: &str) -> Option<Self> {
+        editor::LOUDNESS_TARGETS
+            .iter()
+            .find(|target| target.id == id)
+            .map(|target| Self { target_lufs: target.lufs, ceiling_dbtp: target.true_peak_dbtp })
+    }
+}
+
+/// Renders the mix, masters it to `loudness` and returns one clip that
+/// plays the mastered mix (a float WAV in `dir`), with what was done.
+fn mastered_mix(
+    ffmpeg: &Arc<Ffmpeg>,
+    audio: &[AudioMixClip],
+    duration_seconds: f64,
+    loudness: MixLoudness,
+    dir: &std::path::Path,
+) -> Result<(AudioMixClip, editor::MasterReport), String> {
+    std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
+    let raw = dir.join("mix.wav");
+    media::render_audio_mix(ffmpeg, audio, duration_seconds, &raw).map_err(|error| error.to_string())?;
+    let mut planes = media::read_audio_planes(ffmpeg, &raw, 2).map_err(|error| error.to_string())?;
+    let report = editor::master_mix(&mut planes, media::VOICE_SAMPLE_RATE, loudness.target_lufs, loudness.ceiling_dbtp);
+    let mastered = dir.join("mastered.wav");
+    media::write_wav_float(&mastered, &planes, media::VOICE_SAMPLE_RATE).map_err(|error| error.to_string())?;
+    let length = planes.first().map_or(0.0, |plane| plane.len() as f64 / media::VOICE_SAMPLE_RATE as f64);
+    let clip = AudioMixClip {
+        path: mastered,
+        source_start_seconds: 0.0,
+        source_end_seconds: length.max(duration_seconds),
+        timeline_start_seconds: 0.0,
+        gain: 1.0,
+        gain_keys: Vec::new(),
+        fade_in_seconds: 0.0,
+        fade_out_seconds: 0.0,
+        fade_in_equal_power: false,
+        fade_out_equal_power: false,
+        pan: 0.0,
+    };
+    Ok((clip, report))
 }
 
 /// Renders every frame of the project at its canvas size and frame rate
@@ -44,6 +100,19 @@ pub fn export_project(
     cancelled: &dyn Fn() -> bool,
     progress: &mut dyn FnMut(u64, u64),
 ) -> Result<PathBuf, String> {
+    export_project_with_report(renderer, ffmpeg, project, job, cancelled, progress).map(|(path, _)| path)
+}
+
+/// [`export_project`], also returning what whole-mix loudness did (when the
+/// job asks for it and there is audio).
+pub fn export_project_with_report(
+    renderer: &mut Renderer,
+    ffmpeg: &Arc<Ffmpeg>,
+    project: &Project,
+    job: &ExportJob,
+    cancelled: &dyn Fn() -> bool,
+    progress: &mut dyn FnMut(u64, u64),
+) -> Result<(PathBuf, Option<editor::MasterReport>), String> {
     let fps_rate = project.settings.fps;
     let fps = fps_rate.as_f64().unwrap_or(30.0);
     let duration = project.duration();
@@ -86,6 +155,19 @@ pub fn export_project(
     } else {
         Vec::new()
     };
+    // Whole-mix loudness: the mix rendered, mastered and played as one clip.
+    let mix_dir = std::env::temp_dir().join(format!(
+        "opencut-mix-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_nanos())
+    ));
+    let (audio, master_report) = match job.loudness {
+        Some(loudness) if !audio.is_empty() => {
+            let (clip, report) = mastered_mix(ffmpeg, &audio, duration.to_seconds_f64(), loudness, &mix_dir)?;
+            (vec![clip], Some(report))
+        }
+        _ => (audio, None),
+    };
     let encode = EncodeSettings {
         output: job.output.clone(),
         width,
@@ -101,7 +183,28 @@ pub fn export_project(
         audio,
         disclosure: project.face_swap_disclosure().map(str::to_owned),
     };
-    let mut encoder = Encoder::start(ffmpeg, &encode).map_err(|error| error.to_string())?;
+    let result = encode_frames(renderer, project, job, ffmpeg, &encode, frames_total, cancelled, progress);
+    if master_report.is_some() {
+        std::fs::remove_dir_all(&mix_dir).ok();
+    }
+    result.map(|path| (path, master_report))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn encode_frames(
+    renderer: &mut Renderer,
+    project: &Project,
+    job: &ExportJob,
+    ffmpeg: &Arc<Ffmpeg>,
+    encode: &EncodeSettings,
+    frames_total: u64,
+    cancelled: &dyn Fn() -> bool,
+    progress: &mut dyn FnMut(u64, u64),
+) -> Result<PathBuf, String> {
+    let fps_rate = project.settings.fps;
+    let canvas = project.settings.canvas;
+    let (width, height) = (canvas.width & !1, canvas.height & !1);
+    let mut encoder = Encoder::start(ffmpeg, encode).map_err(|error| error.to_string())?;
 
     for frame_index in 0..frames_total {
         if cancelled() {

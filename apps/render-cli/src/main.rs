@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use editor::{CanvasSize, ImportReport, Project, ProjectStore, import_bundle, platform_encode_settings, platform_preset};
 use media::{EncodeFormat, EncodeQuality, Ffmpeg, PlatformEncode};
-use render::{ExportJob, Renderer, RendererOptions, export_project, still_times};
+use render::{ExportJob, Renderer, RendererOptions, still_times};
 use time::{FrameRate, MediaTime};
 
 const USAGE: &str = "\
@@ -31,6 +31,9 @@ opencut-render: render a ConzaCut project from the command line
                            webm takes vp9 (default), av1
   --bitrate <Mbps>         target video bitrate (0.2 to 400) instead of --quality
   --hardware               use a hardware encoder when one works here
+  --loudness <target>      bring the whole mix to a loudness: streaming (-14 LUFS),
+                           podcast (-16), broadcast (-23), loud (-11), or a number
+                           of LUFS; true peaks held under -1 dBTP by a limiter
   --preset <id>            platform preset: youtube, youtube-shorts, tiktok,
                            instagram-reels, linkedin, x (MP4, H.264 High, closed GOP,
                            faststart); sets the canvas and fps to the platform's
@@ -64,6 +67,7 @@ struct Args {
     codec: Option<media::VideoCodec>,
     video_bitrate: Option<u64>,
     hardware: bool,
+    loudness: Option<render::MixLoudness>,
     preset: Option<String>,
     fps: Option<f64>,
     size: Option<(u32, u32)>,
@@ -89,6 +93,7 @@ fn parse_args() -> Result<Args, String> {
         codec: None,
         video_bitrate: None,
         hardware: false,
+        loudness: None,
         preset: None,
         fps: None,
         size: None,
@@ -148,6 +153,20 @@ fn parse_args() -> Result<Args, String> {
                 );
             }
             "--hardware" => args.hardware = true,
+            "--loudness" => {
+                let text = value()?;
+                args.loudness = Some(match render::MixLoudness::target(&text) {
+                    Some(target) => target,
+                    None => {
+                        let lufs: f64 = text
+                            .parse()
+                            .ok()
+                            .filter(|lufs: &f64| (-40.0..=-5.0).contains(lufs))
+                            .ok_or_else(|| "--loudness takes streaming, podcast, broadcast, loud or LUFS from -40 to -5".to_owned())?;
+                        render::MixLoudness { target_lufs: lufs, ceiling_dbtp: -1.0 }
+                    }
+                });
+            }
             "--no-audio" => args.include_audio = false,
             "--frame-at" => args.frame_at = Some(value()?.parse().map_err(|_| "--frame-at needs seconds".to_owned())?),
             "--stills" => {
@@ -432,14 +451,25 @@ fn run() -> Result<(), String> {
             hardware: args.hardware,
             include_audio: args.include_audio,
             cache_dir: None,
+            loudness: args.loudness,
         };
         let quiet = args.quiet;
         let started = std::time::Instant::now();
-        let written = export_project(&mut renderer, &ffmpeg, &project, &job, &|| false, &mut |done, total| {
+        let (written, mastered) = render::export_project_with_report(&mut renderer, &ffmpeg, &project, &job, &|| false, &mut |done, total| {
             if !quiet && (done % 30 == 0 || done == total) {
                 eprint!("\ropencut-render: frame {done}/{total}");
             }
         })?;
+        if let (Some(report), false) = (mastered, quiet) {
+            eprintln!(
+                "\ropencut-render: mix {:.1} LUFS -> {:.1} LUFS ({:+.1} dB{}), true peak {:.1} dBTP",
+                report.input_lufs,
+                report.output_lufs,
+                report.gain_db,
+                if report.limited { ", limited" } else { "" },
+                report.output_true_peak_dbtp
+            );
+        }
         if !quiet {
             eprintln!("\ropencut-render: wrote {} in {:.1} s", written.display(), started.elapsed().as_secs_f64());
         }

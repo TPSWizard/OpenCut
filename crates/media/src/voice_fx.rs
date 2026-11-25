@@ -35,6 +35,11 @@ pub fn enhance_voice_to_wav(ffmpeg: &Ffmpeg, source: &Path, output: &Path, chann
 }
 
 /// `source`'s audio at 48 kHz as one plane per channel (1 or 2).
+pub fn read_audio_planes(ffmpeg: &Ffmpeg, source: &Path, channels: u16) -> Result<Vec<Vec<f32>>, MediaError> {
+    read_planes(ffmpeg, source, channels)
+}
+
+/// `source`'s audio at 48 kHz as one plane per channel (1 or 2).
 fn read_planes(ffmpeg: &Ffmpeg, source: &Path, channels: u16) -> Result<Vec<Vec<f32>>, MediaError> {
     let channels = channels.clamp(1, 2);
     let settings = AudioSettings { sample_rate: VOICE_SAMPLE_RATE, channels };
@@ -53,6 +58,38 @@ fn read_planes(ffmpeg: &Ffmpeg, source: &Path, channels: u16) -> Result<Vec<Vec<
     }
     let count = channels as usize;
     Ok((0..count).map(|channel| interleaved.iter().skip(channel).step_by(count).copied().collect()).collect())
+}
+
+/// 32-bit float WAV of the channel planes (equal lengths), for audio that
+/// goes on to be encoded (a mastered mix).
+pub fn write_wav_float(output: &Path, planes: &[Vec<f32>], sample_rate: u32) -> Result<(), MediaError> {
+    if let Some(parent) = output.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let channels = planes.len() as u16;
+    let frames = planes.iter().map(Vec::len).min().unwrap_or(0);
+    let data_len = (frames * planes.len() * 4) as u32;
+    let mut bytes = Vec::with_capacity(44 + data_len as usize);
+    bytes.extend_from_slice(b"RIFF");
+    bytes.extend_from_slice(&(36 + data_len).to_le_bytes());
+    bytes.extend_from_slice(b"WAVEfmt ");
+    bytes.extend_from_slice(&16u32.to_le_bytes());
+    bytes.extend_from_slice(&3u16.to_le_bytes());
+    bytes.extend_from_slice(&channels.to_le_bytes());
+    bytes.extend_from_slice(&sample_rate.to_le_bytes());
+    bytes.extend_from_slice(&(sample_rate * channels as u32 * 4).to_le_bytes());
+    bytes.extend_from_slice(&(channels * 4).to_le_bytes());
+    bytes.extend_from_slice(&32u16.to_le_bytes());
+    bytes.extend_from_slice(b"data");
+    bytes.extend_from_slice(&data_len.to_le_bytes());
+    for frame in 0..frames {
+        for plane in planes {
+            bytes.extend_from_slice(&plane[frame].to_le_bytes());
+        }
+    }
+    let mut file = std::fs::File::create(output)?;
+    file.write_all(&bytes)?;
+    Ok(())
 }
 
 /// 16-bit PCM WAV of the channel planes (equal lengths).

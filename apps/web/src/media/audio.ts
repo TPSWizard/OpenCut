@@ -25,6 +25,7 @@ import { getSourceTimeAtClipTime, hasVariableRetime, renderRetimedBuffer } from 
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { expandCompounds } from "@/timeline/compound";
 import { withAudioCrossfades } from "@/timeline/audio-crossfade";
+import { masterAudioBuffer, type MixLoudness, type MixMasterReport } from "@/loudness/mix";
 import { TICKS_PER_SECOND } from "@/wasm";
 import {
 	computeRmsBuckets,
@@ -639,12 +640,18 @@ export async function createTimelineAudioBuffer({
 	duration,
 	sampleRate = EXPORT_SAMPLE_RATE,
 	audioContext,
+	loudness,
+	onMastered,
 }: {
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 	duration: number;
 	sampleRate?: number;
 	audioContext?: AudioContext;
+	/** Bring the whole mix to this loudness (`@/loudness/mix`) instead of only catching overs. */
+	loudness?: MixLoudness;
+	/** Hears what whole-mix loudness did. */
+	onMastered?: (report: MixMasterReport) => void;
 }): Promise<AudioBuffer | null> {
 	const context = audioContext ?? createAudioContext({ sampleRate });
 
@@ -699,6 +706,11 @@ export async function createTimelineAudioBuffer({
 		});
 	}
 
+	if (loudness) {
+		// One gain to the target and a true-peak limiter: the shared crate, as the desktop export.
+		onMastered?.(masterAudioBuffer(outputBuffer, loudness));
+		return outputBuffer;
+	}
 	return await applyAudioMasteringToBuffer({ audioBuffer: outputBuffer });
 }
 

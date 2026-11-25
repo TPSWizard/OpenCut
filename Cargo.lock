@@ -1619,6 +1619,7 @@ dependencies = [
  "crossfade",
  "deflicker",
  "facetrack",
+ "loudness",
  "multicam",
  "retakes",
  "richtext",
@@ -3484,6 +3485,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "loudness"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lru-slab"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4288,6 +4297,7 @@ dependencies = [
  "gpu",
  "js-sys",
  "lottie",
+ "loudness",
  "masks",
  "multicam",
  "num-traits",

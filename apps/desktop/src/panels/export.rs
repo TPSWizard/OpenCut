@@ -26,6 +26,8 @@ pub(crate) struct ExportDialog {
     format: EncodeFormat,
     quality: EncodeQuality,
     include_audio: bool,
+    /// Whole-mix loudness target id (`editor::LOUDNESS_TARGETS`); `None` leaves the mix as it is.
+    loudness: Option<&'static str>,
     /// Platform preset the export is for; forces MP4 with its encoder settings.
     platform: Option<&'static PlatformPreset>,
     /// The codec asked for; the container's default when it does not take it.
@@ -66,6 +68,7 @@ impl ExportDialog {
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
             include_audio: true,
+            loudness: None,
             platform: None,
             codec: None,
             available: None,
@@ -151,6 +154,7 @@ impl ExportDialog {
             codec: Some(self.chosen_codec()),
             video_bitrate: if platform.is_some() { None } else { self.video_bitrate() },
             hardware: platform.is_none() && self.hardware,
+            loudness: self.loudness.filter(|_| self.include_audio).and_then(render::MixLoudness::target),
         };
         self.state
             .update(cx, |state, cx| state.start_export(settings, cx));
@@ -181,6 +185,7 @@ impl Render for ExportDialog {
         let duration = state.duration().to_seconds_f64();
         let running = state.export.as_ref().filter(|e| e.finished.is_none());
         let finished = state.export.as_ref().and_then(|e| e.finished.clone());
+        let mastered = state.export.as_ref().and_then(|e| e.mastered);
         let progress = state.export.as_ref().map(|e| e.progress()).unwrap_or(0.0);
         let frames = state
             .export
@@ -221,8 +226,22 @@ impl Render for ExportDialog {
             card = card
                 .child(match &result {
                     Ok(path) => div()
-                        .text_sm()
-                        .child(tf("Saved to {path}", &[("path", &path.display())])),
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.))
+                        .child(div().text_sm().child(tf("Saved to {path}", &[("path", &path.display())])))
+                        .children(mastered.map(|report| {
+                            div().text_xs().text_color(colors.muted_foreground).child(format!(
+                                "{} {:.1} → {:.1} LUFS ({:+.1} dB{}), {} {:.1} dBTP",
+                                t("Mix loudness:"),
+                                report.input_lufs,
+                                report.output_lufs,
+                                report.gain_db,
+                                if report.limited { t(", peaks limited") } else { "" },
+                                t("true peak"),
+                                report.output_true_peak_dbtp
+                            ))
+                        })),
                     Err(error) => div()
                         .text_sm()
                         .text_color(colors.destructive)
@@ -538,6 +557,51 @@ impl Render for ExportDialog {
                         cx.notify();
                     })),
             );
+            // Whole-mix loudness: off, or a delivery target (true peaks under -1 dBTP).
+            let chosen_loudness = self.loudness;
+            let mut loudness_buttons = vec![
+                Button::new("loudness-off", t("Off"))
+                    .variant(if chosen_loudness.is_none() { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::XSmall)
+                    .disabled(!include_audio)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.loudness = None;
+                        cx.notify();
+                    })),
+            ];
+            for target in editor::LOUDNESS_TARGETS {
+                let id = target.id;
+                loudness_buttons.push(
+                    Button::new(eid("loudness", id), format!("{:.0} LUFS", target.lufs))
+                        .variant(if chosen_loudness == Some(id) { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::XSmall)
+                        .disabled(!include_audio)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.loudness = Some(id);
+                            cx.notify();
+                        })),
+                );
+            }
+            let loudness_note = match chosen_loudness.and_then(|id| editor::LOUDNESS_TARGETS.iter().find(|target| target.id == id)) {
+                Some(target) => tf(
+                    "{label}: the whole mix is measured and brought to {lufs} LUFS; a limiter holds true peaks under {peak} dBTP.",
+                    &[("label", &target.label), ("lufs", &format!("{:.0}", target.lufs)), ("peak", &format!("{:.0}", target.true_peak_dbtp))],
+                ),
+                None => t("The mix is exported as it plays.").to_owned(),
+            };
+            let loudness_row = div()
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Loudness")))
+                        .child(div().flex().flex_wrap().gap(px(4.)).children(loudness_buttons)),
+                )
+                .child(div().text_xs().text_color(colors.muted_foreground).child(loudness_note));
             card = card
                 .child(
                     div()
@@ -578,6 +642,7 @@ impl Render for ExportDialog {
                     )))
                 })
                 .child(audio_row)
+                .child(loudness_row)
                 .when(!has_ffmpeg, |this| {
                     this.child(
                         div()

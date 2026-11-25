@@ -162,7 +162,8 @@ export class RendererManager {
 		onProgress?: ({ progress }: { progress: number }) => void;
 		onCancel?: () => boolean;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio, platform, videoCodec, videoBitrate, hardware } = options;
+		const { format, quality, fps, includeAudio, platform, videoCodec, videoBitrate, hardware, loudness } = options;
+		let mastered: ExportResult["mastered"];
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -188,6 +189,10 @@ export class RendererManager {
 					tracks,
 					mediaAssets,
 					duration,
+					loudness,
+					onMastered: (report) => {
+						mastered = report;
+					},
 				});
 			}
 
@@ -269,6 +274,7 @@ export class RendererManager {
 				return {
 					success: true,
 					buffer,
+					mastered,
 				};
 			} finally {
 				clearInterval(cancelInterval);

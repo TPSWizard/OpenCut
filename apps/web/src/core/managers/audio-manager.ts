@@ -10,6 +10,7 @@ import {
 	hasGainAutomation,
 } from "@/timeline/audio-state";
 import { createAudioMasteringChain } from "@/media/audio-mastering";
+import { MixMeter, type MeterReadings } from "@/loudness/mix";
 import {
 	getClipTimeAtSourceTime,
 	getSourceTimeAtClipTime,
@@ -27,6 +28,10 @@ import {
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
 	private masterGain: GainNode | null = null;
+	/** Where the clips meet, before the volume: the mix the meter hears. */
+	private mixInput: GainNode | null = null;
+	private meterNode: ScriptProcessorNode | null = null;
+	private meter: MixMeter | null = null;
 	private playbackStartTime = 0;
 	private playbackStartContextTime = 0;
 	private scheduleTimer: number | null = null;
@@ -73,7 +78,22 @@ export class AudioManager {
 			void this.audioContext.close();
 			this.audioContext = null;
 			this.masterGain = null;
+			this.mixInput = null;
+			this.meterNode?.disconnect();
+			this.meterNode = null;
 		}
+		this.meter?.dispose();
+		this.meter = null;
+	}
+
+	/**
+	 * The live loudness meter while playing (momentary and short-term LUFS,
+	 * the recent peak; the shared `loudness` crate, as the desktop's);
+	 * `null` while paused.
+	 */
+	getMeterReadings(): MeterReadings | null {
+		if (!this.lastIsPlaying || !this.meter) return null;
+		return this.meter.readings();
 	}
 
 	private handlePlaybackChange = (): void => {
@@ -134,6 +154,26 @@ export class AudioManager {
 		});
 		this.masterGain = input;
 		this.masterGain.gain.value = this.lastVolume;
+		// The clips meet here; a tap feeds the meter (its output is silent).
+		this.mixInput = this.audioContext.createGain();
+		this.mixInput.connect(this.masterGain);
+		try {
+			this.meter = new MixMeter({ sampleRate: this.audioContext.sampleRate, channels: 2 });
+			const tap = this.audioContext.createScriptProcessor(2048, 2, 2);
+			const silent = this.audioContext.createGain();
+			silent.gain.value = 0;
+			tap.onaudioprocess = (event) => {
+				if (!this.lastIsPlaying || !this.meter) return;
+				const input = event.inputBuffer;
+				this.meter.push(input.getChannelData(0), input.numberOfChannels > 1 ? input.getChannelData(1) : undefined);
+			};
+			this.mixInput.connect(tap);
+			tap.connect(silent);
+			silent.connect(this.audioContext.destination);
+			this.meterNode = tap;
+		} catch (error) {
+			console.warn("Audio meter unavailable", error);
+		}
 		return this.audioContext;
 	}
 
@@ -154,6 +194,7 @@ export class AudioManager {
 		if (!audioContext) return;
 
 		this.stopPlayback();
+		this.meter?.reset();
 		this.playbackSessionId++;
 		this.playbackLatencyCompensationSeconds = 0;
 
@@ -476,7 +517,7 @@ export class AudioManager {
 		clip: AudioClipSource;
 		clipGain: GainNode;
 	}): StereoPannerNode | null {
-		const output = this.masterGain ?? audioContext.destination;
+		const output = this.mixInput ?? this.masterGain ?? audioContext.destination;
 		const pan = getElementPan({ element: clip.timelineElement });
 		if (pan === 0) {
 			clipGain.connect(output);

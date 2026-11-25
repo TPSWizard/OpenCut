@@ -96,7 +96,7 @@ methods answer with the error code `no_project` before that.
 | `playback.getState` / `play` / `pause` / `seek` | – / – / – / `{ time }` | `ApiPlaybackState` |
 | `selection.get` / `set` / `clear` | – / `{ elements }` / – | `ApiElementRef[]` |
 | `history.undo` / `redo` / `state` | – | `{ canUndo, canRedo }` |
-| `export.render` | `ApiExportOptions` | `{ fileName, mimeType, bytes: ArrayBuffer }` |
+| `export.render` | `ApiExportOptions` | `{ fileName, mimeType, bytes: ArrayBuffer, mastered? }` — with `loudness` (`streaming` -14 LUFS, `podcast` -16, `broadcast` -23, `loud` -11, or LUFS from -40 to -5) the whole mix is measured and brought to that loudness with true peaks held under -1 dBTP by a look-ahead limiter (the shared Rust `loudness` crate, as the desktop export); `mastered` says `{ inputLufs, inputTruePeakDbtp, gainDb, outputLufs, outputTruePeakDbtp, limited, passes }` (`null` levels for silence) |
 | `export.download` | `ApiExportOptions` | `{ fileName, mimeType, bytes }` and a browser download |
 | `fonts.list` | `{ query?, limit? }` | `ApiFontInfo[]` — Fontsource families with their SPDX licence, category, weights and styles |
 | `fonts.load` | `{ family }` | `{ family, license, faces }` — declares the family's faces in the page from jsDelivr so text can use it |

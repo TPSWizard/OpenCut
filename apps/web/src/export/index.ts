@@ -1,6 +1,7 @@
 import type { FrameRate } from "opencut-wasm";
 import type { PlatformEncodeSettings } from "@/platforms/catalogue";
 import type { ExportVideoCodec } from "./codecs";
+import type { MixLoudness, MixMasterReport } from "@/loudness/mix";
 import { EXPORT_MIME_TYPES } from "./mime-types";
 
 export const EXPORT_QUALITY_VALUES = [
@@ -35,6 +36,11 @@ export interface ExportOptions {
 	videoBitrate?: number;
 	/** Ask the browser for a hardware encoder (faster; quality varies by GPU). */
 	hardware?: boolean;
+	/**
+	 * Bring the whole mix to a loudness (`@/loudness/mix`: one gain and a
+	 * true-peak limiter, the shared crate the desktop export uses).
+	 */
+	loudness?: MixLoudness;
 }
 
 export interface ExportResult {
@@ -42,6 +48,8 @@ export interface ExportResult {
 	buffer?: ArrayBuffer;
 	error?: string;
 	cancelled?: boolean;
+	/** What whole-mix loudness did, when `loudness` was asked for and there was sound. */
+	mastered?: MixMasterReport;
 }
 
 export interface ExportState {

@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/utils/ui";
 import {
 	getExportMimeType,
@@ -54,6 +55,9 @@ import {
 import { getPlatformPreset, platformEncodeSettings } from "@/platforms";
 import { frameRateToFloat } from "@/fps/utils";
 import { useT } from "@/i18n";
+import { LOUDNESS_TARGETS } from "@/loudness/r128";
+import { mixLoudnessTarget } from "@/loudness/mix";
+import { toast } from "sonner";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -132,6 +136,8 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	// Whole-mix loudness: "off" or a target id (`LOUDNESS_TARGETS`).
+	const [loudnessId, setLoudnessId] = useState<string>("off");
 	const [platform, setPlatform] = useState<PlatformChoice>(CUSTOM_PLATFORM);
 	const platformPreset = getPlatformPreset({ id: platform });
 	const [codecChoice, setCodecChoice] = useState<ExportVideoCodec | null>(null);
@@ -176,6 +182,7 @@ function ExportPopover({
 				videoCodec: platformPreset ? undefined : codec,
 				videoBitrate: platformPreset ? undefined : (videoBitrate ?? undefined),
 				hardware: !platformPreset && hardware,
+				loudness: shouldIncludeAudio ? mixLoudnessTarget(loudnessId) : undefined,
 			},
 		});
 
@@ -191,6 +198,17 @@ function ExportPopover({
 				mimeType: getExportMimeType({ format: exportFormat }),
 			});
 
+			if (result.mastered && Number.isFinite(result.mastered.outputLufs)) {
+				const report = result.mastered;
+				toast.success(
+					t("Mix loudness: {from} → {to} LUFS ({gain} dB), true peak {peak} dBTP", {
+						from: report.inputLufs.toFixed(1),
+						to: report.outputLufs.toFixed(1),
+						gain: `${report.gainDb >= 0 ? "+" : ""}${report.gainDb.toFixed(1)}`,
+						peak: report.outputTruePeakDbtp.toFixed(1),
+					}),
+				);
+			}
 			editor.project.clearExportState();
 			onOpenChange(false);
 		}
@@ -384,6 +402,27 @@ function ExportPopover({
 												<Label htmlFor="include-audio">
 													{t("Include audio in export")}
 												</Label>
+											</div>
+											<div className="mt-3 flex flex-col gap-1.5">
+												<Label htmlFor="export-loudness">{t("Mix loudness")}</Label>
+												<Select value={loudnessId} onValueChange={setLoudnessId} disabled={!shouldIncludeAudio}>
+													<SelectTrigger id="export-loudness" className="w-full" data-testid="export-loudness">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="off">{t("Off: as it plays")}</SelectItem>
+														{LOUDNESS_TARGETS.map((target) => (
+															<SelectItem key={target.id} value={target.id}>
+																{t(target.label)}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<p className="text-muted-foreground text-xs">
+													{loudnessId === "off"
+														? t("The mix is exported as it plays, with only overs caught.")
+														: t("The whole mix is measured and brought to the target; a limiter holds true peaks under -1 dBTP.")}
+												</p>
 											</div>
 										</SectionContent>
 									</Section>

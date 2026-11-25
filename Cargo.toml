@@ -22,6 +22,7 @@ members = [
   'crates/multicam',
   'crates/retakes',
   'crates/crossfade',
+  'crates/loudness',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -51,6 +52,7 @@ richtext = { path = "crates/richtext" }
 multicam = { path = "crates/multicam" }
 retakes = { path = "crates/retakes" }
 crossfade = { path = "crates/crossfade" }
+loudness = { path = "crates/loudness" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 

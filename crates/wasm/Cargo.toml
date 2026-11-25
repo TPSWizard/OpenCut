@@ -31,6 +31,7 @@ multicam = { workspace = true }
 facetrack = { workspace = true }
 retakes = { workspace = true }
 crossfade = { workspace = true }
+loudness = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

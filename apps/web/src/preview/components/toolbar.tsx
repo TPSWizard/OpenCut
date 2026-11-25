@@ -29,6 +29,7 @@ import { GridPopover } from "./guide-popover";
 import { getGuideById } from "@/guides";
 import type { MediaTime } from "@/wasm";
 import { useT } from "@/i18n";
+import { formatMeterLufs, meterFraction, type MeterReadings } from "@/loudness/mix";
 
 /** Preview quality names (PREVIEW_QUALITIES holds the English; fractions stay as they are). */
 function qualityLabel(value: string, fallback: string, t: ReturnType<typeof useT>): string {
@@ -114,6 +115,48 @@ function TimecodeDisplay() {
 					format: "HH:MM:SS:FF",
 					rate: fps,
 				})}
+			</span>
+			<AudioMeter />
+		</div>
+	);
+}
+
+/**
+ * The mix's loudness while playing: the recent peak as a bar (green, yellow
+ * from -6 dBFS, red from -1) and the momentary and short-term LUFS.
+ */
+function AudioMeter() {
+	const editor = useEditor();
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const [readings, setReadings] = useState<MeterReadings | null>(null);
+
+	useEffect(() => {
+		if (!isPlaying) {
+			setReadings(null);
+			return;
+		}
+		let frame = 0;
+		let last = 0;
+		const tick = (now: number) => {
+			if (now - last > 100) {
+				last = now;
+				setReadings(editor.audio.getMeterReadings());
+			}
+			frame = requestAnimationFrame(tick);
+		};
+		frame = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(frame);
+	}, [editor, isPlaying]);
+
+	if (!readings) return null;
+	const colour = readings.peakDbfs >= -1 ? "bg-red-500" : readings.peakDbfs >= -6 ? "bg-yellow-500" : "bg-green-500";
+	return (
+		<div className="ml-3 flex items-center gap-1.5" data-testid="audio-meter" title="Mix loudness: momentary (400 ms) and short-term (3 s)">
+			<div className="bg-muted h-1.5 w-14 overflow-hidden rounded-full">
+				<div className={`h-full rounded-full ${colour}`} style={{ width: `${meterFraction(readings.peakDbfs) * 100}%` }} />
+			</div>
+			<span className="text-muted-foreground font-mono text-[10px] whitespace-nowrap">
+				M {formatMeterLufs(readings.momentaryLufs)} S {formatMeterLufs(readings.shortTermLufs)} LUFS
 			</span>
 		</div>
 	);

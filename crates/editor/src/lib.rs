@@ -53,7 +53,6 @@ mod fillers;
 mod freeform;
 mod freeze;
 mod layer_style;
-mod loudness;
 mod luts;
 mod markers;
 mod open_link;
@@ -190,8 +189,9 @@ pub use shots::{
 };
 pub use silence::{RippleScope, SilenceOptions, silence_intervals};
 pub use loudness::{
-    ABSOLUTE_GATE_LUFS, LOUDNESS_TARGETS, LoudnessReport, LoudnessTarget, deinterleave, gated_loudness, loudness_range,
-    measure_loudness, normalization_gain, oversampling_phases, true_peak,
+    ABSOLUTE_GATE_LUFS, LOUDNESS_TARGETS, LoudnessReport, LoudnessTarget, MasterReport, Meter as LoudnessMeter, MeterReadings, deinterleave,
+    gated_loudness, limit as limit_true_peak, loudness_range, master as master_mix, measure_loudness, normalization_gain, oversampling_phases,
+    true_peak,
 };
 pub use luts::{
     LutTable, MAX_LUT_SIZE, base64_decode, base64_encode, decode_lut_param, encode_lut_param, from_hald, lut_key, parse_3dl,

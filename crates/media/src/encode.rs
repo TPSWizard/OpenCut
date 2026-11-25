@@ -450,6 +450,66 @@ fn video_args(settings: &EncodeSettings, encoder: &str) -> Vec<String> {
     args
 }
 
+/// The filter graph that mixes `audio` (inputs numbered from
+/// `first_input`) into `[aout]`, exactly `duration_seconds` long.
+fn mix_filter(audio: &[AudioMixClip], duration_seconds: f64, first_input: usize) -> String {
+    let mut filter = String::new();
+    let mut labels = Vec::new();
+    for (index, clip) in audio.iter().enumerate() {
+        let label = format!("a{index}");
+        let delay_ms = (clip.timeline_start_seconds.max(0.0) * 1000.0).round() as u64;
+        filter.push_str(&format!(
+            "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,{volume}{fades},aresample=48000,aformat=channel_layouts=stereo{pan},adelay={delay}|{delay}[{label}];",
+            input = index + first_input,
+            start = clip.source_start_seconds.max(0.0),
+            end = clip.source_end_seconds.max(clip.source_start_seconds),
+            volume = volume_filter(clip),
+            fades = fade_filters(clip),
+            pan = pan_filter(clip),
+            delay = delay_ms,
+        ));
+        labels.push(format!("[{label}]"));
+    }
+    filter.push_str(&labels.concat());
+    // Cut or pad the mix to exactly the video's length. `apad` gets the
+    // whole duration so the audio stream ends by itself. With an
+    // unbounded `apad` followed by `atrim`, ffmpeg 9 kept buffering once
+    // the video arrived at render speed rather than instantly, and
+    // exports longer than about ten seconds failed with ENOSPC (or grew
+    // without bound when `-shortest` was absent). `asetnsamples` keeps
+    // the encoder fed with even frames.
+    let duration = duration_seconds.max(0.0);
+    filter.push_str(&format!(
+        "amix=inputs={}:duration=longest:normalize=0,atrim=end={duration:.6},apad=whole_dur={duration:.6},asetnsamples=n=1024:p=0[aout]",
+        audio.len(),
+    ));
+    filter
+}
+
+/// Renders the mix of `audio` as the encoder would mix it, `duration_seconds`
+/// long, to `output` as a 48 kHz stereo 32-bit float WAV: what whole-mix
+/// loudness measures and masters before the encode.
+pub fn render_audio_mix(ffmpeg: &Ffmpeg, audio: &[AudioMixClip], duration_seconds: f64, output: &Path) -> Result<(), MediaError> {
+    if audio.is_empty() {
+        return Err(MediaError::ProgramFailed { program: "ffmpeg".to_owned(), message: "no audio to mix".to_owned() });
+    }
+    let mut command = ffmpeg.command();
+    command.arg("-y");
+    for clip in audio {
+        command.arg("-i").arg(&clip.path);
+    }
+    command
+        .arg("-filter_complex")
+        .arg(mix_filter(audio, duration_seconds, 0))
+        .args(["-map", "[aout]", "-c:a", "pcm_f32le", "-ar", "48000", "-ac", "2"])
+        .arg(output);
+    let result = command.output()?;
+    if !result.status.success() {
+        return Err(MediaError::ProgramFailed { program: "ffmpeg".to_owned(), message: String::from_utf8_lossy(&result.stderr).trim().to_owned() });
+    }
+    Ok(())
+}
+
 /// The complete argument list after `ffmpeg -hide_banner -nostdin -loglevel error`.
 pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<String> {
     let mut args: Vec<String> = vec![
@@ -472,38 +532,8 @@ pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<S
 
     let has_audio = !settings.audio.is_empty();
     if has_audio {
-        let mut filter = String::new();
-        let mut labels = Vec::new();
-        for (index, clip) in settings.audio.iter().enumerate() {
-            let label = format!("a{index}");
-            let delay_ms = (clip.timeline_start_seconds.max(0.0) * 1000.0).round() as u64;
-            filter.push_str(&format!(
-                "[{input}:a]atrim=start={start:.6}:end={end:.6},asetpts=PTS-STARTPTS,{volume}{fades},aresample=48000,aformat=channel_layouts=stereo{pan},adelay={delay}|{delay}[{label}];",
-                input = index + 1,
-                start = clip.source_start_seconds.max(0.0),
-                end = clip.source_end_seconds.max(clip.source_start_seconds),
-                volume = volume_filter(clip),
-                fades = fade_filters(clip),
-                pan = pan_filter(clip),
-                delay = delay_ms,
-            ));
-            labels.push(format!("[{label}]"));
-        }
-        filter.push_str(&labels.concat());
-        // Cut or pad the mix to exactly the video's length. `apad` gets the
-        // whole duration so the audio stream ends by itself. With an
-        // unbounded `apad` followed by `atrim`, ffmpeg 9 kept buffering once
-        // the video arrived at render speed rather than instantly, and
-        // exports longer than about ten seconds failed with ENOSPC (or grew
-        // without bound when `-shortest` was absent). `asetnsamples` keeps
-        // the encoder fed with even frames.
-        let duration = settings.duration_seconds.max(0.0);
-        filter.push_str(&format!(
-            "amix=inputs={}:duration=longest:normalize=0,atrim=end={duration:.6},apad=whole_dur={duration:.6},asetnsamples=n=1024:p=0[aout]",
-            settings.audio.len(),
-        ));
         args.push("-filter_complex".into());
-        args.push(filter);
+        args.push(mix_filter(&settings.audio, settings.duration_seconds, 1));
         args.push("-map".into());
         args.push("0:v".into());
         args.push("-map".into());

@@ -927,5 +927,10 @@
   "Crossfade into next": "交叉淡化到下一个",
   "Equal power": "等功率",
   "Linear": "线性",
-  "Remove crossfade": "移除交叉淡化"
+  "Remove crossfade": "移除交叉淡化",
+  "The mix is exported as it plays.": "按播放时的混音导出。",
+  "{label}: the whole mix is measured and brought to {lufs} LUFS; a limiter holds true peaks under {peak} dBTP.": "{label}：测量整个混音并调整到 {lufs} LUFS；限制器将真峰值保持在 {peak} dBTP 以下。",
+  "Mix loudness:": "混音响度：",
+  ", peaks limited": "，峰值已限制",
+  "true peak": "真峰值"
 }

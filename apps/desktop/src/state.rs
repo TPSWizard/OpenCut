@@ -38,6 +38,8 @@ pub(crate) struct ExportState {
     pub frames_done: u64,
     pub frames_total: u64,
     pub finished: Option<Result<PathBuf, String>>,
+    /// What whole-mix loudness did, when the export asked for it.
+    pub mastered: Option<editor::MasterReport>,
     cancel: Arc<AtomicBool>,
 }
 
@@ -4340,6 +4342,12 @@ impl EditorState {
                     cx.notify();
                 }
             }
+            RenderEvent::MixMastered(report) => {
+                if let Some(export) = &mut self.export {
+                    export.mastered = Some(report);
+                    cx.notify();
+                }
+            }
             RenderEvent::ExportFinished(result) => {
                 if let Some(export) = &mut self.export {
                     export.finished = Some(result);
@@ -4363,6 +4371,16 @@ impl EditorState {
             })
             .ok();
         }));
+    }
+
+    /// The preview's loudness meter (what the audio device is playing):
+    /// momentary and short-term LUFS and the recent peak; `None` while
+    /// nothing plays.
+    pub(crate) fn audio_meter(&self) -> Option<editor::MeterReadings> {
+        if !self.playing {
+            return None;
+        }
+        self.audio.as_ref().and_then(|audio| audio.meter_readings())
     }
 
     pub(crate) fn save_now(&mut self, cx: &mut Context<Self>) {
@@ -4395,6 +4413,7 @@ impl EditorState {
             frames_done: 0,
             frames_total: 0,
             finished: None,
+            mastered: None,
             cancel: Arc::clone(&cancel),
         });
         self.render.send(RenderRequest::Export {

@@ -340,6 +340,7 @@ impl Render for PreviewPanel {
         let project = state.project();
         let rate = project.settings.fps;
         let playhead = timecode(state.playhead(), rate);
+        let meter = state.audio_meter();
         let duration = timecode(state.duration(), rate);
         let playing = state.playing;
         let preview = state.preview.clone();
@@ -670,6 +671,37 @@ impl Render for PreviewPanel {
                             .text_color(colors.foreground)
                             .child(format!("{playhead}  /  {duration}")),
                     )
+                    .children(meter.map(|readings| {
+                        // Peak bar over -60..0 dBFS: green, yellow from -6, red from -1.
+                        let fraction = |db: f64| if db.is_finite() { ((db + 60.0) / 60.0).clamp(0.0, 1.0) as f32 } else { 0.0 };
+                        let colour = if readings.peak_dbfs >= -1.0 {
+                            gpui::rgb(0xef4444)
+                        } else if readings.peak_dbfs >= -6.0 {
+                            gpui::rgb(0xeab308)
+                        } else {
+                            gpui::rgb(0x22c55e)
+                        };
+                        let lufs = |value: f64| if value.is_finite() && value > -70.0 { format!("{value:.1}") } else { "–".to_owned() };
+                        div()
+                            .id("audio-meter")
+                            .ml(px(8.))
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(
+                                div()
+                                    .w(px(64.))
+                                    .h(px(6.))
+                                    .rounded(px(3.))
+                                    .bg(colors.muted)
+                                    .child(div().h_full().rounded(px(3.)).w(px(64.0 * fraction(readings.peak_dbfs))).bg(colour)),
+                            )
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(format!(
+                                "M {}  S {} LUFS",
+                                lufs(readings.momentary_lufs),
+                                lufs(readings.short_term_lufs)
+                            )))
+                    }))
                     .child(div().flex_1())
                     .child(guide_row)
                     .child(quality_row)

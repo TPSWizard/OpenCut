@@ -106,6 +106,7 @@ import { crossfadeElement, removeCrossfade } from "@/crossfade/apply";
 import { clearDucking, duckElement } from "@/ducking/duck";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
+import { mixLoudnessTarget, type MixLoudness } from "@/loudness/mix";
 import { applyShotCuts, scanShots } from "@/shots/scan";
 import { clearReframe, reframeClip } from "@/reframe/scan";
 import { autoZoomClip, clearAutoZoom } from "@/auto-zoom/apply";
@@ -823,6 +824,21 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		const exportFps = options.fps
 			? floatToFrameRate(options.fps)
 			: project.settings.fps;
+		let loudness: MixLoudness | undefined;
+		if (options.loudness !== undefined) {
+			loudness =
+				typeof options.loudness === "number"
+					? Number.isFinite(options.loudness) && options.loudness >= -40 && options.loudness <= -5
+						? { targetLufs: options.loudness, ceilingDbtp: -1 }
+						: undefined
+					: mixLoudnessTarget(options.loudness);
+			if (!loudness) {
+				throw new EditorApiError({
+					code: "invalid_params",
+					message: "loudness is streaming, podcast, broadcast, loud or LUFS from -40 to -5",
+				});
+			}
+		}
 		const result = await editor.project.export({
 			options: {
 				format,
@@ -832,6 +848,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				videoCodec: options.codec,
 				videoBitrate: bitrate,
 				hardware: options.hardware === true,
+				loudness,
 				platform: preset
 					? platformEncodeSettings({
 							canvas: project.settings.canvasSize,
@@ -850,10 +867,20 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			/[\\/:*?"<>|]+/g,
 			"_",
 		);
+		const level = (value: number) => (Number.isFinite(value) ? value : null);
 		return {
 			fileName: `${baseName}${getExportFileExtension({ format })}`,
 			mimeType: getExportMimeType({ format }),
 			bytes: result.buffer,
+			mastered: result.mastered
+				? {
+						...result.mastered,
+						inputLufs: level(result.mastered.inputLufs),
+						inputTruePeakDbtp: level(result.mastered.inputTruePeakDbtp),
+						outputLufs: level(result.mastered.outputLufs),
+						outputTruePeakDbtp: level(result.mastered.outputTruePeakDbtp),
+					}
+				: undefined,
 		};
 	};
 
@@ -3179,6 +3206,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			const blob = new Blob([rendered.bytes], { type: rendered.mimeType });
 			downloadBlob({ blob, fileName: rendered.fileName });
 			return {
+				mastered: rendered.mastered,
 				fileName: rendered.fileName,
 				mimeType: rendered.mimeType,
 				bytes: rendered.bytes.byteLength,

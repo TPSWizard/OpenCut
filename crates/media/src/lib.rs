@@ -35,7 +35,7 @@ pub use codecs::{
     listed_encoders, parse_bitrate_mbps, pick_encoder, resolve_codec,
 };
 pub use encode::{
-    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode, settings_codec,
+    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode, render_audio_mix, settings_codec,
     video_encoder,
 };
 pub use error::MediaError;
@@ -52,5 +52,5 @@ pub use faceswap::{FaceChoice, FaceFusion, SwapModel, SwapOptions, facefusion_ar
 pub use upscale::{MAX_UPSCALED_SIDE, UpscaleModel, locate_realesrgan, upscale_image, upscale_video, upscaled_size};
 pub use cover::attach_cover;
 pub use still::frame_to_png;
-pub use voice_fx::{VOICE_SAMPLE_RATE, enhance_voice_to_wav, voice_effect_to_wav, write_wav};
+pub use voice_fx::{VOICE_SAMPLE_RATE, enhance_voice_to_wav, read_audio_planes, voice_effect_to_wav, write_wav, write_wav_float};
 pub use video::{Frame, VideoReader, VideoSource, thumbnail};

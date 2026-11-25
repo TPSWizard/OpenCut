@@ -323,6 +323,13 @@ export interface ApiExportOptions {
 	videoBitrate?: number;
 	/** Prefer a hardware encoder (faster; quality depends on the GPU). */
 	hardware?: boolean;
+	/**
+	 * Bring the whole mix to a loudness: `streaming` (-14 LUFS), `podcast`
+	 * (-16), `broadcast` (-23), `loud` (-11), or a number of LUFS (-40 to
+	 * -5); true peaks are held under -1 dBTP by a limiter. The shared Rust
+	 * `loudness` crate, as the desktop export.
+	 */
+	loudness?: "streaming" | "podcast" | "broadcast" | "loud" | number;
 }
 
 export interface ApiDuckOptions {
@@ -504,6 +511,16 @@ export interface ApiExportResult {
 	mimeType: string;
 	/** Encoded media. Transferred, not copied, across the message bridge. */
 	bytes: ArrayBuffer;
+	/** What whole-mix loudness did (with `loudness`); levels are `null` for silence. */
+	mastered?: {
+		inputLufs: number | null;
+		inputTruePeakDbtp: number | null;
+		gainDb: number;
+		outputLufs: number | null;
+		outputTruePeakDbtp: number | null;
+		limited: boolean;
+		passes: number;
+	};
 }
 
 export interface ApiElementPatch {
@@ -925,7 +942,7 @@ export interface EditorApiMethods {
 	"export.render": { params: ApiExportOptions; result: ApiExportResult };
 	"export.download": {
 		params: ApiExportOptions;
-		result: { fileName: string; mimeType: string; bytes: number };
+		result: { fileName: string; mimeType: string; bytes: number; mastered?: ApiExportResult["mastered"] };
 	};
 	/**
 	 * Auto-ducking: measures the voice (every other audible clip, or
