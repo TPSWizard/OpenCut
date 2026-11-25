@@ -213,6 +213,7 @@ impl Track {
                 | (TrackKind::Video, ElementKind::Image { .. })
                 | (TrackKind::Video, ElementKind::Sticker { .. })
                 | (TrackKind::Video, ElementKind::Compound { .. })
+                | (TrackKind::Video, ElementKind::Graphic { .. })
                 | (TrackKind::Text, ElementKind::Text)
                 | (TrackKind::Audio, ElementKind::Audio { .. })
         )
@@ -259,7 +260,15 @@ pub enum ElementKind {
     },
     /// A compound clip: other clips in its own time; see [`crate::compound`].
     Compound { tracks: Vec<crate::CompoundTrack> },
+    /// A web-app graphic (`definitionId`: `drawing`, `rectangle`, ...), its
+    /// settings in the element's params. The desktop draws freehand
+    /// drawings ([`DRAWING_DEFINITION`], strokes in the `strokes` param) and
+    /// keeps other shapes so they go back to the web unchanged.
+    Graphic { definition_id: String },
 }
+
+/// The graphic definition of a freehand drawing (row 90).
+pub const DRAWING_DEFINITION: &str = "drawing";
 
 impl ElementKind {
     pub fn label(&self) -> &'static str {
@@ -270,6 +279,7 @@ impl ElementKind {
             Self::Text => "text",
             Self::Sticker { .. } => "sticker",
             Self::Compound { .. } => "compound",
+            Self::Graphic { .. } => "graphic",
         }
     }
 
@@ -278,13 +288,15 @@ impl ElementKind {
             Self::Video { media_id } | Self::Image { media_id } | Self::Audio { media_id } => {
                 Some(media_id)
             }
-            Self::Text | Self::Sticker { .. } | Self::Compound { .. } => None,
+            Self::Text | Self::Sticker { .. } | Self::Compound { .. } | Self::Graphic { .. } => None,
         }
     }
 
     pub fn track_kind(&self) -> TrackKind {
         match self {
-            Self::Video { .. } | Self::Image { .. } | Self::Sticker { .. } | Self::Compound { .. } => TrackKind::Video,
+            Self::Video { .. } | Self::Image { .. } | Self::Sticker { .. } | Self::Compound { .. } | Self::Graphic { .. } => {
+                TrackKind::Video
+            }
             Self::Text => TrackKind::Text,
             Self::Audio { .. } => TrackKind::Audio,
         }
@@ -582,6 +594,16 @@ fn zero() -> MediaTime {
 pub const DEFAULT_STILL_DURATION_SECONDS: f64 = 5.0;
 
 impl Element {
+    /// A freehand drawing (`strokes`, as `strokes::Drawing::encode` writes
+    /// it) over the whole canvas from `start_time`, shown all at once.
+    pub fn drawing(strokes: impl Into<String>, start_time: MediaTime) -> Self {
+        let mut element = Self::sticker("", "Drawing", start_time);
+        element.kind = ElementKind::Graphic { definition_id: DRAWING_DEFINITION.to_owned() };
+        element.params.set("strokes", strokes.into());
+        element.params.set("drawOn", 0.0);
+        element
+    }
+
     /// A sticker (`provider:value`, as the web app names them) at
     /// `start_time`, drawn at its SVG's own proportions.
     pub fn sticker(sticker_id: impl Into<String>, name: impl Into<String>, start_time: MediaTime) -> Self {

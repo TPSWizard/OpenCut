@@ -60,6 +60,25 @@ export function buildDefaultGraphicInstance({
 	};
 }
 
+/** The size a graphic is drawn at on a canvas (`sourceSize`, else the 512 square). */
+export function graphicSourceSize({
+	definitionId,
+	canvasWidth,
+	canvasHeight,
+}: {
+	definitionId: string;
+	canvasWidth: number;
+	canvasHeight: number;
+}): { width: number; height: number } {
+	const definition = graphicsRegistry.has(definitionId) ? getGraphicDefinition({ definitionId }) : null;
+	return (
+		definition?.sourceSize?.({ width: canvasWidth, height: canvasHeight }) ?? {
+			width: DEFAULT_GRAPHIC_SOURCE_SIZE,
+			height: DEFAULT_GRAPHIC_SOURCE_SIZE,
+		}
+	);
+}
+
 export function resolveGraphicParams({
 	definition,
 	params,

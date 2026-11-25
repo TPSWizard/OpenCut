@@ -998,5 +998,15 @@
   "Golden": "金色",
   "Rose": "玫瑰色",
   "Cool": "冷色",
-  "From (°)": "来自（°）"
+  "From (°)": "来自（°）",
+  "Draw": "绘制",
+  "Draw on the video: pen, marker, highlighter": "在视频上绘制：钢笔、马克笔、荧光笔",
+  "Pen": "钢笔",
+  "Marker": "马克笔",
+  "Highlighter": "荧光笔",
+  "Remove last stroke": "删除最后一笔",
+  "Done": "完成",
+  "Drawing": "绘图",
+  "Draw on over (s)": "逐笔显现时长（秒）",
+  "{count} stroke(s). Turn on Draw under the preview and draw on the frame; strokes join this drawing while it is selected. Draw on over plays them back as they were drawn (0 shows it whole).": "{count} 笔。打开预览下方的“绘制”并在画面上绘制；选中此绘图时，新笔画会加入其中。“逐笔显现时长”按绘制顺序回放笔画（0 表示整体显示）。"
 }

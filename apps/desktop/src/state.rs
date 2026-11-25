@@ -128,6 +128,10 @@ pub(crate) struct EditorState {
     peaks_pending: HashSet<String>,
     /// The freeform mask being drawn on the preview, if any.
     pub pen: Option<PenTool>,
+    /// Freehand drawing on the preview (row 90): the brush when drawing is
+    /// on, and the stroke being drawn (when it began, its points).
+    pub draw: Option<DrawBrush>,
+    pub draw_stroke: Option<(std::time::Instant, Vec<strokes::Point>)>,
     /// Points of the selected clip's freeform mask that are selected (they
     /// are what `Delete` removes), as in the web app.
     pub selected_mask_points: Vec<String>,
@@ -230,6 +234,8 @@ impl EditorState {
             status,
             thumbnails: HashMap::new(),
             pen: None,
+            draw: None,
+            draw_stroke: None,
             selected_mask_points: Vec::new(),
             corner_pin_editing: false,
             guide: None,
@@ -730,6 +736,79 @@ impl EditorState {
         let text = editor::chapters_text(&self.project().markers);
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
         self.set_status(t("Chapters copied"), cx);
+    }
+
+    /// Turns freehand drawing on the preview on (with a brush) or off.
+    pub(crate) fn set_draw(&mut self, brush: Option<DrawBrush>, cx: &mut Context<Self>) {
+        self.draw = brush;
+        self.draw_stroke = None;
+        cx.notify();
+    }
+
+    /// Starts a stroke at canvas pixel `(x, y)`.
+    pub(crate) fn draw_begin(&mut self, x: f64, y: f64, cx: &mut Context<Self>) {
+        if self.draw.is_none() {
+            return;
+        }
+        let point = self.draw_point(x, y, 0.0);
+        self.draw_stroke = Some((std::time::Instant::now(), vec![point]));
+        cx.notify();
+    }
+
+    /// Adds a point to the stroke being drawn.
+    pub(crate) fn draw_move(&mut self, x: f64, y: f64, cx: &mut Context<Self>) {
+        let Some((started, _)) = &self.draw_stroke else { return };
+        let elapsed = started.elapsed().as_secs_f64();
+        let point = self.draw_point(x, y, elapsed);
+        let min_step = 0.5 / self.project().settings.canvas.height.max(1) as f64;
+        if let Some((_, points)) = &mut self.draw_stroke {
+            // Skip points closer than half a pixel of the canvas height.
+            if let Some(last) = points.last()
+                && ((last.x - point.x).powi(2) + (last.y - point.y).powi(2)).sqrt() < min_step
+            {
+                return;
+            }
+            points.push(point);
+        }
+        cx.notify();
+    }
+
+    /// Finishes the stroke: adds it to the selected drawing under the
+    /// playhead, or starts a drawing there and selects it (one undo step).
+    pub(crate) fn draw_end(&mut self, cx: &mut Context<Self>) {
+        let (Some(brush), Some((_, points))) = (self.draw.clone(), self.draw_stroke.take()) else { return };
+        let stroke = strokes::Stroke { tool: brush.tool, color: brush.color.clone(), width: brush.width, points };
+        let selected = self.selected_element().map(|element| element.id.clone());
+        let Some(command) = editor::add_stroke_command(self.project(), selected.as_deref(), self.playhead(), stroke) else {
+            return;
+        };
+        let new_id = match &command {
+            Command::InsertElement { element, .. } => Some(element.id.clone()),
+            _ => None,
+        };
+        self.execute(command, cx);
+        if let Some(id) = new_id {
+            self.select(&id, false, cx);
+        }
+        cx.notify();
+    }
+
+    /// A point of the stroke at canvas pixel `(x, y)`, in canvas units.
+    fn draw_point(&self, x: f64, y: f64, time: f64) -> strokes::Point {
+        let canvas = self.project().settings.canvas;
+        strokes::Point {
+            x: x / canvas.width.max(1) as f64,
+            y: y / canvas.height.max(1) as f64,
+            // A mouse has no pressure: the pen draws at mid weight.
+            pressure: 0.5,
+            time,
+        }
+    }
+
+    /// Takes the selected drawing's last stroke away.
+    pub(crate) fn remove_last_stroke(&mut self, cx: &mut Context<Self>) {
+        let Some(command) = self.selected_element().and_then(editor::remove_last_stroke_command) else { return };
+        self.execute(command, cx);
     }
 
     /// The single selected element, if exactly one is selected.
@@ -5081,5 +5160,20 @@ mod lottie_import_tests {
         std::fs::write(&other, r#"{"name":"not an animation"}"#).unwrap();
         let error = probe_media(None, other).unwrap_err();
         assert!(error.starts_with("package.json: Not a Lottie animation"), "{error}");
+    }
+}
+
+/// The brush freehand drawing uses: its tool, colour (`#rrggbb`) and width
+/// (a share of the canvas height).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct DrawBrush {
+    pub tool: strokes::Tool,
+    pub color: String,
+    pub width: f64,
+}
+
+impl DrawBrush {
+    pub(crate) fn new(tool: strokes::Tool) -> Self {
+        Self { tool, color: if tool == strokes::Tool::Highlighter { "#ffeb3b".to_owned() } else { "#ff3b30".to_owned() }, width: tool.default_width() }
     }
 }

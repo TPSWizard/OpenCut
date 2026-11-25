@@ -399,6 +399,8 @@ fn web_element_supported(element: &Value) -> bool {
     match element.get("type").and_then(Value::as_str).unwrap_or("") {
         "video" | "image" | "text" | "compound" => true,
         "sticker" => element.get("stickerId").and_then(Value::as_str).is_some(),
+        // Freehand drawings; other shapes the desktop cannot draw yet.
+        "graphic" => element.get("definitionId").and_then(Value::as_str) == Some(crate::DRAWING_DEFINITION),
         "audio" => {
             element.get("sourceType").and_then(Value::as_str) != Some("library") && element.get("mediaId").is_some()
         }

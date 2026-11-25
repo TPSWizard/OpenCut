@@ -16,7 +16,8 @@ import { effectsRegistry, resolveEffectPasses } from "@/effects";
 import type { Effect, EffectPass } from "@/effects/types";
 import { getSourceTimeAtClipTime } from "@/retime";
 import {
-	DEFAULT_GRAPHIC_SOURCE_SIZE,
+	getGraphicDefinition,
+	graphicSourceSize,
 	resolveGraphicElementParamsAtTime,
 } from "@/graphics";
 import {
@@ -580,22 +581,34 @@ function resolveGraphicNode({
 	node: GraphicNode;
 	context: ResolveContext;
 }): ResolvedGraphicNodeState | null {
+	const size = graphicSourceSize({
+		definitionId: node.params.definitionId,
+		canvasWidth: context.renderer.width,
+		canvasHeight: context.renderer.height,
+	});
 	const visualState = resolveVisualState({
 		params: node.params,
 		context,
-		sourceWidth: DEFAULT_GRAPHIC_SOURCE_SIZE,
-		sourceHeight: DEFAULT_GRAPHIC_SOURCE_SIZE,
+		sourceWidth: size.width,
+		sourceHeight: size.height,
 	});
 	if (!visualState) {
 		return null;
 	}
 
+	const params = resolveGraphicElementParamsAtTime({
+		element: node.params,
+		localTime: visualState.localTime,
+	});
+	const timed = getGraphicDefinition({ definitionId: node.params.definitionId }).timedParams;
 	return {
 		...visualState,
-		resolvedParams: resolveGraphicElementParamsAtTime({
-			element: node.params,
-			localTime: visualState.localTime,
-		}),
+		resolvedParams: {
+			...params,
+			...(timed ? timed(params, visualState.localTime / TICKS_PER_SECOND) : {}),
+			__sourceWidth: size.width,
+			__sourceHeight: size.height,
+		},
 	};
 }
 

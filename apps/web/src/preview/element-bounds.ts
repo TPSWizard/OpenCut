@@ -2,7 +2,7 @@ import type { SceneTracks, TimelineElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { STICKER_INTRINSIC_SIZE_FALLBACK } from "@/stickers/intrinsic-size";
 import { bentRect, curveAt } from "@/text/curve";
-import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/graphics";
+import { graphicSourceSize } from "@/graphics";
 import { measureTextElement } from "@/text/measure-element";
 import {
 	getElementLocalTime,
@@ -161,11 +161,12 @@ export function getElementBounds({
 			animations: element.animations,
 			localTime,
 		});
+		const size = graphicSourceSize({ definitionId: element.definitionId, canvasWidth, canvasHeight });
 		return getVisualElementBounds({
 			canvasWidth,
 			canvasHeight,
-			sourceWidth: DEFAULT_GRAPHIC_SOURCE_SIZE,
-			sourceHeight: DEFAULT_GRAPHIC_SOURCE_SIZE,
+			sourceWidth: size.width,
+			sourceHeight: size.height,
 			transform,
 		});
 	}

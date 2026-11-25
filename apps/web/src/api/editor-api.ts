@@ -63,6 +63,7 @@ import { storageService } from "@/services/storage/service";
 import { isPreviewQuality } from "@/media/proxy";
 import { usePreviewStore } from "@/preview/preview-store";
 import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
+import { DRAW_TOOLS, DRAW_TOOL_WIDTHS, addDrawingStroke, isDrawing, removeLastStroke, strokeCount, type DrawTool } from "@/drawing/strokes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { videoCache } from "@/services/video-cache/service";
@@ -1336,6 +1337,32 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			if (useProxies !== undefined) store.setUseProxies(Boolean(useProxies));
 			if (autoProxies !== undefined) store.setAutoProxies(Boolean(autoProxies));
 			return previewSettings();
+		},
+		"drawing.addStroke": ({ points, tool, color, width }) => {
+			requireProject();
+			if (!Array.isArray(points) || points.length === 0) {
+				throw new EditorApiError({ code: "invalid_params", message: "points must be a non-empty array of [x, y, pressure, time]" });
+			}
+			const chosen = (tool ?? "pen") as DrawTool;
+			if (!DRAW_TOOLS.includes(chosen)) throw new EditorApiError({ code: "invalid_params", message: "tool is pen, marker or highlighter" });
+			const colour = color ?? (chosen === "highlighter" ? "#ffeb3b" : "#ff3b30");
+			if (!/^#[0-9a-fA-F]{6}$/.test(colour)) throw new EditorApiError({ code: "invalid_params", message: "color is #rrggbb" });
+			const cleaned = points.map((point) => {
+				if (!Array.isArray(point) || point.length < 2 || point.some((value) => value !== undefined && !Number.isFinite(value))) {
+					throw new EditorApiError({ code: "invalid_params", message: "each point is [x, y, pressure?, time?]" });
+				}
+				return [point[0], point[1], point[2] ?? 0.5, point[3] ?? 0] as [number, number, number, number];
+			});
+			const ref = addDrawingStroke({ editor, stroke: { tool: chosen, color: colour, width: width ?? DRAW_TOOL_WIDTHS[chosen], points: cleaned } });
+			const { element } = resolveElement(ref);
+			return { ...ref, strokes: isDrawing(element) ? strokeCount(element) : 0 };
+		},
+		"drawing.removeLastStroke": ({ elementId, trackId }) => {
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (!isDrawing(element)) throw new EditorApiError({ code: "invalid_params", message: "The element is not a drawing" });
+			removeLastStroke({ editor, trackId: track.id, elementId: element.id });
+			const updated = resolveElement({ elementId: element.id, trackId: track.id }).element;
+			return { trackId: track.id, elementId: element.id, strokes: isDrawing(updated) ? strokeCount(updated) : 0 };
 		},
 		"preview.scope": async ({ scope, time, show }) => {
 			if (!isVideoScope(scope)) {

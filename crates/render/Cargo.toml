@@ -27,6 +27,8 @@ time = { workspace = true }
 voice = { workspace = true }
 textwarp = { workspace = true }
 
+strokes = { workspace = true }
+
 [dev-dependencies]
 scopes = { workspace = true }
 richtext = { workspace = true }

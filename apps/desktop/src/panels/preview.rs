@@ -355,6 +355,11 @@ impl Render for PreviewPanel {
         let canvas_size = (project.settings.canvas.width as f32, project.settings.canvas.height as f32);
         let guide = state.guide;
         let pen_active = state.pen.is_some();
+        // Freehand drawing: the brush, and the stroke being drawn (canvas units).
+        let draw_active = state.draw.is_some();
+        let draw_brush = state.draw.clone();
+        let draw_points: Option<Vec<(f64, f64)>> =
+            state.draw_stroke.as_ref().map(|(_, points)| points.iter().map(|p| (p.x, p.y)).collect());
         let overlay = state.freeform_overlay();
         let path_editable = overlay.as_ref().is_some_and(|overlay| overlay.editable);
         let pin_overlay = state.corner_pin_overlay();
@@ -371,7 +376,19 @@ impl Render for PreviewPanel {
             .items_center()
             .justify_center()
             .bg(gpui::black())
-            .when(pen_active, |this| this.cursor(gpui::CursorStyle::Crosshair))
+            .when(pen_active || draw_active, |this| this.cursor(gpui::CursorStyle::Crosshair))
+            .when(draw_active, |this| {
+                let state = self.state.clone();
+                let bounds_cell = Rc::clone(&self.frame_bounds);
+                this.on_mouse_move(move |event: &MouseMoveEvent, _, cx| {
+                    if event.pressed_button != Some(MouseButton::Left) {
+                        return;
+                    }
+                    if let Some((x, y)) = canvas_point(bounds_cell.get(), canvas_size, event.position) {
+                        state.update(cx, |state, cx| state.draw_move(x as f64, y as f64, cx));
+                    }
+                })
+            })
             .when(dragging, |this| this.cursor(gpui::CursorStyle::ClosedHand))
             .on_mouse_down(MouseButton::Left, {
                 let focus_handle = focus_handle.clone();
@@ -404,6 +421,10 @@ impl Render for PreviewPanel {
                     let Some((x, y)) = canvas_point(bounds, canvas_size, event.position) else {
                         return;
                     };
+                    if draw_active {
+                        state.update(cx, |state, cx| state.draw_begin(x as f64, y as f64, cx));
+                        return;
+                    }
                     if pen_active {
                         pen_press.set(None);
                         state.update(cx, |state, cx| {
@@ -458,6 +479,10 @@ impl Render for PreviewPanel {
                 let path_drag = Rc::clone(&self.path_drag);
                 let pin_drag = Rc::clone(&self.pin_drag);
                 move |event: &MouseUpEvent, _, cx| {
+                    if draw_active {
+                        state.update(cx, |state, cx| state.draw_end(cx));
+                        return;
+                    }
                     if let Some(drag) = pin_drag.borrow_mut().take() {
                         finish_pin_drag(drag, &state, cx);
                         return;
@@ -489,6 +514,9 @@ impl Render for PreviewPanel {
                 let pin_drag = Rc::clone(&self.pin_drag);
                 move |_: &MouseUpEvent, _, cx| {
                     pen_press.set(None);
+                    if draw_active {
+                        state.update(cx, |state, cx| state.draw_end(cx));
+                    }
                     if let Some(drag) = pin_drag.borrow_mut().take() {
                         finish_pin_drag(drag, &state, cx);
                     }
@@ -549,6 +577,32 @@ impl Render for PreviewPanel {
                     canvas(
                         |_, _, _| (),
                         move |bounds, _, window, _| paint_path_overlay(bounds, canvas_size, &overlay, window),
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
+            })
+            .when_some(draw_points.zip(draw_brush.clone()), |this, (points, brush)| {
+                // The stroke being drawn, before it joins the drawing.
+                this.child(
+                    canvas(
+                        |_, _, _| (),
+                        move |bounds, _, window, _| {
+                            let (origin, scale) = fitted_frame(bounds, canvas_size);
+                            let to_screen = |(x, y): (f64, f64)| {
+                                point(origin.x + px(x as f32 * canvas_size.0 * scale), origin.y + px(y as f32 * canvas_size.1 * scale))
+                            };
+                            let half = (brush.width as f32 * canvas_size.1 * scale / 2.0).max(0.75);
+                            let colour = editor::parse_hex_color(&brush.color).map_or(hsla(0.0, 0.0, 1.0, 1.0), |[r, g, b, _]| {
+                                gpui::Rgba { r, g, b, a: brush.tool.opacity() as f32 }.into()
+                            });
+                            for pair in points.windows(2) {
+                                paint_line(to_screen(pair[0]), to_screen(pair[1]), half, colour, window);
+                            }
+                            if let Some(first) = points.first() {
+                                paint_square(to_screen(*first), half, colour, window);
+                            }
+                        },
                     )
                     .absolute()
                     .inset_0(),
@@ -684,6 +738,67 @@ impl Render for PreviewPanel {
                 .child(body)
         });
 
+        // Freehand drawing: on / off, then the tool, colour and width.
+        let mut draw_row = div().flex().items_center().gap(px(2.)).child({
+            let state = self.state.clone();
+            Button::new("draw-toggle", t("Draw"))
+                .variant(if draw_brush.is_some() { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                .size(ButtonSize::XSmall)
+                .on_click(move |_, _, cx| {
+                    let next = if draw_active { None } else { Some(crate::state::DrawBrush::new(strokes::Tool::Pen)) };
+                    state.update(cx, |state, cx| state.set_draw(next, cx));
+                })
+        });
+        if let Some(brush) = draw_brush.clone() {
+            for (tool, label) in [(strokes::Tool::Pen, "Pen"), (strokes::Tool::Marker, "Marker"), (strokes::Tool::Highlighter, "Highlighter")] {
+                let state = self.state.clone();
+                let next = crate::state::DrawBrush { tool, width: tool.default_width(), ..brush.clone() };
+                draw_row = draw_row.child(
+                    Button::new(crate::components::eid("draw-tool", tool.id()), t(label))
+                        .variant(if brush.tool == tool { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::XSmall)
+                        .on_click(move |_, _, cx| {
+                            let next = next.clone();
+                            state.update(cx, |state, cx| state.set_draw(Some(next), cx));
+                        }),
+                );
+            }
+            for colour in DRAW_COLOURS {
+                let state = self.state.clone();
+                let next = crate::state::DrawBrush { color: colour.to_owned(), ..brush.clone() };
+                let selected = brush.color.eq_ignore_ascii_case(colour);
+                let fill = editor::parse_hex_color(colour).map_or(hsla(0.0, 0.0, 1.0, 1.0), |[r, g, b, _]| gpui::Rgba { r, g, b, a: 1.0 }.into());
+                draw_row = draw_row.child(
+                    div()
+                        .id(crate::components::eid("draw-colour", colour))
+                        .size(px(14.))
+                        .rounded_full()
+                        .bg(fill)
+                        .border_2()
+                        .border_color(if selected { colors.foreground } else { colors.border })
+                        .cursor_pointer()
+                        .on_click(move |_, _, cx| {
+                            let next = next.clone();
+                            state.update(cx, |state, cx| state.set_draw(Some(next), cx));
+                        }),
+                );
+            }
+            for (factor, label) in [(0.5, "S"), (1.0, "M"), (2.0, "L")] {
+                let state = self.state.clone();
+                let width = brush.tool.default_width() * factor;
+                let next = crate::state::DrawBrush { width, ..brush.clone() };
+                draw_row = draw_row.child(
+                    Button::new(crate::components::eid("draw-width", label), label)
+                        .variant(if (brush.width - width).abs() < 1e-9 { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                        .size(ButtonSize::XSmall)
+                        .on_click(move |_, _, cx| {
+                            let next = next.clone();
+                            state.update(cx, |state, cx| state.set_draw(Some(next), cx));
+                        }),
+                );
+            }
+        }
+
         let transport = |id: &'static str, label: &'static str, action: fn(&mut EditorState, &mut Context<EditorState>)| {
             let state = self.state.clone();
             let focus_handle = focus_handle.clone();
@@ -769,6 +884,7 @@ impl Render for PreviewPanel {
                             )))
                     }))
                     .child(div().flex_1())
+                    .child(draw_row)
                     .child(scope_toggle)
                     .child(guide_row)
                     .child(quality_row)
@@ -782,3 +898,6 @@ impl Render for PreviewPanel {
             )
     }
 }
+
+/// The colours offered for freehand drawing.
+const DRAW_COLOURS: [&str; 6] = ["#ffffff", "#000000", "#ff3b30", "#ffeb3b", "#34c759", "#0a84ff"];

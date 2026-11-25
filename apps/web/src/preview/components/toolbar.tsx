@@ -8,6 +8,7 @@ import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
 import {
 	ChartHistogramIcon,
+	PencilEdit02Icon,
 	FullScreenIcon,
 	GridTableIcon,
 	PauseIcon,
@@ -31,6 +32,7 @@ import { getGuideById } from "@/guides";
 import type { MediaTime } from "@/wasm";
 import { useT } from "@/i18n";
 import { useScopeStore } from "@/scopes/capture";
+import { brushFor, useDrawStore } from "@/drawing/strokes";
 import { formatMeterLufs, meterFraction, type MeterReadings } from "@/loudness/mix";
 
 /** Preview quality names (PREVIEW_QUALITIES holds the English; fractions stay as they are). */
@@ -75,12 +77,31 @@ export function PreviewToolbar({
 						)}
 					</Button>
 				</GridPopover>
+				<DrawButton />
 				<ScopesButton />
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+/** Turns freehand drawing on the preview on or off (row 90). */
+function DrawButton() {
+	const t = useT();
+	const brush = useDrawStore((state) => state.brush);
+	return (
+		<Button
+			variant={brush ? "secondary" : "text"}
+			size="icon"
+			aria-label={t("Draw")}
+			title={t("Draw on the video: pen, marker, highlighter")}
+			data-testid="draw-toggle"
+			onClick={() => useDrawStore.getState().setBrush(brush ? null : brushFor("pen"))}
+		>
+			<HugeiconsIcon icon={PencilEdit02Icon} />
+		</Button>
 	);
 }
 

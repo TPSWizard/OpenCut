@@ -660,6 +660,20 @@ export interface EditorApiMethods {
 	 * preview.
 	 */
 	"preview.scope": { params: { scope: ApiVideoScope; time?: number; show?: boolean }; result: ApiScopeReading };
+	/**
+	 * Freehand drawing (row 90): adds a stroke (`points` as [x, y, pressure,
+	 * time]: canvas units 0 to 1, pressure 0 to 1, seconds since the stroke
+	 * began) to the selected drawing showing at the playhead, or to a new
+	 * drawing there, which is then selected. `tool` pen, marker or
+	 * highlighter (default pen), `color` #rrggbb, `width` a share of the
+	 * canvas height (the tool's default).
+	 */
+	"drawing.addStroke": {
+		params: { points: [number, number, number?, number?][]; tool?: string; color?: string; width?: number };
+		result: { trackId: string; elementId: string; strokes: number };
+	};
+	/** Takes a drawing's last stroke away. */
+	"drawing.removeLastStroke": { params: ApiElementLocator; result: { trackId: string; elementId: string; strokes: number } };
 	"preview.capture": {
 		params: { time?: number };
 		result: {

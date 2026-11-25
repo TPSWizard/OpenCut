@@ -82,6 +82,9 @@ pub struct Renderer {
     stickers_dir: Option<std::path::PathBuf>,
     /// Rasterised stickers by texture id: the pixel size uploaded.
     stickers: HashMap<String, (u32, u32)>,
+    /// What each drawing's texture was last rasterised from (strokes,
+    /// reveal, size), by element id.
+    drawings: HashMap<String, u64>,
     proxy_dir: Option<std::path::PathBuf>,
     /// Media id → its proxy file and that file's frame size, once looked up.
     proxies: HashMap<String, Option<(std::path::PathBuf, (u32, u32))>>,
@@ -115,6 +118,7 @@ impl Renderer {
             fonts_dir: options.fonts_dir,
             stickers_dir: options.stickers_dir,
             stickers: HashMap::new(),
+            drawings: HashMap::new(),
             proxy_dir: options.proxy_dir,
             proxies: HashMap::new(),
             lotties: HashMap::new(),
@@ -298,6 +302,8 @@ impl Renderer {
         };
         let (base_width, base_height) = match layer.source {
             LayerSource::Text(_) => (natural_width as f32, natural_height as f32),
+            // A drawing is the canvas itself.
+            LayerSource::Drawing { .. } => (canvas_width, canvas_height),
             LayerSource::Sticker { intrinsic_width, intrinsic_height, .. } => fit_contain(
                 intrinsic_width.map(|w| w as f32).unwrap_or(natural_width as f32),
                 intrinsic_height.map(|h| h as f32).unwrap_or(natural_height as f32),
@@ -402,6 +408,34 @@ impl Renderer {
         output_scale: f32,
     ) -> Result<Option<(String, u32, u32)>, RenderError> {
         match source {
+            LayerSource::Drawing { strokes, progress } => {
+                // Rasterised at the size it is shown (in steps of 64 px),
+                // again only when the strokes, the reveal or the size change.
+                let canvas = project.settings.canvas;
+                let shown = (canvas.width as f32 * output_scale).clamp(16.0, strokes::MAX_RASTER_SIDE as f32);
+                let pixel_width = ((shown / 64.0).ceil() * 64.0).max(64.0) as u32;
+                let pixel_height = ((pixel_width as f64 * canvas.height as f64 / canvas.width.max(1) as f64).round() as u32).max(1);
+                let texture_id = format!("drawing:{element_id}");
+                let key = {
+                    use std::hash::{Hash, Hasher};
+                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                    strokes.hash(&mut hasher);
+                    ((progress * 10000.0).round() as i64).hash(&mut hasher);
+                    (pixel_width, pixel_height).hash(&mut hasher);
+                    hasher.finish()
+                };
+                if self.drawings.get(element_id) != Some(&key) {
+                    let Some(drawing) = strokes::Drawing::parse(strokes) else { return Ok(None) };
+                    let rgba = strokes::rasterise(&drawing, pixel_width as usize, pixel_height as usize, *progress);
+                    let mut bgra = rgba;
+                    for pixel in bgra.chunks_exact_mut(4) {
+                        pixel.swap(0, 2);
+                    }
+                    self.upload(&texture_id, pixel_width, pixel_height, &bgra);
+                    self.drawings.insert(element_id.to_owned(), key);
+                }
+                Ok(Some((texture_id, canvas.width, canvas.height)))
+            }
             LayerSource::Sticker { sticker_id, intrinsic_width, intrinsic_height } => {
                 let Some(dir) = self.stickers_dir.clone() else {
                     return Ok(None);

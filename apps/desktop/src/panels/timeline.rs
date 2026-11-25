@@ -217,6 +217,7 @@ impl TimelinePanel {
             ElementKind::Audio { .. } => hsla(0.75, 0.45, 0.50, 1.0),
             ElementKind::Sticker { .. } => hsla(0.48, 0.50, 0.42, 1.0),
             ElementKind::Compound { .. } => hsla(0.66, 0.18, 0.36, 1.0),
+            ElementKind::Graphic { .. } => hsla(0.92, 0.50, 0.45, 1.0),
         }
     }
 

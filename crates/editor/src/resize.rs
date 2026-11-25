@@ -146,7 +146,8 @@ impl Plan<'_> {
                 return;
             }
             ElementKind::Text => text_factor(self.mode, self.from, self.to),
-            ElementKind::Audio { .. } => return,
+            // Drawings are in canvas units: they span the new canvas as they are.
+            ElementKind::Audio { .. } | ElementKind::Graphic { .. } => return,
         };
         let factors = POSITION_PATHS
             .iter()

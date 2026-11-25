@@ -21,6 +21,7 @@ media = { workspace = true }
 tracking = { workspace = true }
 deflicker = { workspace = true }
 scopes = { workspace = true }
+strokes = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 facetrack = { workspace = true }

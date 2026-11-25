@@ -48,16 +48,16 @@ export class GraphicNode extends VisualNode<
 			return this.cachedSource;
 		}
 
-		const { canvas, context } = createCanvasSurface({
-			width: DEFAULT_GRAPHIC_SOURCE_SIZE,
-			height: DEFAULT_GRAPHIC_SOURCE_SIZE,
-		});
+		// A graphic with a size of its own (a drawing) is drawn at it.
+		const width = Number(resolvedParams.__sourceWidth) || DEFAULT_GRAPHIC_SOURCE_SIZE;
+		const height = Number(resolvedParams.__sourceHeight) || DEFAULT_GRAPHIC_SOURCE_SIZE;
+		const { canvas, context } = createCanvasSurface({ width, height });
 
 		definition.render({
 			ctx: context,
 			params: resolvedParams,
-			width: DEFAULT_GRAPHIC_SOURCE_SIZE,
-			height: DEFAULT_GRAPHIC_SOURCE_SIZE,
+			width,
+			height,
 		});
 
 		this.cachedKey = cacheKey;

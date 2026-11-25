@@ -25,6 +25,7 @@ mod captions;
 mod caption_keywords;
 mod colour_match;
 mod colour_tools;
+mod drawing;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
@@ -94,7 +95,7 @@ pub use commands::{
     nearest_free_start,
 };
 pub use document::{
-    CUTOUT_BACKGROUND_BLUR_DEFAULT, Cutout, StockCredit,
+    CUTOUT_BACKGROUND_BLUR_DEFAULT, Cutout, DRAWING_DEFINITION, StockCredit,
     Background, CanvasSize, CaptionWord, Effect, Element, ElementKind, Lane, Mask, MaskSize, MediaItem, MediaKind,
     PROJECT_FORMAT_VERSION,
     Project, ProjectSettings, Track, TrackKind, Transition, now_millis,
@@ -134,6 +135,7 @@ pub use colour_tools::{
     COLOUR_WHEEL_ANGLES, COLOUR_WHEEL_RANGE, COLOUR_WHEELS, HSL_BANDS, HSL_CONTROLS, HSL_HUE_RANGE, colour_wheel_move,
     colour_wheel_offsets, colour_wheel_point, colour_wheel_rgba, hsl_band_swatch, hsl_band_value, hsl_param_key,
 };
+pub use drawing::{add_stroke_command, is_drawing, remove_last_stroke_command};
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, LIGHT_LEAK_COLOURS, effect_spec};
 pub use error::EditorError;
 pub use frame::{

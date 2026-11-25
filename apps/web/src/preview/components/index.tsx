@@ -22,6 +22,7 @@ import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
 import { captureScope } from "@/scopes/capture";
 import { ScopesPanel } from "@/scopes/components/scopes-panel";
+import { DrawBar, DrawOverlay } from "@/drawing/components/draw-overlay";
 import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
@@ -352,6 +353,13 @@ function PreviewCanvas({
 									instances={overlayInstances}
 									plane="over-interaction"
 								/>
+								<DrawOverlay
+									left={viewport.sceneLeft}
+									top={viewport.sceneTop}
+									width={viewport.sceneWidth}
+									height={viewport.sceneHeight}
+								/>
+								<DrawBar />
 							</div>
 						</ContextMenuTrigger>
 						<PreviewContextMenu

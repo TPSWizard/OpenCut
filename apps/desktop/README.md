@@ -512,6 +512,10 @@ The **HSL** effect moves the hue (up to 30° either way), saturation and lightne
 
 **Lift, gamma, gain** shows three colour wheels over its red, green and blue offsets: drag a wheel's dot to tint the shadows, midtones or highlights (one undo step, written on release), or **Centre** to take the tint off. The wheel's offsets add up to zero, so it tints without brightening; red, green and blue sit about where the vectorscope shows them (`editor::colour_wheel_offsets`, shared with the web editor).
 
+## Freehand drawing
+
+**Draw** in the preview's bottom bar turns drawing on: pick **Pen**, **Marker** or **Highlighter**, a colour and a width (S, M, L), and drag on the frame. Each stroke is added on release (one undo step) to the selected drawing when it shows at the playhead, or to a new **Drawing** there (then selected), so strokes build up one drawing. A drawing covers the canvas; points are kept in canvas units with their pressure and the time they were drawn. In the inspector, **Draw on over** plays the strokes back as they were drawn over that many seconds (0 shows it whole), and **Remove last stroke** takes one away. The shared `strokes` crate rasterises it (anti-aliased round strokes; a highlighter stays even where it crosses itself), the same in the web editor, checked against an independent reference (`fixtures/strokes/cases.json`) and through the renderer (`crates/render/tests/drawing.rs`). A drawing is the web editor's graphic element (`definitionId: drawing`), so it moves between the two editors unchanged; other web shapes are kept but not drawn on the desktop yet.
+
 ## Bloom and light leaks
 
 **Bloom** makes highlights glow: what is brighter than the **Threshold** (with **Softness** ramping it in) is blurred by **Radius** (pixels at 1080 high), tinted and added back onto the frame as it came in, at **Intensity**. It runs as passes in the shared effects crate: keep the highlights, the shared Gaussian blur, then add them back; the last pass reads the effect's untouched input through the `@source` table key (`effects::SOURCE_TABLE`). Frames darker than the threshold come out unchanged.

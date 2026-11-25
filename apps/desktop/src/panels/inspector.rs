@@ -3202,6 +3202,46 @@ impl Render for InspectorPanel {
                     content = content.child(camera_row).child(shots_row).child(actions);
                 }
 
+                // Freehand drawing (row 90): drawn with Draw on the preview.
+                if editor::is_drawing(&element) {
+                    let count = strokes::Drawing::parse(&element.params.text("strokes", "")).map_or(0, |drawing| drawing.strokes.len());
+                    let draw_on = element.params.number("drawOn", 0.0);
+                    let remove_state = self.state.clone();
+                    let draw_on_row = self.row(
+                        t("Draw on over (s)"),
+                        "drawing.drawOn",
+                        "0",
+                        number_text(draw_on),
+                        Some(key_state("params.drawOn")),
+                        window,
+                        cx,
+                        Box::new(move |text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                if value.is_finite() {
+                                    let mut params = Params::new();
+                                    params.set("drawOn", value.clamp(0.0, 600.0));
+                                    state.update_selected_params(params, cx);
+                                }
+                            }
+                        }),
+                    );
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Drawing"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "{count} stroke(s). Turn on Draw under the preview and draw on the frame; strokes join this drawing while it is selected. Draw on over plays them back as they were drawn (0 shows it whole).",
+                            &[("count", &count)],
+                        )))
+                        .child(draw_on_row)
+                        .child(
+                            Button::new("drawing-undo-stroke", t("Remove last stroke"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .disabled(count == 0)
+                                .on_click(move |_, _, cx| remove_state.update(cx, |state, cx| state.remove_last_stroke(cx))),
+                        );
+                }
+
                 if has_picture {
                     content = content
                         .child(Separator::horizontal())

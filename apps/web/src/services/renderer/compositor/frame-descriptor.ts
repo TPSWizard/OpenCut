@@ -274,11 +274,11 @@ async function collectVisualSourceNode({
 
 	const sourceWidth =
 		node instanceof GraphicNode
-			? DEFAULT_GRAPHIC_SOURCE_SIZE
+			? (source as OffscreenCanvas).width || DEFAULT_GRAPHIC_SOURCE_SIZE
 			: (node.resolved as ResolvedVisualSourceNodeState).sourceWidth;
 	const sourceHeight =
 		node instanceof GraphicNode
-			? DEFAULT_GRAPHIC_SOURCE_SIZE
+			? (source as OffscreenCanvas).height || DEFAULT_GRAPHIC_SOURCE_SIZE
 			: (node.resolved as ResolvedVisualSourceNodeState).sourceHeight;
 
 	const textureId = `${path}:source`;

@@ -1625,6 +1625,7 @@ dependencies = [
  "richtext",
  "serde",
  "serde_json",
+ "strokes",
  "tempfile",
  "thiserror 2.0.19",
  "time",
@@ -4265,6 +4266,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "smallvec",
+ "strokes",
  "tempfile",
  "time",
  "tracking",
@@ -4309,6 +4311,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "strokes",
  "textwarp",
  "time",
  "tracking",
@@ -5162,6 +5165,7 @@ dependencies = [
  "richtext",
  "scopes",
  "serde_json",
+ "strokes",
  "tempfile",
  "textwarp",
  "thiserror 2.0.19",
@@ -5941,6 +5945,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6637bab7722d379c8b41ba849228d680cc12d0a45ba1fa2b48f2a30577a06731"
 dependencies = [
  "float-cmp",
+]
+
+[[package]]
+name = "strokes"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
