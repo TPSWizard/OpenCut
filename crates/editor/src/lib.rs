@@ -77,7 +77,8 @@ pub use animation::{
     Animations, Channel, CurveHandle, KEY_SNAP, Keyframe, Segment, format_linear_rgba, is_param_path,
     parse_color_to_linear_rgba, resolve_object_params, resolve_params, split_animations,
 };
-pub use audio::{AUDIO_FADE_MAX_SECONDS, AudioClipPlan, clip_audio_fx, clip_fades, clip_pan, pan_stereo, plan_audio};
+pub use audio::{AUDIO_FADE_MAX_SECONDS, AudioClipPlan, clip_audio_fx, clip_fades, clip_pan, pan_stereo, plan_audio, track_settings};
+pub use trackmix::{TRACK_VOLUME_MAX_DB, TRACK_VOLUME_MIN_DB, TrackMix, TrackSettings, pan_clip_and_track, track_mix, volume_gain};
 pub use beats::{BeatAnalysis, BeatOptions, onset_strength, track_beats};
 pub use broll::{MIN_SHOT_SECONDS, Shot, WORDS_PER_SECOND, plan_shots, query_for, shot_seconds};
 pub use open_link::bundle_url_from_link;

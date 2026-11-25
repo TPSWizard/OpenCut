@@ -1,0 +1,16 @@
+[package]
+name = "trackmix"
+description = "Track mixing: which tracks are heard (mute and solo), each track's gain and pan, and the stereo pan both editors use; shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

@@ -477,5 +477,12 @@
   "Loud social (−11 LUFS, −1 dBTP)": "高响度社交（−11 LUFS，−1 dBTP）",
   "The mix is exported as it plays, with only overs caught.": "按播放时的混音导出，仅拦截过载。",
   "The whole mix is measured and brought to the target; a limiter holds true peaks under -1 dBTP.": "测量整个混音并调整到目标响度；限制器将真峰值保持在 -1 dBTP 以下。",
-  "Mix loudness: {from} → {to} LUFS ({gain} dB), true peak {peak} dBTP": "混音响度：{from} → {to} LUFS（{gain} dB），真峰值 {peak} dBTP"
+  "Mix loudness: {from} → {to} LUFS ({gain} dB), true peak {peak} dBTP": "混音响度：{from} → {to} LUFS（{gain} dB），真峰值 {peak} dBTP",
+  "Mixer": "混音器",
+  "Each track's volume (dB, -60 is silent) and pan, after each clip's own. Solo plays only the soloed tracks; mute wins.": "每条轨道的音量（dB，-60 为静音）和声像，作用于各片段自身设置之后。独奏时只播放独奏轨道；静音优先。",
+  "Mute": "静音",
+  "Solo": "独奏",
+  "Pan": "声像",
+  "Solo track": "独奏轨道",
+  "Unsolo track": "取消独奏轨道"
 }

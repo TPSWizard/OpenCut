@@ -25,6 +25,7 @@ import { getSourceTimeAtClipTime, hasVariableRetime, renderRetimedBuffer } from 
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { expandCompounds } from "@/timeline/compound";
 import { withAudioCrossfades } from "@/timeline/audio-crossfade";
+import { trackMixes } from "@/timeline/track-mix";
 import { masterAudioBuffer, type MixLoudness, type MixMasterReport } from "@/loudness/mix";
 import { TICKS_PER_SECOND } from "@/wasm";
 import {
@@ -45,6 +46,16 @@ export interface CollectedAudioElement {
 	volume: number;
 	muted: boolean;
 	retime?: RetimeConfig;
+	/** The clip's track volume (linear) and pan, after the clip's own (`@/timeline/track-mix`). */
+	trackGain: number;
+	trackPan: number;
+}
+
+/** Where a clip sits in the track mixer. */
+interface TrackPlacement {
+	trackId: string;
+	trackGain: number;
+	trackPan: number;
 }
 
 export function createAudioContext({
@@ -92,7 +103,7 @@ export async function decodeAudioToFloat32({
 	return { samples, sampleRate: audioBuffer.sampleRate };
 }
 
-export interface AudibleElementCandidate {
+export interface AudibleElementCandidate extends TrackPlacement {
 	element: AudioElement | VideoElement;
 	mediaAsset: MediaAsset | null;
 }
@@ -109,9 +120,13 @@ export function collectAudibleCandidates({
 	const allTracks = [...expanded.overlay, expanded.main, ...expanded.audio];
 	const mediaMap = new Map(mediaAssets.map((a) => [a.id, a]));
 	const candidates: AudibleElementCandidate[] = [];
+	const mixes = trackMixes(allTracks);
 
 	for (const track of allTracks) {
-		if (canTrackHaveAudio(track) && track.muted) continue;
+		const mix = mixes.get(track.id);
+		// Muted, soloed out or faded down to nothing.
+		if (canTrackHaveAudio(track) && !mix?.audible) continue;
+		const placement: TrackPlacement = { trackId: track.id, trackGain: mix?.gain ?? 1, trackPan: mix?.pan ?? 0 };
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;
@@ -122,7 +137,7 @@ export function collectAudibleCandidates({
 				: null;
 			if (!doesElementHaveEnabledAudio({ element, mediaAsset })) continue;
 
-			candidates.push({ element, mediaAsset });
+			candidates.push({ element, mediaAsset, ...placement });
 		}
 	}
 
@@ -156,7 +171,7 @@ export async function collectAudioElements({
 	);
 	const pendingElements: Array<Promise<CollectedAudioElement | null>> = [];
 
-	for (const { element, mediaAsset } of candidates) {
+	for (const { element, mediaAsset, trackGain, trackPan } of candidates) {
 		if (element.type === "audio") {
 			pendingElements.push(
 				resolveAudioBufferForElement({
@@ -179,6 +194,8 @@ export async function collectAudioElements({
 						}),
 						muted: isElementMuted({ element }),
 						retime: element.retime,
+						trackGain,
+						trackPan,
 					};
 				}),
 			);
@@ -208,6 +225,8 @@ export async function collectAudioElements({
 						}),
 						muted: isElementMuted({ element }),
 						retime: element.retime,
+						trackGain,
+						trackPan,
 					};
 				}),
 			);
@@ -369,6 +388,10 @@ export interface AudioClipSource {
 	volume: number;
 	muted: boolean;
 	retime?: RetimeConfig;
+	/** The clip's track and its mixer volume (linear) and pan. */
+	trackId?: string;
+	trackGain?: number;
+	trackPan?: number;
 }
 
 async function fetchLibraryAudioSource({
@@ -506,9 +529,12 @@ export async function collectAudioMixSources({
 		mediaAssets.map((asset) => [asset.id, asset]),
 	);
 	const pendingLibrarySources: Array<Promise<AudioMixSource | null>> = [];
+	const mixes = trackMixes(orderedTracks);
 
 	for (const track of orderedTracks) {
-		if (canTrackHaveAudio(track) && track.muted) continue;
+		const mix = mixes.get(track.id);
+		if (canTrackHaveAudio(track) && !mix?.audible) continue;
+		const trackGain = mix?.gain ?? 1;
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;
@@ -517,10 +543,11 @@ export async function collectAudioMixSources({
 				? (mediaMap.get(element.mediaId) ?? null)
 				: null;
 			if (!doesElementHaveEnabledAudio({ element, mediaAsset })) continue;
-			const volume = resolveEffectiveAudioGain({
-				element,
-				localTime: 0,
-			});
+			const volume =
+				resolveEffectiveAudioGain({
+					element,
+					localTime: 0,
+				}) * trackGain;
 
 			if (element.type === "audio") {
 				if (element.sourceType === "upload") {
@@ -571,9 +598,13 @@ export async function collectAudioClips({
 		mediaAssets.map((asset) => [asset.id, asset]),
 	);
 	const pendingLibraryClips: Array<Promise<AudioClipSource | null>> = [];
+	const mixes = trackMixes(orderedTracks);
 
 	for (const track of orderedTracks) {
-		const isTrackMuted = canTrackHaveAudio(track) && track.muted;
+		const mix = mixes.get(track.id);
+		// Muted or soloed out; the track's volume and pan go on its bus in the player.
+		const isTrackMuted = canTrackHaveAudio(track) && !mix?.audible;
+		const placement: TrackPlacement = { trackId: track.id, trackGain: mix?.gain ?? 1, trackPan: mix?.pan ?? 0 };
 
 		for (const element of track.elements) {
 			if (!canElementHaveAudio(element)) continue;
@@ -595,17 +626,18 @@ export async function collectAudioClips({
 					const mediaAsset = mediaMap.get(element.mediaId);
 					if (!mediaAsset) continue;
 
-					clips.push(
-						collectMediaAudioClip({
+					clips.push({
+						...collectMediaAudioClip({
 							element,
 							mediaAsset,
 							muted,
 							volume,
 						}),
-					);
+						...placement,
+					});
 				} else {
 					pendingLibraryClips.push(
-						fetchLibraryAudioClip({ element, muted, volume }),
+						fetchLibraryAudioClip({ element, muted, volume }).then((clip) => clip && { ...clip, ...placement }),
 					);
 				}
 				continue;
@@ -613,14 +645,15 @@ export async function collectAudioClips({
 
 			if (element.type === "video") {
 				if (mediaAsset && mediaSupportsAudio({ media: mediaAsset })) {
-					clips.push(
-						collectMediaAudioClip({
+					clips.push({
+						...collectMediaAudioClip({
 							element,
 							mediaAsset,
 							muted,
 							volume,
 						}),
-					);
+						...placement,
+					});
 				}
 			}
 		}
@@ -867,9 +900,15 @@ function mixAudioChannels({
 	const sourceLeft = buffer.getChannelData(0);
 	const sourceRight = buffer.getChannelData(Math.min(1, buffer.numberOfChannels - 1));
 	const automated = hasGainAutomation({ element: element.timelineElement });
-	// Pan gains: the left and right outputs as mixes of the two inputs (see `panStereo`).
-	const [leftFromLeft, rightFromLeft] = panStereo({ pan: getElementPan({ element: element.timelineElement }), left: 1, right: 0 });
-	const [leftFromRight, rightFromRight] = panStereo({ pan: getElementPan({ element: element.timelineElement }), left: 0, right: 1 });
+	// Pan gains: the left and right outputs as mixes of the two inputs, the
+	// clip's pan then its track's (see `panStereo`).
+	const clipPan = getElementPan({ element: element.timelineElement });
+	const panBoth = (left: number, right: number) => {
+		const [l, r] = panStereo({ pan: clipPan, left, right });
+		return panStereo({ pan: element.trackPan, left: l, right: r });
+	};
+	const [leftFromLeft, rightFromLeft] = panBoth(1, 0);
+	const [leftFromRight, rightFromRight] = panBoth(0, 1);
 
 	for (let i = 0; i < renderedLength; i++) {
 		const outputIndex = outputStartSample + i;
@@ -884,12 +923,13 @@ function mixAudioChannels({
 		const lowerIndex = Math.floor(sourceIndex);
 		const upperIndex = Math.min(sourceLeft.length - 1, lowerIndex + 1);
 		const fraction = sourceIndex - lowerIndex;
-		const gain = automated
-			? resolveEffectiveAudioGain({
-					element: element.timelineElement,
-					localTime: clipTime,
-				})
-			: element.volume;
+		const gain =
+			(automated
+				? resolveEffectiveAudioGain({
+						element: element.timelineElement,
+						localTime: clipTime,
+					})
+				: element.volume) * element.trackGain;
 		const l = sourceLeft[lowerIndex] * (1 - fraction) + sourceLeft[upperIndex] * fraction;
 		const r = sourceRight[lowerIndex] * (1 - fraction) + sourceRight[upperIndex] * fraction;
 		left[outputIndex] += (l * leftFromLeft + r * leftFromRight) * gain;

@@ -1,11 +1,12 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Settings05Icon } from "@hugeicons/core-free-icons";
 import { useT } from "@/i18n";
+import { MixerPanel } from "@/timeline/components/mixer-panel";
 
 export function EmptyView() {
 	const t = useT();
 	return (
-		<div className="bg-background flex h-full flex-col items-center justify-center gap-3 p-4">
+		<div className="bg-background flex h-full w-full flex-col items-center justify-center gap-3 overflow-y-auto p-4">
 			<HugeiconsIcon
 				icon={Settings05Icon}
 				className="text-muted-foreground/75 size-10"
@@ -17,6 +18,7 @@ export function EmptyView() {
 					{t("Click an element on the timeline to edit its properties")}
 				</p>
 			</div>
+			<MixerPanel />
 		</div>
 	);
 }

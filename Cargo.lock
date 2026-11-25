@@ -1628,6 +1628,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.19",
  "time",
+ "trackmix",
  "uuid",
  "voice",
  "zip",
@@ -4309,6 +4310,7 @@ dependencies = [
  "textwarp",
  "time",
  "tracking",
+ "trackmix",
  "voice",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6616,6 +6618,14 @@ dependencies = [
 [[package]]
 name = "tracking"
 version = "0.1.0"
+
+[[package]]
+name = "trackmix"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "try-lock"

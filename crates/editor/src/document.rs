@@ -171,8 +171,22 @@ pub struct Track {
     /// shifted by ripple edits, and nothing new lands on it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub locked: bool,
+    /// While any sounding track is soloed, only soloed tracks are heard
+    /// (mute wins); see the shared `trackmix` crate.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub solo: bool,
+    /// Track volume in dB (−60, silent, to +12), after each clip's own.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub volume: f64,
+    /// Track pan, −1 left to 1 right, after each clip's own.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub pan: f64,
     #[serde(default)]
     pub elements: Vec<Element>,
+}
+
+fn is_zero(value: &f64) -> bool {
+    *value == 0.0
 }
 
 impl Track {
@@ -185,6 +199,9 @@ impl Track {
             muted: false,
             hidden: false,
             locked: false,
+            solo: false,
+            volume: 0.0,
+            pan: 0.0,
             elements: Vec::new(),
         }
     }

@@ -118,6 +118,7 @@ fn probes_decodes_and_encodes() {
             fade_in_equal_power: false,
             fade_out_equal_power: false,
             pan: 0.6,
+            track_pan: 0.0,
             // A fade-in, so ffmpeg parses the keyframed volume expression.
             gain_keys: vec![
                 GainKey { seconds: 0.0, db: -30.0, ease: GainEase::Smooth },

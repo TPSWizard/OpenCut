@@ -3978,8 +3978,119 @@ impl Render for InspectorPanel {
                 .child(cover_title_row)
                 .child(cover_style_row)
                 .child(cover_frame_row)
-                .child(cover_save_row)
-                .child(
+                .child(cover_save_row);
+                // Mixer: a strip per track that carries sound.
+                let meters = self.state.read(cx).track_meters();
+                let strips: Vec<(String, String, bool, bool, f64, f64)> = self
+                    .state
+                    .read(cx)
+                    .project()
+                    .tracks
+                    .iter()
+                    .filter(|track| matches!(track.kind, editor::TrackKind::Video | editor::TrackKind::Audio))
+                    .map(|track| (track.id.clone(), track.name.clone(), track.muted, track.solo, track.volume, track.pan))
+                    .collect();
+                content = content
+                    .child(Separator::horizontal())
+                    .child(self.heading(t("Mixer"), window))
+                    .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                        "Each track's volume (dB, -60 is silent) and pan, after each clip's own. Solo plays only the soloed tracks; mute wins.",
+                    )));
+                for (track_id, name, muted, solo, volume, pan) in strips {
+                    let volume_id = track_id.clone();
+                    let volume_field = self.field(
+                        &format!("mixer.volume.{track_id}"),
+                        "0",
+                        number_text(volume),
+                        window,
+                        cx,
+                        Box::new(move |text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                state.set_track_mix(&volume_id, None, Some(value), None, cx);
+                            }
+                        }),
+                    );
+                    let pan_id = track_id.clone();
+                    let pan_field = self.field(
+                        &format!("mixer.pan.{track_id}"),
+                        "0",
+                        number_text(pan),
+                        window,
+                        cx,
+                        Box::new(move |text, state, cx| {
+                            if let Ok(value) = text.trim().parse::<f64>() {
+                                state.set_track_mix(&pan_id, None, None, Some(value), cx);
+                            }
+                        }),
+                    );
+                    let reading = meters.get(&track_id).copied();
+                    let (mute_state, solo_state, mute_id, solo_id) = (self.state.clone(), self.state.clone(), track_id.clone(), track_id.clone());
+                    let fraction = reading.map_or(0.0, |r| if r.peak_dbfs.is_finite() { ((r.peak_dbfs + 60.0) / 60.0).clamp(0.0, 1.0) as f32 } else { 0.0 });
+                    let bar = reading.map(|r| {
+                        if r.peak_dbfs >= -1.0 {
+                            gpui::rgb(0xef4444)
+                        } else if r.peak_dbfs >= -6.0 {
+                            gpui::rgb(0xeab308)
+                        } else {
+                            gpui::rgb(0x22c55e)
+                        }
+                    });
+                    let lufs = reading
+                        .filter(|r| r.momentary_lufs.is_finite() && r.momentary_lufs > -70.0)
+                        .map_or("–".to_owned(), |r| format!("{:.1}", r.momentary_lufs));
+                    content = content.child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(4.))
+                            .py(px(4.))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(6.))
+                                    .child(div().flex_1().min_w_0().text_xs().whitespace_nowrap().overflow_hidden().child(name))
+                                    .child(
+                                        Button::new(eid("mixer-mute", &track_id), if muted { "M" } else { "m" })
+                                            .variant(if muted { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                                            .size(ButtonSize::IconXSmall)
+                                            .on_click(move |_, _, cx| {
+                                                mute_state.update(cx, |state, cx| {
+                                                    state.execute(editor::Command::SetTrackMuted { track_id: mute_id.clone(), muted: !muted }, cx);
+                                                })
+                                            }),
+                                    )
+                                    .child(
+                                        Button::new(eid("mixer-solo", &track_id), if solo { "S" } else { "s" })
+                                            .variant(if solo { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                                            .size(ButtonSize::IconXSmall)
+                                            .on_click(move |_, _, cx| {
+                                                solo_state.update(cx, |state, cx| state.set_track_mix(&solo_id, Some(!solo), None, None, cx))
+                                            }),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(6.))
+                                    .child(div().text_xs().text_color(colors.muted_foreground).child(t("dB")))
+                                    .child(div().w(px(56.)).child(volume_field))
+                                    .child(div().text_xs().text_color(colors.muted_foreground).child(t("Pan")))
+                                    .child(div().w(px(48.)).child(pan_field))
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .h(px(6.))
+                                            .rounded(px(3.))
+                                            .bg(colors.muted)
+                                            .child(div().h_full().rounded(px(3.)).w(gpui::relative(fraction)).bg(bar.unwrap_or(gpui::rgb(0x22c55e)))),
+                                    )
+                                    .child(div().w(px(32.)).text_xs().text_color(colors.muted_foreground).child(lufs)),
+                            ),
+                    );
+                }
+                content = content.child(
                     div()
                         .text_xs()
                         .text_color(colors.muted_foreground)

@@ -20,6 +20,7 @@ multicam = { workspace = true }
 retakes = { workspace = true }
 crossfade = { workspace = true }
 loudness = { workspace = true }
+trackmix = { workspace = true }
 facetrack = { workspace = true }
 voice = { workspace = true }
 uuid = { workspace = true }

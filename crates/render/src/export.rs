@@ -84,6 +84,7 @@ fn mastered_mix(
         fade_in_equal_power: false,
         fade_out_equal_power: false,
         pan: 0.0,
+        track_pan: 0.0,
     };
     Ok((clip, report))
 }
@@ -144,12 +145,17 @@ pub fn export_project_with_report(
                 source_end_seconds: clip.source_end.to_seconds_f64(),
                 timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
                 gain: clip.gain(),
-                gain_keys: gain_keys(&clip.volume),
+                // Keyed volume in dB with the track's volume added.
+                gain_keys: gain_keys(&clip.volume)
+                    .into_iter()
+                    .map(|key| GainKey { db: key.db + 20.0 * clip.track_gain.max(1e-12).log10(), ..key })
+                    .collect(),
                 fade_in_seconds: clip.fade_in_seconds,
                 fade_out_seconds: clip.fade_out_seconds,
                 fade_in_equal_power: clip.fade_in_curve == editor::CrossfadeCurve::EqualPower,
                 fade_out_equal_power: clip.fade_out_curve == editor::CrossfadeCurve::EqualPower,
                 pan: clip.pan,
+                track_pan: clip.track_pan,
             })
             .collect()
     } else {

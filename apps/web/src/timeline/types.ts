@@ -37,7 +37,14 @@ interface BaseTrack {
 	locked?: boolean;
 }
 
-export interface VideoTrack extends BaseTrack {
+/** The track mixer (`@/timeline/track-mix`): solo, volume in dB (-60 to +12) and pan (-1 to 1). */
+interface TrackMixFields {
+	solo?: boolean;
+	volume?: number;
+	pan?: number;
+}
+
+export interface VideoTrack extends BaseTrack, TrackMixFields {
 	type: "video";
 	elements: (VideoElement | ImageElement | CompoundElement)[];
 	muted: boolean;
@@ -50,7 +57,7 @@ export interface TextTrack extends BaseTrack {
 	hidden: boolean;
 }
 
-export interface AudioTrack extends BaseTrack {
+export interface AudioTrack extends BaseTrack, TrackMixFields {
 	type: "audio";
 	elements: AudioElement[];
 	muted: boolean;

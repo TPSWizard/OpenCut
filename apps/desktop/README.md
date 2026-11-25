@@ -723,6 +723,22 @@ StereoPannerNode (at 0 nothing changes), so playback here, the export
 (`afade` and `pan` filters) and the web preview and export all sound the
 same.
 
+## Track mixer
+
+Each audio and video track has a mute (**m**) and a solo (**s**) on its
+header. With nothing selected, the inspector's **Mixer** section has a
+strip per such track: mute and solo, **dB** (the track's volume, −60
+silent to +12) and **Pan** (−1 left to 1 right), applied after each clip's
+own volume and pan, and a meter (peak bar and momentary LUFS) while the
+preview plays. While any track is soloed only soloed tracks are heard; mute
+wins. The shared `trackmix` crate works this out for both editors (the web
+through WASM); the live mixer, the export (track volume folded into the
+clip's gain and volume keys, a second `pan` filter for the track) and web
+bundles (`solo`, `volume`, `pan` on audio and video tracks) all carry it.
+The desktop's track meters are taken in the mixer, which runs up to 0.2 s
+ahead of the sound. Checked against `fixtures/trackmix/cases.json` and with
+real tones (`crates/render/tests/track_mix.rs`).
+
 ## Audio crossfade
 
 Select an audio or video clip and, under **Audio**, click **Crossfade into

@@ -104,6 +104,8 @@ import {
 } from "@/platforms";
 import { crossfadeElement, removeCrossfade } from "@/crossfade/apply";
 import { clearDucking, duckElement } from "@/ducking/duck";
+import { canTrackHaveAudio } from "@/timeline/track-capabilities";
+import { getTrackMixSettings } from "@/timeline/track-mix";
 import { measureElementLoudness, normalizeElementLoudness } from "@/loudness/measure";
 import { LOUDNESS_TARGETS, type LoudnessReport } from "@/loudness/r128";
 import { mixLoudnessTarget, type MixLoudness } from "@/loudness/mix";
@@ -425,6 +427,9 @@ function toTrackInfo({
 		muted: "muted" in track ? track.muted : undefined,
 		hidden: "hidden" in track ? track.hidden : undefined,
 		...(track.locked ? { locked: true } : {}),
+		...(canTrackHaveAudio(track)
+			? (({ solo, volume, pan }) => ({ solo, volume, pan }))(getTrackMixSettings(track))
+			: {}),
 		elements: (track.elements as TimelineElement[]).map((element) =>
 			toElementInfo({ element, trackId: track.id }),
 		),
@@ -1731,6 +1736,19 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			if (track.muted !== Boolean(muted)) {
 				editor.timeline.toggleTrackMute({ trackId: track.id });
 			}
+			return toTrackInfo({ track: resolveTrack(track.id), tracks: tracksOf() });
+		},
+		"timeline.setTrackMix": ({ trackId, solo, volume, pan }) => {
+			const track = resolveTrack(trackId);
+			if (!canTrackHaveAudio(track)) {
+				throw new EditorApiError({ code: "invalid_params", message: `${track.type} tracks have no sound to mix` });
+			}
+			for (const [name, value] of [["volume", volume], ["pan", pan]] as const) {
+				if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+					throw new EditorApiError({ code: "invalid_params", message: `${name} must be a number` });
+				}
+			}
+			editor.timeline.setTrackMix({ trackId: track.id, solo: solo === undefined ? undefined : Boolean(solo), volume, pan });
 			return toTrackInfo({ track: resolveTrack(track.id), tracks: tracksOf() });
 		},
 		"timeline.setTrackHidden": ({ trackId, hidden }) => {

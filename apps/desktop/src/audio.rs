@@ -83,6 +83,8 @@ pub(crate) struct AudioOutput {
     commands: Sender<AudioCommand>,
     ring: Arc<Mutex<Ring>>,
     sample_rate: u32,
+    /// The mixer's per-track meters (the mixer section's).
+    track_meters: render::TrackMeters,
 }
 
 impl AudioOutput {
@@ -134,9 +136,11 @@ impl AudioOutput {
 
         let (commands, receiver) = std::sync::mpsc::channel();
         let mixer_ring = Arc::clone(&ring);
+        let mixer = Mixer::new(ffmpeg, settings);
+        let track_meters = mixer.track_meters();
         thread::Builder::new()
             .name("opencut-audio-mix".into())
-            .spawn(move || mix_loop(receiver, mixer_ring, Mixer::new(ffmpeg, settings)))
+            .spawn(move || mix_loop(receiver, mixer_ring, mixer))
             .map_err(|error| error.to_string())?;
 
         Ok(Self {
@@ -144,6 +148,7 @@ impl AudioOutput {
             commands,
             ring,
             sample_rate,
+            track_meters,
         })
     }
 
@@ -167,6 +172,15 @@ impl AudioOutput {
         ring.meter.reset();
         drop(ring);
         self.commands.send(AudioCommand::Pause).ok();
+    }
+
+    /// Each track's meter readings while playing (empty while paused).
+    pub(crate) fn track_meter_readings(&self) -> std::collections::HashMap<String, editor::MeterReadings> {
+        if !self.ring.lock().unwrap_or_else(|e| e.into_inner()).playing {
+            return Default::default();
+        }
+        let meters = self.track_meters.lock().unwrap_or_else(|e| e.into_inner());
+        meters.iter().map(|(id, meter)| (id.clone(), meter.readings())).collect()
     }
 
     /// The loudness meter's readings while playing; `None` while paused.

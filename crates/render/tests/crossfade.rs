@@ -94,6 +94,7 @@ fn exported_mix(ffmpeg: &std::sync::Arc<Ffmpeg>, project: &Project, output: &Pat
             fade_in_equal_power: clip.fade_in_curve == CrossfadeCurve::EqualPower,
             fade_out_equal_power: clip.fade_out_curve == CrossfadeCurve::EqualPower,
             pan: clip.pan,
+            track_pan: clip.track_pan,
         })
         .collect();
     let settings = EncodeSettings {

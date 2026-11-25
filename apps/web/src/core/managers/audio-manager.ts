@@ -32,6 +32,14 @@ export class AudioManager {
 	private mixInput: GainNode | null = null;
 	private meterNode: ScriptProcessorNode | null = null;
 	private meter: MixMeter | null = null;
+	/**
+	 * A bus per track: the track's volume, then its pan, into the mix, with
+	 * a tap feeding the track's meter (the mixer panel's).
+	 */
+	private trackBuses = new Map<
+		string,
+		{ input: GainNode; panner: StereoPannerNode; tap: ScriptProcessorNode | null; meter: MixMeter | null }
+	>();
 	private playbackStartTime = 0;
 	private playbackStartContextTime = 0;
 	private scheduleTimer: number | null = null;
@@ -84,6 +92,57 @@ export class AudioManager {
 		}
 		this.meter?.dispose();
 		this.meter = null;
+		for (const bus of this.trackBuses.values()) bus.meter?.dispose();
+		this.trackBuses.clear();
+	}
+
+	/** Each track's meter while playing (the mixer panel's), by track id; empty while paused. */
+	getTrackMeterReadings(): Map<string, MeterReadings> {
+		const readings = new Map<string, MeterReadings>();
+		if (!this.lastIsPlaying) return readings;
+		for (const [trackId, bus] of this.trackBuses) {
+			if (bus.meter) readings.set(trackId, bus.meter.readings());
+		}
+		return readings;
+	}
+
+	/** The bus for a clip's track, made on first use, set to its track's volume and pan. */
+	private trackBus({ audioContext, clip }: { audioContext: AudioContext; clip: AudioClipSource }): GainNode | null {
+		const output = this.mixInput ?? this.masterGain;
+		if (!output || !clip.trackId) return null;
+		let bus = this.trackBuses.get(clip.trackId);
+		if (!bus) {
+			const input = audioContext.createGain();
+			const panner = audioContext.createStereoPanner();
+			panner.channelCount = 2;
+			panner.channelCountMode = "explicit";
+			input.connect(panner);
+			panner.connect(output);
+			let tap: ScriptProcessorNode | null = null;
+			let meter: MixMeter | null = null;
+			try {
+				meter = new MixMeter({ sampleRate: audioContext.sampleRate, channels: 2 });
+				tap = audioContext.createScriptProcessor(2048, 2, 2);
+				const silent = audioContext.createGain();
+				silent.gain.value = 0;
+				const trackMeter = meter;
+				tap.onaudioprocess = (event) => {
+					if (!this.lastIsPlaying) return;
+					const block = event.inputBuffer;
+					trackMeter.push(block.getChannelData(0), block.numberOfChannels > 1 ? block.getChannelData(1) : undefined);
+				};
+				panner.connect(tap);
+				tap.connect(silent);
+				silent.connect(audioContext.destination);
+			} catch (error) {
+				console.warn("Track meter unavailable", error);
+			}
+			bus = { input, panner, tap, meter };
+			this.trackBuses.set(clip.trackId, bus);
+		}
+		bus.input.gain.value = clip.trackGain ?? 1;
+		bus.panner.pan.value = clip.trackPan ?? 0;
+		return bus.input;
 	}
 
 	/**
@@ -195,6 +254,7 @@ export class AudioManager {
 
 		this.stopPlayback();
 		this.meter?.reset();
+		for (const bus of this.trackBuses.values()) bus.meter?.reset();
 		this.playbackSessionId++;
 		this.playbackLatencyCompensationSeconds = 0;
 
@@ -517,7 +577,7 @@ export class AudioManager {
 		clip: AudioClipSource;
 		clipGain: GainNode;
 	}): StereoPannerNode | null {
-		const output = this.mixInput ?? this.masterGain ?? audioContext.destination;
+		const output = this.trackBus({ audioContext, clip }) ?? this.mixInput ?? this.masterGain ?? audioContext.destination;
 		const pan = getElementPan({ element: clip.timelineElement });
 		if (pan === 0) {
 			clipGain.connect(output);

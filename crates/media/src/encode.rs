@@ -147,6 +147,8 @@ pub struct AudioMixClip {
     /// Stereo pan from -1 (left) to 1 (right), as Web Audio's
     /// StereoPannerNode pans two channels.
     pub pan: f64,
+    /// The track's pan, applied after the clip's.
+    pub track_pan: f64,
 }
 
 /// `afade` filters for a clip's fades (`tri` is a straight ramp, `qsin`
@@ -170,9 +172,15 @@ fn fade_filters(clip: &AudioMixClip) -> String {
     filters
 }
 
-/// A `pan` filter for a panned stereo clip, with a leading comma; empty when centred.
+/// `pan` filters for the clip's pan and then its track's, with leading
+/// commas; empty when both are centred.
 fn pan_filter(clip: &AudioMixClip) -> String {
-    let pan = if clip.pan.is_finite() { clip.pan.clamp(-1.0, 1.0) } else { 0.0 };
+    format!("{}{}", one_pan_filter(clip.pan), one_pan_filter(clip.track_pan))
+}
+
+/// A `pan` filter for one stereo pan, with a leading comma; empty when centred.
+fn one_pan_filter(pan: f64) -> String {
+    let pan = if pan.is_finite() { pan.clamp(-1.0, 1.0) } else { 0.0 };
     if pan == 0.0 {
         return String::new();
     }
@@ -603,6 +611,7 @@ mod tests {
                     fade_in_equal_power: false,
                     fade_out_equal_power: false,
                     pan: 0.0,
+                    track_pan: 0.0,
                     gain_keys: Vec::new(),
                 },
                 AudioMixClip {
@@ -616,6 +625,7 @@ mod tests {
                     fade_in_equal_power: false,
                     fade_out_equal_power: false,
                     pan: 0.0,
+                    track_pan: 0.0,
                     gain_keys: Vec::new(),
                 },
             ],
@@ -651,6 +661,7 @@ mod tests {
             fade_in_equal_power: false,
             fade_out_equal_power: false,
             pan: 0.0,
+            track_pan: 0.0,
             gain_keys: vec![
                 key(2.0, 0.0, GainEase::Smooth),
                 key(0.5, -20.0, GainEase::Linear),
@@ -715,6 +726,7 @@ mod tests {
                 fade_in_equal_power: false,
                 fade_out_equal_power: false,
                 pan: 0.0,
+                track_pan: 0.0,
                 gain_keys: Vec::new(),
             }],
             disclosure: None,

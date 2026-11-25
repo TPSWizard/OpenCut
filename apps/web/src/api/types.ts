@@ -262,6 +262,10 @@ export interface ApiTrackInfo {
 	hidden?: boolean;
 	/** Locked: its clips cannot be selected or edited and ripple edits leave it alone. */
 	locked?: boolean;
+	/** Track mixer (audio and video tracks): solo, volume in dB, pan. */
+	solo?: boolean;
+	volume?: number;
+	pan?: number;
 	elements: ApiElementInfo[];
 }
 
@@ -875,6 +879,16 @@ export interface EditorApiMethods {
 	};
 	"timeline.setTrackMuted": {
 		params: { trackId: string; muted: boolean };
+		result: ApiTrackInfo;
+	};
+	/**
+	 * The track mixer: sets an audio or video track's solo, volume in dB
+	 * (-60, silent, to +12) and pan (-1 left to 1 right), those given, in
+	 * one undo step. While any track is soloed only soloed tracks are heard
+	 * (mute wins). The shared Rust `trackmix` crate, as on the desktop.
+	 */
+	"timeline.setTrackMix": {
+		params: { trackId: string; solo?: boolean; volume?: number; pan?: number };
 		result: ApiTrackInfo;
 	};
 	"timeline.setTrackHidden": {

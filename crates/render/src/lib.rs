@@ -22,6 +22,6 @@ pub use cache::{clear_regenerable_cache, is_regenerable, regenerable_cache};
 pub use retime_audio::{default_cache_dir, needs_render as audio_needs_render, rendered_clip};
 pub use error::RenderError;
 pub use mask::{rasterize_mask, rasterize_mask_stroke, rasterize_text_mask, rasterize_text_mask_stroke};
-pub use mixer::Mixer;
+pub use mixer::{Mixer, TrackMeters};
 pub use renderer::{sticker_file_name, RenderedFrame, Renderer, RendererOptions};
 pub use text::{TextRaster, TextRasterizer};

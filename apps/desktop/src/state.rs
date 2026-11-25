@@ -4373,6 +4373,19 @@ impl EditorState {
         }));
     }
 
+    /// Each track's meter while playing (the mixer section's), by track id.
+    pub(crate) fn track_meters(&self) -> std::collections::HashMap<String, editor::MeterReadings> {
+        if !self.playing {
+            return Default::default();
+        }
+        self.audio.as_ref().map(|audio| audio.track_meter_readings()).unwrap_or_default()
+    }
+
+    /// Sets a track's solo, volume (dB) or pan, one undo step each.
+    pub(crate) fn set_track_mix(&mut self, track_id: &str, solo: Option<bool>, volume: Option<f64>, pan: Option<f64>, cx: &mut Context<Self>) {
+        self.execute(editor::Command::SetTrackMix { track_id: track_id.to_owned(), solo, volume, pan }, cx);
+    }
+
     /// The preview's loudness meter (what the audio device is playing):
     /// momentary and short-term LUFS and the recent peak; `None` while
     /// nothing plays.

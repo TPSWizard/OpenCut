@@ -40,6 +40,11 @@ pub struct AudioClipPlan {
     pub pan: f64,
     /// Equaliser, compressor and limiter (`audio.*` params); see [`clip_audio_fx`].
     pub fx: voice::AudioFx,
+    /// The clip's track, and its volume (linear) and pan from the track
+    /// mixer (`trackmix`), applied after the clip's own.
+    pub track_id: String,
+    pub track_gain: f64,
+    pub track_pan: f64,
 }
 
 /// A clip's audio effects from its `audio.*` params.
@@ -82,16 +87,22 @@ pub fn clip_pan(params: &crate::Params) -> f64 {
 /// channels (equal power; at 0 nothing changes), so the desktop sounds like
 /// the web preview. The web editor's `panStereo` is the same formula.
 pub fn pan_stereo(pan: f64, left: f64, right: f64) -> (f64, f64) {
-    if pan == 0.0 {
-        return (left, right);
-    }
-    let x = if pan <= 0.0 { pan + 1.0 } else { pan } * std::f64::consts::FRAC_PI_2;
-    let (gain_left, gain_right) = (x.cos(), x.sin());
-    if pan <= 0.0 {
-        (left + right * gain_left, right * gain_right)
-    } else {
-        (left * gain_left, right + left * gain_right)
-    }
+    trackmix::pan_stereo(pan, left, right)
+}
+
+/// The mixer settings of each track, for `trackmix`.
+pub fn track_settings(project: &Project) -> Vec<trackmix::TrackSettings> {
+    project
+        .tracks
+        .iter()
+        .map(|track| trackmix::TrackSettings {
+            muted: track.muted,
+            solo: track.solo,
+            volume: track.volume,
+            pan: track.pan,
+            sounding: matches!(track.kind, crate::TrackKind::Video | crate::TrackKind::Audio),
+        })
+        .collect()
 }
 
 impl AudioClipPlan {
@@ -99,9 +110,9 @@ impl AudioClipPlan {
         self.timeline_start + (self.source_end - self.source_start)
     }
 
-    /// The static gain (the volume's keys, if any, are ignored).
+    /// The static gain, with the track's (the volume's keys, if any, are ignored).
     pub fn gain(&self) -> f64 {
-        db_to_gain(self.volume_db)
+        db_to_gain(self.volume_db) * self.track_gain
     }
 
     /// Whether the gain changes over time (volume keys or fades).
@@ -127,7 +138,7 @@ impl AudioClipPlan {
     pub fn gain_at(&self, timeline_time: MediaTime) -> f64 {
         let local = timeline_time - self.timeline_start;
         let db = self.volume.value_at(local).unwrap_or(self.volume_db);
-        db_to_gain(db) * self.fade_gain_at(local.to_seconds_f64())
+        db_to_gain(db) * self.fade_gain_at(local.to_seconds_f64()) * self.track_gain
     }
 
     /// `gain_at` for a time in seconds.
@@ -152,8 +163,10 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
     let expanded = crate::expand_compounds(project);
     let project: &Project = &expanded;
     let mut clips = Vec::new();
-    for track in &project.tracks {
-        if track.muted {
+    let mixes = trackmix::track_mix(&track_settings(project));
+    for (track, mix) in project.tracks.iter().zip(mixes) {
+        // Muted, soloed out or faded down to nothing.
+        if !mix.audible {
             continue;
         }
         for element in &crate::crossfaded_elements(track) {
@@ -188,6 +201,9 @@ pub fn plan_audio(project: &Project) -> Vec<AudioClipPlan> {
                 fade_out_curve: crate::fade_curve(&element.params, "fadeOutCurve"),
                 pan: clip_pan(&element.params),
                 fx: clip_audio_fx(&element.params),
+                track_id: track.id.clone(),
+                track_gain: mix.gain,
+                track_pan: mix.pan,
             });
         }
     }

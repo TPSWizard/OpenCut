@@ -1,7 +1,10 @@
 //! Mixes the project's audio clips into interleaved float samples for a
 //! playback device. One decoder process per clip that is currently audible.
+//! Each track's part of the mix also goes through its own loudness meter
+//! (the mixer panel's track meters).
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use editor::AudioClipPlan;
 use media::{AudioReader, AudioSettings, Ffmpeg, MediaError};
@@ -21,7 +24,12 @@ pub struct Mixer {
     /// Timeline position of the next sample frame to produce.
     position_frames: i64,
     scratch: Vec<f32>,
+    /// A loudness meter per track id, fed with that track's part of the mix.
+    track_meters: Arc<Mutex<HashMap<String, editor::LoudnessMeter>>>,
 }
+
+/// The track meters a mixer keeps, readable from another thread.
+pub type TrackMeters = Arc<Mutex<HashMap<String, editor::LoudnessMeter>>>;
 
 /// Decoder drift this large (in seconds) means the reader is reopened.
 const RESYNC_TOLERANCE_SECONDS: f64 = 0.05;
@@ -40,7 +48,18 @@ impl Mixer {
             active: Vec::new(),
             position_frames: 0,
             scratch: Vec::new(),
+            track_meters: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    /// The per-track meters, to read while playing (they run as far ahead
+    /// of the sound as the mixer runs ahead of the device).
+    pub fn track_meters(&self) -> TrackMeters {
+        Arc::clone(&self.track_meters)
+    }
+
+    fn reset_meters(&self) {
+        self.track_meters.lock().unwrap_or_else(|e| e.into_inner()).clear();
     }
 
     pub fn settings(&self) -> AudioSettings {
@@ -90,11 +109,13 @@ impl Mixer {
     pub fn seek(&mut self, seconds: f64) {
         self.position_frames = (seconds.max(0.0) * self.settings.sample_rate as f64).round() as i64;
         self.active.clear();
+        self.reset_meters();
     }
 
     /// Stops every decoder (on pause). Playback resumes from the same spot.
     pub fn stop(&mut self) {
         self.active.clear();
+        self.reset_meters();
     }
 
     /// Fills `out` (interleaved, `settings.channels` wide) with the mix from
@@ -109,6 +130,8 @@ impl Mixer {
         let sample_rate = self.settings.sample_rate as f64;
         let buffer_start = self.position_frames;
         let buffer_end = buffer_start + frames as i64;
+        // Each track's part of this chunk, for its meter.
+        let mut track_parts: HashMap<String, Vec<f32>> = HashMap::new();
 
         for clip_index in 0..self.clips.len() {
             let clip = &self.clips[clip_index];
@@ -135,14 +158,16 @@ impl Mixer {
                 None => 0,
             };
             let clip = &self.clips[clip_index];
-            if clip.pan != 0.0 && channels == 2 {
+            if (clip.pan != 0.0 || clip.track_pan != 0.0) && channels == 2 {
+                // The clip's pan, then its track's.
                 for frame in scratch[..read].chunks_exact_mut(2) {
-                    let (left, right) = editor::pan_stereo(clip.pan, frame[0] as f64, frame[1] as f64);
+                    let (left, right) = editor::pan_clip_and_track(clip.pan, clip.track_pan, frame[0] as f64, frame[1] as f64);
                     frame[0] = left as f32;
                     frame[1] = right as f32;
                 }
             }
             let offset = (overlap_start - buffer_start) as usize * channels;
+            let part = track_parts.entry(clip.track_id.clone()).or_insert_with(|| vec![0.0; out.len()]);
             if clip.is_animated() {
                 // Keyframed volume: one gain per short block of frames.
                 let block_samples = GAIN_BLOCK_FRAMES * channels;
@@ -152,18 +177,37 @@ impl Mixer {
                     let start = offset + block_index * block_samples;
                     for (index, sample) in block.iter().enumerate() {
                         out[start + index] += sample * gain;
+                        part[start + index] += sample * gain;
                     }
                 }
             } else {
                 let gain = clip.gain() as f32;
                 for (index, sample) in scratch[..read].iter().enumerate() {
                     out[offset + index] += sample * gain;
+                    part[offset + index] += sample * gain;
                 }
             }
             self.scratch = scratch;
         }
         for sample in out.iter_mut() {
             *sample = sample.clamp(-1.0, 1.0);
+        }
+        {
+            let mut meters = self.track_meters.lock().unwrap_or_else(|e| e.into_inner());
+            let silence = vec![0.0f32; out.len()];
+            // Tracks heard before but silent now decay with silence.
+            let quiet: Vec<String> = meters.keys().filter(|id| !track_parts.contains_key(*id)).cloned().collect();
+            for id in quiet {
+                if let Some(meter) = meters.get_mut(&id) {
+                    meter.push_interleaved(&silence);
+                }
+            }
+            for (id, part) in &track_parts {
+                meters
+                    .entry(id.clone())
+                    .or_insert_with(|| editor::LoudnessMeter::new(self.settings.sample_rate, channels))
+                    .push_interleaved(part);
+            }
         }
         self.position_frames = buffer_end;
         // Drop readers of clips that have ended.

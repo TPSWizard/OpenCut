@@ -689,6 +689,28 @@ function TrackLabelsPanel({
 													}
 												/>
 											)}
+											{canTrackHaveAudio(track) && (
+												<button
+													type="button"
+													className={cn(
+														"flex size-4 items-center justify-center rounded-sm text-[10px] font-semibold leading-none",
+														track.solo
+															? "bg-yellow-500 text-black"
+															: "text-muted-foreground hover:text-foreground",
+													)}
+													title={track.solo ? t("Unsolo track") : t("Solo track")}
+													aria-pressed={Boolean(track.solo)}
+													data-testid="track-solo"
+													onClick={() =>
+														editor.timeline.setTrackMix({
+															trackId: track.id,
+															solo: !track.solo,
+														})
+													}
+												>
+													S
+												</button>
+											)}
 											{canTrackBeHidden(track) && (
 												<TrackToggleIcon
 													isOff={track.hidden}

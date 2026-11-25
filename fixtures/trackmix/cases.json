@@ -1,0 +1,337 @@
+{
+ "source": "scratchpad trackmix_ref.py, an independent reference",
+ "cases": [
+  {
+   "name": "plain",
+   "tracks": [
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": -6,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 6,
+     "pan": -0.5,
+     "sounding": true
+    }
+   ],
+   "mix": [
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 0.5011872336272722,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 1.9952623149688795,
+     "pan": -0.5
+    }
+   ]
+  },
+  {
+   "name": "mute",
+   "tracks": [
+    {
+     "muted": true,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    }
+   ],
+   "mix": [
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 0.0
+    }
+   ]
+  },
+  {
+   "name": "solo",
+   "tracks": [
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": true,
+     "volume": -3,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": true,
+     "volume": 0.0,
+     "pan": 0.25,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    }
+   ],
+   "mix": [
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 0.7079457843841379,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 0.25
+    },
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    }
+   ]
+  },
+  {
+   "name": "muted solo does not count",
+   "tracks": [
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": true,
+     "solo": true,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    }
+   ],
+   "mix": [
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 0.0
+    },
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    }
+   ]
+  },
+  {
+   "name": "text track ignored",
+   "tracks": [
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": true,
+     "volume": 0.0,
+     "pan": 0.0,
+     "sounding": false
+    }
+   ],
+   "mix": [
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 0.0
+    },
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    }
+   ]
+  },
+  {
+   "name": "fader bottom and limits",
+   "tracks": [
+    {
+     "muted": false,
+     "solo": false,
+     "volume": -60,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": -80,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 40,
+     "pan": 0.0,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": 3,
+     "sounding": true
+    },
+    {
+     "muted": false,
+     "solo": false,
+     "volume": 0.0,
+     "pan": -2,
+     "sounding": true
+    }
+   ],
+   "mix": [
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    },
+    {
+     "audible": false,
+     "gain": 0.0,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 3.9810717055349722,
+     "pan": 0.0
+    },
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": 1.0
+    },
+    {
+     "audible": true,
+     "gain": 1.0,
+     "pan": -1.0
+    }
+   ]
+  }
+ ],
+ "pans": [
+  {
+   "clipPan": 0,
+   "trackPan": 0,
+   "in": [
+    0.3,
+    0.7
+   ],
+   "out": [
+    0.3,
+    0.7
+   ]
+  },
+  {
+   "clipPan": 0.5,
+   "trackPan": 0,
+   "in": [
+    1,
+    0.2
+   ],
+   "out": [
+    0.7071067811865476,
+    0.9071067811865476
+   ]
+  },
+  {
+   "clipPan": 0,
+   "trackPan": -0.5,
+   "in": [
+    1,
+    0.2
+   ],
+   "out": [
+    1.1414213562373094,
+    0.14142135623730953
+   ]
+  },
+  {
+   "clipPan": -1,
+   "trackPan": 1,
+   "in": [
+    1,
+    1
+   ],
+   "out": [
+    1.2246467991473532e-16,
+    2.0
+   ]
+  },
+  {
+   "clipPan": 0.3,
+   "trackPan": 0.4,
+   "in": [
+    0.6,
+    -0.2
+   ],
+   "out": [
+    0.43250365210040537,
+    0.38662659661230764
+   ]
+  },
+  {
+   "clipPan": -0.25,
+   "trackPan": -0.75,
+   "in": [
+    0.1,
+    0.9
+   ],
+   "out": [
+    1.2126131406625271,
+    0.31819805153394637
+   ]
+  }
+ ]
+}

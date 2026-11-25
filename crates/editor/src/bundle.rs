@@ -352,6 +352,9 @@ fn convert_track(track: &Value, lane: Lane, skipped: &mut Vec<String>) -> Option
     native.muted = track.get("muted").and_then(Value::as_bool).unwrap_or(false);
     native.hidden = track.get("hidden").and_then(Value::as_bool).unwrap_or(false);
     native.locked = track.get("locked").and_then(Value::as_bool).unwrap_or(false);
+    native.solo = track.get("solo").and_then(Value::as_bool).unwrap_or(false);
+    native.volume = trackmix::clamp_volume(track.get("volume").and_then(Value::as_f64).unwrap_or(0.0));
+    native.pan = trackmix::clamp_pan(track.get("pan").and_then(Value::as_f64).unwrap_or(0.0));
     for element in track.get("elements").and_then(Value::as_array).into_iter().flatten() {
         let name = element.get("name").and_then(Value::as_str).unwrap_or("").to_owned();
         let kind = element.get("type").and_then(Value::as_str).unwrap_or("");
@@ -636,6 +639,18 @@ fn web_track(track: &Track) -> Value {
         }
         TrackKind::Audio => {
             object.insert("muted".to_owned(), json!(track.muted));
+        }
+    }
+    // Mixer settings on tracks that carry sound, only when set.
+    if matches!(track.kind, TrackKind::Video | TrackKind::Audio) {
+        if track.solo {
+            object.insert("solo".to_owned(), json!(true));
+        }
+        if track.volume != 0.0 {
+            object.insert("volume".to_owned(), json!(track.volume));
+        }
+        if track.pan != 0.0 {
+            object.insert("pan".to_owned(), json!(track.pan));
         }
     }
     value

@@ -744,6 +744,7 @@ impl Render for TimelinePanel {
             });
 
             let muted = track.muted;
+            let solo = track.solo;
             let hidden = track.hidden;
             let is_audio = track.kind == TrackKind::Audio;
             let is_text = track.kind == TrackKind::Text;
@@ -799,6 +800,18 @@ impl Render for TimelinePanel {
                                         cx,
                                     );
                                 })
+                            }),
+                    )
+                })
+                .when(!is_text, |this| {
+                    let state = toggle_state.clone();
+                    let id = toggle_id.clone();
+                    this.child(
+                        Button::new(eid("solo", &track_id), if solo { "S" } else { "s" })
+                            .variant(if solo { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::IconXSmall)
+                            .on_click(move |_, _, cx| {
+                                state.update(cx, |state, cx| state.set_track_mix(&id, Some(!solo), None, None, cx));
                             }),
                     )
                 })

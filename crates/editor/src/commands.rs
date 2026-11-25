@@ -197,6 +197,14 @@ pub enum Command {
         track_id: String,
         locked: bool,
     },
+    /// Sets a track's mixer settings (those given): solo, volume in dB
+    /// (kept within −60 to +12) and pan (−1 to 1).
+    SetTrackMix {
+        track_id: String,
+        solo: Option<bool>,
+        volume: Option<f64>,
+        pan: Option<f64>,
+    },
     /// Replaces the project's markers (sorted, one per time).
     SetMarkers(Vec<crate::Marker>),
     /// Groups two or more clips: they are selected and moved together.
@@ -982,6 +990,21 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 .track_mut(track_id)
                 .ok_or_else(|| EditorError::TrackNotFound(track_id.clone()))?;
             track.locked = *locked;
+            Outcome::None
+        }
+        Command::SetTrackMix { track_id, solo, volume, pan } => {
+            let track = project
+                .track_mut(track_id)
+                .ok_or_else(|| EditorError::TrackNotFound(track_id.clone()))?;
+            if let Some(solo) = solo {
+                track.solo = *solo;
+            }
+            if let Some(volume) = volume {
+                track.volume = trackmix::clamp_volume(*volume);
+            }
+            if let Some(pan) = pan {
+                track.pan = trackmix::clamp_pan(*pan);
+            }
             Outcome::None
         }
         Command::SetMarkers(markers) => {

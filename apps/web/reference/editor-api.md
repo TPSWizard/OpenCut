@@ -82,6 +82,7 @@ methods answer with the error code `no_project` before that.
 | `timeline.duplicate` | `{ elements }` | `ApiElementRef[]` |
 | `timeline.addTrack` / `timeline.removeTrack` | `{ type, index? }` / `{ trackId }` | `ApiTrackInfo` / `{ removed: true }` |
 | `timeline.setTrackMuted` / `timeline.setTrackHidden` | `{ trackId, muted }` / `{ trackId, hidden }` | `ApiTrackInfo` |
+| `timeline.setTrackMix` | `{ trackId, solo?, volume?, pan? }` | `ApiTrackInfo` (with `solo`, `volume`, `pan`) — the track mixer for an audio or video track: solo, volume in dB (-60, silent, to +12) and pan (-1 to 1), applied after each clip's own volume and pan in playback and export; while any track is soloed only soloed tracks are heard and mute wins (the shared Rust `trackmix` crate, as on the desktop); one undo step |
 | `timeline.setTrackLocked` | `{ trackId, locked }` | `ApiTrackInfo` — a locked track's clips cannot be selected, moved, trimmed, split or deleted; ripple and range deletes leave it in place; new clips never land on it. `ApiTrackInfo.locked` reports it (the desktop editor reads and writes the same flag in bundles) |
 | `selection.selectRange` | `{ from?, to? }` (seconds; default: the in and out marks) | `ElementRef[]` — selects every clip on unlocked tracks that overlaps the range |
 | `timeline.group` | `{ elements: ElementLocator[] }` | `ApiElementInfo[]` — groups two or more clips: clicking one selects them all and they move together (Alt-click picks one). `ApiElementInfo.groupId` reports it; the desktop editor reads and writes the same field |

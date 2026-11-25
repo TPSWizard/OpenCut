@@ -932,5 +932,9 @@
   "{label}: the whole mix is measured and brought to {lufs} LUFS; a limiter holds true peaks under {peak} dBTP.": "{label}：测量整个混音并调整到 {lufs} LUFS；限制器将真峰值保持在 {peak} dBTP 以下。",
   "Mix loudness:": "混音响度：",
   ", peaks limited": "，峰值已限制",
-  "true peak": "真峰值"
+  "true peak": "真峰值",
+  "Mixer": "混音器",
+  "Each track's volume (dB, -60 is silent) and pan, after each clip's own. Solo plays only the soloed tracks; mute wins.": "每条轨道的音量（dB，-60 为静音）和声像，作用于各片段自身设置之后。独奏时只播放独奏轨道；静音优先。",
+  "dB": "dB",
+  "Pan": "声像"
 }

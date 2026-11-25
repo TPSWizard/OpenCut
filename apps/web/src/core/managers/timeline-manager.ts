@@ -33,6 +33,7 @@ import {
 	AddTrackCommand,
 	RemoveTrackCommand,
 	ToggleTrackMuteCommand,
+	SetTrackMixCommand,
 	ToggleTrackVisibilityCommand,
 	SetTrackLockedCommand,
 	InsertElementCommand,
@@ -177,6 +178,12 @@ export class TimelineManager {
 
 	toggleTrackMute({ trackId }: { trackId: string }): void {
 		const command = new ToggleTrackMuteCommand(trackId);
+		this.editor.command.execute({ command });
+	}
+
+	/** Sets a sounding track's solo, volume (dB) or pan; one undo step. */
+	setTrackMix({ trackId, solo, volume, pan }: { trackId: string; solo?: boolean; volume?: number; pan?: number }): void {
+		const command = new SetTrackMixCommand(trackId, { solo, volume, pan });
 		this.editor.command.execute({ command });
 	}
 
