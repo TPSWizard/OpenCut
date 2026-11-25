@@ -512,6 +512,10 @@ The **HSL** effect moves the hue (up to 30° either way), saturation and lightne
 
 **Lift, gamma, gain** shows three colour wheels over its red, green and blue offsets: drag a wheel's dot to tint the shadows, midtones or highlights (one undo step, written on release), or **Centre** to take the tint off. The wheel's offsets add up to zero, so it tints without brightening; red, green and blue sit about where the vectorscope shows them (`editor::colour_wheel_offsets`, shared with the web editor).
 
+## Tracked corner pin and masks
+
+With a video and a picture or clip selected, **Track corner pin** (under Follow motion) tracks the pinned clip's four corner pin corners, placed over a screen or sign at the playhead, through the video until either clip ends, and keys the pin so each corner stays on its point (one undo step). A video's mask gets **Track mask**: its centre is tracked from the playhead to the clip's end and the motion is stored on the mask (`track`), which both editors add to the mask's centre as the clip plays; **Stop following** clears it. One decoding pass follows all the points (`tracking.rs` `track_points`); the keys and the stored motion come from the shared `tracking` crate (`corner_keys`, `MaskTrack`), the same as in the web editor. Each corner is tracked as its own point, so the pin follows four points rather than fitting a plane to many.
+
 ## Text on a path
 
 A text's **Path** row (None, Wave, Rise, Swoosh, Circle) lays it along a shape instead of the curve; **Path amount** (0 to 100) sets how strongly it bends (for Circle, how much of a turn it wraps). A custom path (cubic Bézier control points) is set from the web editor's API (`text.setPath`) and kept here. The whole text raster is laid along the path, scaled so the text fills it end to end and centred on the text's place: each pixel takes its nearest point on the path (how far along it and to which side), so letters bend a little with the path rather than being placed one by one. The shared `textwarp::warp_path` does it in both editors, checked against an independent reference (`fixtures/text-path/cases.json`).

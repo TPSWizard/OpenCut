@@ -3501,6 +3501,36 @@ impl Render for InspectorPanel {
                                 }),
                         );
                     }
+                    if let Some(mask) = element.masks.first()
+                        && matches!(element.kind, ElementKind::Video { .. })
+                    {
+                        // Tracked mask (row 92): the mask follows its centre through the video.
+                        let tracked = !mask.params.text("track", "").is_empty();
+                        let mask_id = mask.id.clone();
+                        let state = self.state.clone();
+                        content = content.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(Self::label_cell(t("Follow motion"), window))
+                                .child({
+                                    let state = state.clone();
+                                    Button::new("track-mask", if tracked { t("Track again") } else { t("Track mask") })
+                                        .variant(ButtonVariant::Outline)
+                                        .size(ButtonSize::XSmall)
+                                        .on_click(move |_, _, cx| state.update(cx, |state, cx| state.track_mask_selection(cx)))
+                                })
+                                .when(tracked, |row| {
+                                    row.child(
+                                        Button::new("track-mask-clear", t("Stop following"))
+                                            .variant(ButtonVariant::Ghost)
+                                            .size(ButtonSize::XSmall)
+                                            .on_click(move |_, _, cx| state.update(cx, |state, cx| state.clear_mask_track(&mask_id, cx))),
+                                    )
+                                }),
+                        );
+                    }
                     if let Some(mask) = element.masks.first() {
                         let mask_id = mask.id.clone();
                         let inverted = mask.params.bool("inverted", false);
@@ -3834,7 +3864,17 @@ impl Render for InspectorPanel {
                                 .variant(ButtonVariant::Outline)
                                 .size(ButtonSize::XSmall)
                                 .on_click(move |_, _, cx| state.update(cx, |state, cx| state.follow_motion_selection(cx))),
-                        );
+                        )
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Or pin a picture or clip's corners over a screen or sign at the playhead; its four corners are then tracked and the pin follows them.",
+                        )))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("track-corner-pin", t("Track corner pin"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.track_corner_pin_selection(cx)))
+                        });
                 }
                 // Colour match: the others take on the first selected
                 // clip's colours (`editor::colour_match_commands`).

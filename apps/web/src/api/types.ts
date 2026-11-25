@@ -1243,6 +1243,22 @@ export interface EditorApiMethods {
 	 * `path: "none"`. Takes the place of the curve; drawn the same in both
 	 * editors (`textwarp::warp_path`). One undo step.
 	 */
+	/**
+	 * Tracked corner pin (row 92): `pinned` (a video, picture or sticker
+	 * whose corner pin sits over a screen or sign at the playhead) gets
+	 * corner pin keys that follow its four corners through `video` until
+	 * either ends. One undo step.
+	 */
+	"tracking.cornerPin": {
+		params: { video: ApiElementLocator; pinned: ApiElementLocator };
+		result: { frames: number; lost: number; keys: number };
+	};
+	/**
+	 * Tracked mask (row 92): a video's first mask follows its centre through
+	 * the video from the playhead (`clear` stops it). Stored on the mask
+	 * (`track`) and played back by both editors.
+	 */
+	"tracking.mask": { params: ApiElementLocator & { clear?: boolean }; result: { frames: number; lost: number } };
 	"text.setPath": {
 		params: ApiElementLocator & { path: string; amount?: number; points?: [number, number][] };
 		result: { trackId: string; elementId: string; path: string; amount: number };

@@ -1142,6 +1142,7 @@ impl EditorState {
             from,
             to,
             start,
+            more: Vec::new(),
         };
         let follower_id = follower.id.clone();
         let follower_start = seconds(follower.start_time);
@@ -1195,6 +1196,158 @@ impl EditorState {
             .ok();
         })
         .detach();
+    }
+
+    /// Where a video clip sits on the canvas and its job to track from the
+    /// playhead to `to` (timeline seconds), or a message why it cannot.
+    fn track_setup(&self, video: &editor::Element, to: f64) -> Result<(tracking::ClipPlacement, crate::tracking::TrackJob, Arc<media::Ffmpeg>), String> {
+        let Some(ffmpeg) = self.ffmpeg.clone() else { return Err(t("FFmpeg is needed to read video frames.").to_owned()) };
+        let project = self.project();
+        let Some(media) = project.media_for(video) else { return Err(t("The video's media file is not available.").to_owned()) };
+        let (Some(width), Some(height)) = (media.width, media.height) else { return Err(t("The clip's frame size is unknown.").to_owned()) };
+        let from = self.playhead().to_seconds_f64();
+        if !video.contains(self.playhead()) || from >= to {
+            return Err(t("Put the playhead on the video clip.").to_owned());
+        }
+        let canvas = project.settings.canvas;
+        let contain = (canvas.width as f64 / width as f64).min(canvas.height as f64 / height as f64);
+        let placement = tracking::ClipPlacement {
+            position_x: video.params.number("transform.positionX", 0.0),
+            position_y: video.params.number("transform.positionY", 0.0),
+            drawn_width: width as f64 * contain * video.params.number("transform.scaleX", 1.0).abs(),
+            drawn_height: height as f64 * contain * video.params.number("transform.scaleY", 1.0).abs(),
+        };
+        let job = crate::tracking::TrackJob {
+            path: media.path.clone(),
+            size: (width, height),
+            trim_start: video.trim_start.to_seconds_f64(),
+            clip_duration: video.duration.to_seconds_f64(),
+            retime: video.retime.clone(),
+            video_start: video.start_time.to_seconds_f64(),
+            from,
+            to,
+            start: (0.5, 0.5),
+            more: Vec::new(),
+        };
+        Ok((placement, job, ffmpeg))
+    }
+
+    /// Tracked corner pin (row 92): of a video and a clip pinned over
+    /// something in it, the four pin corners are tracked through the video
+    /// from the playhead and the pin is keyed to follow them. One undo step.
+    pub(crate) fn track_corner_pin_selection(&mut self, cx: &mut Context<Self>) {
+        let project = self.project();
+        let elements: Vec<&editor::Element> = self.selection.iter().filter_map(|id| project.element(id).map(|(_, element)| element)).collect();
+        let (2, Some(video_index)) = (elements.len(), elements.iter().position(|element| matches!(element.kind, editor::ElementKind::Video { .. })))
+        else {
+            self.set_status(t("Select a video and the clip pinned over it."), cx);
+            return;
+        };
+        let (video, pinned) = (elements[video_index].clone(), elements[1 - video_index].clone());
+        let Some(pin_box) = self.corner_pin_box(&pinned) else {
+            self.set_status(t("The pinned clip must be a video or picture."), cx);
+            return;
+        };
+        if !pinned.contains(self.playhead()) {
+            self.set_status(t("Put the playhead where both the video and the pinned clip are."), cx);
+            return;
+        }
+        let to = video.end_time().to_seconds_f64().min(pinned.end_time().to_seconds_f64());
+        let (placement, mut job, ffmpeg) = match self.track_setup(&video, to) {
+            Ok(setup) => setup,
+            Err(message) => return self.set_status(message, cx),
+        };
+        let canvas = self.project().settings.canvas;
+        let (half_width, half_height) = (canvas.width as f64 / 2.0, canvas.height as f64 / 2.0);
+        // The pin's corners on the canvas (from its centre) and in the video's frame.
+        let corners: [(f64, f64); 4] = editor::corner_pin_corners(&pinned.params_at(self.playhead())).map(|corner| {
+            let [x, y] = editor::box_to_canvas(&pin_box, corner);
+            (x - half_width, y - half_height)
+        });
+        let starts: Vec<(f64, f64)> = corners.iter().map(|(x, y)| tracking::frame_point(placement, *x, *y)).collect();
+        if starts.iter().any(|(x, y)| !(*x > 0.0 && *x < 1.0 && *y > 0.0 && *y < 1.0)) {
+            self.set_status(t("Every corner of the pin must sit on the video."), cx);
+            return;
+        }
+        job.start = starts[0];
+        job.more = starts[1..].to_vec();
+        let pinned_id = pinned.id.clone();
+        self.set_status(t("Tracking…"), cx);
+        cx.spawn(async move |this, cx| {
+            let tracked = cx.background_executor().spawn(async move { crate::tracking::track_points(&ffmpeg, &job) }).await;
+            this.update(cx, |state, cx| {
+                let (tracks, lost) = match tracked {
+                    Ok(found) => found,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let Ok(tracks) = <[Vec<tracking::TrackSample>; 4]>::try_from(tracks) else { return };
+                let keys = tracking::corner_keys(&tracks, placement, corners, 1.0);
+                let Some(pinned) = state.project().element(&pinned_id).map(|(_, element)| element.clone()) else { return };
+                let Some(command) = editor::tracked_corner_pin_command(state.project(), &pinned, &keys) else { return };
+                if state.execute(command, cx).is_some() {
+                    state.set_status(
+                        tf("Corner pin follows: {keys} keys from {frames} frames; lost in {lost}.", &[("keys", &keys.len()), ("frames", &tracks[0].len()), ("lost", &lost)]),
+                        cx,
+                    );
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Tracked mask (row 92): the selected video's mask centre is tracked
+    /// through the video from the playhead to the clip's end and stored on
+    /// the mask, which moves with it. One undo step.
+    pub(crate) fn track_mask_selection(&mut self, cx: &mut Context<Self>) {
+        let Some(video) = self.selected_element().cloned() else { return };
+        let Some(mask) = video.masks.first().cloned() else {
+            self.set_status(t("Add a mask to the video first."), cx);
+            return;
+        };
+        if !matches!(video.kind, editor::ElementKind::Video { .. }) {
+            self.set_status(t("Only a video's mask can follow motion."), cx);
+            return;
+        }
+        let (placement, mut job, ffmpeg) = match self.track_setup(&video, video.end_time().to_seconds_f64()) {
+            Ok(setup) => setup,
+            Err(message) => return self.set_status(message, cx),
+        };
+        // The mask centre (shares of the clip's box, from its middle) in the frame.
+        let params = video.mask_params_at(&mask, self.playhead());
+        let start = (0.5 + params.number("centerX", 0.0), 0.5 + params.number("centerY", 0.0));
+        if !(start.0 > 0.0 && start.0 < 1.0 && start.1 > 0.0 && start.1 < 1.0) {
+            self.set_status(t("The mask's centre must sit on the video."), cx);
+            return;
+        }
+        let _ = placement;
+        job.start = start;
+        let (element_id, mask_id, clip_start) = (video.id.clone(), mask.id.clone(), video.start_time.to_seconds_f64());
+        self.set_status(t("Tracking…"), cx);
+        cx.spawn(async move |this, cx| {
+            let tracked = cx.background_executor().spawn(async move { crate::tracking::track(&ffmpeg, &job) }).await;
+            this.update(cx, |state, cx| {
+                let (samples, lost) = match tracked {
+                    Ok(found) => found,
+                    Err(message) => return state.set_status(message, cx),
+                };
+                let local: Vec<tracking::TrackSample> =
+                    samples.iter().map(|sample| tracking::TrackSample { time: sample.time - clip_start, ..*sample }).collect();
+                let Some(track) = tracking::MaskTrack::from_samples(&local, crate::tracking::TRACK_FPS) else { return };
+                let Some(element) = state.project().element(&element_id).map(|(_, element)| element.clone()) else { return };
+                if state.execute(editor::tracked_mask_command(&element, &mask_id, &track.encode()), cx).is_some() {
+                    state.set_status(tf("The mask follows: {frames} frames; lost in {lost}.", &[("frames", &samples.len()), ("lost", &lost)]), cx);
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Stops a mask following motion.
+    pub(crate) fn clear_mask_track(&mut self, mask_id: &str, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element().cloned() else { return };
+        self.execute(editor::tracked_mask_command(&element, mask_id, ""), cx);
     }
 
     /// Colour match: the other selected video and picture clips take on the

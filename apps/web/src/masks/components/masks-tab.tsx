@@ -1,6 +1,7 @@
 "use client";
 
 import type { MaskableElement } from "@/timeline";
+import { TrackMaskButtons } from "@/tracking/components/tracked-buttons";
 import type { Mask, MaskType, TextMask } from "@/masks/types";
 import type { NumberParamDefinition, SelectParamDefinition } from "@/params";
 import {
@@ -321,6 +322,7 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 					/>
 				))
 			)}
+			{element.type === "video" && masks[0] && <TrackMaskButtons video={{ trackId, elementId: element.id }} mask={masks[0]} />}
 		</div>
 	);
 }

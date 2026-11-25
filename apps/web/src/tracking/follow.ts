@@ -94,80 +94,32 @@ export async function followMotion({
 		throw new Error("Put the playhead where both the video and the follower are");
 	}
 
-	const canvas = editor.project.getActive().settings.canvasSize;
-	const params = videoElement.params as Record<string, unknown>;
-	const number = (key: string, fallback: number) => (typeof params[key] === "number" ? (params[key] as number) : fallback);
 	const followerParams = target.element.params as Record<string, unknown>;
 	const pointX = typeof followerParams["transform.positionX"] === "number" ? (followerParams["transform.positionX"] as number) : 0;
 	const pointY = typeof followerParams["transform.positionY"] === "number" ? (followerParams["transform.positionY"] as number) : 0;
 
-	const trim = seconds(videoElement.trimStart);
-	const sourceAt = (timeline: number) =>
-		trim + getSourceTimeAtClipTime({ clipTime: timeline - videoStart, retime: videoElement.retime, duration: videoLength });
-	const input = new Input({ source: new BlobSource(asset.file), formats: ALL_FORMATS });
-	const times: number[] = [];
-	const xs: number[] = [];
-	const ys: number[] = [];
-	let lost = 0;
-	let placement: { positionX: number; positionY: number; drawnWidth: number; drawnHeight: number };
-	try {
-		const track = await input.getPrimaryVideoTrack();
-		if (!track || !(await track.canDecode())) throw new Error("The video cannot be decoded in this browser");
-		const sourceWidth = track.displayWidth || asset.width || 1920;
-		const sourceHeight = track.displayHeight || asset.height || 1080;
-		const contain = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
-		placement = {
-			positionX: number("transform.positionX", 0),
-			positionY: number("transform.positionY", 0),
-			drawnWidth: sourceWidth * contain * Math.abs(number("transform.scaleX", 1)),
-			drawnHeight: sourceHeight * contain * Math.abs(number("transform.scaleY", 1)),
-		};
-		const startX = 0.5 + (pointX - placement.positionX) / placement.drawnWidth;
-		const startY = 0.5 + (pointY - placement.positionY) / placement.drawnHeight;
-		if (!(startX > 0 && startX < 1 && startY > 0 && startY < 1)) {
-			throw new Error("Place the follower over the thing in the video it should follow");
-		}
-		const width = TRACK_WIDTH;
-		const height = Math.max(2, Math.round((TRACK_WIDTH * sourceHeight) / sourceWidth / 2) * 2);
-		const box = Math.max(16, TRACK_BOX * Math.min(width, height));
-		const sink = new CanvasSink(track, { width, height, fit: "fill" });
-		const sourceFrom = Math.min(sourceAt(from), sourceAt(to));
-		const sourceTo = Math.max(sourceAt(from), sourceAt(to));
-		let tracker: PointTracker | null = null;
-		let next = sourceFrom;
-		for await (const wrapped of sink.canvases(sourceFrom, sourceTo)) {
-			// A frame within a quarter of a step of the next sample time counts (timestamps are rounded).
-			if (wrapped.timestamp + 0.25 / TRACK_FPS < next) continue;
-			next = wrapped.timestamp + 1 / TRACK_FPS;
-			const frame = wrapped.canvas as HTMLCanvasElement | OffscreenCanvas;
-			const context = frame.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
-			if (!context) continue;
-			const rgba = new Uint8Array(context.getImageData(0, 0, width, height).data.buffer);
-			const timeline =
-				videoStart + getClipTimeAtSourceTime({ sourceTime: Math.max(0, wrapped.timestamp - trim), retime: videoElement.retime, duration: videoLength });
-			let x: number;
-			let y: number;
-			if (!tracker) {
-				try {
-					tracker = new PointTracker(rgba, width, height, startX * width, startY * height, box, box);
-				} catch (error) {
-					throw new Error(error instanceof Error ? error.message : String(error));
-				}
-				[x, y] = tracker.position();
-			} else {
-				const step = tracker.step(rgba);
-				[x, y] = step;
-				if (step[3] === 1) lost++;
+	let placement: ClipPlacement;
+	const tracked = await trackPoints({
+		editor,
+		video: videoElement,
+		from,
+		to,
+		starts: (clip) => {
+			placement = clip;
+			const startX = 0.5 + (pointX - clip.positionX) / clip.drawnWidth;
+			const startY = 0.5 + (pointY - clip.positionY) / clip.drawnHeight;
+			if (!(startX > 0 && startX < 1 && startY > 0 && startY < 1)) {
+				throw new Error("Place the follower over the thing in the video it should follow");
 			}
-			times.push(timeline - followerStart);
-			xs.push(x / width);
-			ys.push(y / height);
-			onProgress?.(Math.min(1, (wrapped.timestamp - sourceFrom) / Math.max(1e-6, sourceTo - sourceFrom)));
-		}
-		tracker?.free();
-	} finally {
-		input.dispose();
-	}
+			return [[startX, startY]];
+		},
+		onProgress,
+	});
+	placement = tracked.placement;
+	const times = tracked.times.map((time) => time - followerStart);
+	const xs = tracked.xs[0];
+	const ys = tracked.ys[0];
+	const lost = tracked.lost;
 	if (times.length < 2) throw new Error("Not enough of the video to track from there");
 
 	const flat = followKeys(
@@ -204,4 +156,127 @@ export async function followMotion({
 		]),
 	});
 	return { from, to: followerStart + times[times.length - 1], frames: times.length, lost, keys: channelX.keys.length };
+}
+
+/** Where a video clip is drawn on the canvas: its centre (pixels from the canvas centre) and drawn size. */
+export interface ClipPlacement {
+	positionX: number;
+	positionY: number;
+	drawnWidth: number;
+	drawnHeight: number;
+}
+
+/** Tracked points: timeline seconds and, per point, its place in each frame (shares of the frame). */
+export interface TrackedPoints {
+	placement: ClipPlacement;
+	times: number[];
+	xs: number[][];
+	ys: number[][];
+	/** Frames where any point was lost. */
+	lost: number;
+}
+
+/**
+ * Tracks points through a video clip from timeline second `from` to `to`
+ * in one decoding pass, one `PointTracker` each (the shared `tracking`
+ * crate). `starts` gets where the clip is drawn and returns the points
+ * (shares of the frame); it may throw to refuse. Used by follow motion,
+ * the tracked corner pin and the tracked mask.
+ */
+export async function trackPoints({
+	editor,
+	video: videoElement,
+	from,
+	to,
+	starts,
+	onProgress,
+}: {
+	editor: EditorCore;
+	video: Extract<TimelineElement, { type: "video" }>;
+	from: number;
+	to: number;
+	starts: (placement: ClipPlacement) => [number, number][];
+	onProgress?: (fraction: number) => void;
+}): Promise<TrackedPoints> {
+	const asset = editor.media.getAssets().find((candidate) => candidate.id === videoElement.mediaId);
+	if (!asset?.file) throw new Error("The video's media file is not available");
+	const seconds = (ticks: number) => ticks / TICKS_PER_SECOND;
+	const videoStart = seconds(videoElement.startTime);
+	const videoLength = seconds(videoElement.duration);
+	const canvas = editor.project.getActive().settings.canvasSize;
+	const params = videoElement.params as Record<string, unknown>;
+	const number = (key: string, fallback: number) => (typeof params[key] === "number" ? (params[key] as number) : fallback);
+	const trim = seconds(videoElement.trimStart);
+	const sourceAt = (timeline: number) =>
+		trim + getSourceTimeAtClipTime({ clipTime: timeline - videoStart, retime: videoElement.retime, duration: videoLength });
+	const input = new Input({ source: new BlobSource(asset.file), formats: ALL_FORMATS });
+	const times: number[] = [];
+	let xs: number[][] = [];
+	let ys: number[][] = [];
+	let lost = 0;
+	let placement: ClipPlacement;
+	const trackers: PointTracker[] = [];
+	try {
+		const track = await input.getPrimaryVideoTrack();
+		if (!track || !(await track.canDecode())) throw new Error("The video cannot be decoded in this browser");
+		const sourceWidth = track.displayWidth || asset.width || 1920;
+		const sourceHeight = track.displayHeight || asset.height || 1080;
+		const contain = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
+		placement = {
+			positionX: number("transform.positionX", 0),
+			positionY: number("transform.positionY", 0),
+			drawnWidth: sourceWidth * contain * Math.abs(number("transform.scaleX", 1)),
+			drawnHeight: sourceHeight * contain * Math.abs(number("transform.scaleY", 1)),
+		};
+		const points = starts(placement);
+		xs = points.map(() => []);
+		ys = points.map(() => []);
+		const width = TRACK_WIDTH;
+		const height = Math.max(2, Math.round((TRACK_WIDTH * sourceHeight) / sourceWidth / 2) * 2);
+		const box = Math.max(16, TRACK_BOX * Math.min(width, height));
+		const sink = new CanvasSink(track, { width, height, fit: "fill" });
+		const sourceFrom = Math.min(sourceAt(from), sourceAt(to));
+		const sourceTo = Math.max(sourceAt(from), sourceAt(to));
+		let next = sourceFrom;
+		for await (const wrapped of sink.canvases(sourceFrom, sourceTo)) {
+			// A frame within a quarter of a step of the next sample time counts (timestamps are rounded).
+			if (wrapped.timestamp + 0.25 / TRACK_FPS < next) continue;
+			next = wrapped.timestamp + 1 / TRACK_FPS;
+			const frame = wrapped.canvas as HTMLCanvasElement | OffscreenCanvas;
+			const context = frame.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+			if (!context) continue;
+			const rgba = new Uint8Array(context.getImageData(0, 0, width, height).data.buffer);
+			const timeline =
+				videoStart + getClipTimeAtSourceTime({ sourceTime: Math.max(0, wrapped.timestamp - trim), retime: videoElement.retime, duration: videoLength });
+			let anyLost = false;
+			points.forEach(([px, py], index) => {
+				let x: number;
+				let y: number;
+				if (trackers.length < points.length) {
+					let tracker: PointTracker;
+					try {
+						tracker = new PointTracker(rgba, width, height, px * width, py * height, box, box);
+					} catch (error) {
+						throw new Error(error instanceof Error ? error.message : String(error));
+					}
+					trackers.push(tracker);
+					[x, y] = tracker.position();
+				} else {
+					const step = trackers[index].step(rgba);
+					[x, y] = step;
+					if (step[3] === 1) anyLost = true;
+				}
+				xs[index].push(x / width);
+				ys[index].push(y / height);
+			});
+			if (anyLost) lost++;
+			times.push(timeline);
+			onProgress?.(Math.min(1, (wrapped.timestamp - sourceFrom) / Math.max(1e-6, sourceTo - sourceFrom)));
+		}
+	} finally {
+		for (const tracker of trackers) tracker.free();
+		input.dispose();
+	}
+	if (times.length < 2) throw new Error("Not enough of the video to track from there");
+	return { placement, times, xs, ys, lost };
 }

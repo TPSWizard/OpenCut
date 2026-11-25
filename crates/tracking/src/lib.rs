@@ -330,6 +330,159 @@ pub fn frame_point(clip: ClipPlacement, canvas_x: f64, canvas_y: f64) -> (f64, f
     )
 }
 
+// ---------------------------------------------------------------------
+// Tracked masks and corner pin (row 92).
+
+/// A mask's tracked motion: offsets (shares of the clip's frame, which is
+/// the mask's own box) sampled `rate` times a second from `start` seconds
+/// into the clip. Both renderers add the offset at the clip's local time
+/// to the mask's centre (`centerX`, `centerY`). Stored as the mask's
+/// `track` param: `start;rate;x0,y0;x1,y1;...`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MaskTrack {
+    pub start: f64,
+    pub rate: f64,
+    pub offsets: Vec<(f64, f64)>,
+}
+
+impl MaskTrack {
+    /// Offsets from tracked samples (times in clip seconds, positions as
+    /// shares of the frame), relative to the first sample, resampled at
+    /// `rate` (linear between samples).
+    pub fn from_samples(samples: &[TrackSample], rate: f64) -> Option<MaskTrack> {
+        let (first, last) = (samples.first()?, samples.last()?);
+        if samples.len() < 2 || !(rate > 0.0) || !(last.time > first.time) {
+            return None;
+        }
+        let count = ((last.time - first.time) * rate).floor() as usize + 1;
+        let mut offsets = Vec::with_capacity(count);
+        let mut index = 0;
+        for step in 0..count {
+            let time = first.time + step as f64 / rate;
+            while index + 2 < samples.len() && samples[index + 1].time <= time {
+                index += 1;
+            }
+            let (a, b) = (samples[index], samples[(index + 1).min(samples.len() - 1)]);
+            let span = b.time - a.time;
+            let t = if span > 0.0 { ((time - a.time) / span).clamp(0.0, 1.0) } else { 0.0 };
+            offsets.push((a.x + (b.x - a.x) * t - first.x, a.y + (b.y - a.y) * t - first.y));
+        }
+        Some(MaskTrack { start: first.time, rate, offsets })
+    }
+
+    /// The offset `seconds` into the clip: none before the track, the last
+    /// one after it, linear between samples.
+    pub fn offset_at(&self, seconds: f64) -> (f64, f64) {
+        if self.offsets.is_empty() || !seconds.is_finite() || seconds <= self.start {
+            return (0.0, 0.0);
+        }
+        let position = (seconds - self.start) * self.rate;
+        let index = position.floor() as usize;
+        if index + 1 >= self.offsets.len() {
+            return *self.offsets.last().unwrap();
+        }
+        let t = position - index as f64;
+        let (a, b) = (self.offsets[index], self.offsets[index + 1]);
+        (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t)
+    }
+
+    pub fn encode(&self) -> String {
+        let mut text = format!("{};{}", trim(self.start), trim(self.rate));
+        for (x, y) in &self.offsets {
+            text.push_str(&format!(";{},{}", trim(*x), trim(*y)));
+        }
+        text
+    }
+
+    pub fn parse(text: &str) -> Option<MaskTrack> {
+        let mut parts = text.trim().split(';');
+        let start: f64 = parts.next()?.trim().parse().ok()?;
+        let rate: f64 = parts.next()?.trim().parse().ok()?;
+        if !start.is_finite() || !(rate > 0.0 && rate.is_finite()) {
+            return None;
+        }
+        let mut offsets = Vec::new();
+        for part in parts {
+            let (x, y) = part.split_once(',')?;
+            let (x, y): (f64, f64) = (x.trim().parse().ok()?, y.trim().parse().ok()?);
+            if !x.is_finite() || !y.is_finite() {
+                return None;
+            }
+            offsets.push((x, y));
+        }
+        (!offsets.is_empty()).then_some(MaskTrack { start, rate, offsets })
+    }
+}
+
+/// The param a tracked mask keeps its motion in.
+pub const MASK_TRACK_PARAM: &str = "track";
+
+/// The offset a mask's stored track (`track` param text) gives at `seconds`
+/// into its clip: nothing when there is none.
+pub fn mask_offset(track: &str, seconds: f64) -> (f64, f64) {
+    if track.is_empty() {
+        return (0.0, 0.0);
+    }
+    MaskTrack::parse(track).map_or((0.0, 0.0), |track| track.offset_at(seconds))
+}
+
+fn trim(value: f64) -> String {
+    let text = format!("{value:.5}");
+    let text = text.trim_end_matches('0').trim_end_matches('.');
+    if text == "-0" || text.is_empty() { "0".to_owned() } else { text.to_owned() }
+}
+
+/// Corner pin keys from four tracked corners (top left, top right, bottom
+/// right, bottom left; samples as from [`Tracker`], same times): each
+/// corner on the canvas where it was put (`start`, canvas pixels from the
+/// canvas centre) moved as its tracked point moved, kept within
+/// `tolerance` canvas pixels of every corner's path. `(time, corners)`.
+pub fn corner_keys(tracks: &[Vec<TrackSample>; 4], clip: ClipPlacement, start: [(f64, f64); 4], tolerance: f64) -> Vec<(f64, [(f64, f64); 4])> {
+    let count = tracks.iter().map(Vec::len).min().unwrap_or(0);
+    if count == 0 {
+        return Vec::new();
+    }
+    let origin: [(f64, f64); 4] = std::array::from_fn(|corner| canvas_point(clip, tracks[corner][0].x, tracks[corner][0].y));
+    let frames: Vec<(f64, [(f64, f64); 4])> = (0..count)
+        .map(|index| {
+            let corners = std::array::from_fn(|corner| {
+                let (x, y) = canvas_point(clip, tracks[corner][index].x, tracks[corner][index].y);
+                (start[corner].0 + x - origin[corner].0, start[corner].1 + y - origin[corner].1)
+            });
+            (tracks[0][index].time, corners)
+        })
+        .collect();
+    // Ramer–Douglas–Peucker over time, a frame kept when any corner strays.
+    let mut keep = vec![false; frames.len()];
+    keep[0] = true;
+    keep[frames.len() - 1] = true;
+    let mut stack = vec![(0usize, frames.len() - 1)];
+    while let Some((first, last)) = stack.pop() {
+        if last <= first + 1 {
+            continue;
+        }
+        let (a, b) = (&frames[first], &frames[last]);
+        let span = (b.0 - a.0).max(1e-9);
+        let mut worst = (0.0f64, first);
+        for (index, frame) in frames.iter().enumerate().take(last).skip(first + 1) {
+            let t = (frame.0 - a.0) / span;
+            for corner in 0..4 {
+                let (lx, ly) = (a.1[corner].0 + (b.1[corner].0 - a.1[corner].0) * t, a.1[corner].1 + (b.1[corner].1 - a.1[corner].1) * t);
+                let distance = (frame.1[corner].0 - lx).hypot(frame.1[corner].1 - ly);
+                if distance > worst.0 {
+                    worst = (distance, index);
+                }
+            }
+        }
+        if worst.0 > tolerance {
+            keep[worst.1] = true;
+            stack.push((first, worst.1));
+            stack.push((worst.1, last));
+        }
+    }
+    frames.into_iter().zip(keep).filter_map(|(frame, kept)| kept.then_some(frame)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -450,5 +603,36 @@ mod tests {
         let (fx, fy) = frame_point(clip, 350.0, -175.0);
         assert!((fx - 0.75).abs() < 1e-12 && (fy - 0.25).abs() < 1e-12);
         assert_eq!(canvas_point(clip, fx, fy), (350.0, -175.0));
+    }
+
+    #[test]
+    fn mask_tracks_store_offsets_and_play_them_back() {
+        let samples: Vec<TrackSample> = (0..=10).map(|i| TrackSample { time: 1.0 + i as f64 * 0.1, x: 0.3 + i as f64 * 0.01, y: 0.5 - i as f64 * 0.02 }).collect();
+        let track = MaskTrack::from_samples(&samples, 10.0).unwrap();
+        assert_eq!(track.offsets.len(), 11);
+        assert_eq!(mask_offset(&track.encode(), 0.5), (0.0, 0.0), "nothing before the track");
+        let (dx, dy) = mask_offset(&track.encode(), 1.55);
+        assert!((dx - 0.055).abs() < 1e-4 && (dy + 0.11).abs() < 1e-4, "{dx} {dy}");
+        let (dx, _) = mask_offset(&track.encode(), 9.0);
+        assert!((dx - 0.1).abs() < 1e-4, "held after the track: {dx}");
+        assert_eq!(MaskTrack::parse(&track.encode()).unwrap().offsets.len(), 11);
+        assert_eq!(mask_offset("nonsense", 1.0), (0.0, 0.0));
+    }
+
+    #[test]
+    fn corner_keys_move_each_corner_with_its_point() {
+        let clip = ClipPlacement { position_x: 0.0, position_y: 0.0, drawn_width: 1000.0, drawn_height: 500.0 };
+        // All four points slide right at 0.1 of the frame a second.
+        let tracks: [Vec<TrackSample>; 4] = std::array::from_fn(|corner| {
+            (0..=20).map(|i| TrackSample { time: i as f64 / 10.0, x: 0.2 + corner as f64 * 0.1 + i as f64 * 0.01, y: 0.4 }).collect()
+        });
+        let start = [(-100.0, -50.0), (100.0, -50.0), (100.0, 50.0), (-100.0, 50.0)];
+        let keys = corner_keys(&tracks, clip, start, 1.0);
+        assert_eq!(keys.len(), 2, "a straight slide needs only its ends");
+        assert_eq!(keys[0].1, start);
+        let end = keys[1].1;
+        for corner in 0..4 {
+            assert!((end[corner].0 - (start[corner].0 + 200.0)).abs() < 1e-9 && (end[corner].1 - start[corner].1).abs() < 1e-9);
+        }
     }
 }

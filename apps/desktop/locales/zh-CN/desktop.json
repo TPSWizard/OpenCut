@@ -1015,5 +1015,22 @@
   "Swoosh": "弧线",
   "Circle": "圆形",
   "Path amount": "路径弯曲度",
-  "Custom (set in the web editor or the API)": "自定义（在网页编辑器或 API 中设置）"
+  "Custom (set in the web editor or the API)": "自定义（在网页编辑器或 API 中设置）",
+  "Or pin a picture or clip's corners over a screen or sign at the playhead; its four corners are then tracked and the pin follows them.": "或者在播放头处将图片或片段的四角固定在屏幕或标牌上；随后跟踪这四个角，固定效果会跟随它们。",
+  "Track corner pin": "跟踪四角固定",
+  "Corner pin follows: {keys} keys from {frames} frames; lost in {lost}.": "四角固定已跟随：{frames} 帧生成 {keys} 个关键帧；{lost} 帧丢失。",
+  "Track mask": "跟踪蒙版",
+  "Track again": "重新跟踪",
+  "Stop following": "停止跟随",
+  "The mask follows: {frames} frames; lost in {lost}.": "蒙版已跟随：{frames} 帧；{lost} 帧丢失。",
+  "Select a video and the clip pinned over it.": "请选择一个视频和固定在其上的片段。",
+  "The pinned clip must be a video or picture.": "被固定的片段必须是视频或图片。",
+  "Put the playhead where both the video and the pinned clip are.": "请将播放头放在视频和被固定片段同时存在的位置。",
+  "Every corner of the pin must sit on the video.": "固定的每个角都必须位于视频上。",
+  "Add a mask to the video first.": "请先为视频添加蒙版。",
+  "Only a video's mask can follow motion.": "只有视频的蒙版可以跟随运动。",
+  "The mask's centre must sit on the video.": "蒙版中心必须位于视频上。",
+  "The video's media file is not available.": "视频的媒体文件不可用。",
+  "Put the playhead on the video clip.": "请将播放头放在视频片段上。",
+  "Tracking… {percent}%": "跟踪中… {percent}%"
 }

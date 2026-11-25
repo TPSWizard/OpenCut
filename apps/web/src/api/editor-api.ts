@@ -64,6 +64,7 @@ import { isPreviewQuality } from "@/media/proxy";
 import { usePreviewStore } from "@/preview/preview-store";
 import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
 import { textPathPoints } from "opencut-wasm";
+import { setMaskTrack, trackCornerPin, trackMask } from "@/tracking/tracked";
 import { DRAW_TOOLS, DRAW_TOOL_WIDTHS, addDrawingStroke, isDrawing, removeLastStroke, strokeCount, type DrawTool } from "@/drawing/strokes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
@@ -2333,6 +2334,35 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				}),
 			});
 			return { trackId: track.id, elementId: element.id, curve };
+		},
+		"tracking.cornerPin": async ({ video, pinned }) => {
+			requireProject();
+			const source = resolveElement(video);
+			const target = resolveElement(pinned);
+			try {
+				return await trackCornerPin({
+					editor,
+					video: { trackId: source.track.id, elementId: source.element.id },
+					pinned: { trackId: target.track.id, elementId: target.element.id },
+				});
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"tracking.mask": async ({ elementId, trackId, clear }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			const ref = { trackId: track.id, elementId: element.id };
+			try {
+				if (clear) {
+					setMaskTrack({ editor, video: ref, track: "" });
+					return { frames: 0, lost: 0 };
+				}
+				const result = await trackMask({ editor, video: ref });
+				return { frames: result.frames, lost: result.lost };
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"text.setPath": ({ elementId, trackId, path, amount, points }) => {
 			requireProject();

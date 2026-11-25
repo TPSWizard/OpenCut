@@ -576,6 +576,14 @@ pub fn background_blur_layer(element: &Element, layer: &LayerPlan) -> Option<Lay
 /// outside the clip (a transition's handles): the source keeps playing from
 /// the material beyond the trim and holds its edge frame when there is none,
 /// while keyframes hold their edge values.
+/// A layer plan for one element at `time`, for tests elsewhere in the crate.
+#[cfg(test)]
+pub(crate) fn layer_plan_for_test(project: &Project, element: &Element, time: MediaTime) -> Option<LayerPlan> {
+    let track = project.tracks.iter().find(|track| track.elements.iter().any(|candidate| candidate.id == element.id))?;
+    let canvas = project.settings.canvas;
+    layer_plan(track, element, time, (canvas.width as f32, canvas.height as f32), project.settings.fps, false)
+}
+
 fn layer_plan(
     track: &Track,
     element: &Element,
@@ -647,10 +655,17 @@ fn layer_plan(
         .can_be_masked()
         .then(|| element.masks.first())
         .flatten()
-        .map(|mask| MaskPlan {
-            id: mask.id.clone(),
-            kind: mask.kind.clone(),
-            params: element.mask_params_at(mask, param_time),
+        .map(|mask| {
+            let mut params = element.mask_params_at(mask, param_time);
+            // A tracked mask (row 92) moves by its stored track.
+            let track = params.text(tracking::MASK_TRACK_PARAM, "").into_owned();
+            if !track.is_empty() {
+                let (dx, dy) = tracking::mask_offset(&track, element.local_time(param_time).to_seconds_f64());
+                let (x, y) = (params.number("centerX", 0.0), params.number("centerY", 0.0));
+                params.set("centerX", x + dx);
+                params.set("centerY", y + dy);
+            }
+            MaskPlan { id: mask.id.clone(), kind: mask.kind.clone(), params }
         });
     let cutout = match (&source, &element.cutout) {
         (LayerSource::Video { time, .. }, Some(cutout)) => Some(CutoutPlan {

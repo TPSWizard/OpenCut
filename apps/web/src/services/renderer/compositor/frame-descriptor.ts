@@ -32,6 +32,7 @@ import type {
 	TextureUploadDescriptor,
 } from "./types";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/graphics";
+import { withMaskTrack } from "@/tracking/mask-track";
 
 export async function buildFrameDescriptor({
 	node,
@@ -453,7 +454,9 @@ function buildMaskArtifacts({
 	strokeLayer: FrameItemDescriptor | null;
 } {
 	const matte = node instanceof VideoNode ? node.resolved?.matte : undefined;
-	const firstMask = node.params.masks?.[0];
+	// A tracked mask moves by its stored track (row 92).
+	const rawMask = node.params.masks?.[0];
+	const firstMask = rawMask ? withMaskTrack(rawMask, (node.resolved as { localTime?: number } | null | undefined)?.localTime) : undefined;
 	const mask =
 		firstMask && getMaskDefinition(firstMask.type).isActive?.(firstMask.params) !== false ? firstMask : undefined;
 	if (!mask) {

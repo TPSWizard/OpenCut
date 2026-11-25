@@ -6,6 +6,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useT } from "@/i18n";
 import type { TimelineElement } from "@/timeline/types";
 import { followMotion, type TrackRef } from "../follow";
+import { TrackCornerPinButton } from "./tracked-buttons";
 
 /**
  * Motion tracking for two selected clips: a video and a sticker, text,
@@ -67,6 +68,7 @@ export function FollowMotionPanel({ targets }: { targets: readonly TrackRef[] })
 					{status}
 				</p>
 			)}
+			{["video", "image", "sticker"].includes(typeOf(follower) ?? "") && <TrackCornerPinButton video={video} pinned={follower} />}
 		</div>
 	);
 }
