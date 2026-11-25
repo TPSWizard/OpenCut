@@ -27,6 +27,7 @@ import {
 import { cn } from "@/utils/ui";
 import { Separator } from "@/components/ui/separator";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
+import { ColourWheels, HslHeader, isHslBandParam } from "./colour-controls";
 
 export function StandaloneEffectTab({
 	element,
@@ -54,6 +55,9 @@ export function StandaloneEffectTab({
 			params: { ...(renderElement as EffectElement).params, [key]: value },
 		});
 	};
+	const previewMany = (values: ParamValues) => {
+		previewUpdates({ params: { ...(renderElement as EffectElement).params, ...values } });
+	};
 
 	return (
 		<div className="flex flex-col h-full">
@@ -64,6 +68,7 @@ export function StandaloneEffectTab({
 				effect={effect}
 				renderParams={(renderElement as EffectElement).params}
 				previewParam={previewParam}
+				previewMany={previewMany}
 				onCommit={commit}
 			/>
 		</div>
@@ -111,6 +116,14 @@ export function ClipEffectsTab({
 			);
 			previewUpdates({ effects: updatedEffects });
 		};
+
+	/** Previews several of an effect's params at once (a colour wheel moves three). */
+	const buildPreviewMany = (effectId: string) => (values: ParamValues) => {
+		const updatedEffects = ((renderElement as VisualElement).effects ?? []).map((existing) =>
+			existing.id !== effectId ? existing : { ...existing, params: { ...existing.params, ...values } },
+		);
+		previewUpdates({ effects: updatedEffects });
+	};
 
 	const handleDragStart = ({ index }: { index: number }) => setDragIndex(index);
 
@@ -181,6 +194,7 @@ export function ClipEffectsTab({
 									effect={effect}
 									renderParams={getRenderParams({ effectId: effect.id })}
 									previewParam={buildPreviewParam(effect.id)}
+									previewMany={buildPreviewMany(effect.id)}
 									onCommit={commit}
 									onToggle={() =>
 										editor.timeline.toggleClipEffect({
@@ -238,6 +252,7 @@ function EffectSection({
 	effect,
 	renderParams,
 	previewParam,
+	previewMany,
 	onCommit,
 	onToggle,
 	onRemove,
@@ -245,12 +260,16 @@ function EffectSection({
 	effect: Effect;
 	renderParams: ParamValues;
 	previewParam: (key: string) => (value: number | string | boolean) => void;
+	previewMany: (values: ParamValues) => void;
 	onCommit: () => void;
 	onToggle?: () => void;
 	onRemove?: () => void;
 }) {
 	const t = useT();
 	const definition = effectsRegistry.get(effect.type);
+	const [hslBand, setHslBand] = useState(0);
+	const isHsl = effect.type === "hsl";
+	const params = isHsl ? definition.params.filter((param) => isHslBandParam(param.key, hslBand)) : definition.params;
 
 	return (
 		<Section
@@ -293,8 +312,12 @@ function EffectSection({
 			<SectionContent
 				className={cn("p-0", onToggle && !effect.enabled && "opacity-50")}
 			>
+				{isHsl && <HslHeader params={renderParams} band={hslBand} onBand={setHslBand} />}
+				{effect.type === "lift-gamma-gain" && (
+					<ColourWheels params={renderParams} onPreview={previewMany} onCommit={onCommit} />
+				)}
 				<SectionFields>
-					{definition.params.map((param) => (
+					{params.map((param) => (
 						<div key={param.key} className="flex flex-col gap-3.5">
 							<div className="px-4">
 								<PropertyParamField

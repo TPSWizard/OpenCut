@@ -13,6 +13,9 @@ use crate::state::EditorState;
 use crate::theme::ActiveTheme;
 use crate::i18n::{t, tf, tr};
 
+#[path = "colour_controls.rs"]
+mod colour_controls;
+
 /// Properties of the selected element, or of the project when nothing is
 /// selected. Every field is a text input that commits on Enter or blur.
 /// Numeric parameters can be keyframed: the diamond next to a field adds
@@ -53,6 +56,12 @@ pub(crate) struct InspectorPanel {
     struck_words: std::collections::BTreeSet<usize>,
     struck_for: Option<String>,
     transcript_anchor: Option<usize>,
+    /// The HSL effect's band whose rows are shown.
+    hsl_band: usize,
+    /// The colour wheel picture, made once.
+    wheel_image: Option<std::sync::Arc<gpui::RenderImage>>,
+    wheel_drag: Option<colour_controls::WheelDrag>,
+    wheel_bounds: colour_controls::WheelBounds,
 }
 
 /// Transcript words shown at most, so a long clip stays responsive.
@@ -157,6 +166,10 @@ impl InspectorPanel {
             struck_words: Default::default(),
             struck_for: None,
             transcript_anchor: None,
+            hsl_band: 0,
+            wheel_image: None,
+            wheel_drag: None,
+            wheel_bounds: Default::default(),
         }
     }
 
@@ -3302,7 +3315,18 @@ impl Render for InspectorPanel {
                             content = content.child(lut_row);
                         }
                         let Some(spec) = editor::effect_spec(&effect.kind) else { continue };
+                        // HSL: band swatches and the hue curves, then only the picked band's rows.
+                        let hsl_band = (effect.kind == "hsl").then(|| editor::HSL_BANDS[self.hsl_band].0);
+                        if hsl_band.is_some() {
+                            content = content.child(self.hsl_header(&effect_id, &effect_params, window, cx));
+                        }
+                        if effect.kind == "lift-gamma-gain" {
+                            content = content.child(self.colour_wheels(&effect_id, &effect_params, window, cx));
+                        }
                         for param in spec.params {
+                            if hsl_band.is_some_and(|band| !param.key.starts_with(band)) {
+                                continue;
+                            }
                             if param.is_choice() {
                                 // A choice: one button per option.
                                 let current = effect_params.text(param.key, param.options[0].0).into_owned();

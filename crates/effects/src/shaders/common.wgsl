@@ -1,5 +1,5 @@
 // Shared by every effect shader: the fullscreen vertex output and the
-// uniform block, four vec4s of scalars (`s0.x` is the first number the
+// uniform block, six vec4s of scalars (`s0.x` is the first number the
 // pass lists, `s0.y` the second, and so on) plus the frame size and a
 // direction for separable passes.
 struct VertexOutput {
@@ -14,6 +14,8 @@ struct EffectUniforms {
     s1: vec4f,
     s2: vec4f,
     s3: vec4f,
+    s4: vec4f,
+    s5: vec4f,
 }
 
 @group(0) @binding(0) var input_texture: texture_2d<f32>;

@@ -191,5 +191,20 @@
   "Histogram": "直方图",
   "Drawing…": "绘制中…",
   "Luma 1%: {black} · 99%: {white} (0–255)": "亮度 1%：{black} · 99%：{white}（0–255）",
-  "A channel at 0: {black}% · at 255: {white}%": "有通道为 0：{black}% · 为 255：{white}%"
+  "A channel at 0: {black}% · at 255: {white}%": "有通道为 0：{black}% · 为 255：{white}%",
+  "Red": "红色",
+  "Orange": "橙色",
+  "Yellow": "黄色",
+  "Green": "绿色",
+  "Aqua": "青色",
+  "Blue": "蓝色",
+  "Purple": "紫色",
+  "Magenta": "洋红",
+  "HSL": "HSL",
+  "Curves across the hues: hue (white), saturation (yellow), lightness (blue).": "沿色相的曲线：色相（白）、饱和度（黄）、亮度（蓝）。",
+  "Centre": "居中",
+  "Drag a dot to tint the shadows, midtones or highlights; the rows below show the numbers.": "拖动圆点为阴影、中间调或高光着色；下方各行显示数值。",
+  "Lift": "提升",
+  "Gamma": "伽马",
+  "Gain": "增益"
 }

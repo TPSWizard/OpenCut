@@ -183,6 +183,17 @@ fn effect_passes(
                 ("u_blue_75", param("blue75")),
             ],
         )],
+        "hsl" => {
+            // Uniforms u_hue_<band>, u_sat_<band>, u_light_<band> (crates/effects hsl.wgsl).
+            let mut numbers = Vec::with_capacity(24);
+            for (prefix, control) in [("u_hue", 0), ("u_sat", 1), ("u_light", 2)] {
+                for (band, (name, _, _)) in editor::HSL_BANDS.iter().enumerate() {
+                    numbers.push((format!("{prefix}_{name}"), param(&editor::hsl_param_key(band, control)).clamp(-100.0, 100.0)));
+                }
+            }
+            let numbers: Vec<(&str, f64)> = numbers.iter().map(|(name, value)| (name.as_str(), *value)).collect();
+            vec![numbers_pass("hsl", &numbers)]
+        }
         "levels" => vec![numbers_pass(
             "levels",
             &[

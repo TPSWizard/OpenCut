@@ -13,7 +13,7 @@ const COMMON_SHADER_SOURCE: &str = include_str!("shaders/common.wgsl");
 
 /// One effect shader: its id (the `shader` of a pass), its WGSL body and
 /// the number uniforms it reads, in the order they fill the uniform
-/// block's sixteen scalar slots. `u_direction` is read by every shader
+/// block's twenty-four scalar slots. `u_direction` is read by every shader
 /// and defaults to zero.
 pub struct ShaderSpec {
     pub id: &'static str,
@@ -153,6 +153,36 @@ pub const SHADERS: &[ShaderSpec] = &[
         ],
     },
     ShaderSpec {
+        id: "hsl",
+        source: include_str!("shaders/hsl.wgsl"),
+        numbers: &[
+            "u_hue_red",
+            "u_hue_orange",
+            "u_hue_yellow",
+            "u_hue_green",
+            "u_hue_aqua",
+            "u_hue_blue",
+            "u_hue_purple",
+            "u_hue_magenta",
+            "u_sat_red",
+            "u_sat_orange",
+            "u_sat_yellow",
+            "u_sat_green",
+            "u_sat_aqua",
+            "u_sat_blue",
+            "u_sat_purple",
+            "u_sat_magenta",
+            "u_light_red",
+            "u_light_orange",
+            "u_light_yellow",
+            "u_light_green",
+            "u_light_aqua",
+            "u_light_blue",
+            "u_light_purple",
+            "u_light_magenta",
+        ],
+    },
+    ShaderSpec {
         id: "lut",
         source: include_str!("shaders/lut.wgsl"),
         numbers: &["u_size", "u_intensity", "u_tetrahedral"],
@@ -160,7 +190,7 @@ pub const SHADERS: &[ShaderSpec] = &[
 ];
 
 const DIRECTION_UNIFORM: &str = "u_direction";
-const SCALAR_SLOTS: usize = 16;
+const SCALAR_SLOTS: usize = 24;
 
 pub fn shader_spec(id: &str) -> Option<&'static ShaderSpec> {
     SHADERS.iter().find(|spec| spec.id == id)
@@ -603,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn every_shader_names_at_most_sixteen_numbers() {
+    fn every_shader_fits_the_uniform_block() {
         for spec in SHADERS {
             assert!(spec.numbers.len() <= SCALAR_SLOTS, "{}", spec.id);
             assert!(spec.source.contains("fragment_main"), "{}", spec.id);

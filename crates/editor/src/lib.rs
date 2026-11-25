@@ -24,6 +24,7 @@ mod bundle;
 mod captions;
 mod caption_keywords;
 mod colour_match;
+mod colour_tools;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
@@ -128,6 +129,10 @@ pub use editor::Editor;
 pub use edits::{
     RipplePlan, collect_edit_points, delete_range_plan, elements_crossing, merge_spans, next_edit_point,
     previous_edit_point, ripple_delete_plan,
+};
+pub use colour_tools::{
+    COLOUR_WHEEL_ANGLES, COLOUR_WHEEL_RANGE, COLOUR_WHEELS, HSL_BANDS, HSL_CONTROLS, HSL_HUE_RANGE, colour_wheel_move,
+    colour_wheel_offsets, colour_wheel_point, colour_wheel_rgba, hsl_band_swatch, hsl_band_value, hsl_param_key,
 };
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, effect_spec};
 pub use error::EditorError;

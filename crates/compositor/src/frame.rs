@@ -23,7 +23,11 @@ pub struct CanvasClearDescriptor {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FrameItemDescriptor {
     Layer(LayerDescriptor),
+    /// An effect over everything drawn so far (an effect element on its
+    /// own track). The web sends `effectPassGroups` (`rename_all` on an enum
+    /// renames only the variants, so the field is named here).
     SceneEffect {
+        #[serde(rename = "effectPassGroups", alias = "effect_pass_groups")]
         effect_pass_groups: Vec<Vec<EffectPassDescriptor>>,
     },
     /// Two stacks of layers blended by a gl-transitions shader: `from` is
@@ -177,4 +181,22 @@ pub struct CanvasTextureDescriptor {
     pub id: String,
     pub width: u32,
     pub height: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The web sends a scene effect (an effect element on its own track) with
+    /// a camelCase field; it used to be refused as "missing field".
+    #[test]
+    fn scene_effects_read_the_web_field_name() {
+        for json in [
+            r#"{"type":"sceneEffect","effectPassGroups":[[{"shader":"hsl","uniforms":{}}]]}"#,
+            r#"{"type":"sceneEffect","effect_pass_groups":[]}"#,
+        ] {
+            let item: FrameItemDescriptor = serde_json::from_str(json).unwrap_or_else(|error| panic!("{json}: {error}"));
+            assert!(matches!(item, FrameItemDescriptor::SceneEffect { .. }));
+        }
+    }
 }

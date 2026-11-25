@@ -9,6 +9,7 @@
 import type { ParamDefinition, ParamValues } from "@/params";
 import type { EffectDefinition, EffectPass } from "@/effects/types";
 import { decodeLutParam, lutKey, lutTextureRgba } from "@/luts/parse";
+import { HSL_BANDS, HSL_CONTROLS, hslParamKey } from "@/effects/colour-tools";
 
 const REFERENCE_HEIGHT = 1080;
 
@@ -353,6 +354,32 @@ export const curvesEffectDefinition = singlePass({
 	}),
 });
 
+/**
+ * HSL: hue, saturation and lightness of eight colour bands, blended around
+ * the hue circle (the hue vs hue / saturation / lightness curves). Uniforms
+ * u_hue_<band>, u_sat_<band>, u_light_<band> as `crates/render`.
+ */
+export const hslEffectDefinition = singlePass({
+	type: "hsl",
+	name: "HSL",
+	keywords: ["hsl", "hue", "saturation", "lightness", "luminance", "secondary", "colour", "color", "hue curves", "grade"],
+	shader: "hsl",
+	params: HSL_BANDS.flatMap((band, index) =>
+		HSL_CONTROLS.map((control, controlIndex) =>
+			number({ key: hslParamKey(index, controlIndex), label: `${band.label} ${control.toLowerCase()}`, default: 0, min: -100, max: 100, step: 1 }),
+		),
+	),
+	uniforms: ({ read }) => {
+		const uniforms: Record<string, number> = {};
+		(["u_hue", "u_sat", "u_light"] as const).forEach((prefix, control) => {
+			HSL_BANDS.forEach((band, index) => {
+				uniforms[`${prefix}_${band.key}`] = Math.min(100, Math.max(-100, read(hslParamKey(index, control))));
+			});
+		});
+		return uniforms;
+	},
+});
+
 export const levelsEffectDefinition = singlePass({
 	type: "levels",
 	name: "Levels",
@@ -602,6 +629,7 @@ export const libraryEffectDefinitions: EffectDefinition[] = [
 	kaleidoscopeEffectDefinition,
 	liftGammaGainEffectDefinition,
 	curvesEffectDefinition,
+	hslEffectDefinition,
 	levelsEffectDefinition,
 	shadowsHighlightsEffectDefinition,
 	chromaKeyEffectDefinition,
