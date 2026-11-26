@@ -399,3 +399,11 @@ this repository. Templates you save stay in your browser or in
   layouts, colours, wording and animation choices are covered by the
   repository's MIT licence. They copy no other editor's templates and use
   the default font (no font files are bundled for them).
+
+## Word-art styles (`crates/wordart/styles.json`, added 2026-11-26)
+
+- The ten word-art styles (Plain, Candy, Comic, Chrome, Gold, Ice,
+  Sunset, Sticker, Retro, Neon) are our own designs for this repository:
+  their colours, outline widths and shadow settings are covered by the
+  repository's MIT licence. They copy no other editor's text styles and
+  bundle no fonts or images.

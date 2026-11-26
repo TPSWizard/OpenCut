@@ -183,6 +183,7 @@ export function drawMeasuredTextLayout({
 	keywords = null,
 	revealChars = null,
 	rich = null,
+	backgroundOnly = false,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -201,6 +202,8 @@ export function drawMeasuredTextLayout({
 	revealChars?: number | null;
 	/** Each character's rich-text style (`@/text/rich`); null for none. */
 	rich?: RichCharStyle[] | null;
+	/** Draw only the background box (word art styles the glyphs apart). */
+	backgroundOnly?: boolean;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -257,6 +260,7 @@ export function drawMeasuredTextLayout({
 			ctx.fillStyle = textColor;
 		}
 	}
+	if (backgroundOnly) return;
 
 	if (keyed) {
 		drawStyledLines({

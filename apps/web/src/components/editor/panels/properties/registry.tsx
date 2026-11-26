@@ -9,6 +9,7 @@ import { DeflickerSection } from "@/deflicker/components/deflicker-section";
 import { MulticamSection } from "@/multicam/components/multicam-panels";
 import { FaceRetouchSection } from "@/retouch/components/face-retouch-section";
 import { RichTextSection } from "@/text/components/rich-text-section";
+import { WordArtSection } from "@/text/components/word-art-section";
 import { PictureCleanupSection } from "@/picture/components/picture-cleanup-section";
 import { CutoutSection } from "@/cutout/components/cutout-section";
 import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
@@ -355,6 +356,7 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 					paramKeys={TEXT_PARAM_KEYS}
 					sectionKey="text"
 				/>
+				<WordArtSection element={element} trackId={trackId} />
 				<RichTextSection element={element} trackId={trackId} />
 			</>
 		),

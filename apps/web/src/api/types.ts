@@ -744,6 +744,23 @@ export interface EditorApiMethods {
 		params: { id: string; at?: number };
 		result: ApiElementInfo[];
 	};
+	/**
+	 * The word-art style gallery (row 99): gradient fills, stacked
+	 * outlines and inner shadows (our own designs, the shared `wordart` crate).
+	 */
+	"wordArt.list": {
+		params: Record<string, never>;
+		result: { styles: { id: string; label: string; description: string; params: Record<string, string | number> }[] };
+	};
+	/**
+	 * Puts a gallery style on text clips (one undo step): sets every
+	 * word-art param (clearing a previous style) and any colour it names.
+	 * "none" makes them plain again.
+	 */
+	"wordArt.apply": {
+		params: { elementIds: string[]; id: string };
+		result: { changed: number };
+	};
 	/** Puts a sticker (an id from `stickers.search`) on the timeline. */
 	"timeline.addSticker": {
 		params: { stickerId: string; at?: number; duration?: number; name?: string };

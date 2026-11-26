@@ -151,12 +151,14 @@ pub use error::EditorError;
 pub use frame::{
     BackdropPlan, EffectPlan, background_blur_layer, FONT_SIZE_RATIO_REFERENCE, FONT_SIZE_REFERENCE, FrameItemPlan, FramePlan, HighlightMode, LayerPlan, LayerSource, LayerTransform, MaskPlan, CutoutPlan, TextAlign,
     TextBackground, TextDecoration, TextHighlight, TextKeywords, LayerZoom, TextStyle, TransitionPlan, active_word, caption_highlight, caption_keywords, fit_contain,
-    parse_hex_color, plan_frame,
+    parse_hex_color, plan_frame, read_word_art,
 };
 pub use auto_zoom::{
     ClipZoom, MIN_PUNCH_SECONDS, SENTENCE_GAP_SECONDS, TAIL_SECONDS, ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX, ZOOM_SCALE_MAX,
     ZOOM_STRENGTHS, ZoomPunch, ZoomWord, clip_words, format_punches, parse_punches, plan_punches, read_clip_zoom, zoom_at, zoom_offset,
 };
+/// Word art (row 99): styles and the gallery, for the inspector.
+pub use wordart;
 pub use credit_roll::{
     CreditRoll, ROLL_SPEED_MAX, ROLL_SPEED_MIN, RollBox, RollDirection, credit_roll_position, credit_roll_seconds,
     credit_roll_span, read_credit_roll,

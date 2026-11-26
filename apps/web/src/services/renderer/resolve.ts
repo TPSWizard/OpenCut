@@ -5,6 +5,7 @@ import { deflickerGainAt } from "@/deflicker/levels";
 import { readRichStyles } from "@/text/rich";
 import { faceTrackFacesAt } from "opencut-wasm";
 import { curveAt, textPathAt } from "@/text/curve";
+import { wordArtParamsJson } from "@/text/word-art";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
@@ -722,6 +723,7 @@ function resolveTextNode({
 		curve: curveAt({ params: node.params.params, animations: node.params.animations, localTime }),
 		path: textPathAt(node.params.params),
 		rich: readRichStyles(node.params.params),
+		wordArt: wordArtParamsJson(node.params.params),
 		textColor: resolveColorAtTime({
 			baseColor:
 				typeof node.params.params.color === "string"

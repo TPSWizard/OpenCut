@@ -1466,6 +1466,145 @@ impl Render for InspectorPanel {
                                 "The text scrolls through the whole frame, starting just past the edge. Fit clip spreads it over the clip; lengthen the clip to slow it down.",
                             )));
                     }
+                    // Word art (row 99): a gallery of styles (gradient fill,
+                    // stacked outlines, inner shadow), then each part's settings.
+                    let current_art = params.text(editor::wordart::keys::STYLE, "none").into_owned();
+                    let mut art_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Word art"), window));
+                    for style in editor::wordart::styles() {
+                        let state = self.state.clone();
+                        let id = style.id.clone();
+                        art_row = art_row.child(
+                            Button::new(eid("word-art", &style.id), t(&style.label))
+                                .variant(if current_art == style.id { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let Some(values) = editor::wordart::style_params(&id) else { return };
+                                    let mut params = Params::new();
+                                    for (key, value) in values {
+                                        match value {
+                                            serde_json::Value::String(text) => {
+                                                params.set(&key, text);
+                                            }
+                                            serde_json::Value::Number(number) => {
+                                                params.set(&key, number.as_f64().unwrap_or(0.0));
+                                            }
+                                            serde_json::Value::Bool(flag) => {
+                                                params.set(&key, flag);
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    content = content.child(art_row);
+                    let gradient = params.text(editor::wordart::keys::FILL, "solid") == "gradient";
+                    if current_art != "none" || editor::read_word_art(&params).is_some() {
+                        use editor::wordart::keys as art;
+                        let mut fill_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Fill"), window));
+                        for (option, label) in [("solid", "Text colour"), ("gradient", "Gradient")] {
+                            let state = self.state.clone();
+                            fill_row = fill_row.child(
+                                Button::new(eid("word-art-fill", option), t(label))
+                                    .variant(if gradient == (option == "gradient") { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        let mut params = Params::new();
+                                        params.set(art::FILL, option);
+                                        state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                    }),
+                            );
+                        }
+                        content = content.child(fill_row);
+                        if gradient {
+                            for (key, label, default) in [
+                                (art::GRADIENT_FROM, "Gradient start", "#ffffff"),
+                                (art::GRADIENT_VIA, "Gradient middle", ""),
+                                (art::GRADIENT_TO, "Gradient end", "#000000"),
+                            ] {
+                                content = content.child(self.row(
+                                    t(label),
+                                    key,
+                                    default,
+                                    params.text(key, default).into_owned(),
+                                    None,
+                                    window,
+                                    cx,
+                                    set_text_param(key),
+                                ));
+                            }
+                            content = content.child(self.row(
+                                t("Gradient angle"),
+                                art::GRADIENT_ANGLE,
+                                "",
+                                number_text(params.number(art::GRADIENT_ANGLE, 90.0)),
+                                None,
+                                window,
+                                cx,
+                                set_number_param(art::GRADIENT_ANGLE),
+                            ));
+                        }
+                        for (index, (colour_label, width_label)) in [
+                            ("Outline 1 colour", "Outline 1 width"),
+                            ("Outline 2 colour", "Outline 2 width"),
+                            ("Outline 3 colour", "Outline 3 width"),
+                        ]
+                        .into_iter()
+                        .enumerate()
+                        {
+                            content = content.child(self.row(
+                                t(colour_label),
+                                art::STROKE_COLOR[index],
+                                "#000000",
+                                params.text(art::STROKE_COLOR[index], "#000000").into_owned(),
+                                None,
+                                window,
+                                cx,
+                                set_text_param(art::STROKE_COLOR[index]),
+                            ));
+                            content = content.child(self.row(
+                                t(width_label),
+                                art::STROKE_WIDTH[index],
+                                "",
+                                number_text(params.number(art::STROKE_WIDTH[index], 0.0)),
+                                None,
+                                window,
+                                cx,
+                                set_number_param(art::STROKE_WIDTH[index]),
+                            ));
+                        }
+                        content = content.child(self.row(
+                            t("Inner shadow colour"),
+                            art::SHADOW_COLOR,
+                            "#000000",
+                            params.text(art::SHADOW_COLOR, "#000000").into_owned(),
+                            None,
+                            window,
+                            cx,
+                            set_text_param(art::SHADOW_COLOR),
+                        ));
+                        for (key, label, default) in [
+                            (art::SHADOW_OPACITY, "Inner shadow opacity", 0.0),
+                            (art::SHADOW_DISTANCE, "Inner shadow distance", 4.0),
+                            (art::SHADOW_ANGLE, "Inner shadow angle", 90.0),
+                            (art::SHADOW_BLUR, "Inner shadow blur", 4.0),
+                        ] {
+                            content = content.child(self.row(
+                                t(label),
+                                key,
+                                "",
+                                number_text(params.number(key, default)),
+                                None,
+                                window,
+                                cx,
+                                set_number_param(key),
+                            ));
+                        }
+                        content = content.child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Outlines stack outwards from the letters; widths, distance and blur are percent of the font size. Opacity 0 turns the inner shadow off.",
+                        )));
+                    }
                     let mut align_row = div()
                         .flex()
                         .items_center()

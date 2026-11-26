@@ -1,4 +1,5 @@
 import { getTextTemplateLibrary, insertTextTemplate } from "@/titles/templates";
+import { applyWordArtStyle, getWordArtStyles } from "@/text/word-art";
 import { DEFAULT_GIF_OPTIONS, type ExportKind, isAudioExportFormat, isExportKind } from "@/export/kinds";
 import {
 	DEFAULT_TRANSITION_DURATION,
@@ -1561,6 +1562,28 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					clips: items.length,
 				})),
 			};
+		},
+		"wordArt.list": () => ({ styles: getWordArtStyles() }),
+		"wordArt.apply": ({ elementIds: rawIds, id }) => {
+			requireProject();
+			const styleId = requireString(id, "id");
+			if (!getWordArtStyles().some((style) => style.id === styleId)) {
+				throw new EditorApiError({ code: "invalid_params", message: `Unknown word-art style ${styleId}` });
+			}
+			const ids = new Set(toElementIds(rawIds) ?? []);
+			if (ids.size === 0) throw new EditorApiError({ code: "invalid_params", message: "elementIds names the text clips" });
+			const targets = allTracks(tracksOf()).flatMap((track) =>
+				(track.elements as TimelineElement[])
+					.filter((element) => ids.has(element.id))
+					.map((element) => {
+						if (element.type !== "text") {
+							throw new EditorApiError({ code: "invalid_params", message: `${element.id} is not a text clip` });
+						}
+						return { trackId: track.id, element };
+					}),
+			);
+			if (targets.length !== ids.size) throw new EditorApiError({ code: "not_found", message: "Some elementIds were not found" });
+			return { changed: applyWordArtStyle({ editor, targets, id: styleId }) };
 		},
 		"titles.add": ({ id, at }) => {
 			requireProject();

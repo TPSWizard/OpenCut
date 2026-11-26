@@ -349,6 +349,9 @@ pub struct TextStyle {
     /// colour, weight, slant and size, already moved with any edits to the
     /// text; `None` when nothing is styled.
     pub rich: Option<Vec<richtext::CharStyle>>,
+    /// Word art (row 99, `wordart` crate): gradient fill, outlines and
+    /// inner shadow on the glyphs; `None` for plain text.
+    pub word_art: Option<wordart::WordArt>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -418,8 +421,20 @@ impl TextStyle {
                 Some(params.number("textPathAmount", 50.0)),
                 &params.text("textPathPoints", ""),
             ),
+            word_art: read_word_art(params),
         }
     }
+}
+
+/// A text clip's word art (row 99) from its params; `None` for plain text.
+pub fn read_word_art(params: &Params) -> Option<wordart::WordArt> {
+    wordart::WordArt::from_lookup(
+        |key| match params.get(key)? {
+            crate::ParamValue::Text(text) => Some(text.clone()),
+            _ => None,
+        },
+        |key| params.get(key).and_then(crate::ParamValue::as_number),
+    )
 }
 
 /// Parses `#rgb`, `#rgba`, `#rrggbb` and `#rrggbbaa` into straight-alpha components.
@@ -793,6 +808,18 @@ mod tests {
 
     fn seconds(value: f64) -> MediaTime {
         MediaTime::from_seconds_f64(value).unwrap()
+    }
+
+    #[test]
+    fn text_styles_read_word_art() {
+        let mut params = Params::new();
+        params.set("content", "Hi");
+        assert_eq!(TextStyle::from_params(&params, 1080.0).word_art, None);
+        params.set("wordArt.fill", "gradient").set("wordArt.gradientFrom", "#ff0000").set("wordArt.stroke2Width", 8.0);
+        let art = TextStyle::from_params(&params, 1080.0).word_art.expect("word art");
+        assert_eq!(art.fill.unwrap().from, [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(art.strokes.len(), 1);
+        assert_eq!(art.strokes[0].width, 8.0);
     }
 
     #[test]

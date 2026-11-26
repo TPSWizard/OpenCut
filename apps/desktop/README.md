@@ -1000,6 +1000,33 @@ own. The maths is the shared `titles` crate (checked against
 `fixtures/text-templates/cases.json`, from an independent Python version),
 used by the web editor through WASM.
 
+## Word art
+
+The inspector's **Word art** row on a text clip is a gallery of styles
+(Plain, Candy, Comic, Chrome, Gold, Ice, Sunset, Sticker, Retro, Neon; our
+own designs in `crates/wordart/styles.json`). Picking one sets every
+word-art setting at once (and the text colour for the styles that have
+one), in one undo step; Plain takes word art off. Below the gallery are
+the parts:
+
+- **Fill**: the text colour (rich-text colours and caption highlights
+  stay) or a **gradient** of two or three colours across the letters at
+  an angle (0 runs left to right, 90 top to bottom).
+- **Outlines 1 to 3**: each a colour and a width in percent of the font
+  size, stacked outwards from the letters (outline 2 starts where
+  outline 1 ends). A width of 0 leaves it out.
+- **Inner shadow**: a colour inside the letters along the edges facing
+  away from its angle (90 shades the tops), at a distance and blur in
+  percent of the font size. Opacity 0 turns it off; distance 0 with some
+  blur is an inner glow.
+
+The letters are drawn on their own layer and styled by the shared
+`wordart` crate (an exact distance transform for the outlines), then laid
+over any background box; curves and paths bend the styled text. The web
+editor styles its letters with the same crate through WASM, checked
+against `fixtures/word-art/cases.json` (from an independent Python
+version).
+
 ## Not there yet
 
 - The media browser does not play files before they go on the timeline;

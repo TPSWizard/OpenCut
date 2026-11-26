@@ -674,6 +674,42 @@ const textElementParams: ElementParamDefinition[] = [
 		keyframable: false,
 	},
 	{
+		// Word art (row 99, `@/text/word-art`, the shared `wordart` crate):
+		// gradient fill, up to three stacked outlines, an inner shadow.
+		// Widths, distances and blurs are percent of the font size.
+		key: "wordArt.style",
+		label: "Word art style",
+		type: "text",
+		default: "none",
+		keyframable: false,
+	},
+	{
+		key: "wordArt.fill",
+		label: "Fill",
+		type: "select",
+		default: "solid",
+		keyframable: false,
+		options: [
+			{ value: "solid", label: "Text colour" },
+			{ value: "gradient", label: "Gradient" },
+		],
+	},
+	{ key: "wordArt.gradientFrom", label: "Gradient start", type: "color", default: "#ffffff", keyframable: false, dependencies: [{ param: "wordArt.fill", equals: "gradient" }] },
+	{ key: "wordArt.gradientVia", label: "Gradient middle (hex, blank for none)", type: "text", default: "", keyframable: false, dependencies: [{ param: "wordArt.fill", equals: "gradient" }] },
+	{ key: "wordArt.gradientTo", label: "Gradient end", type: "color", default: "#000000", keyframable: false, dependencies: [{ param: "wordArt.fill", equals: "gradient" }] },
+	{ key: "wordArt.gradientAngle", label: "Gradient angle", type: "number", default: 90, min: 0, max: 360, step: 1, keyframable: false, dependencies: [{ param: "wordArt.fill", equals: "gradient" }] },
+	{ key: "wordArt.stroke1Color", label: "Outline 1 colour", type: "color", default: "#000000", keyframable: false },
+	{ key: "wordArt.stroke1Width", label: "Outline 1 width (% of size)", type: "number", default: 0, min: 0, max: 30, step: 0.5, keyframable: false },
+	{ key: "wordArt.stroke2Color", label: "Outline 2 colour", type: "color", default: "#000000", keyframable: false },
+	{ key: "wordArt.stroke2Width", label: "Outline 2 width (% of size)", type: "number", default: 0, min: 0, max: 30, step: 0.5, keyframable: false },
+	{ key: "wordArt.stroke3Color", label: "Outline 3 colour", type: "color", default: "#000000", keyframable: false },
+	{ key: "wordArt.stroke3Width", label: "Outline 3 width (% of size)", type: "number", default: 0, min: 0, max: 30, step: 0.5, keyframable: false },
+	{ key: "wordArt.innerShadowOpacity", label: "Inner shadow opacity", type: "number", default: 0, min: 0, max: 100, step: 1, keyframable: false },
+	{ key: "wordArt.innerShadowColor", label: "Inner shadow colour", type: "color", default: "#000000", keyframable: false },
+	{ key: "wordArt.innerShadowDistance", label: "Inner shadow distance (% of size)", type: "number", default: 4, min: 0, max: 30, step: 0.5, keyframable: false },
+	{ key: "wordArt.innerShadowAngle", label: "Inner shadow angle", type: "number", default: 90, min: 0, max: 360, step: 1, keyframable: false },
+	{ key: "wordArt.innerShadowBlur", label: "Inner shadow blur (% of size)", type: "number", default: 4, min: 0, max: 30, step: 0.5, keyframable: false },
+	{
 		key: "background.enabled",
 		label: "Background Enabled",
 		type: "boolean",

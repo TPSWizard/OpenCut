@@ -9,6 +9,7 @@ import {
 } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
 import { drawCurvedText, isCurved } from "@/text/curve";
+import { drawWordArtGlyphs } from "@/text/word-art";
 import type { MotionTransforms } from "@/motion-blur/blur";
 import type { RichCharStyle } from "@/text/rich";
 
@@ -42,6 +43,8 @@ export interface ResolvedTextNodeState {
 	motion?: MotionTransforms | null;
 	/** Each character's rich-text style (`@/text/rich`); null for none. */
 	rich?: RichCharStyle[] | null;
+	/** The clip's word-art params as JSON (`@/text/word-art`); null for plain text. */
+	wordArt?: string | null;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -69,19 +72,39 @@ export function renderTextToContext({
 		ctx.rotate((resolved.transform.rotate * Math.PI) / 180);
 	}
 
-	const drawFlat = (target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) =>
+	const drawText = (
+		target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+		part: "all" | "background" | "glyphs",
+	) =>
 		drawMeasuredTextLayout({
 			ctx: target,
 			layout: resolved.measuredText,
 			textColor: resolved.textColor,
-			background: resolved.measuredText.resolvedBackground,
+			background: part === "glyphs" ? null : resolved.measuredText.resolvedBackground,
 			backgroundColor: resolved.backgroundColor,
 			textBaseline: baseline,
 			highlight: resolved.highlight,
 			keywords: resolved.keywords,
 			revealChars: resolved.revealChars,
 			rich: resolved.rich ?? null,
+			backgroundOnly: part === "background",
 		});
+	// Word art (row 99): the box as usual, then the glyphs styled off-screen.
+	const wordArt = resolved.wordArt;
+	const drawFlat = (target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) => {
+		if (!wordArt) {
+			drawText(target, "all");
+			return;
+		}
+		drawText(target, "background");
+		drawWordArtGlyphs({
+			ctx: target,
+			json: wordArt,
+			rect: resolved.measuredText.visualRect,
+			emPx: resolved.measuredText.scaledFontSize,
+			drawGlyphs: (layer) => drawText(layer, "glyphs"),
+		});
+	};
 	if (resolved.path || (resolved.curve !== undefined && isCurved(resolved.curve))) {
 		drawCurvedText({ ctx, curve: resolved.curve ?? 0, path: resolved.path, rect: resolved.measuredText.visualRect, drawFlat });
 	} else {

@@ -22,6 +22,7 @@ trimedit = { workspace = true }
 captionedit = { workspace = true }
 subtitleparse = { workspace = true }
 titles = { workspace = true }
+wordart = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 retakes = { workspace = true }

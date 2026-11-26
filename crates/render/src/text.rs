@@ -350,6 +350,11 @@ impl TextRasterizer {
                 }
             }
         }
+        // Word-art outlines reach past the glyphs.
+        let word_art = style.word_art.as_ref().filter(|art| !art.is_plain());
+        let outset = word_art.map_or(0.0, |art| art.outset_px(font_size as f64) as f32);
+        half_width += outset;
+        half_height += outset;
         // Bounded so a wild size cannot ask for gigabytes; glyphs past the
         // edge are simply cut.
         const MAX_SIDE: f32 = 16_384.0;
@@ -387,6 +392,13 @@ impl TextRasterizer {
         let color = to_color(style.color);
         let offset_x = origin_x.round() as i32;
         let offset_y = origin_y.round() as i32;
+        // With word art the glyphs and lines are drawn on their own layer,
+        // styled, then laid over the boxes.
+        let mut glyph_layer = word_art.map(|_| vec![0u8; bgra.len()]);
+        let glyph_target: &mut Vec<u8> = match glyph_layer.as_mut() {
+            Some(layer) => layer,
+            None => &mut bgra,
+        };
         buffer.draw(
             &mut self.font_system,
             &mut self.cache,
@@ -402,7 +414,7 @@ impl TextRasterizer {
                             continue;
                         }
                         let index = ((py as u32 * width + px as u32) * 4) as usize;
-                        blend_over(&mut bgra[index..index + 4], color);
+                        blend_over(&mut glyph_target[index..index + 4], color);
                     }
                 }
             },
@@ -416,8 +428,23 @@ impl TextRasterizer {
             for py in y0..y1 {
                 for px in x0..x1 {
                     let index = ((py * width + px) * 4) as usize;
-                    blend_over(&mut bgra[index..index + 4], color);
+                    blend_over(&mut glyph_target[index..index + 4], color);
                 }
+            }
+        }
+
+        if let (Some(art), Some(mut layer)) = (word_art, glyph_layer) {
+            // The crate works in RGBA; the raster is BGRA.
+            for pixel in layer.chunks_exact_mut(4) {
+                pixel.swap(0, 2);
+            }
+            let styled = art.compose(width as usize, height as usize, &layer, font_size as f64);
+            for (dst, src) in bgra.chunks_exact_mut(4).zip(styled.chunks_exact(4)) {
+                if src[3] == 0 {
+                    continue;
+                }
+                let src = Color::rgba(src[0], src[1], src[2], src[3]);
+                blend_over(dst, src);
             }
         }
 
@@ -568,6 +595,7 @@ mod tests {
             curve: 0.0,
             path: None,
             rich: None,
+            word_art: None,
         }
     }
 
@@ -792,6 +820,43 @@ mod tests {
             .collect();
         assert!(!opaque.is_empty(), "no glyph pixels were drawn");
         assert!(opaque.iter().all(|pixel| pixel[2] > 200 && pixel[1] < 40 && pixel[0] < 40), "stored as BGRA red");
+    }
+
+    #[test]
+    fn word_art_outlines_and_fills_the_glyphs() {
+        let mut rasterizer = TextRasterizer::new();
+        let plain = rasterizer.rasterize(&style("HI"));
+        let mut styled = style("HI");
+        styled.word_art = editor::wordart::WordArt::from_params_json(
+            r##"{"wordArt.fill":"gradient","wordArt.gradientFrom":"#00ff00","wordArt.gradientTo":"#0000ff","wordArt.gradientAngle":90,
+                "wordArt.stroke1Color":"#000000","wordArt.stroke1Width":10,"wordArt.stroke2Color":"#ffff00","wordArt.stroke2Width":10}"##,
+        );
+        let art = rasterizer.rasterize(&styled);
+        // 20% of a 40 px em on each side, plus a pixel of room.
+        assert_eq!(art.width, plain.width + 2 * 9, "{} vs {}", art.width, plain.width);
+        assert_eq!(art.height, plain.height + 2 * 9);
+        let pixels: Vec<&[u8]> = art.bgra.chunks_exact(4).filter(|p| p[3] > 250).collect();
+        let count = |test: &dyn Fn(&[u8]) -> bool| pixels.iter().filter(|p| test(p)).count();
+        let red = count(&|p| p[2] > 200 && p[1] < 60 && p[0] < 60);
+        let black = count(&|p| p[0] < 30 && p[1] < 30 && p[2] < 30);
+        let yellow = count(&|p| p[2] > 220 && p[1] > 220 && p[0] < 40);
+        let greenish = count(&|p| p[1] > 150 && p[2] < 60);
+        let blueish = count(&|p| p[0] > 150 && p[2] < 60 && p[1] < 100);
+        assert_eq!(red, 0, "the gradient replaces the text colour");
+        assert!(black > 50 && yellow > 50, "black {black} yellow {yellow}");
+        assert!(greenish > 20 && blueish > 20, "green {greenish} blue {blueish}");
+        // Green at the top of the glyphs, blue at the bottom.
+        let mean_row = |test: &dyn Fn(&[u8]) -> bool| {
+            let rows: Vec<u32> = (0..art.height * art.width)
+                .filter(|&i| {
+                    let p = &art.bgra[i as usize * 4..i as usize * 4 + 4];
+                    p[3] > 250 && test(p)
+                })
+                .map(|i| i / art.width)
+                .collect();
+            rows.iter().sum::<u32>() as f64 / rows.len() as f64
+        };
+        assert!(mean_row(&|p| p[1] > 150 && p[2] < 60) < mean_row(&|p| p[0] > 150 && p[2] < 60 && p[1] < 100));
     }
 
     #[test]

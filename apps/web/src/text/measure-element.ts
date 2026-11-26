@@ -7,6 +7,7 @@ import {
 	getTextVisualRect,
 } from "./layout";
 import { readRichStyles } from "./rich";
+import { wordArtOutsetPx, wordArtParamsJson } from "./word-art";
 import {
 	measureTextLayout,
 	styledLineRuns,
@@ -140,10 +141,21 @@ export function measureTextElement({
 	// their tops rise above it (about 0.4 and 0.6 of the extra size).
 	const biggest = rich ? Math.max(1, ...rich.map((style) => style.scale ?? 1)) : 1;
 	const extra = (biggest - 1) * measuredLayout.scaledFontSize;
-	const visualRect =
+	const richRect =
 		extra > 0
 			? { ...measuredVisual, top: measuredVisual.top - 0.4 * extra, height: measuredVisual.height + extra }
 			: measuredVisual;
+	// Word-art outlines (row 99) reach past the glyphs.
+	const outset = wordArtOutsetPx(wordArtParamsJson(element.params), measuredLayout.scaledFontSize);
+	const visualRect =
+		outset > 0
+			? {
+					left: richRect.left - outset,
+					top: richRect.top - outset,
+					width: richRect.width + 2 * outset,
+					height: richRect.height + 2 * outset,
+				}
+			: richRect;
 
 	return {
 		...measuredLayout,

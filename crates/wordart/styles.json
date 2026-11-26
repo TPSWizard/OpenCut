@@ -1,0 +1,71 @@
+{
+  "styles": [
+    { "id": "none", "label": "Plain", "description": "No word art: the text's own colour", "params": {} },
+    {
+      "id": "candy", "label": "Candy", "description": "Pink to orange, white and berry outlines",
+      "params": {
+        "wordArt.fill": "gradient", "wordArt.gradientFrom": "#ff6fb5", "wordArt.gradientTo": "#ffb347", "wordArt.gradientAngle": 90,
+        "wordArt.stroke1Color": "#ffffff", "wordArt.stroke1Width": 6, "wordArt.stroke2Color": "#c2185b", "wordArt.stroke2Width": 6
+      }
+    },
+    {
+      "id": "comic", "label": "Comic", "description": "Yellow letters, thick black and red outlines",
+      "params": {
+        "color": "#ffe14d",
+        "wordArt.stroke1Color": "#111111", "wordArt.stroke1Width": 9, "wordArt.stroke2Color": "#e53935", "wordArt.stroke2Width": 6
+      }
+    },
+    {
+      "id": "chrome", "label": "Chrome", "description": "Silver gradient, dark edge, shaded top",
+      "params": {
+        "wordArt.fill": "gradient", "wordArt.gradientFrom": "#f5f7fa", "wordArt.gradientVia": "#8e9aaf", "wordArt.gradientTo": "#e9edf2", "wordArt.gradientAngle": 90,
+        "wordArt.stroke1Color": "#3a4250", "wordArt.stroke1Width": 4,
+        "wordArt.innerShadowOpacity": 35, "wordArt.innerShadowColor": "#000000", "wordArt.innerShadowDistance": 3, "wordArt.innerShadowAngle": 90, "wordArt.innerShadowBlur": 4
+      }
+    },
+    {
+      "id": "gold", "label": "Gold", "description": "Warm gold gradient with a brown edge",
+      "params": {
+        "wordArt.fill": "gradient", "wordArt.gradientFrom": "#fff3b0", "wordArt.gradientVia": "#f2b417", "wordArt.gradientTo": "#9c6b00", "wordArt.gradientAngle": 90,
+        "wordArt.stroke1Color": "#5a3d00", "wordArt.stroke1Width": 4,
+        "wordArt.innerShadowOpacity": 45, "wordArt.innerShadowColor": "#fff8d6", "wordArt.innerShadowDistance": 3, "wordArt.innerShadowAngle": 270, "wordArt.innerShadowBlur": 3
+      }
+    },
+    {
+      "id": "ice", "label": "Ice", "description": "Pale to sky blue, white and navy outlines",
+      "params": {
+        "wordArt.fill": "gradient", "wordArt.gradientFrom": "#e0fbff", "wordArt.gradientTo": "#5ec8f2", "wordArt.gradientAngle": 90,
+        "wordArt.stroke1Color": "#ffffff", "wordArt.stroke1Width": 4, "wordArt.stroke2Color": "#1e5f8c", "wordArt.stroke2Width": 5
+      }
+    },
+    {
+      "id": "sunset", "label": "Sunset", "description": "Yellow, orange and plum, dark outline",
+      "params": {
+        "wordArt.fill": "gradient", "wordArt.gradientFrom": "#ffd23f", "wordArt.gradientVia": "#ff6f3c", "wordArt.gradientTo": "#b8336a", "wordArt.gradientAngle": 90,
+        "wordArt.stroke1Color": "#2b1035", "wordArt.stroke1Width": 6
+      }
+    },
+    {
+      "id": "sticker", "label": "Sticker", "description": "A thick white border, like a cut-out sticker",
+      "params": {
+        "wordArt.stroke1Color": "#ffffff", "wordArt.stroke1Width": 14, "wordArt.stroke2Color": "#222222", "wordArt.stroke2Width": 2
+      }
+    },
+    {
+      "id": "retro", "label": "Retro", "description": "Pink letters in three stacked outlines",
+      "params": {
+        "color": "#ff4f9a",
+        "wordArt.stroke1Color": "#ffe14d", "wordArt.stroke1Width": 5, "wordArt.stroke2Color": "#2ec4b6", "wordArt.stroke2Width": 5,
+        "wordArt.stroke3Color": "#1d1a3a", "wordArt.stroke3Width": 5
+      }
+    },
+    {
+      "id": "neon", "label": "Neon", "description": "White core, magenta edge and inner glow",
+      "params": {
+        "color": "#ffffff",
+        "wordArt.stroke1Color": "#ff2bd6", "wordArt.stroke1Width": 4, "wordArt.stroke2Color": "#ff2bd666", "wordArt.stroke2Width": 6,
+        "wordArt.innerShadowOpacity": 60, "wordArt.innerShadowColor": "#ff2bd6", "wordArt.innerShadowDistance": 0, "wordArt.innerShadowAngle": 90, "wordArt.innerShadowBlur": 6
+      }
+    }
+  ]
+}
