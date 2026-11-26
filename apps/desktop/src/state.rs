@@ -4268,6 +4268,40 @@ impl EditorState {
         }
     }
 
+    /// Makes an audiogram (row 100) of the selected video or audio clip: its
+    /// sound is analysed in the background, then the audiogram goes in over
+    /// the clip's span and is selected (one undo step).
+    pub(crate) fn make_audiogram_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !editor::can_make_audiogram(element) {
+            self.set_status(t("Select a video or audio clip with sound to make an audiogram."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read the clip's sound."), cx);
+            return;
+        };
+        let project = self.project().clone();
+        self.set_status(t("Listening to the clip for the audiogram…"), cx);
+        cx.spawn(async move |this, cx| {
+            let analysed = cx
+                .background_executor()
+                .spawn(async move { crate::audiogram::clip_levels(&ffmpeg, &project, &element_id).map(|levels| (element_id, levels)) })
+                .await;
+            this.update(cx, |state, cx| match analysed {
+                Ok((element_id, levels)) => {
+                    let Some(source) = state.project().element(&element_id).map(|(_, element)| element.clone()) else { return };
+                    state.insert_element(editor::audiogram_element(&source, &levels), cx);
+                    state.set_status(t("Audiogram added over the clip. Pick its style in the inspector."), cx);
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn insert_element(&mut self, element: Element, cx: &mut Context<Self>) {
         if let Some(outcome) = self.execute(
             Command::InsertElement {

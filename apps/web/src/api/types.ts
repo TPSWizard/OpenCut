@@ -761,6 +761,17 @@ export interface EditorApiMethods {
 		params: { elementIds: string[]; id: string };
 		result: { changed: number };
 	};
+	/**
+	 * Makes an audiogram (row 100) of a video or audio clip: listens to its
+	 * sound and puts a graphic over the clip's span whose bars move with it
+	 * (the shared `audiogram` crate; up to 10 minutes). Style it with
+	 * `timeline.updateElement` params `style` (bars, mirror, line, circle),
+	 * `color`, `barCount`, `size`, `width`, `y`, `gap`.
+	 */
+	"audiogram.make": {
+		params: { elementId: string; trackId?: string };
+		result: ApiElementInfo;
+	};
 	/** Puts a sticker (an id from `stickers.search`) on the timeline. */
 	"timeline.addSticker": {
 		params: { stickerId: string; at?: number; duration?: number; name?: string };

@@ -14,6 +14,7 @@ import { PictureCleanupSection } from "@/picture/components/picture-cleanup-sect
 import { CutoutSection } from "@/cutout/components/cutout-section";
 import { FaceSwapSection } from "@/faceswap/components/faceswap-section";
 import { BeatsSection } from "@/beats/components/beats-section";
+import { AudiogramSection } from "@/audiogram/components/audiogram-section";
 import { DenoiseSection } from "@/denoise/components/denoise-section";
 import { VoiceSection } from "@/voice/components/voice-section";
 import { AudioFxSection } from "@/audio-fx/components/audio-fx-section";
@@ -269,6 +270,7 @@ function buildAudioTab({
 				<DenoiseSection element={element} trackId={trackId} />
 				<VoiceSection element={element} trackId={trackId} />
 				<BeatsSection element={element} trackId={trackId} />
+				<AudiogramSection element={element} trackId={trackId} />
 				<DuckingSection element={element} trackId={trackId} />
 				<SilenceSection element={element} trackId={trackId} />
 				<FillersSection element={element} trackId={trackId} />

@@ -1,5 +1,6 @@
 import { getTextTemplateLibrary, insertTextTemplate } from "@/titles/templates";
 import { applyWordArtStyle, getWordArtStyles } from "@/text/word-art";
+import { makeAudiogram } from "@/audiogram/audiogram";
 import { DEFAULT_GIF_OPTIONS, type ExportKind, isAudioExportFormat, isExportKind } from "@/export/kinds";
 import {
 	DEFAULT_TRANSITION_DURATION,
@@ -1562,6 +1563,16 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					clips: items.length,
 				})),
 			};
+		},
+		"audiogram.make": async ({ elementId, trackId }) => {
+			requireProject();
+			const id = requireString(elementId, "elementId");
+			try {
+				const made = await makeAudiogram({ editor, elementId: id, trackId: typeof trackId === "string" ? trackId : undefined });
+				return elementInfoById(made);
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"wordArt.list": () => ({ styles: getWordArtStyles() }),
 		"wordArt.apply": ({ elementIds: rawIds, id }) => {

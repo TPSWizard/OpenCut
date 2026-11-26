@@ -407,3 +407,10 @@ this repository. Templates you save stay in your browser or in
   their colours, outline widths and shadow settings are covered by the
   repository's MIT licence. They copy no other editor's text styles and
   bundle no fonts or images.
+
+## Audiograms (`crates/audiogram`, added 2026-11-26)
+
+- The audiogram analysis (FFT, bands, levels) and drawing (bars, mirrored
+  bars, line, circle) are our own code for this repository, under its MIT
+  licence. No visualiser templates, artwork or third-party code are
+  bundled.

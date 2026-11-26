@@ -1027,6 +1027,29 @@ editor styles its letters with the same crate through WASM, checked
 against `fixtures/word-art/cases.json` (from an independent Python
 version).
 
+## Audiograms
+
+Select a video or audio clip with sound; the inspector's **Audiogram**
+section has **Make audiogram**. Its sound (the part the clip plays, with
+any speed change; up to 10 minutes) is decoded by FFmpeg to mono at
+24 kHz and analysed once per frame (30 a second): a 1024-sample Hann FFT
+around each frame's moment, the peak of 32 bands from 50 Hz to 10 kHz in
+decibels (-60 to 0 dB as 0 to 1), held and falling back at full scale a
+second so bars drop smoothly. The levels are kept on a new graphic layer
+over the clip's span, selected when it is added (one undo step).
+
+With the audiogram selected, the inspector sets its **Style** (Bars,
+Mirrored bars, Line, Circle), **Colour**, number of **Bars**, **Height**
+(the tallest bar, percent of the canvas height), **Width** (percent of
+the canvas width; for a circle its inner diameter is half this share of
+the smaller side), **Position** (the baseline or centre, percent from the
+top) and **Gap between bars**. Move, scale, fade or animate it like any
+layer. The analysis and drawing are the shared `audiogram` crate, which
+the web editor uses through WASM; both editors gave the same levels for
+the same sound and the same picture. Checked against
+`fixtures/audiogram/cases.json` (an independent Python version: a direct
+DFT and per-pixel drawing).
+
 ## Not there yet
 
 - The media browser does not play files before they go on the timeline;

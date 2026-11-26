@@ -1,0 +1,14 @@
+[package]
+name = "audiogram"
+description = "Audiograms: per-frame sound levels by frequency band from a clip's audio, drawn as bars, a mirrored waveform, a line or a circle, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

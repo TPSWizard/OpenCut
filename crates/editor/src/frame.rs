@@ -159,6 +159,9 @@ pub enum LayerSource {
     /// A freehand drawing over the whole canvas (`strokes` as stored), drawn
     /// on up to `progress` (0 to 1; see `strokes::reveal_progress`).
     Drawing { strokes: String, progress: f64 },
+    /// An audiogram over the whole canvas (row 100): its `levels` as
+    /// stored, its look, and the seconds into the element.
+    Audiogram { levels: String, look: crate::AudiogramLook, seconds: f64 },
 }
 
 /// Offsets are canvas pixels from the canvas centre; scale is a multiplier
@@ -657,6 +660,11 @@ fn layer_plan(
         ElementKind::Graphic { definition_id } if definition_id == crate::DRAWING_DEFINITION => LayerSource::Drawing {
             strokes: params.text("strokes", "").into_owned(),
             progress: strokes::reveal_progress(params.number("drawOn", 0.0), element.local_time(param_time).to_seconds_f64()),
+        },
+        ElementKind::Graphic { definition_id } if definition_id == crate::AUDIOGRAM_DEFINITION => LayerSource::Audiogram {
+            levels: params.text("levels", "").into_owned(),
+            look: crate::read_audiogram_look(&params),
+            seconds: element.local_time(param_time).to_seconds_f64(),
         },
         // Compounds are expanded before planning; audio and shapes the
         // desktop does not draw yet draw nothing.

@@ -85,6 +85,9 @@ pub struct Renderer {
     /// What each drawing's texture was last rasterised from (strokes,
     /// reveal, size), by element id.
     drawings: HashMap<String, u64>,
+    /// Audiograms' decoded levels by element (keyed by a hash of the stored
+    /// text) and the key of the raster last uploaded.
+    audiograms: HashMap<String, (u64, Option<editor::AudiogramLevels>, u64)>,
     proxy_dir: Option<std::path::PathBuf>,
     /// Media id → its proxy file and that file's frame size, once looked up.
     proxies: HashMap<String, Option<(std::path::PathBuf, (u32, u32))>>,
@@ -119,6 +122,7 @@ impl Renderer {
             stickers_dir: options.stickers_dir,
             stickers: HashMap::new(),
             drawings: HashMap::new(),
+            audiograms: HashMap::new(),
             proxy_dir: options.proxy_dir,
             proxies: HashMap::new(),
             lotties: HashMap::new(),
@@ -303,7 +307,7 @@ impl Renderer {
         let (base_width, base_height) = match layer.source {
             LayerSource::Text(_) => (natural_width as f32, natural_height as f32),
             // A drawing is the canvas itself.
-            LayerSource::Drawing { .. } => (canvas_width, canvas_height),
+            LayerSource::Drawing { .. } | LayerSource::Audiogram { .. } => (canvas_width, canvas_height),
             LayerSource::Sticker { intrinsic_width, intrinsic_height, .. } => fit_contain(
                 intrinsic_width.map(|w| w as f32).unwrap_or(natural_width as f32),
                 intrinsic_height.map(|h| h as f32).unwrap_or(natural_height as f32),
@@ -457,6 +461,43 @@ impl Renderer {
                     }
                     self.upload(&texture_id, pixel_width, pixel_height, &bgra);
                     self.drawings.insert(element_id.to_owned(), key);
+                }
+                Ok(Some((texture_id, canvas.width, canvas.height)))
+            }
+            LayerSource::Audiogram { levels, look, seconds } => {
+                // Drawn at the size it is shown (in steps of 64 px), each
+                // time the frame of levels, the look or the size changes.
+                let canvas = project.settings.canvas;
+                let shown = (canvas.width.max(canvas.height) as f32 * output_scale).clamp(16.0, audiogram::MAX_RASTER_SIDE as f32);
+                let side = ((shown / 64.0).ceil() * 64.0).max(64.0) as u32;
+                let (pixel_width, pixel_height) = audiogram::raster_size(canvas.width, canvas.height, side);
+                let texture_id = format!("audiogram:{element_id}");
+                use std::hash::{Hash, Hasher};
+                let text_key = {
+                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                    levels.hash(&mut hasher);
+                    hasher.finish()
+                };
+                let entry = self.audiograms.entry(element_id.to_owned()).or_insert((0, None, 0));
+                if entry.0 != text_key || entry.1.is_none() {
+                    *entry = (text_key, audiogram::Levels::parse(levels), 0);
+                }
+                let Some(parsed) = entry.1.as_ref() else { return Ok(None) };
+                let frame_key = {
+                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                    text_key.hash(&mut hasher);
+                    ((seconds * parsed.fps * 64.0).round() as i64).hash(&mut hasher);
+                    format!("{look:?}").hash(&mut hasher);
+                    (pixel_width, pixel_height).hash(&mut hasher);
+                    hasher.finish()
+                };
+                if entry.2 != frame_key {
+                    let mut bgra = audiogram::render(parsed, look, *seconds, pixel_width as usize, pixel_height as usize);
+                    for pixel in bgra.chunks_exact_mut(4) {
+                        pixel.swap(0, 2);
+                    }
+                    entry.2 = frame_key;
+                    self.upload(&texture_id, pixel_width, pixel_height, &bgra);
                 }
                 Ok(Some((texture_id, canvas.width, canvas.height)))
             }

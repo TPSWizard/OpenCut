@@ -2530,6 +2530,21 @@ impl Render for InspectorPanel {
                         )
                         .child(voice_row);
 
+                    // Audiogram (row 100): bars, a waveform, a line or a circle
+                    // that move with this clip's sound, as a new layer.
+                    content = content
+                        .child(self.heading(t("Audiogram"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                            "Listens to this clip and adds a layer over its span whose bars move with the sound (up to 10 minutes). Style it once it is added.",
+                        )))
+                        .child({
+                            let state = self.state.clone();
+                            Button::new("make-audiogram", t("Make audiogram"))
+                                .size(ButtonSize::XSmall)
+                                .disabled(!has_ffmpeg)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.make_audiogram_selected(cx)))
+                        });
+
                     // Beat markers: tempo from the clip's onsets; markers the
                     // timeline snaps to while clips are dragged.
                     let mut every_row = div()
@@ -3475,6 +3490,62 @@ impl Render for InspectorPanel {
                             );
                     }
                     content = content.child(camera_row).child(shots_row).child(actions);
+                }
+
+                // Audiogram (row 100): its style and look.
+                if editor::is_audiogram(&element) {
+                    let look = editor::read_audiogram_look(&element.params);
+                    let mut style_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Style"), window));
+                    for style in editor::AudiogramStyle::ALL {
+                        let state = self.state.clone();
+                        style_row = style_row.child(
+                            Button::new(eid("audiogram-style", style.id()), t(style.label()))
+                                .variant(if look.style == style { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set("style", style.id());
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    let source_name = element.params.text("sourceName", "").into_owned();
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Audiogram"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "Moves with the sound of {clip}. Sizes are percent of the canvas.",
+                            &[("clip", &source_name)],
+                        )))
+                        .child(style_row);
+                    content = content.child(self.row(
+                        t("Colour"),
+                        "audiogram.color",
+                        "#ffffff",
+                        element.params.text("color", "#ffffff").into_owned(),
+                        None,
+                        window,
+                        cx,
+                        set_text_param("color"),
+                    ));
+                    for (key, field, label, default) in [
+                        ("barCount", "audiogram.barCount", "Bars", 48.0),
+                        ("size", "audiogram.size", "Height (% of canvas)", 20.0),
+                        ("width", "audiogram.width", "Width (% of canvas)", 70.0),
+                        ("y", "audiogram.y", "Position (% from top)", 75.0),
+                        ("gap", "audiogram.gap", "Gap between bars (%)", 30.0),
+                    ] {
+                        content = content.child(self.row(
+                            t(label),
+                            field,
+                            "",
+                            number_text(element.params.number(key, default)),
+                            None,
+                            window,
+                            cx,
+                            set_number_param(key),
+                        ));
+                    }
                 }
 
                 // Freehand drawing (row 90): drawn with Draw on the preview.

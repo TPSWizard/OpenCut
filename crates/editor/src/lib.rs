@@ -28,6 +28,7 @@ mod credit_roll;
 mod text_templates;
 mod colour_tools;
 mod drawing;
+mod audiogram;
 mod tracked;
 mod trim_tools;
 mod caption_edit;
@@ -146,6 +147,12 @@ pub use caption_edit::{CaptionEdit, caption_edit_command, caption_match_count};
 pub use trim_tools::{TrimTool, trim_tool_command};
 pub use tracked::{tracked_corner_pin_command, tracked_mask_command};
 pub use drawing::{add_stroke_command, is_drawing, remove_last_stroke_command};
+pub use audiogram::{
+    AUDIOGRAM_DEFINITION, AudiogramLevels, AudiogramLook, AudiogramStyle, audiogram_element, audiogram_frame_count, audiogram_source_times,
+    can_make_audiogram, is_audiogram, read_audiogram_look,
+};
+/// The shared audiogram crate (analysis and drawing).
+pub use ::audiogram as audiogram_crate;
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, LIGHT_LEAK_COLOURS, effect_spec};
 pub use error::EditorError;
 pub use frame::{

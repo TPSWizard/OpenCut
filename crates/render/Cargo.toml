@@ -29,6 +29,7 @@ voice = { workspace = true }
 textwarp = { workspace = true }
 
 strokes = { workspace = true }
+audiogram = { workspace = true }
 
 [dev-dependencies]
 scopes = { workspace = true }

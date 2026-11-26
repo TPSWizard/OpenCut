@@ -40,6 +40,7 @@ captionedit = { workspace = true }
 subtitleparse = { workspace = true }
 titles = { workspace = true }
 wordart = { workspace = true }
+audiogram = { workspace = true }
 gifenc = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }

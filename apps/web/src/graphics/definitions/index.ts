@@ -4,6 +4,7 @@ import { polygonGraphicDefinition } from "./polygon";
 import { rectangleGraphicDefinition } from "./rectangle";
 import { starGraphicDefinition } from "./star";
 import { drawingGraphicDefinition } from "./drawing";
+import { audiogramGraphicDefinition } from "./audiogram";
 
 const defaultGraphicDefinitions = [
 	rectangleGraphicDefinition,
@@ -11,6 +12,7 @@ const defaultGraphicDefinitions = [
 	polygonGraphicDefinition,
 	starGraphicDefinition,
 	drawingGraphicDefinition,
+	audiogramGraphicDefinition,
 ];
 
 export function registerDefaultGraphics(): void {
@@ -26,6 +28,7 @@ export function registerDefaultGraphics(): void {
 }
 
 export {
+	audiogramGraphicDefinition,
 	drawingGraphicDefinition,
 	ellipseGraphicDefinition,
 	polygonGraphicDefinition,
