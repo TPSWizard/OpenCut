@@ -126,6 +126,7 @@ fn probes_decodes_and_encodes() {
             ],
         }],
         disclosure: None,
+        alpha: None,
     };
     let mut encoder = Encoder::start(&ffmpeg, &settings).unwrap();
     for index in 0..30 {

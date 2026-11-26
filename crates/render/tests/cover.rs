@@ -102,6 +102,7 @@ fn mp4_exports_carry_the_cover() {
         include_audio: false,
         cache_dir: None,
         loudness: None,
+        alpha: None,
     };
     render::export_project(&mut renderer, &ffmpeg, &project, &job, &|| false, &mut |_, _| {}).unwrap();
     let probe = std::process::Command::new(ffmpeg.ffmpeg_path()).args(["-hide_banner", "-i"]).arg(&output).output().unwrap();

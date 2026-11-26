@@ -111,6 +111,7 @@ fn exported_mix(ffmpeg: &std::sync::Arc<Ffmpeg>, project: &Project, output: &Pat
         duration_seconds: 6.0,
         audio,
         disclosure: None,
+        alpha: None,
     };
     let mut encoder = Encoder::start(ffmpeg, &settings).unwrap();
     for _ in 0..60 {

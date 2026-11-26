@@ -21,6 +21,7 @@ import { TICKS_PER_SECOND } from "@/wasm";
 import { frameRateToFloat } from "@/fps/utils";
 import { formatTimecode } from "opencut-wasm";
 import { downloadBlob } from "@/utils/browser";
+import { TRANSPARENT_BACKGROUND, rgbaToPng } from "@/export/transparent";
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -67,8 +68,8 @@ export class RendererManager {
 		return this.redraws;
 	}
 
-	async saveSnapshot(): Promise<{ success: boolean; error?: string }> {
-		const snapshot = await this.createSnapshot();
+	async saveSnapshot({ transparent = false }: { transparent?: boolean } = {}): Promise<{ success: boolean; error?: string }> {
+		const snapshot = transparent ? await this.createTransparentSnapshot() : await this.createSnapshot();
 		if (!snapshot.success) {
 			return snapshot;
 		}
@@ -106,9 +107,38 @@ export class RendererManager {
 		}
 	}
 
-	/** The frame at the playhead as a PNG at the canvas size. */
-	async renderStillPng(): Promise<SnapshotResult> {
-		return this.createSnapshot();
+	/** The frame at the playhead as a PNG at the canvas size; with nothing behind the clips when `transparent` (row 97). */
+	async renderStillPng({ transparent = false }: { transparent?: boolean } = {}): Promise<SnapshotResult> {
+		return transparent ? this.createTransparentSnapshot() : this.createSnapshot();
+	}
+
+	/** The frame at the playhead without the background, as a PNG with alpha. */
+	private async createTransparentSnapshot(): Promise<SnapshotResult> {
+		try {
+			const activeProject = this.editor.project.getActive();
+			const duration = this.editor.timeline.getTotalDuration();
+			if (!activeProject) return { success: false, error: "No project or scene to capture" };
+			if (duration === 0) return { success: false, error: "Project is empty" };
+			const { canvasSize, fps } = activeProject.settings;
+			const renderTime = Math.min(this.editor.playback.getCurrentTime(), this.editor.timeline.getLastFrameTime());
+			const scene = buildScene({
+				tracks: this.editor.scenes.getActiveScene().tracks,
+				mediaAssets: this.editor.media.getAssets(),
+				duration,
+				canvasSize,
+				background: TRANSPARENT_BACKGROUND,
+			});
+			const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps });
+			const rgba = await renderer.renderRgba({ node: scene, time: renderTime });
+			const blob = await rgbaToPng({ rgba, width: canvasSize.width, height: canvasSize.height });
+			this.requestRedraw();
+			const timecode = formatTimecode({ time: renderTime, rate: fps })!.replace(/:/g, "-");
+			const safeName = activeProject.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() || "snapshot";
+			return { success: true, blob, filename: `${safeName}-${timecode}.png` };
+		} catch (error) {
+			console.error("Transparent snapshot failed:", error);
+			return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+		}
 	}
 
 	private async createSnapshot(): Promise<SnapshotResult> {
@@ -222,18 +252,19 @@ export class RendererManager {
 				});
 			}
 
+			const transparent = !!options.transparent;
 			const scene = buildScene({
 				tracks,
 				mediaAssets,
 				duration,
 				canvasSize,
-				background: activeProject.settings.background,
+				background: transparent ? TRANSPARENT_BACKGROUND : activeProject.settings.background,
 			});
 
 			// The project's cover, embedded in MP4s when it is set to be.
 			let cover: Uint8Array | undefined;
 			const coverSettings = activeProject.settings.cover;
-			if (format === "mp4" && coverSettings?.embed) {
+			if (format === "mp4" && !transparent && coverSettings?.embed) {
 				try {
 					const { renderCoverPng } = await import("@/cover/render");
 					const { blob } = await renderCoverPng({ editor: this.editor });
@@ -256,6 +287,7 @@ export class RendererManager {
 				hardware,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
+				transparent,
 				disclosure: usesFaceSwap({
 					assets: mediaAssets,
 					mediaIds: [tracks.main, ...tracks.overlay].flatMap((track) =>
@@ -356,7 +388,14 @@ export class RendererManager {
 		}
 
 		const { canvasSize } = activeProject.settings;
-		const scene = buildScene({ tracks, mediaAssets, duration, canvasSize, background: activeProject.settings.background });
+		const transparent = options.kind === "frames" && !!options.transparent;
+		const scene = buildScene({
+			tracks,
+			mediaAssets,
+			duration,
+			canvasSize,
+			background: transparent ? TRANSPARENT_BACKGROUND : activeProject.settings.background,
+		});
 		const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps: options.fps ?? activeProject.settings.fps });
 		const output = renderer.getOutputCanvas();
 
@@ -396,8 +435,15 @@ export class RendererManager {
 		const frames: Uint8Array[] = [];
 		for (let index = 0; index < count; index++) {
 			if (cancelled()) return { success: false, cancelled: true };
-			await renderer.render({ node: scene, time: Math.round((index * TICKS_PER_SECOND) / fps) });
-			const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, "image/png"));
+			const time = Math.round((index * TICKS_PER_SECOND) / fps);
+			let blob: Blob | null;
+			if (transparent) {
+				const rgba = await renderer.renderRgba({ node: scene, time });
+				blob = await rgbaToPng({ rgba, width: canvasSize.width, height: canvasSize.height });
+			} else {
+				await renderer.render({ node: scene, time });
+				blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, "image/png"));
+			}
 			if (!blob) return { success: false, error: "A frame could not be saved as PNG" };
 			frames.push(new Uint8Array(await blob.arrayBuffer()));
 			onProgress?.({ progress: ((index + 1) / count) * 0.95 });

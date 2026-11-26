@@ -1074,5 +1074,12 @@
   "The frame at the playhead at {width}×{height}.": "播放头所在的帧，{width}×{height}。",
   "Every frame at {fps} fps as numbered PNGs (frame_000001.png, …) in a new folder.": "以 {fps} fps 将每一帧保存为编号的 PNG（frame_000001.png 等），放在一个新文件夹中。",
   "Every frame as numbered PNGs (frame_000001.png, …) in one zip. Long timelines make large files.": "将每一帧保存为编号的 PNG（frame_000001.png 等），打包为一个 zip。时间线越长，文件越大。",
-  "Mix loudness": "混音响度"
+  "Mix loudness": "混音响度",
+  "As set": "按项目设置",
+  "Transparent": "透明",
+  "Transparent background": "透明背景",
+  "For other editors: Apple ProRes 4444 with its alpha channel, large files, PCM sound. The project's background is left out.": "用于其他剪辑软件：带 Alpha 通道的 Apple ProRes 4444，文件较大，声音为 PCM。不包含项目背景。",
+  "For the web: VP9 with an alpha channel, plays with its transparency in browsers. The project's background is left out.": "用于网页：带 Alpha 通道的 VP9，在浏览器中保留透明播放。不包含项目背景。",
+  "PNGs with an alpha channel: only the clips, nothing behind them.": "带 Alpha 通道的 PNG：只有片段，后面没有任何内容。",
+  "WebM with VP9 and an alpha channel: for overlays and lower thirds. Plays with its transparency in browsers; ProRes 4444 is in the desktop app.": "带 Alpha 通道的 VP9 WebM：用于叠加层和下三分之一字幕条。在浏览器中保留透明播放；ProRes 4444 请使用桌面版。"
 }

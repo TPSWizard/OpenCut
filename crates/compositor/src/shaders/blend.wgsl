@@ -132,11 +132,17 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let base = textureSample(base_texture, base_sampler, input.tex_coord);
     let layer = textureSample(layer_texture, layer_sampler, input.tex_coord);
 
+    // Source-over with a blend mode (W3C Compositing Level 1) on straight
+    // alpha: the result is worked out premultiplied, then divided by its
+    // alpha again. Over an opaque base this is the plain formula; over a
+    // transparent one (row 97: transparent export) a half-transparent
+    // white stays white at half alpha instead of turning grey.
     let blend_rgb_value = blend_rgb(base.rgb, layer.rgb, uniforms.blend_mode);
     let out_alpha = layer.a + base.a * (1.0 - layer.a);
-    let out_rgb =
-        ((1.0 - layer.a) * base.rgb) +
+    let premultiplied =
+        ((1.0 - layer.a) * base.a * base.rgb) +
         (layer.a * ((1.0 - base.a) * layer.rgb + base.a * blend_rgb_value));
+    let out_rgb = select(vec3f(0.0), premultiplied / max(out_alpha, 1e-6), out_alpha > 0.0);
 
     return vec4f(clamp01(out_rgb), out_alpha);
 }

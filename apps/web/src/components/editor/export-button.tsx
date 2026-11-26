@@ -69,6 +69,7 @@ import {
 	isAudioExportFormat,
 	isExportKind,
 } from "@/export/kinds";
+import { TRANSPARENT_VIDEO, kindTakesTransparency } from "@/export/transparent";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -153,6 +154,10 @@ function ExportPopover({
 	const [gifFps, setGifFps] = useState<number>(DEFAULT_GIF_OPTIONS.fps);
 	const [gifDither, setGifDither] = useState<boolean>(DEFAULT_GIF_OPTIONS.dither);
 	const [audioFormat, setAudioFormat] = useState<AudioExportFormat>("aac");
+	// Leave the background out and keep the alpha (row 97): video, still, frames.
+	const [transparentChoice, setTransparentChoice] = useState(false);
+	const transparent = transparentChoice && kindTakesTransparency(kind);
+	const transparentVideo = transparent && kind === "video";
 	// Whole-mix loudness: "off" or a target id (`LOUDNESS_TARGETS`).
 	const [loudnessId, setLoudnessId] = useState<string>("off");
 	const [platform, setPlatform] = useState<PlatformChoice>(CUSTOM_PLATFORM);
@@ -184,7 +189,7 @@ function ExportPopover({
 		if (!activeProject) return;
 
 		if (kind === "still") {
-			const saved = await editor.renderer.saveSnapshot();
+			const saved = await editor.renderer.saveSnapshot({ transparent });
 			if (saved.success) onOpenChange(false);
 			else toast.error(saved.error ?? t("Unknown error occurred"));
 			return;
@@ -200,6 +205,7 @@ function ExportPopover({
 					gif: { width: gifWidth, fps: gifFps, dither: gifDither },
 					audioFormat,
 					loudness: kind === "audio" ? mixLoudnessTarget(loudnessId) : undefined,
+					transparent,
 				},
 			});
 			if (result.cancelled) {
@@ -218,9 +224,10 @@ function ExportPopover({
 			return;
 		}
 
-		const exportFormat = platformPreset ? "mp4" : format;
+		const exportFormat = transparentVideo ? TRANSPARENT_VIDEO.format : platformPreset ? "mp4" : format;
 		const result = await editor.project.export({
 			options: {
+				transparent: transparentVideo,
 				format: exportFormat,
 				quality,
 				fps: activeProject.settings.fps,
@@ -387,17 +394,49 @@ function ExportPopover({
 												{t("Every frame as numbered PNGs (frame_000001.png, …) in one zip. Long timelines make large files.")}
 											</p>
 										)}
+										{kindTakesTransparency(kind) && (
+											<div className="mt-3 flex flex-col gap-1" data-testid="export-transparent-section">
+												<div className="flex items-center space-x-2">
+													<Checkbox
+														id="export-transparent"
+														data-testid="export-transparent"
+														checked={transparentChoice}
+														onCheckedChange={(checked) => {
+															const on = !!checked;
+															setTransparentChoice(on);
+															if (on) {
+																// A transparent video is VP9 with alpha in WebM, never a platform upload.
+																setFormat(TRANSPARENT_VIDEO.format);
+																setCodecChoice(TRANSPARENT_VIDEO.codec);
+																setPlatform(CUSTOM_PLATFORM);
+																setHardware(false);
+															}
+														}}
+													/>
+													<Label htmlFor="export-transparent">{t("Transparent background")}</Label>
+												</div>
+												{transparent && (
+													<p className="text-muted-foreground text-xs">
+														{kind === "video"
+															? t("WebM with VP9 and an alpha channel: for overlays and lower thirds. Plays with its transparency in browsers; ProRes 4444 is in the desktop app.")
+															: t("PNGs with an alpha channel: only the clips, nothing behind them.")}
+													</p>
+												)}
+											</div>
+										)}
 									</SectionContent>
 								</Section>
 								{kind === "video" && (
 									<>
+								{!transparentVideo && (
 								<PlatformExportSection
 									value={platform}
 									onChange={setPlatform}
 									includeAudio={shouldIncludeAudio}
 								/>
+								)}
 								<div className="flex flex-col">
-									{!platformPreset && (
+									{!platformPreset && !transparentVideo && (
 									<Section
 										collapsible
 										defaultOpen={false}
@@ -432,7 +471,7 @@ function ExportPopover({
 									</Section>
 									)}
 
-									{!platformPreset && (
+									{!platformPreset && !transparentVideo && (
 									<Section collapsible defaultOpen={false}>
 										<SectionHeader>
 											<SectionTitle>

@@ -337,6 +337,12 @@ export interface ApiExportOptions {
 	gif?: { width?: number; fps?: number; dither?: boolean };
 	/** Audio-only format: `wav` (16-bit), `aac` (.m4a, default) or `opus` (.opus in Ogg). */
 	audioFormat?: "wav" | "aac" | "opus";
+	/**
+	 * Leave the background out and keep the alpha (row 97): a video is then
+	 * VP9 with alpha in WebM (`format: "mp4"`, a `platform` or another
+	 * `codec` is refused), a still or `frames` PNGs with alpha.
+	 */
+	transparent?: boolean;
 	format?: ApiExportFormat;
 	quality?: ApiExportQuality;
 	includeAudio?: boolean;

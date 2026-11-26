@@ -838,11 +838,24 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		if (!isExportKind(kind)) {
 			throw new EditorApiError({ code: "invalid_params", message: "kind is video, gif, audio, still or frames" });
 		}
+		if (options.transparent !== undefined && typeof options.transparent !== "boolean") {
+			throw new EditorApiError({ code: "invalid_params", message: "transparent is true or false" });
+		}
+		if (options.transparent && (kind === "gif" || kind === "audio")) {
+			throw new EditorApiError({ code: "invalid_params", message: "transparent is for video, still and frames" });
+		}
 		if (kind !== "video") return renderOtherKind(options, kind);
 		const preset =
 			options.preset !== undefined ? requirePlatformPreset(options.preset) : null;
-		const format = preset ? "mp4" : (options.format ?? "mp4");
+		const transparent = options.transparent === true;
+		const format = preset ? "mp4" : (options.format ?? (transparent ? "webm" : "mp4"));
 		const quality = options.quality ?? "high";
+		if (transparent && (preset || format !== "webm" || (options.codec !== undefined && options.codec !== "vp9"))) {
+			throw new EditorApiError({
+				code: "invalid_params",
+				message: "A transparent video is VP9 with alpha in WebM: leave out preset, or use format webm and codec vp9",
+			});
+		}
 		if (format !== "mp4" && format !== "webm") {
 			throw new EditorApiError({
 				code: "invalid_params",
@@ -899,6 +912,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				videoBitrate: bitrate,
 				hardware: options.hardware === true,
 				loudness,
+				transparent,
 				platform: preset
 					? platformEncodeSettings({
 							canvas: project.settings.canvasSize,
@@ -939,7 +953,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		const project = requireProject();
 		const baseName = (options.fileName ?? project.metadata.name).replace(/[\\/:*?"<>|]+/g, "_");
 		if (kind === "still") {
-			const still = await editor.renderer.renderStillPng();
+			const still = await editor.renderer.renderStillPng({ transparent: !!options.transparent });
 			if (!still.success) throw new EditorApiError({ code: "failed", message: still.error });
 			return { fileName: `${baseName}.png`, mimeType: "image/png", bytes: await still.blob.arrayBuffer() };
 		}
@@ -977,6 +991,7 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				gif: { ...DEFAULT_GIF_OPTIONS, ...gif },
 				audioFormat: options.audioFormat ?? "aac",
 				loudness,
+				transparent: !!options.transparent,
 			},
 		});
 		if (!result.success || !result.buffer) {

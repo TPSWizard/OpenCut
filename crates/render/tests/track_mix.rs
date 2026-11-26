@@ -79,6 +79,7 @@ fn exported(ffmpeg: &Arc<Ffmpeg>, project: &Project, output: &Path) -> Vec<[f32;
         duration_seconds: 3.0,
         audio,
         disclosure: None,
+        alpha: None,
     };
     let mut encoder = Encoder::start(ffmpeg, &settings).unwrap();
     for _ in 0..30 {

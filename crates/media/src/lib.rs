@@ -37,7 +37,7 @@ pub use codecs::{
     listed_encoders, parse_bitrate_mbps, pick_encoder, resolve_codec,
 };
 pub use encode::{
-    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode, render_audio_mix, settings_codec,
+    AlphaCodec, AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, GainEase, GainKey, PlatformEncode, render_audio_mix, settings_codec,
     video_encoder,
 };
 pub use error::MediaError;

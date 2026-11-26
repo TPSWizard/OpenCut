@@ -6,7 +6,7 @@ use editor::{
     platform_preset,
 };
 use gpui::{Context, Entity, FontWeight, Window, div, prelude::*, px};
-use media::{EncodeFormat, EncodeQuality, PlatformEncode, VideoCodec, codecs_for, parse_bitrate_mbps, resolve_codec};
+use media::{AlphaCodec, EncodeFormat, EncodeQuality, PlatformEncode, VideoCodec, codecs_for, parse_bitrate_mbps, resolve_codec};
 
 use crate::components::{Button, ButtonSize, ButtonVariant, TextInput, eid};
 use crate::render_thread::{ExportKind, ExportSettings};
@@ -37,6 +37,11 @@ pub(crate) struct ExportDialog {
     gif_fps: u32,
     gif_dither: bool,
     audio_format: media::AudioFileFormat,
+    /// Leave the background out and keep the alpha (row 97): videos,
+    /// stills and image sequences.
+    transparent: bool,
+    /// The codec of a transparent video.
+    alpha_codec: AlphaCodec,
     output: Option<PathBuf>,
     format: EncodeFormat,
     quality: EncodeQuality,
@@ -84,6 +89,8 @@ impl ExportDialog {
             gif_fps: 15,
             gif_dither: true,
             audio_format: media::AudioFileFormat::Aac,
+            transparent: false,
+            alpha_codec: AlphaCodec::ProRes4444,
             output,
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
@@ -115,6 +122,7 @@ impl ExportDialog {
     /// The output's extension for the chosen kind (none for a sequence folder).
     fn extension(&self) -> Option<&'static str> {
         match self.kind {
+            Kind::Video if self.transparent => Some(self.alpha_codec.extension()),
             Kind::Video => Some(self.format.extension()),
             Kind::Gif => Some("gif"),
             Kind::Audio => Some(self.audio_format.extension()),
@@ -141,6 +149,24 @@ impl ExportDialog {
                     output.set_file_name(format!("{stem} frames"));
                 }
             }
+        }
+        cx.notify();
+    }
+
+    /// Turns a transparent background on or off, or picks the transparent
+    /// video's codec; the output's extension follows.
+    fn choose_transparent(&mut self, transparent: bool, codec: Option<AlphaCodec>, cx: &mut Context<Self>) {
+        self.transparent = transparent;
+        if let Some(codec) = codec {
+            self.alpha_codec = codec;
+        }
+        if transparent && self.kind == Kind::Video {
+            self.platform = None;
+        }
+        if let (Some(extension), Some(output)) = (self.extension(), self.output.as_mut())
+            && output.extension().is_some()
+        {
+            output.set_extension(extension);
         }
         cx.notify();
     }
@@ -175,8 +201,20 @@ impl ExportDialog {
                     match extension.as_deref() {
                         Some("gif") => dialog.kind = Kind::Gif,
                         Some("png") => dialog.kind = Kind::Still,
-                        Some("mp4" | "webm" | "mov" | "mkv") => {
+                        // ProRes 4444 is the one MOV this writes: a transparent video.
+                        Some("mov") => {
                             dialog.kind = Kind::Video;
+                            dialog.transparent = true;
+                            dialog.alpha_codec = AlphaCodec::ProRes4444;
+                            dialog.platform = None;
+                        }
+                        Some("webm") if dialog.transparent => {
+                            dialog.kind = Kind::Video;
+                            dialog.alpha_codec = AlphaCodec::Vp9;
+                        }
+                        Some("mp4" | "webm" | "mkv") => {
+                            dialog.kind = Kind::Video;
+                            dialog.transparent = false;
                             dialog.format = EncodeFormat::from_path(&path);
                         }
                         Some(_) => {
@@ -224,6 +262,7 @@ impl ExportDialog {
                 video_bitrate: None,
                 hardware: false,
                 loudness: if self.kind == Kind::Audio { self.loudness.and_then(render::MixLoudness::target) } else { None },
+                alpha: (self.transparent && matches!(self.kind, Kind::Still | Kind::Sequence)).then_some(self.alpha_codec),
             };
             self.state.update(cx, |state, cx| state.start_export(settings, cx));
             return;
@@ -238,6 +277,28 @@ impl ExportDialog {
                 gop_frames: encode.gop_frames,
             }
         });
+        if self.transparent {
+            // A transparent video: the codec and container follow from
+            // `alpha_codec`; VP9 takes the quality or bitrate.
+            if self.alpha_codec == AlphaCodec::Vp9 && self.use_bitrate && self.video_bitrate().is_none() {
+                return;
+            }
+            let settings = ExportSettings {
+                kind,
+                output,
+                format: EncodeFormat::Webm,
+                quality: self.quality,
+                include_audio: self.include_audio,
+                platform: None,
+                codec: None,
+                video_bitrate: if self.alpha_codec == AlphaCodec::Vp9 { self.video_bitrate() } else { None },
+                hardware: false,
+                loudness: self.loudness.filter(|_| self.include_audio).and_then(render::MixLoudness::target),
+                alpha: Some(self.alpha_codec),
+            };
+            self.state.update(cx, |state, cx| state.start_export(settings, cx));
+            return;
+        }
         if self.platform.is_none() && self.use_bitrate && self.video_bitrate().is_none() {
             return;
         }
@@ -252,6 +313,7 @@ impl ExportDialog {
             video_bitrate: if platform.is_some() { None } else { self.video_bitrate() },
             hardware: platform.is_none() && self.hardware,
             loudness: self.loudness.filter(|_| self.include_audio).and_then(render::MixLoudness::target),
+            alpha: None,
         };
         self.state
             .update(cx, |state, cx| state.start_export(settings, cx));
@@ -484,6 +546,31 @@ impl Render for ExportDialog {
                     "Every frame at {fps} fps as numbered PNGs (frame_000001.png, …) in a new folder.",
                     &[("fps", &format!("{fps:.2}"))],
                 )),
+            };
+            // Background (row 97): as the project sets it, or left out with the alpha kept.
+            let transparent = self.transparent;
+            let mut background_row = row("Background");
+            for (label, choice) in [("As set", false), ("Transparent", true)] {
+                background_row = background_row.child(
+                    Button::new(eid("background", label), t(label))
+                        .variant(if transparent == choice { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| this.choose_transparent(choice, None, cx))),
+                );
+            }
+            let mut alpha_row = row("Format");
+            for codec in AlphaCodec::ALL {
+                alpha_row = alpha_row.child(
+                    Button::new(eid("alpha-codec", codec.id()), codec.label())
+                        .variant(if self.alpha_codec == codec { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| this.choose_transparent(true, Some(codec), cx))),
+                );
+            }
+            let alpha_note = match (kind, self.alpha_codec) {
+                (Kind::Video, AlphaCodec::ProRes4444) => t("For other editors: Apple ProRes 4444 with its alpha channel, large files, PCM sound. The project's background is left out."),
+                (Kind::Video, AlphaCodec::Vp9) => t("For the web: VP9 with an alpha channel, plays with its transparency in browsers. The project's background is left out."),
+                _ => t("PNGs with an alpha channel: only the clips, nothing behind them."),
             };
             let platform = self.platform;
             let mut platform_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
@@ -791,6 +878,12 @@ impl Render for ExportDialog {
                         .child(div().flex().flex_wrap().gap(px(4.)).children(loudness_buttons)),
                 )
                 .child(div().text_xs().text_color(colors.muted_foreground).child(loudness_note));
+            // The quality rows go with a transparent VP9 or with a plain video.
+            let (alpha_quality_row, alpha_bitrate_row, quality_row, bitrate_row) = if transparent {
+                (Some(quality_row), bitrate_row, None, None)
+            } else {
+                (None, None, Some(quality_row), bitrate_row)
+            };
             card = card
                 .child(
                     div()
@@ -818,16 +911,24 @@ impl Render for ExportDialog {
                 .children(kind_note.map(|note| div().text_xs().text_color(colors.muted_foreground).child(note)))
                 .when(kind == Kind::Gif, |this| this.child(gif_size_row).child(gif_fps_row).child(gif_dither_row))
                 .when(kind == Kind::Audio, |this| this.child(audio_format_row))
-                .when(kind == Kind::Video, |this| this.child(platform_row).child(platform_notes))
-                .when(kind == Kind::Video && platform.is_none(), |this| {
+                .when(matches!(kind, Kind::Video | Kind::Still | Kind::Sequence), |this| this.child(background_row))
+                .when(kind == Kind::Video && transparent, |this| this.child(alpha_row))
+                .when(transparent && matches!(kind, Kind::Video | Kind::Still | Kind::Sequence), |this| {
+                    this.child(div().text_xs().text_color(colors.muted_foreground).child(alpha_note))
+                })
+                .when(kind == Kind::Video && transparent && self.alpha_codec == AlphaCodec::Vp9, |this| {
+                    this.children(alpha_quality_row).children(alpha_bitrate_row)
+                })
+                .when(kind == Kind::Video && !transparent, |this| this.child(platform_row).child(platform_notes))
+                .when(kind == Kind::Video && !transparent && platform.is_none(), |this| {
                     this.child(format_row)
                         .child(codec_row)
                         .child(div().text_xs().text_color(colors.muted_foreground).child(codec_note))
                         .child(encoder_row)
-                        .child(quality_row)
+                        .children(quality_row)
                         .children(bitrate_row)
                 })
-                .when(kind == Kind::Video && codec_missing, |this| {
+                .when(kind == Kind::Video && !transparent && codec_missing, |this| {
                     this.child(div().text_xs().text_color(colors.destructive).child(tf(
                         "This FFmpeg cannot encode {codec}.",
                         &[("codec", &chosen.label())],
@@ -867,7 +968,8 @@ impl Render for ExportDialog {
                                     self.output.is_none()
                                         || !has_ffmpeg
                                         || duration <= 0.0
-                                        || (kind == Kind::Video && (codec_missing || bitrate_invalid)),
+                                        || (kind == Kind::Video && !transparent && (codec_missing || bitrate_invalid))
+                                        || (kind == Kind::Video && transparent && self.alpha_codec == AlphaCodec::Vp9 && self.use_bitrate && self.video_bitrate().is_none()),
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| this.start(cx))),
                         ),

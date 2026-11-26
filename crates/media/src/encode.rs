@@ -33,6 +33,62 @@ impl EncodeFormat {
     }
 }
 
+/// A video codec that keeps the frames' alpha channel (row 97: transparent
+/// export for overlays and lower thirds used in other editors). The
+/// container follows the codec: VP9 goes in WebM, ProRes 4444 in
+/// QuickTime. DNxHR is not here: FFmpeg's `dnxhd` encoder has no pixel
+/// format with alpha.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AlphaCodec {
+    /// VP9 with an alpha plane (`yuva420p`) in WebM; plays in browsers.
+    Vp9,
+    /// Apple ProRes 4444 with 16-bit alpha (`yuva444p10le`) in MOV, the
+    /// usual hand-over format for other editors.
+    ProRes4444,
+}
+
+impl AlphaCodec {
+    pub const ALL: [AlphaCodec; 2] = [Self::Vp9, Self::ProRes4444];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Vp9 => "vp9",
+            Self::ProRes4444 => "prores4444",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Vp9 => "WebM (VP9 with alpha)",
+            Self::ProRes4444 => "MOV (ProRes 4444)",
+        }
+    }
+
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Vp9 => "webm",
+            Self::ProRes4444 => "mov",
+        }
+    }
+
+    /// The FFmpeg encoder (both are in every LGPL build with libvpx).
+    pub fn encoder(self) -> &'static str {
+        match self {
+            Self::Vp9 => "libvpx-vp9",
+            Self::ProRes4444 => "prores_ks",
+        }
+    }
+
+    /// Reads a name as people write it ("vp9", "prores", "ProRes 4444").
+    pub fn parse(text: &str) -> Option<Self> {
+        match text.trim().to_ascii_lowercase().replace([' ', '-', '_'], "").as_str() {
+            "vp9" | "webm" => Some(Self::Vp9),
+            "prores" | "prores4444" | "mov" => Some(Self::ProRes4444),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EncodeQuality {
     Low,
@@ -262,6 +318,10 @@ pub struct EncodeSettings {
     /// Written into the file's metadata (comment and description), e.g.
     /// that it contains a face swap.
     pub disclosure: Option<String>,
+    /// Keep the frames' alpha with this codec (row 97). Replaces `format`,
+    /// `codec`, `platform` and `hardware`; the output's extension should
+    /// be the codec's (`webm` or `mov`).
+    pub alpha: Option<AlphaCodec>,
 }
 
 /// Encodes BGRA frames pushed through [`Encoder::write_frame`] into a video
@@ -281,7 +341,10 @@ impl Encoder {
                 "encode size and frame rate must be positive".to_owned(),
             ));
         }
-        let encoder = video_encoder(ffmpeg, settings)?;
+        let encoder = match settings.alpha {
+            Some(alpha) => alpha.encoder().to_owned(),
+            None => video_encoder(ffmpeg, settings)?,
+        };
         let args = build_args_with(settings, &encoder);
         if std::env::var_os("OPENCUT_FFMPEG_TRACE").is_some() {
             eprintln!("ffmpeg {}", args.join(" "));
@@ -458,6 +521,33 @@ fn video_args(settings: &EncodeSettings, encoder: &str) -> Vec<String> {
     args
 }
 
+/// The video arguments for an alpha codec: VP9 at the quality's constant
+/// quality (or the target bitrate) in `yuva420p`; ProRes 4444 with 16-bit
+/// alpha (its size follows from the profile, so the quality is not used).
+fn alpha_video_args(settings: &EncodeSettings, alpha: AlphaCodec) -> Vec<String> {
+    let mut args: Vec<String> = vec!["-c:v".into(), alpha.encoder().into()];
+    let push = |args: &mut Vec<String>, items: &[&str]| args.extend(items.iter().map(|item| (*item).to_owned()));
+    match alpha {
+        AlphaCodec::Vp9 => {
+            push(&mut args, &["-row-mt", "1", "-deadline", "good", "-cpu-used", "2", "-auto-alt-ref", "0"]);
+            if let Some(rate) = settings.video_bitrate {
+                push(&mut args, &["-b:v", &rate.to_string()]);
+            } else {
+                let crf = settings.quality.crf_for("libvpx-vp9", EncodeFormat::Webm).to_string();
+                push(&mut args, &["-b:v", "0", "-crf", &crf]);
+            }
+            push(&mut args, &["-pix_fmt", "yuva420p"]);
+        }
+        AlphaCodec::ProRes4444 => {
+            push(
+                &mut args,
+                &["-profile:v", "4444", "-pix_fmt", "yuva444p10le", "-alpha_bits", "16", "-vendor", "apl0"],
+            );
+        }
+    }
+    args
+}
+
 /// The filter graph that mixes `audio` (inputs numbered from
 /// `first_input`) into `[aout]`, exactly `duration_seconds` long.
 fn mix_filter(audio: &[AudioMixClip], duration_seconds: f64, first_input: usize) -> String {
@@ -552,8 +642,20 @@ pub(crate) fn build_args_with(settings: &EncodeSettings, encoder: &str) -> Vec<S
         args.push("-an".into());
     }
 
-    args.extend(video_args(settings, encoder));
+    if let Some(alpha) = settings.alpha {
+        args.extend(alpha_video_args(settings, alpha));
+        if has_audio {
+            let audio: &[&str] = match alpha {
+                AlphaCodec::Vp9 => &["-c:a", "libopus", "-b:a", "128k"],
+                AlphaCodec::ProRes4444 => &["-c:a", "pcm_s16le"],
+            };
+            args.extend(audio.iter().map(|item| (*item).to_owned()));
+        }
+    } else {
+        args.extend(video_args(settings, encoder));
+    }
     match settings.format {
+        _ if settings.alpha.is_some() => {}
         EncodeFormat::Mp4 => {
             args.extend(["-movflags", "+faststart"].into_iter().map(String::from));
             if has_audio {
@@ -630,6 +732,7 @@ mod tests {
                 },
             ],
             disclosure: None,
+            alpha: None,
         };
         let args = build_args(&settings);
         let joined = args.join(" ");
@@ -694,6 +797,7 @@ mod tests {
             duration_seconds: 4.0,
             audio: vec![clip],
             disclosure: None,
+            alpha: None,
         };
         let args = build_args(&settings);
         let graph = &args[args.iter().position(|a| a == "-filter_complex").unwrap() + 1];
@@ -730,6 +834,7 @@ mod tests {
                 gain_keys: Vec::new(),
             }],
             disclosure: None,
+            alpha: None,
         };
         let joined = build_args(&settings).join(" ");
         assert!(joined.contains("-profile:v high -bf 2 -coder 1 -b:v 8000000 -maxrate 12000000 -bufsize 16000000 -g 15 -keyint_min 15 -sc_threshold 0 -flags +cgop"), "{joined}");
@@ -754,6 +859,7 @@ mod tests {
             duration_seconds: 2.0,
             audio: vec![],
             disclosure: None,
+            alpha: None,
         };
         let joined = build_args(&settings).join(" ");
         assert!(joined.contains("-map 0:v -an -c:v libvpx-vp9"));
@@ -788,6 +894,7 @@ mod tests {
             duration_seconds: 2.0,
             audio: vec![],
             disclosure: None,
+            alpha: None,
         }
     }
 
@@ -842,5 +949,26 @@ mod tests {
         assert_eq!(settings_codec(&settings), VideoCodec::H264);
         let joined = build_args(&settings).join(" ");
         assert!(joined.contains("-c:v libx264 -preset medium -profile:v high"), "{joined}");
+    }
+
+    #[test]
+    fn alpha_codecs_keep_the_alpha_plane() {
+        let mut settings = silent(EncodeFormat::Mp4, Some(VideoCodec::H264));
+        settings.alpha = Some(AlphaCodec::Vp9);
+        settings.hardware = true;
+        settings.output = PathBuf::from("out.webm");
+        let joined = build_args(&settings).join(" ");
+        assert!(joined.contains("-c:v libvpx-vp9"), "{joined}");
+        assert!(joined.contains("-pix_fmt yuva420p"), "{joined}");
+        assert!(joined.contains("-b:v 0 -crf 26"), "{joined}");
+        assert!(!joined.contains("libx264") && !joined.contains("faststart"), "{joined}");
+
+        settings.alpha = Some(AlphaCodec::ProRes4444);
+        settings.output = PathBuf::from("out.mov");
+        let joined = build_args(&settings).join(" ");
+        assert!(joined.contains("-c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le -alpha_bits 16"), "{joined}");
+        assert_eq!(AlphaCodec::parse("ProRes 4444"), Some(AlphaCodec::ProRes4444));
+        assert_eq!(AlphaCodec::parse("vp9"), Some(AlphaCodec::Vp9));
+        assert_eq!(AlphaCodec::ProRes4444.extension(), "mov");
     }
 }

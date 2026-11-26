@@ -25,6 +25,12 @@ export interface ExportOptions {
 	 * zip. The still PNG is `editor.renderer.saveSnapshot`.
 	 */
 	kind?: Exclude<ExportKind, "still">;
+	/**
+	 * Leave the background out and keep the alpha (row 97): a video is then
+	 * VP9 with alpha in WebM (`format`, `videoCodec`, `platform` and
+	 * `hardware` are not used), and an image sequence transparent PNGs.
+	 */
+	transparent?: boolean;
 	gif?: GifOptions;
 	audioFormat?: AudioExportFormat;
 	format: ExportFormat;

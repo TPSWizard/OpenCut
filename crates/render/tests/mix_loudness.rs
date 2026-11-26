@@ -85,6 +85,7 @@ fn the_export_lands_on_the_target_under_the_ceiling() {
             include_audio: true,
             cache_dir: None,
             loudness,
+            alpha: None,
         };
         let (path, report) = render::export_project_with_report(&mut renderer, &ffmpeg, &project, &job, &|| false, &mut |_, _| {}).unwrap();
         assert_eq!(report.is_some(), loudness.is_some());

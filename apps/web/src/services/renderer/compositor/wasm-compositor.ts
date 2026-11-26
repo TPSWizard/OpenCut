@@ -4,6 +4,7 @@ import {
 	initCompositor,
 	releaseTexture,
 	renderFrame,
+	renderFrameRgba,
 	resizeCompositor,
 	uploadTexture,
 } from "opencut-wasm";
@@ -95,6 +96,14 @@ class WasmCompositor {
 				getLastFrameProfile() as Array<{ name: string; durationMs: number }>,
 			);
 		}
+	}
+
+	/**
+	 * Composites `frame` into a texture and resolves with its straight RGBA
+	 * pixels, alpha included (row 97: the canvas `render` draws to is opaque).
+	 */
+	async renderRgba(frame: FrameDescriptor): Promise<Uint8Array> {
+		return renderFrameRgba(prepareFrameLuts(frame));
 	}
 
 	private syncExternalTexture(texture: ExternalTextureDescriptor) {

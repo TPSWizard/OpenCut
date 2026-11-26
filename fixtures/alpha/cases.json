@@ -1,0 +1,312 @@
+{
+ "source": "scratchpad alpha_ref.py (W3C source-over with blend modes, straight alpha, 8-bit passes)",
+ "cases": [
+  {
+   "name": "white at half opacity over nothing",
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      255,
+      255,
+      255
+     ],
+     "opacity": 0.5,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    255,
+    255,
+    255,
+    128
+   ]
+  },
+  {
+   "name": "half-transparent red over nothing",
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      0,
+      0,
+      128
+     ],
+     "opacity": 1.0,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    255,
+    0,
+    0,
+    128
+   ]
+  },
+  {
+   "name": "red over half blue",
+   "background": [
+    0,
+    0,
+    255,
+    128
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      0,
+      0,
+      128
+     ],
+     "opacity": 1.0,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    170,
+    0,
+    85,
+    192
+   ]
+  },
+  {
+   "name": "two layers over nothing",
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      200,
+      0,
+      255
+     ],
+     "opacity": 0.4,
+     "mode": "normal"
+    },
+    {
+     "rgba": [
+      0,
+      128,
+      255,
+      255
+     ],
+     "opacity": 0.3,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    124,
+    163,
+    131,
+    148
+   ]
+  },
+  {
+   "name": "multiply over half blue",
+   "background": [
+    0,
+    0,
+    255,
+    128
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      128,
+      64,
+      200
+     ],
+     "opacity": 1.0,
+     "mode": "multiply"
+    }
+   ],
+   "expected": [
+    112,
+    56,
+    87,
+    228
+   ]
+  },
+  {
+   "name": "screen over nothing keeps the layer",
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "layers": [
+    {
+     "rgba": [
+      40,
+      80,
+      160,
+      255
+     ],
+     "opacity": 0.6,
+     "mode": "screen"
+    }
+   ],
+   "expected": [
+    40,
+    80,
+    160,
+    153
+   ]
+  },
+  {
+   "name": "overlay over a half-transparent base",
+   "background": [
+    200,
+    100,
+    50,
+    100
+   ],
+   "layers": [
+    {
+     "rgba": [
+      30,
+      220,
+      120,
+      180
+     ],
+     "opacity": 1.0,
+     "mode": "overlay"
+    }
+   ],
+   "expected": [
+    97,
+    187,
+    86,
+    209
+   ]
+  },
+  {
+   "name": "difference over a half-transparent base",
+   "background": [
+    200,
+    100,
+    50,
+    100
+   ],
+   "layers": [
+    {
+     "rgba": [
+      30,
+      220,
+      120,
+      180
+     ],
+     "opacity": 0.8,
+     "mode": "difference"
+    }
+   ],
+   "expected": [
+    112,
+    162,
+    89,
+    188
+   ]
+  },
+  {
+   "name": "opaque base unchanged: normal",
+   "background": [
+    64,
+    96,
+    128,
+    255
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      0,
+      0,
+      128
+     ],
+     "opacity": 0.7,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    131,
+    62,
+    83,
+    255
+   ]
+  },
+  {
+   "name": "opaque base unchanged: multiply",
+   "background": [
+    64,
+    96,
+    128,
+    255
+   ],
+   "layers": [
+    {
+     "rgba": [
+      200,
+      255,
+      100,
+      255
+     ],
+     "opacity": 0.5,
+     "mode": "multiply"
+    }
+   ],
+   "expected": [
+    57,
+    96,
+    89,
+    255
+   ]
+  },
+  {
+   "name": "nothing over nothing",
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "layers": [
+    {
+     "rgba": [
+      255,
+      255,
+      255,
+      0
+     ],
+     "opacity": 1.0,
+     "mode": "normal"
+    }
+   ],
+   "expected": [
+    0,
+    0,
+    0,
+    0
+   ]
+  }
+ ]
+}

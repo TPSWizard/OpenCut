@@ -933,6 +933,33 @@ The export dialog's **Kind** row picks what to write:
 Choosing a file name with `.gif`, `.wav`, `.m4a`, `.opus` or `.png` picks
 the kind too.
 
+## Transparent export
+
+For a video, a still or an image sequence the **Background** row can be
+set to **Transparent**: the project's background colour or blur is left
+out and the frames keep their alpha, for overlays, lower thirds and titles
+used in another editor or on a web page.
+
+- **MOV (ProRes 4444)** — Apple ProRes 4444 with 16-bit alpha
+  (`prores_ks`, `yuva444p10le`) and PCM sound: the usual hand-over format
+  for Premiere, Resolve and Final Cut. Large files; the quality buttons do
+  not apply.
+- **WebM (VP9 with alpha)** — `libvpx-vp9` in `yuva420p` with Opus sound,
+  at the quality or bitrate chosen; browsers play it with its transparency.
+  The web editor writes the same kind of file.
+- Stills and image sequences become PNGs with an alpha channel.
+
+DNxHR is not offered: FFmpeg's `dnxhd` encoder has no pixel format with
+alpha. Choosing a `.mov` file name picks a transparent ProRes 4444 video.
+
+Compositing works on straight (not premultiplied) alpha; a half-transparent
+layer over nothing keeps its own colour at half alpha (the shared
+compositor's blend follows the W3C source-over formula and is checked
+against `fixtures/alpha/cases.json`, made by an independent Python
+version). On the command line: `opencut-render --project <dir> --out
+overlay.mov`, or `--transparent` with `--out overlay.webm`, `--frames <dir>`
+or `--frame-at`.
+
 ## Rendering from the command line
 
 `apps/render-cli` builds `opencut-render`, the same renderer without the

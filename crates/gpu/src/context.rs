@@ -364,6 +364,13 @@ impl GpuContext {
         self.supports_external_texture_copies
     }
 
+    /// Whether this runs on the browser's WebGPU (whose buffer mapping
+    /// completes by itself, from a promise) rather than WebGL or a native
+    /// API (which complete during `Device::poll`).
+    pub fn is_browser_webgpu(&self) -> bool {
+        self.adapter.get_info().backend == wgpu::Backend::BrowserWebGpu
+    }
+
     /// The HTML canvas that owns the backing WebGL context, if running on the
     /// WebGL fallback. Callers on that path can mount this canvas directly
     /// instead of copying pixels out of it every frame.

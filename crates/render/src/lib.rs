@@ -19,7 +19,9 @@ mod text;
 pub use cover::{embed_cover, render_cover, save_cover_png, suggest_cover_time};
 pub use effects::{backdrop_blur_passes, effect_pass_groups};
 pub use export_kinds::{GifJob, export_audio, export_gif, export_png, export_png_sequence, gif_size, sequence_file_name};
-pub use export::{ExportJob, MixLoudness, export_project, export_project_with_report, gain_keys, still_times};
+pub use export::{
+    ExportJob, MixLoudness, export_project, export_project_with_report, gain_keys, still_times, transparent_project,
+};
 pub use cache::{clear_regenerable_cache, is_regenerable, regenerable_cache};
 pub use retime_audio::{default_cache_dir, needs_render as audio_needs_render, rendered_clip};
 pub use error::RenderError;

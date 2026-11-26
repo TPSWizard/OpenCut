@@ -6,6 +6,8 @@ import {
 	WebMOutputFormat,
 	BufferTarget,
 	CanvasSource,
+	VideoSample,
+	VideoSampleSource,
 	AudioBufferSource,
 	QUALITY_LOW,
 	QUALITY_MEDIUM,
@@ -40,6 +42,8 @@ type ExportParams = {
 	disclosure?: string;
 	/** A PNG embedded as the MP4's cover picture. */
 	cover?: Uint8Array;
+	/** VP9 with alpha in WebM, from frames read back with their alpha (row 97). */
+	transparent?: boolean;
 };
 
 const qualityMap = {
@@ -68,6 +72,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private audioBuffer?: AudioBuffer;
 	private disclosure: string | null;
 	private cover: Uint8Array | null;
+	private transparent: boolean;
 
 	private isCancelled = false;
 
@@ -85,8 +90,16 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		audioBuffer,
 		disclosure,
 		cover,
+		transparent,
 	}: ExportParams) {
 		super();
+		this.transparent = !!transparent;
+		if (this.transparent) {
+			format = "webm";
+			platform = undefined;
+			videoCodec = "vp9";
+			hardware = false;
+		}
 		this.disclosure = disclosure?.trim() || null;
 		this.cover = format === "mp4" && cover?.length ? cover : null;
 		this.renderer = new CanvasRenderer({
@@ -153,7 +166,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			);
 		}
 
-		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
+		// A transparent video takes frames with their alpha; the rest the canvas.
+		const alphaSource = this.transparent ? new VideoSampleSource({ codec, bitrate, alpha: "keep" }) : null;
+		const videoSource = alphaSource ?? new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec,
 			...(platform
 				? {
@@ -219,8 +234,21 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			const timeTicks = i * ticksPerFrame;
 			const timeSeconds = mediaTimeToSeconds({ time: timeTicks });
-			await this.renderer.render({ node: rootNode, time: timeTicks });
-			await videoSource.add(timeSeconds, 1 / fpsFloat);
+			if (alphaSource) {
+				const rgba = await this.renderer.renderRgba({ node: rootNode, time: timeTicks });
+				const sample = new VideoSample(rgba, {
+					format: "RGBA",
+					codedWidth: this.renderer.width,
+					codedHeight: this.renderer.height,
+					timestamp: timeSeconds,
+					duration: 1 / fpsFloat,
+				});
+				await alphaSource.add(sample);
+				sample.close();
+			} else {
+				await this.renderer.render({ node: rootNode, time: timeTicks });
+				await (videoSource as CanvasSource).add(timeSeconds, 1 / fpsFloat);
+			}
 
 			this.emit("progress", i / frameCount);
 		}

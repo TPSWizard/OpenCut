@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use editor::{Channel, Project, Segment, plan_audio};
 use media::{
-    AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode, VideoCodec,
+    AlphaCodec, AudioMixClip, EncodeFormat, EncodeQuality, EncodeSettings, Encoder, Ffmpeg, GainEase, GainKey, PlatformEncode, VideoCodec,
 };
 use time::MediaTime;
 
@@ -33,6 +33,19 @@ pub struct ExportJob {
     /// Bring the whole mix to this loudness with true peaks under its
     /// ceiling (see [`MixLoudness`]); `None` leaves the mix as it is.
     pub loudness: Option<MixLoudness>,
+    /// Write a transparent video with this codec (row 97): the project's
+    /// background is left out and the frames' alpha kept. Replaces
+    /// `format`, `codec`, `platform` and `hardware`; no cover is embedded.
+    pub alpha: Option<AlphaCodec>,
+}
+
+/// A copy of `project` with nothing behind its clips (row 97): the
+/// background colour fully transparent and no blurred backdrop. What a
+/// transparent video, still or image sequence renders.
+pub fn transparent_project(project: &Project) -> Project {
+    let mut copy = project.clone();
+    copy.settings.background = editor::Background::Color { color: "#00000000".to_owned() };
+    copy
 }
 
 /// A whole-mix loudness target for export: the mix is rendered, measured
@@ -114,6 +127,13 @@ pub fn export_project_with_report(
     cancelled: &dyn Fn() -> bool,
     progress: &mut dyn FnMut(u64, u64),
 ) -> Result<(PathBuf, Option<editor::MasterReport>), String> {
+    let transparent;
+    let project = if job.alpha.is_some() {
+        transparent = transparent_project(project);
+        &transparent
+    } else {
+        project
+    };
     let fps_rate = project.settings.fps;
     let fps = fps_rate.as_f64().unwrap_or(30.0);
     let duration = project.duration();
@@ -149,6 +169,7 @@ pub fn export_project_with_report(
         duration_seconds: duration.to_seconds_f64(),
         audio,
         disclosure: project.face_swap_disclosure().map(str::to_owned),
+        alpha: job.alpha,
     };
     let result = encode_frames(renderer, project, job, ffmpeg, &encode, frames_total, cancelled, progress);
     if master_report.is_some() {
@@ -234,7 +255,7 @@ fn encode_frames(
     }
     let output = encoder.finish().map_err(|error| error.to_string())?;
     // The project's cover picture, when it has one to embed (MP4 only).
-    if job.format == EncodeFormat::Mp4 {
+    if job.format == EncodeFormat::Mp4 && job.alpha.is_none() {
         if let Err(error) = crate::cover::embed_cover(renderer, ffmpeg, project, &output) {
             eprintln!("cover not embedded: {error}");
         }

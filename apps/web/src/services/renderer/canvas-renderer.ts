@@ -88,6 +88,20 @@ export class CanvasRenderer {
 		}
 	}
 
+	/**
+	 * The frame at `time` as straight RGBA at the renderer's size, alpha
+	 * included (row 97: transparent export). The frame starts transparent
+	 * rather than black (a scene's background is a node of its own), and the
+	 * preview canvas is left alone.
+	 */
+	async renderRgba({ node, time }: { node: AnyBaseNode; time: number }): Promise<Uint8Array> {
+		await resolveRenderTree({ node, renderer: this, time });
+		const { frame, textures } = await buildFrameDescriptor({ node, renderer: this });
+		wasmCompositor.ensureInitialized({ width: this.width, height: this.height });
+		wasmCompositor.syncTextures(textures);
+		return wasmCompositor.renderRgba({ ...frame, clear: { color: [0, 0, 0, 0] } });
+	}
+
 	async renderToCanvas({
 		node,
 		time,

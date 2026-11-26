@@ -223,6 +223,83 @@ pub fn render_frame(options: JsValue) -> Result<(), JsValue> {
     })
 }
 
+/// Composites a frame into a texture (not the canvas) and resolves with its
+/// pixels as straight RGBA, alpha included (row 97: transparent export; the
+/// canvas is opaque, so reading it back would lose the alpha).
+#[wasm_bindgen(js_name = renderFrameRgba)]
+pub async fn render_frame_rgba(options: JsValue) -> Result<js_sys::Uint8Array, JsValue> {
+    let frame: FrameDescriptor = serde_wasm_bindgen::from_value(options)
+        .map_err(|error| JsValue::from_str(&format!("Invalid frame descriptor: {error}")))?;
+    let (readback, device, bgra, webgpu) = with_gpu_runtime(|gpu_runtime| {
+        COMPOSITOR_RUNTIME.with(|runtime| {
+            let mut borrow = runtime.borrow_mut();
+            let Some(runtime) = borrow.as_mut() else {
+                return Err(JsValue::from_str("Compositor is not initialized. Call initCompositor() first."));
+            };
+            let texture = runtime
+                .compositor
+                .render_frame_to_texture(&gpu_runtime.context, &frame)
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+            let context = &gpu_runtime.context;
+            Ok((
+                context.begin_read_texture(&texture),
+                context.device().clone(),
+                context.pixels_are_bgra(),
+                context.is_browser_webgpu(),
+            ))
+        })
+    })?;
+
+    // The map callback stores its result and resolves `mapped_promise`.
+    // WebGPU resolves it from the browser's own promise (no timers, so a
+    // hidden tab is not slowed down); WebGL completes during `poll`, with
+    // a timer between polls if it is not ready yet.
+    type MapResult = Option<Result<(), wgpu::BufferAsyncError>>;
+    let mapped: std::rc::Rc<RefCell<MapResult>> = std::rc::Rc::default();
+    let resolver: std::rc::Rc<RefCell<Option<js_sys::Function>>> = std::rc::Rc::default();
+    let mapped_promise = {
+        let resolver = resolver.clone();
+        js_sys::Promise::new(&mut move |resolve, _| {
+            *resolver.borrow_mut() = Some(resolve);
+        })
+    };
+    {
+        let mapped = mapped.clone();
+        readback.buffer.slice(..).map_async(wgpu::MapMode::Read, move |result| {
+            *mapped.borrow_mut() = Some(result);
+            if let Some(resolve) = resolver.borrow_mut().take() {
+                resolve.call0(&JsValue::NULL).ok();
+            }
+        });
+    }
+    loop {
+        device.poll(wgpu::PollType::Poll).ok();
+        if let Some(result) = mapped.borrow_mut().take() {
+            result.map_err(|error| JsValue::from_str(&format!("Frame read-back failed: {error}")))?;
+            break;
+        }
+        if webgpu {
+            wasm_bindgen_futures::JsFuture::from(mapped_promise.clone()).await?;
+            continue;
+        }
+        let promise = js_sys::Promise::new(&mut |resolve, _| {
+            if let Some(window) = web_sys::window() {
+                window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 1).ok();
+            } else {
+                resolve.call0(&JsValue::NULL).ok();
+            }
+        });
+        wasm_bindgen_futures::JsFuture::from(promise).await?;
+    }
+    let mut pixels = readback.pixels();
+    if bgra {
+        for pixel in pixels.chunks_exact_mut(4) {
+            pixel.swap(0, 2);
+        }
+    }
+    Ok(js_sys::Uint8Array::from(pixels.as_slice()))
+}
+
 #[derive(Debug)]
 struct UploadTextureOptions {
     id: String,

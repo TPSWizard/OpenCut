@@ -27,8 +27,14 @@ opencut-render: render a ConzaCut project from the command line
 
   --project <dir>          a project directory (holds project.json)
   --bundle <file>          an .opencut.zip bundle (imported to a temporary store)
-  --out <file>             the video (.mp4 or .webm), an animated .gif, the sound
-                           alone (.wav, .m4a for AAC, .opus) or, with --frame-at, a .png
+  --out <file>             the video (.mp4 or .webm; .mov is a transparent ProRes
+                           4444), an animated .gif, the sound alone (.wav, .m4a for
+                           AAC, .opus) or, with --frame-at, a .png
+  --transparent            leave the background out and keep the alpha: the video
+                           as .webm (VP9 with alpha) or .mov (ProRes 4444), and
+                           stills and --frames as transparent PNGs
+  --alpha vp9|prores       the transparent video's codec (implies --transparent;
+                           default from the extension of --out)
   --gif-width <px>         GIF width (default 480; the height keeps the canvas shape)
   --gif-fps <n>            GIF frame rate (default 15, at most 50)
   --no-dither              GIF without ordered dithering
@@ -93,6 +99,8 @@ struct Args {
     gif_fps: f64,
     gif_dither: bool,
     frames: Option<PathBuf>,
+    transparent: bool,
+    alpha: Option<media::AlphaCodec>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -123,6 +131,8 @@ fn parse_args() -> Result<Args, String> {
         gif_fps: 15.0,
         gif_dither: true,
         frames: None,
+        transparent: false,
+        alpha: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -207,6 +217,12 @@ fn parse_args() -> Result<Args, String> {
             "--gif-fps" => args.gif_fps = value()?.parse().map_err(|_| "--gif-fps needs a number".to_owned())?,
             "--no-dither" => args.gif_dither = false,
             "--frames" => args.frames = Some(PathBuf::from(value()?)),
+            "--transparent" => args.transparent = true,
+            "--alpha" => {
+                let text = value()?;
+                args.alpha = Some(media::AlphaCodec::parse(&text).ok_or_else(|| format!("--alpha takes vp9 or prores, not {text}"))?);
+                args.transparent = true;
+            }
             "--help" | "-h" => {
                 print!("{USAGE}");
                 std::process::exit(0);
@@ -403,6 +419,11 @@ fn run() -> Result<(), String> {
         );
     }
 
+    // Nothing behind the clips (row 97): a transparent video, stills, frames.
+    let out_extension = args.out.as_ref().and_then(|out| out.extension()).map(|ext| ext.to_string_lossy().to_ascii_lowercase());
+    let transparent = args.transparent || out_extension.as_deref() == Some("mov");
+    let project = if transparent { render::transparent_project(&project) } else { project };
+
     // One still.
     if let Some(at) = args.frame_at {
         let out = args.out.as_ref().ok_or_else(|| "--frame-at needs --out <file.png>".to_owned())?;
@@ -489,13 +510,31 @@ fn run() -> Result<(), String> {
     if let Some(out) = &args.out {
         let ffmpeg = ffmpeg.ok_or_else(|| media::MediaError::FfmpegNotFound.to_string())?;
         let format = args.format.unwrap_or_else(|| EncodeFormat::from_path(out));
+        let alpha = if transparent {
+            Some(match (args.alpha, out_extension.as_deref()) {
+                (Some(codec), _) => codec,
+                (None, Some("mov")) => media::AlphaCodec::ProRes4444,
+                (None, Some("webm")) => media::AlphaCodec::Vp9,
+                (None, Some("mp4")) => {
+                    return Err("MP4 cannot carry an alpha channel: use --out <file>.webm (VP9) or .mov (ProRes 4444)".to_owned());
+                }
+                (None, _) => media::AlphaCodec::ProRes4444,
+            })
+        } else {
+            None
+        };
+        if let Some(alpha) = alpha
+            && out_extension.as_deref().is_some_and(|ext| ext != alpha.extension())
+        {
+            return Err(format!("{} goes in .{}, not .{}", alpha.label(), alpha.extension(), out_extension.unwrap_or_default()));
+        }
         if let Some(codec) = args.codec.filter(|codec| !media::codecs_for(format).contains(codec)) {
             let takes: Vec<&str> = media::codecs_for(format).iter().map(|codec| codec.id()).collect();
             return Err(format!("{} takes {}, not {}", format.extension(), takes.join(", "), codec.id()));
         }
         let mut output = out.clone();
         if output.extension().is_none() {
-            output.set_extension(format.extension());
+            output.set_extension(alpha.map_or(format.extension(), |alpha| alpha.extension()));
         }
         if let Some(parent) = output.parent() {
             if !parent.as_os_str().is_empty() {
@@ -513,6 +552,7 @@ fn run() -> Result<(), String> {
             include_audio: args.include_audio,
             cache_dir: None,
             loudness: args.loudness,
+            alpha,
         };
         let quiet = args.quiet;
         let started = std::time::Instant::now();

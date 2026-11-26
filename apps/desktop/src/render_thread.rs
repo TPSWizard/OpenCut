@@ -38,6 +38,10 @@ pub(crate) struct ExportSettings {
     pub hardware: bool,
     /// Whole-mix loudness target; `None` leaves the mix as it is.
     pub loudness: Option<render::MixLoudness>,
+    /// Leave the background out and keep the alpha (row 97): a video with
+    /// this codec, or a still or sequence of transparent PNGs (the codec is
+    /// not used for those). `None` renders the background as set.
+    pub alpha: Option<media::AlphaCodec>,
 }
 
 /// What an export writes (row 96).
@@ -392,6 +396,12 @@ fn thumbnail(media: &MediaItem, ffmpeg: &Option<Arc<Ffmpeg>>) -> Option<Arc<Rend
     image_from_bgra(width, height, bgra)
 }
 
+/// The project a still or an image sequence renders: with nothing behind
+/// the clips when the export is transparent.
+fn still_project(project: &Project, settings: &ExportSettings) -> Project {
+    if settings.alpha.is_some() { render::transparent_project(project) } else { project.clone() }
+}
+
 fn export(
     project: &Project,
     settings: &ExportSettings,
@@ -424,9 +434,13 @@ fn export(
             }
             return Ok(path);
         }
-        ExportKind::Still(time) => return render::export_png(&mut renderer, project, *time, &settings.output),
+        ExportKind::Still(time) => {
+            let project = still_project(project, settings);
+            return render::export_png(&mut renderer, &project, *time, &settings.output);
+        }
         ExportKind::Sequence => {
-            return render::export_png_sequence(&mut renderer, project, &settings.output, &|| cancel.load(Ordering::Relaxed), &mut |frames_done, frames_total| {
+            let project = still_project(project, settings);
+            return render::export_png_sequence(&mut renderer, &project, &settings.output, &|| cancel.load(Ordering::Relaxed), &mut |frames_done, frames_total| {
                 events.unbounded_send(RenderEvent::ExportProgress { frames_done, frames_total }).ok();
             })
             .map(|(folder, _)| folder);
@@ -443,6 +457,7 @@ fn export(
         include_audio: settings.include_audio,
         cache_dir: None,
         loudness: settings.loudness,
+        alpha: settings.alpha,
     };
     render::export_project_with_report(
         &mut renderer,
@@ -585,6 +600,7 @@ mod tests {
                 video_bitrate: None,
                 hardware: false,
                 loudness: None,
+                alpha: None,
             },
             &cancel,
             &events,
@@ -607,7 +623,7 @@ mod tests {
         assert!((written.duration.unwrap().to_seconds_f64() - 2.0).abs() < 0.2);
 
         // The other kinds go through the same export (row 96).
-        let video_settings = |kind: ExportKind, output: PathBuf| ExportSettings { kind, output, format: EncodeFormat::Mp4, quality: EncodeQuality::Low, include_audio: true, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None };
+        let video_settings = |kind: ExportKind, output: PathBuf| ExportSettings { kind, output, format: EncodeFormat::Mp4, quality: EncodeQuality::Low, include_audio: true, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None, alpha: None };
         for (kind, name) in [
             (ExportKind::Gif { width: 160, fps: 10.0, dither: true }, "out.gif"),
             (ExportKind::Audio(media::AudioFileFormat::Opus), "out.opus"),
@@ -631,7 +647,7 @@ mod tests {
         let cancel = AtomicBool::new(true);
         let result = export(
             &project,
-            &ExportSettings { kind: ExportKind::Video, output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None },
+            &ExportSettings { kind: ExportKind::Video, output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None, alpha: None },
             &cancel,
             &events,
             Some(ffmpeg),
@@ -689,6 +705,7 @@ mod tests {
                 video_bitrate: None,
                 hardware: false,
                 loudness: None,
+                alpha: None,
             },
             &cancel,
             &events,

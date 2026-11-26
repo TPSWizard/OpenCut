@@ -4,6 +4,7 @@ mod transfer;
 use thiserror::Error;
 
 pub use context::GpuContext;
+pub use transfer::TextureReadback;
 pub use wgpu;
 
 pub const GPU_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;

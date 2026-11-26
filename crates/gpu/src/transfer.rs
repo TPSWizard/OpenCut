@@ -1,5 +1,5 @@
-//! Moving pixels between the CPU and textures. Used by native front ends;
-//! the web app uploads through canvases instead.
+//! Moving pixels between the CPU and textures. Used by native front ends
+//! and by the web export's read-back of transparent frames (row 97).
 
 use crate::{GpuContext, GpuError};
 
@@ -56,10 +56,32 @@ impl GpuContext {
     /// Copies a texture back to the CPU as tightly packed 8-bit pixels in
     /// the context's channel order. Blocks until the GPU has finished.
     pub fn read_texture(&self, texture: &wgpu::Texture) -> Result<Vec<u8>, GpuError> {
+        let readback = self.begin_read_texture(texture);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        readback
+            .buffer
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |result| {
+                sender.send(result).ok();
+            });
+        self.device()
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|_| GpuError::Readback("the device stopped responding".to_owned()))?;
+        receiver
+            .recv()
+            .map_err(|_| GpuError::Readback("the map callback never ran".to_owned()))?
+            .map_err(|error| GpuError::Readback(error.to_string()))?;
+        Ok(readback.pixels())
+    }
+
+    /// Submits a copy of `texture` into a buffer the CPU can map. The
+    /// caller maps [`TextureReadback::buffer`] for reading (waiting however
+    /// its platform waits: a blocking poll natively, the event loop on the
+    /// web) and then takes [`TextureReadback::pixels`].
+    pub fn begin_read_texture(&self, texture: &wgpu::Texture) -> TextureReadback {
         let width = texture.width();
         let height = texture.height();
-        let bytes_per_pixel = self.bytes_per_pixel();
-        let unpadded_row = width * bytes_per_pixel;
+        let unpadded_row = width * self.bytes_per_pixel();
         let padded_row = unpadded_row.div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT)
             * COPY_BYTES_PER_ROW_ALIGNMENT;
         let buffer = self.device().create_buffer(&wgpu::BufferDescriptor {
@@ -90,29 +112,29 @@ impl GpuContext {
             },
         );
         self.queue().submit([encoder.finish()]);
+        TextureReadback { buffer, height, padded_row, unpadded_row }
+    }
+}
 
-        let (sender, receiver) = std::sync::mpsc::channel();
-        buffer
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                sender.send(result).ok();
-            });
-        self.device()
-            .poll(wgpu::PollType::wait_indefinitely())
-            .map_err(|_| GpuError::Readback("the device stopped responding".to_owned()))?;
-        receiver
-            .recv()
-            .map_err(|_| GpuError::Readback("the map callback never ran".to_owned()))?
-            .map_err(|error| GpuError::Readback(error.to_string()))?;
+/// A texture copied into a mappable buffer ([`GpuContext::begin_read_texture`]).
+pub struct TextureReadback {
+    pub buffer: wgpu::Buffer,
+    height: u32,
+    padded_row: u32,
+    unpadded_row: u32,
+}
 
-        let mapped = buffer.slice(..).get_mapped_range();
-        let mut pixels = Vec::with_capacity((unpadded_row * height) as usize);
-        for row in 0..height as usize {
-            let start = row * padded_row as usize;
-            pixels.extend_from_slice(&mapped[start..start + unpadded_row as usize]);
+impl TextureReadback {
+    /// The tightly packed pixels, once `buffer` is mapped for reading; unmaps it.
+    pub fn pixels(&self) -> Vec<u8> {
+        let mapped = self.buffer.slice(..).get_mapped_range();
+        let mut pixels = Vec::with_capacity((self.unpadded_row * self.height) as usize);
+        for row in 0..self.height as usize {
+            let start = row * self.padded_row as usize;
+            pixels.extend_from_slice(&mapped[start..start + self.unpadded_row as usize]);
         }
         drop(mapped);
-        buffer.unmap();
-        Ok(pixels)
+        self.buffer.unmap();
+        pixels
     }
 }
