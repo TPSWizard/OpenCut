@@ -1,0 +1,13 @@
+[package]
+name = "gifenc"
+description = "Animated GIF export (median-cut palette, ordered dithering, changed-rectangle frames, LZW), shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dev-dependencies]
+serde_json = { workspace = true }

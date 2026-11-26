@@ -57,7 +57,7 @@ impl MixLoudness {
 
 /// Renders the mix, masters it to `loudness` and returns one clip that
 /// plays the mastered mix (a float WAV in `dir`), with what was done.
-fn mastered_mix(
+pub(crate) fn mastered_mix(
     ffmpeg: &Arc<Ffmpeg>,
     audio: &[AudioMixClip],
     duration_seconds: f64,
@@ -125,48 +125,9 @@ pub fn export_project_with_report(
     let width = canvas.width & !1;
     let height = canvas.height & !1;
 
-    let audio = if job.include_audio {
-        let cache_dir = job.cache_dir.clone().unwrap_or_else(crate::retime_audio::default_cache_dir);
-        plan_audio(project)
-            .into_iter()
-            .map(|clip| {
-                if crate::retime_audio::needs_render(&clip) {
-                    crate::retime_audio::rendered_clip(ffmpeg, &clip, &cache_dir).unwrap_or_else(|error| {
-                        eprintln!("retimed audio for {}: {error}", clip.element_id);
-                        clip
-                    })
-                } else {
-                    clip
-                }
-            })
-            .map(|clip| AudioMixClip {
-                path: clip.path.clone(),
-                source_start_seconds: clip.source_start.to_seconds_f64(),
-                source_end_seconds: clip.source_end.to_seconds_f64(),
-                timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
-                gain: clip.gain(),
-                // Keyed volume in dB with the track's volume added.
-                gain_keys: gain_keys(&clip.volume)
-                    .into_iter()
-                    .map(|key| GainKey { db: key.db + 20.0 * clip.track_gain.max(1e-12).log10(), ..key })
-                    .collect(),
-                fade_in_seconds: clip.fade_in_seconds,
-                fade_out_seconds: clip.fade_out_seconds,
-                fade_in_equal_power: clip.fade_in_curve == editor::CrossfadeCurve::EqualPower,
-                fade_out_equal_power: clip.fade_out_curve == editor::CrossfadeCurve::EqualPower,
-                pan: clip.pan,
-                track_pan: clip.track_pan,
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
+    let audio = if job.include_audio { mix_clips(ffmpeg, project, job.cache_dir.clone()) } else { Vec::new() };
     // Whole-mix loudness: the mix rendered, mastered and played as one clip.
-    let mix_dir = std::env::temp_dir().join(format!(
-        "opencut-mix-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_nanos())
-    ));
+    let mix_dir = temp_mix_dir();
     let (audio, master_report) = match job.loudness {
         Some(loudness) if !audio.is_empty() => {
             let (clip, report) = mastered_mix(ffmpeg, &audio, duration.to_seconds_f64(), loudness, &mix_dir)?;
@@ -194,6 +155,52 @@ pub fn export_project_with_report(
         std::fs::remove_dir_all(&mix_dir).ok();
     }
     result.map(|path| (path, master_report))
+}
+
+/// The project's audio clips as the encoder mixes them (retimed audio
+/// rendered into `cache_dir`, `default_cache_dir()` when none).
+pub(crate) fn mix_clips(ffmpeg: &Arc<Ffmpeg>, project: &Project, cache_dir: Option<PathBuf>) -> Vec<AudioMixClip> {
+    let cache_dir = cache_dir.unwrap_or_else(crate::retime_audio::default_cache_dir);
+    plan_audio(project)
+        .into_iter()
+        .map(|clip| {
+            if crate::retime_audio::needs_render(&clip) {
+                crate::retime_audio::rendered_clip(ffmpeg, &clip, &cache_dir).unwrap_or_else(|error| {
+                    eprintln!("retimed audio for {}: {error}", clip.element_id);
+                    clip
+                })
+            } else {
+                clip
+            }
+        })
+        .map(|clip| AudioMixClip {
+            path: clip.path.clone(),
+            source_start_seconds: clip.source_start.to_seconds_f64(),
+            source_end_seconds: clip.source_end.to_seconds_f64(),
+            timeline_start_seconds: clip.timeline_start.to_seconds_f64(),
+            gain: clip.gain(),
+            // Keyed volume in dB with the track's volume added.
+            gain_keys: gain_keys(&clip.volume)
+                .into_iter()
+                .map(|key| GainKey { db: key.db + 20.0 * clip.track_gain.max(1e-12).log10(), ..key })
+                .collect(),
+            fade_in_seconds: clip.fade_in_seconds,
+            fade_out_seconds: clip.fade_out_seconds,
+            fade_in_equal_power: clip.fade_in_curve == editor::CrossfadeCurve::EqualPower,
+            fade_out_equal_power: clip.fade_out_curve == editor::CrossfadeCurve::EqualPower,
+            pan: clip.pan,
+            track_pan: clip.track_pan,
+        })
+        .collect()
+}
+
+/// A fresh folder name for a rendered mix.
+pub(crate) fn temp_mix_dir() -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "opencut-mix-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_nanos())
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]

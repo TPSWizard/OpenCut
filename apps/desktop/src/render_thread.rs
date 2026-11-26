@@ -22,6 +22,8 @@ pub(crate) const THUMBNAIL_WIDTH: u32 = 112;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ExportSettings {
+    /// What to write: a video (the fields below), or another kind.
+    pub kind: ExportKind,
     pub output: PathBuf,
     pub format: EncodeFormat,
     pub quality: EncodeQuality,
@@ -36,6 +38,21 @@ pub(crate) struct ExportSettings {
     pub hardware: bool,
     /// Whole-mix loudness target; `None` leaves the mix as it is.
     pub loudness: Option<render::MixLoudness>,
+}
+
+/// What an export writes (row 96).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ExportKind {
+    /// A video file (MP4 or WebM).
+    Video,
+    /// An animated GIF this wide, at this frame rate.
+    Gif { width: u32, fps: f64, dither: bool },
+    /// The sound alone.
+    Audio(media::AudioFileFormat),
+    /// The frame at this time as a PNG.
+    Still(MediaTime),
+    /// Every frame as numbered PNGs in the output folder.
+    Sequence,
 }
 
 pub(crate) enum RenderRequest {
@@ -392,6 +409,29 @@ fn export(
     })
     .map_err(|error| error.to_string())?;
 
+    match &settings.kind {
+        ExportKind::Video => {}
+        ExportKind::Gif { width, fps, dither } => {
+            let job = render::GifJob { output: settings.output.clone(), width: *width, fps: *fps, colours: 255, dither: *dither };
+            return render::export_gif(&mut renderer, project, &job, &|| cancel.load(Ordering::Relaxed), &mut |frames_done, frames_total| {
+                events.unbounded_send(RenderEvent::ExportProgress { frames_done, frames_total }).ok();
+            });
+        }
+        ExportKind::Audio(format) => {
+            let (path, report) = render::export_audio(&ffmpeg, project, &settings.output, *format, settings.loudness, None)?;
+            if let Some(report) = report {
+                events.unbounded_send(RenderEvent::MixMastered(report)).ok();
+            }
+            return Ok(path);
+        }
+        ExportKind::Still(time) => return render::export_png(&mut renderer, project, *time, &settings.output),
+        ExportKind::Sequence => {
+            return render::export_png_sequence(&mut renderer, project, &settings.output, &|| cancel.load(Ordering::Relaxed), &mut |frames_done, frames_total| {
+                events.unbounded_send(RenderEvent::ExportProgress { frames_done, frames_total }).ok();
+            })
+            .map(|(folder, _)| folder);
+        }
+    }
     let job = render::ExportJob {
         output: settings.output.clone(),
         format: settings.format,
@@ -535,6 +575,7 @@ mod tests {
         let result = export(
             &project,
             &ExportSettings {
+                kind: ExportKind::Video,
                 output: output.clone(),
                 format: EncodeFormat::Mp4,
                 quality: EncodeQuality::Low,
@@ -565,13 +606,32 @@ mod tests {
         assert!(written.has_audio);
         assert!((written.duration.unwrap().to_seconds_f64() - 2.0).abs() < 0.2);
 
+        // The other kinds go through the same export (row 96).
+        let video_settings = |kind: ExportKind, output: PathBuf| ExportSettings { kind, output, format: EncodeFormat::Mp4, quality: EncodeQuality::Low, include_audio: true, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None };
+        for (kind, name) in [
+            (ExportKind::Gif { width: 160, fps: 10.0, dither: true }, "out.gif"),
+            (ExportKind::Audio(media::AudioFileFormat::Opus), "out.opus"),
+            (ExportKind::Still(MediaTime::from_seconds_f64(0.5).unwrap()), "out.png"),
+        ] {
+            let output = dir.path().join(name);
+            let (events, _receiver) = unbounded();
+            let written = export(&project, &video_settings(kind, output.clone()), &AtomicBool::new(false), &events, Some(ffmpeg.clone())).unwrap();
+            assert_eq!(written, output);
+            let info = media::probe(&ffmpeg, &output).unwrap();
+            match name {
+                "out.gif" => assert_eq!((info.width, info.height), (Some(160), Some(90))),
+                "out.opus" => assert!(info.has_audio && !info.has_video && (info.duration.unwrap().to_seconds_f64() - 2.0).abs() < 0.1),
+                _ => assert_eq!((info.width, info.height), (Some(320), Some(180))),
+            }
+        }
+
         // Cancelling stops early and leaves no file behind.
         let cancelled = dir.path().join("cancelled.mp4");
         let (events, _receiver) = unbounded();
         let cancel = AtomicBool::new(true);
         let result = export(
             &project,
-            &ExportSettings { output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None },
+            &ExportSettings { kind: ExportKind::Video, output: cancelled.clone(), format: EncodeFormat::Webm, quality: EncodeQuality::Low, include_audio: false, platform: None, codec: None, video_bitrate: None, hardware: false, loudness: None },
             &cancel,
             &events,
             Some(ffmpeg),
@@ -619,6 +679,7 @@ mod tests {
         let result = export(
             &project,
             &ExportSettings {
+                kind: ExportKind::Video,
                 output: output.clone(),
                 format: EncodeFormat::Mp4,
                 quality: EncodeQuality::High,

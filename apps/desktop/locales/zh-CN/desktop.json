@@ -1058,5 +1058,21 @@
   "Added {count} caption(s).": "已添加 {count} 条字幕。",
   "Added {count} caption(s); skipped {skipped} unreadable cue(s).": "已添加 {count} 条字幕；跳过 {skipped} 条无法读取的字幕。",
   "No captions found in that file.": "该文件中没有找到字幕。",
-  "Subtitles not read: {error}": "未能读取字幕：{error}"
+  "Subtitles not read: {error}": "未能读取字幕：{error}",
+  "Kind": "类型",
+  "Video": "视频",
+  "GIF": "GIF 动图",
+  "Audio only": "仅音频",
+  "Still (PNG)": "静帧（PNG）",
+  "Image sequence": "图像序列",
+  "Dither": "抖动",
+  "Dither (smoother gradients)": "抖动（渐变更平滑）",
+  "Working…": "处理中…",
+  "Loops forever, up to 255 colours; only what changes is stored for each frame. No sound.": "无限循环，最多 255 种颜色；每帧只保存变化的部分。没有声音。",
+  "The sound alone, mixed as in a video export.": "只导出声音，混音方式与导出视频时相同。",
+  "The frame at the playhead ({time} s) at {width}×{height}.": "播放头所在的帧（{time} 秒），{width}×{height}。",
+  "The frame at the playhead at {width}×{height}.": "播放头所在的帧，{width}×{height}。",
+  "Every frame at {fps} fps as numbered PNGs (frame_000001.png, …) in a new folder.": "以 {fps} fps 将每一帧保存为编号的 PNG（frame_000001.png 等），放在一个新文件夹中。",
+  "Every frame as numbered PNGs (frame_000001.png, …) in one zip. Long timelines make large files.": "将每一帧保存为编号的 PNG（frame_000001.png 等），打包为一个 zip。时间线越长，文件越大。",
+  "Mix loudness": "混音响度"
 }

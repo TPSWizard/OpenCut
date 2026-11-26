@@ -3,6 +3,7 @@ import type { PlatformEncodeSettings } from "@/platforms/catalogue";
 import type { ExportVideoCodec } from "./codecs";
 import type { MixLoudness, MixMasterReport } from "@/loudness/mix";
 import { EXPORT_MIME_TYPES } from "./mime-types";
+import type { AudioExportFormat, ExportKind, GifOptions } from "./kinds";
 
 export const EXPORT_QUALITY_VALUES = [
 	"low",
@@ -17,6 +18,15 @@ export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
 export type ExportQuality = (typeof EXPORT_QUALITY_VALUES)[number];
 
 export interface ExportOptions {
+	/**
+	 * What to write (row 96): a video (the default; `format` and the
+	 * picture settings below), an animated GIF (`gif`), the sound alone
+	 * (`audioFormat`, with `loudness`) or every frame as numbered PNGs in a
+	 * zip. The still PNG is `editor.renderer.saveSnapshot`.
+	 */
+	kind?: Exclude<ExportKind, "still">;
+	gif?: GifOptions;
+	audioFormat?: AudioExportFormat;
 	format: ExportFormat;
 	quality: ExportQuality;
 	fps?: FrameRate;
@@ -46,6 +56,9 @@ export interface ExportOptions {
 export interface ExportResult {
 	success: boolean;
 	buffer?: ArrayBuffer;
+	/** For kinds other than video: the file's type and extension (with the dot). */
+	mimeType?: string;
+	extension?: string;
 	error?: string;
 	cancelled?: boolean;
 	/** What whole-mix loudness did, when `loudness` was asked for and there was sound. */

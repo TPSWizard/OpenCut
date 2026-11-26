@@ -58,6 +58,17 @@ import { useT } from "@/i18n";
 import { LOUDNESS_TARGETS } from "@/loudness/r128";
 import { mixLoudnessTarget } from "@/loudness/mix";
 import { toast } from "sonner";
+import {
+	AUDIO_EXPORT_FORMATS,
+	type AudioExportFormat,
+	DEFAULT_GIF_OPTIONS,
+	type ExportKind,
+	GIF_FRAME_RATES,
+	GIF_WIDTHS,
+	gifFrameSize,
+	isAudioExportFormat,
+	isExportKind,
+} from "@/export/kinds";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -136,6 +147,12 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	// What to write (row 96): a video, a GIF, the sound alone, a still or every frame.
+	const [kind, setKind] = useState<ExportKind>("video");
+	const [gifWidth, setGifWidth] = useState<number>(DEFAULT_GIF_OPTIONS.width);
+	const [gifFps, setGifFps] = useState<number>(DEFAULT_GIF_OPTIONS.fps);
+	const [gifDither, setGifDither] = useState<boolean>(DEFAULT_GIF_OPTIONS.dither);
+	const [audioFormat, setAudioFormat] = useState<AudioExportFormat>("aac");
 	// Whole-mix loudness: "off" or a target id (`LOUDNESS_TARGETS`).
 	const [loudnessId, setLoudnessId] = useState<string>("off");
 	const [platform, setPlatform] = useState<PlatformChoice>(CUSTOM_PLATFORM);
@@ -165,6 +182,41 @@ function ExportPopover({
 
 	const handleExport = async () => {
 		if (!activeProject) return;
+
+		if (kind === "still") {
+			const saved = await editor.renderer.saveSnapshot();
+			if (saved.success) onOpenChange(false);
+			else toast.error(saved.error ?? t("Unknown error occurred"));
+			return;
+		}
+		if (kind !== "video") {
+			const result = await editor.project.export({
+				options: {
+					kind,
+					format: "mp4",
+					quality,
+					fps: activeProject.settings.fps,
+					includeAudio: kind === "audio",
+					gif: { width: gifWidth, fps: gifFps, dither: gifDither },
+					audioFormat,
+					loudness: kind === "audio" ? mixLoudnessTarget(loudnessId) : undefined,
+				},
+			});
+			if (result.cancelled) {
+				editor.project.clearExportState();
+				return;
+			}
+			if (result.success && result.buffer) {
+				downloadBuffer({
+					buffer: result.buffer,
+					filename: `${activeProject.metadata.name}${result.extension ?? ""}`,
+					mimeType: result.mimeType ?? "application/octet-stream",
+				});
+				editor.project.clearExportState();
+				onOpenChange(false);
+			}
+			return;
+		}
 
 		const exportFormat = platformPreset ? "mp4" : format;
 		const result = await editor.project.export({
@@ -236,6 +288,109 @@ function ExportPopover({
 					<div className="flex flex-col gap-4">
 						{!isExporting && (
 							<>
+								<Section showTopBorder={false}>
+									<SectionHeader>
+										<SectionTitle>{t("Kind")}</SectionTitle>
+									</SectionHeader>
+									<SectionContent>
+										<Select value={kind} onValueChange={(value) => isExportKind(value) && setKind(value)}>
+											<SelectTrigger className="w-full" data-testid="export-kind" aria-label={t("Kind")}>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="video">{t("Video")}</SelectItem>
+												<SelectItem value="gif">{t("GIF")}</SelectItem>
+												<SelectItem value="audio">{t("Audio only")}</SelectItem>
+												<SelectItem value="still">{t("Still (PNG)")}</SelectItem>
+												<SelectItem value="frames">{t("Image sequence")}</SelectItem>
+											</SelectContent>
+										</Select>
+										{kind === "gif" && (
+											<div className="mt-3 flex flex-col gap-2" data-testid="export-gif">
+												<Label>{t("Size")}</Label>
+												<Select value={String(gifWidth)} onValueChange={(value) => setGifWidth(Number(value))}>
+													<SelectTrigger className="w-full" data-testid="export-gif-size" aria-label={t("Size")}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{GIF_WIDTHS.map((width) => {
+															const [w, h] = gifFrameSize({ canvasWidth, canvasHeight, width });
+															return (
+																<SelectItem key={width} value={String(width)}>
+																	{`${w}×${h}`}
+																</SelectItem>
+															);
+														})}
+													</SelectContent>
+												</Select>
+												<Label>{t("Frame rate")}</Label>
+												<Select value={String(gifFps)} onValueChange={(value) => setGifFps(Number(value))}>
+													<SelectTrigger className="w-full" data-testid="export-gif-fps" aria-label={t("Frame rate")}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{GIF_FRAME_RATES.map((rate) => (
+															<SelectItem key={rate} value={String(rate)}>
+																{`${rate} fps`}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<div className="flex items-center space-x-2">
+													<Checkbox id="export-gif-dither" checked={gifDither} onCheckedChange={(checked) => setGifDither(!!checked)} />
+													<Label htmlFor="export-gif-dither">{t("Dither (smoother gradients)")}</Label>
+												</div>
+												<p className="text-muted-foreground text-xs">
+													{t("Loops forever, up to 255 colours; only what changes is stored for each frame. No sound.")}
+												</p>
+											</div>
+										)}
+										{kind === "audio" && (
+											<div className="mt-3 flex flex-col gap-2" data-testid="export-audio">
+												<Label>{t("Format")}</Label>
+												<Select value={audioFormat} onValueChange={(value) => isAudioExportFormat(value) && setAudioFormat(value)}>
+													<SelectTrigger className="w-full" data-testid="export-audio-format" aria-label={t("Format")}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{(Object.keys(AUDIO_EXPORT_FORMATS) as AudioExportFormat[]).map((id) => (
+															<SelectItem key={id} value={id}>
+																{AUDIO_EXPORT_FORMATS[id].label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<Label>{t("Mix loudness")}</Label>
+												<Select value={loudnessId} onValueChange={setLoudnessId}>
+													<SelectTrigger className="w-full" aria-label={t("Mix loudness")}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="off">{t("Off: as it plays")}</SelectItem>
+														{LOUDNESS_TARGETS.map((target) => (
+															<SelectItem key={target.id} value={target.id}>
+																{t(target.label)}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<p className="text-muted-foreground text-xs">{t("The sound alone, mixed as in a video export.")}</p>
+											</div>
+										)}
+										{kind === "still" && (
+											<p className="text-muted-foreground mt-3 text-xs">
+												{t("The frame at the playhead at {width}×{height}.", { width: canvasWidth, height: canvasHeight })}
+											</p>
+										)}
+										{kind === "frames" && (
+											<p className="text-muted-foreground mt-3 text-xs">
+												{t("Every frame as numbered PNGs (frame_000001.png, …) in one zip. Long timelines make large files.")}
+											</p>
+										)}
+									</SectionContent>
+								</Section>
+								{kind === "video" && (
+									<>
 								<PlatformExportSection
 									value={platform}
 									onChange={setPlatform}
@@ -428,8 +583,10 @@ function ExportPopover({
 									</Section>
 								</div>
 
+									</>
+								)}
 								<div className="flex flex-col gap-2 p-3 pt-0">
-									{codecUnavailable && (
+									{kind === "video" && codecUnavailable && (
 										<p className="text-destructive text-xs" role="alert">
 											{t("This browser cannot encode {codec}. Choose another codec, or export from the desktop app.", {
 												codec: CODEC_LABELS[codec],
@@ -439,7 +596,7 @@ function ExportPopover({
 									<Button
 										onClick={handleExport}
 										className="w-full gap-2"
-										disabled={(!platformPreset && bitrateInvalid) || codecUnavailable}
+										disabled={kind === "video" && ((!platformPreset && bitrateInvalid) || codecUnavailable)}
 									>
 										<Download className="size-4" />
 										{t("Export")}

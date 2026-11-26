@@ -2269,6 +2269,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gifenc"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "gl-transitions"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4313,6 +4320,7 @@ dependencies = [
  "deflicker",
  "effects",
  "facetrack",
+ "gifenc",
  "gpu",
  "js-sys",
  "lottie",
@@ -5173,6 +5181,7 @@ dependencies = [
  "editor",
  "effects",
  "facetrack",
+ "gifenc",
  "gpu",
  "image",
  "lottie",

@@ -1,3 +1,4 @@
+import { DEFAULT_GIF_OPTIONS, type ExportKind, isAudioExportFormat, isExportKind } from "@/export/kinds";
 import {
 	DEFAULT_TRANSITION_DURATION,
 	getTransitionCatalogue,
@@ -833,6 +834,11 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 
 	const renderExport = async (options: ApiExportOptions) => {
 		const project = requireProject();
+		const kind = options.kind ?? "video";
+		if (!isExportKind(kind)) {
+			throw new EditorApiError({ code: "invalid_params", message: "kind is video, gif, audio, still or frames" });
+		}
+		if (kind !== "video") return renderOtherKind(options, kind);
 		const preset =
 			options.preset !== undefined ? requirePlatformPreset(options.preset) : null;
 		const format = preset ? "mp4" : (options.format ?? "mp4");
@@ -915,6 +921,71 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 		return {
 			fileName: `${baseName}${getExportFileExtension({ format })}`,
 			mimeType: getExportMimeType({ format }),
+			bytes: result.buffer,
+			mastered: result.mastered
+				? {
+						...result.mastered,
+						inputLufs: level(result.mastered.inputLufs),
+						inputTruePeakDbtp: level(result.mastered.inputTruePeakDbtp),
+						outputLufs: level(result.mastered.outputLufs),
+						outputTruePeakDbtp: level(result.mastered.outputTruePeakDbtp),
+					}
+				: undefined,
+		};
+	};
+
+	/** GIF, audio only, a still or an image sequence (row 96). */
+	const renderOtherKind = async (options: ApiExportOptions, kind: Exclude<ExportKind, "video">) => {
+		const project = requireProject();
+		const baseName = (options.fileName ?? project.metadata.name).replace(/[\\/:*?"<>|]+/g, "_");
+		if (kind === "still") {
+			const still = await editor.renderer.renderStillPng();
+			if (!still.success) throw new EditorApiError({ code: "failed", message: still.error });
+			return { fileName: `${baseName}.png`, mimeType: "image/png", bytes: await still.blob.arrayBuffer() };
+		}
+		const gif = options.gif ?? {};
+		for (const [key, value, low, high] of [
+			["gif.width", gif.width, 16, 4096],
+			["gif.fps", gif.fps, 1, 50],
+		] as const) {
+			if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < low || value > high)) {
+				throw new EditorApiError({ code: "invalid_params", message: `${key} is a number from ${low} to ${high}` });
+			}
+		}
+		if (options.audioFormat !== undefined && !isAudioExportFormat(options.audioFormat)) {
+			throw new EditorApiError({ code: "invalid_params", message: "audioFormat is wav, aac or opus" });
+		}
+		let loudness: MixLoudness | undefined;
+		if (options.loudness !== undefined) {
+			loudness =
+				typeof options.loudness === "number"
+					? Number.isFinite(options.loudness) && options.loudness >= -40 && options.loudness <= -5
+						? { targetLufs: options.loudness, ceilingDbtp: -1 }
+						: undefined
+					: mixLoudnessTarget(options.loudness);
+			if (!loudness) {
+				throw new EditorApiError({ code: "invalid_params", message: "loudness is streaming, podcast, broadcast, loud or LUFS from -40 to -5" });
+			}
+		}
+		const result = await editor.project.export({
+			options: {
+				kind,
+				format: "mp4",
+				quality: "high",
+				fps: project.settings.fps,
+				includeAudio: kind === "audio",
+				gif: { ...DEFAULT_GIF_OPTIONS, ...gif },
+				audioFormat: options.audioFormat ?? "aac",
+				loudness,
+			},
+		});
+		if (!result.success || !result.buffer) {
+			throw new EditorApiError({ code: "failed", message: result.error ?? (result.cancelled ? "Export cancelled" : "Export failed") });
+		}
+		const level = (value: number) => (Number.isFinite(value) ? value : null);
+		return {
+			fileName: `${baseName}${result.extension ?? ""}`,
+			mimeType: result.mimeType ?? "application/octet-stream",
 			bytes: result.buffer,
 			mastered: result.mastered
 				? {

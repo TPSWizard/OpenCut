@@ -12,6 +12,7 @@
 
 mod cover;
 mod audio;
+mod audio_file;
 mod codecs;
 mod denoise;
 mod encode;
@@ -29,6 +30,7 @@ mod still;
 mod voice_fx;
 
 pub use audio::{AudioReader, AudioSettings};
+pub use audio_file::{AudioFileFormat, encode_audio_file};
 pub use denoise::denoise_to_wav;
 pub use codecs::{
     MAX_BITRATE_MBPS, MIN_BITRATE_MBPS, VideoCodec, available_codecs, codecs_for, default_codec, is_hardware_encoder,

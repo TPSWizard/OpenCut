@@ -29,6 +29,7 @@ members = [
   'crates/trimedit',
   'crates/captionedit',
   'crates/subtitleparse',
+  'crates/gifenc',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -65,6 +66,7 @@ strokes = { path = "crates/strokes" }
 trimedit = { path = "crates/trimedit" }
 captionedit = { path = "crates/captionedit" }
 subtitleparse = { path = "crates/subtitleparse" }
+gifenc = { path = "crates/gifenc" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 

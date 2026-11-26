@@ -8,6 +8,9 @@
 //! opencut-render --bundle promo.opencut.zip --out shorts.mp4 --preset youtube-shorts
 //! opencut-render --project <dir> --stills every=1 --stills-dir qa/ --contact-sheet qa/sheet.png
 //! opencut-render --project <dir> --frame-at 2.5 --out frame.png
+//! opencut-render --project <dir> --out clip.gif --gif-width 320
+//! opencut-render --project <dir> --out sound.m4a
+//! opencut-render --project <dir> --frames frames/
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -24,7 +27,12 @@ opencut-render: render a ConzaCut project from the command line
 
   --project <dir>          a project directory (holds project.json)
   --bundle <file>          an .opencut.zip bundle (imported to a temporary store)
-  --out <file>             the video (.mp4 or .webm) or, with --frame-at, a .png
+  --out <file>             the video (.mp4 or .webm), an animated .gif, the sound
+                           alone (.wav, .m4a for AAC, .opus) or, with --frame-at, a .png
+  --gif-width <px>         GIF width (default 480; the height keeps the canvas shape)
+  --gif-fps <n>            GIF frame rate (default 15, at most 50)
+  --no-dither              GIF without ordered dithering
+  --frames <dir>           every frame as frame_000001.png, ... in this folder
   --format mp4|webm        container when --out has no telling extension
   --quality low|medium|high|very_high   encoder quality (default high)
   --codec h264|hevc|av1|vp9  video codec: mp4 takes h264 (default), hevc, av1;
@@ -81,6 +89,10 @@ struct Args {
     use_proxies: bool,
     make_proxies: bool,
     quiet: bool,
+    gif_width: u32,
+    gif_fps: f64,
+    gif_dither: bool,
+    frames: Option<PathBuf>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -107,6 +119,10 @@ fn parse_args() -> Result<Args, String> {
         use_proxies: false,
         make_proxies: false,
         quiet: false,
+        gif_width: 480,
+        gif_fps: 15.0,
+        gif_dither: true,
+        frames: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -187,6 +203,10 @@ fn parse_args() -> Result<Args, String> {
             "--use-proxies" => args.use_proxies = true,
             "--make-proxies" => args.make_proxies = true,
             "--quiet" => args.quiet = true,
+            "--gif-width" => args.gif_width = value()?.parse().map_err(|_| "--gif-width needs pixels".to_owned())?,
+            "--gif-fps" => args.gif_fps = value()?.parse().map_err(|_| "--gif-fps needs a number".to_owned())?,
+            "--no-dither" => args.gif_dither = false,
+            "--frames" => args.frames = Some(PathBuf::from(value()?)),
             "--help" | "-h" => {
                 print!("{USAGE}");
                 std::process::exit(0);
@@ -202,8 +222,9 @@ fn parse_args() -> Result<Args, String> {
         && args.stills_at.is_empty()
         && args.frame_at.is_none()
         && args.captions.is_none()
+        && args.frames.is_none()
     {
-        return Err("nothing to do: give --out, --frame-at, --stills or --captions".to_owned());
+        return Err("nothing to do: give --out, --frame-at, --stills, --frames or --captions".to_owned());
     }
     Ok(args)
 }
@@ -422,6 +443,46 @@ fn run() -> Result<(), String> {
         }
     } else if args.contact_sheet.is_some() {
         return Err("--contact-sheet needs --stills".to_owned());
+    }
+
+    // An image sequence.
+    if let Some(folder) = &args.frames {
+        let quiet = args.quiet;
+        let (folder, count) = render::export_png_sequence(&mut renderer, &project, folder, &|| false, &mut |done, total| {
+            if !quiet && (done % 30 == 0 || done == total) {
+                eprint!("\ropencut-render: frame {done}/{total}");
+            }
+        })?;
+        if !quiet {
+            eprintln!("\ropencut-render: wrote {count} frames to {}", folder.display());
+        }
+    }
+
+    // A GIF or the sound alone, by the extension of --out.
+    let extension = args.out.as_ref().and_then(|out| out.extension()).map(|ext| ext.to_string_lossy().to_ascii_lowercase());
+    if let (Some(out), Some("gif")) = (&args.out, extension.as_deref()) {
+        let job = render::GifJob { output: out.clone(), width: args.gif_width, fps: args.gif_fps, colours: 255, dither: args.gif_dither };
+        let quiet = args.quiet;
+        let written = render::export_gif(&mut renderer, &project, &job, &|| false, &mut |done, total| {
+            if !quiet && (done % 30 == 0 || done == total) {
+                eprint!("\ropencut-render: step {done}/{total}");
+            }
+        })?;
+        if !quiet {
+            eprintln!("\ropencut-render: wrote {}", written.display());
+        }
+        return Ok(());
+    }
+    if let Some((out, format)) = args.out.as_ref().and_then(|out| media::AudioFileFormat::from_path(out).map(|format| (out, format))) {
+        let ffmpeg = ffmpeg.ok_or_else(|| media::MediaError::FfmpegNotFound.to_string())?;
+        let (written, mastered) = render::export_audio(&ffmpeg, &project, out, format, args.loudness, None)?;
+        if let (Some(report), false) = (mastered, args.quiet) {
+            eprintln!("opencut-render: mix {:.1} LUFS -> {:.1} LUFS ({:+.1} dB)", report.input_lufs, report.output_lufs, report.gain_db);
+        }
+        if !args.quiet {
+            eprintln!("opencut-render: wrote {}", written.display());
+        }
+        return Ok(());
     }
 
     // The video.

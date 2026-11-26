@@ -909,6 +909,30 @@ needs no libass pass; the bundled FFmpeg does include libass if you want to
 burn an exported `.ass` onto a finished video yourself
 (`ffmpeg -i out.mp4 -vf ass=captions.ass burned.mp4`).
 
+## GIF, audio only, stills and image sequences
+
+The export dialog's **Kind** row picks what to write:
+
+- **Video** — MP4 or WebM with the settings above.
+- **GIF** — an animated GIF that loops forever, 320, 480 or 640 px wide
+  (the height keeps the canvas shape) at 10, 15 or 25 fps, with optional
+  ordered dithering. The encoder is our own shared `gifenc` crate: one
+  palette of up to 255 colours for the whole GIF, by median cut over
+  frames sampled across the timeline (at most 40); after the first frame
+  only the rectangle that changed is stored, with unchanged pixels
+  transparent, and a frame that does not change adds its time to the one
+  before. The web editor uses the same crate through WASM and writes the
+  same bytes for the same frames. GIFs have no sound.
+- **Audio only** — the export mix (with whole-mix loudness if chosen) as
+  16-bit WAV, AAC in an `.m4a` or Opus in an `.opus` file. MP3 is left
+  out (its encoder licence has not been checked).
+- **Still (PNG)** — the frame at the playhead at the canvas size.
+- **Image sequence** — every frame at the project's frame rate as
+  `frame_000001.png`, `frame_000002.png`, … in a new folder.
+
+Choosing a file name with `.gif`, `.wav`, `.m4a`, `.opus` or `.png` picks
+the kind too.
+
 ## Rendering from the command line
 
 `apps/render-cli` builds `opencut-render`, the same renderer without the

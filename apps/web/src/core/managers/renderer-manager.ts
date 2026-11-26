@@ -6,6 +6,19 @@ import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { createTimelineAudioBuffer } from "@/media/audio";
+import {
+	AUDIO_EXPORT_FORMATS,
+	DEFAULT_GIF_OPTIONS,
+	FRAMES_MIME_TYPE,
+	GIF_MIME_TYPE,
+	encodeAudioFile,
+	encodeGif,
+	gifFrameCount,
+	gifFrameSize,
+	zipFrames,
+} from "@/export/kinds";
+import { TICKS_PER_SECOND } from "@/wasm";
+import { frameRateToFloat } from "@/fps/utils";
 import { formatTimecode } from "opencut-wasm";
 import { downloadBlob } from "@/utils/browser";
 
@@ -93,6 +106,11 @@ export class RendererManager {
 		}
 	}
 
+	/** The frame at the playhead as a PNG at the canvas size. */
+	async renderStillPng(): Promise<SnapshotResult> {
+		return this.createSnapshot();
+	}
+
 	private async createSnapshot(): Promise<SnapshotResult> {
 		try {
 			const renderTree = this.getRenderTree();
@@ -164,6 +182,14 @@ export class RendererManager {
 	}): Promise<ExportResult> {
 		const { format, quality, fps, includeAudio, platform, videoCodec, videoBitrate, hardware, loudness } = options;
 		let mastered: ExportResult["mastered"];
+		if (options.kind && options.kind !== "video") {
+			try {
+				return await this.exportOtherKind({ options, onProgress, onCancel });
+			} catch (error) {
+				console.error("Export failed:", error);
+				return { success: false, error: error instanceof Error ? error.message : "Unknown export error" };
+			}
+		}
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -288,6 +314,99 @@ export class RendererManager {
 		}
 	}
 
+	/** GIF, audio only or an image sequence (row 96). */
+	private async exportOtherKind({
+		options,
+		onProgress,
+		onCancel,
+	}: {
+		options: ExportOptions;
+		onProgress?: ({ progress }: { progress: number }) => void;
+		onCancel?: () => boolean;
+	}): Promise<ExportResult> {
+		const tracks = this.editor.scenes.getActiveScene().tracks;
+		const mediaAssets = this.editor.media.getAssets();
+		const activeProject = this.editor.project.getActive();
+		if (!activeProject) return { success: false, error: "No active project" };
+		const duration = this.editor.timeline.getTotalDuration();
+		if (duration === 0) return { success: false, error: "Project is empty" };
+		const seconds = duration / TICKS_PER_SECOND;
+		const cancelled = () => onCancel?.() === true;
+
+		if (options.kind === "audio") {
+			const format = options.audioFormat ?? "aac";
+			let mastered: ExportResult["mastered"];
+			onProgress?.({ progress: 0.1 });
+			const buffer = await createTimelineAudioBuffer({
+				tracks,
+				mediaAssets,
+				duration,
+				loudness: options.loudness,
+				onMastered: (report) => {
+					mastered = report;
+				},
+			});
+			if (!buffer) return { success: false, error: "The timeline has no sound" };
+			if (cancelled()) return { success: false, cancelled: true };
+			onProgress?.({ progress: 0.6 });
+			const bytes = await encodeAudioFile({ buffer, format });
+			onProgress?.({ progress: 1 });
+			const { extension, mimeType } = AUDIO_EXPORT_FORMATS[format];
+			return { success: true, buffer: bytes, mastered, extension, mimeType };
+		}
+
+		const { canvasSize } = activeProject.settings;
+		const scene = buildScene({ tracks, mediaAssets, duration, canvasSize, background: activeProject.settings.background });
+		const renderer = new CanvasRenderer({ width: canvasSize.width, height: canvasSize.height, fps: options.fps ?? activeProject.settings.fps });
+		const output = renderer.getOutputCanvas();
+
+		if (options.kind === "gif") {
+			const gif = { ...DEFAULT_GIF_OPTIONS, ...options.gif };
+			const fps = Math.min(50, Math.max(1, gif.fps));
+			const [width, height] = gifFrameSize({ canvasWidth: canvasSize.width, canvasHeight: canvasSize.height, width: gif.width });
+			const small = document.createElement("canvas");
+			small.width = width;
+			small.height = height;
+			const context = small.getContext("2d", { willReadFrequently: true });
+			if (!context) return { success: false, error: "No 2D canvas for the GIF frames" };
+			context.imageSmoothingEnabled = true;
+			context.imageSmoothingQuality = "high";
+			const bytes = await encodeGif({
+				frameCount: gifFrameCount({ seconds, fps }),
+				fps,
+				width,
+				height,
+				dither: gif.dither,
+				frameAt: async (index) => {
+					await renderer.render({ node: scene, time: Math.round((index * TICKS_PER_SECOND) / fps) });
+					context.clearRect(0, 0, width, height);
+					context.drawImage(output, 0, 0, width, height);
+					return context.getImageData(0, 0, width, height).data;
+				},
+				onProgress: (progress) => onProgress?.({ progress }),
+				isCancelled: cancelled,
+			});
+			if (!bytes) return { success: false, cancelled: true };
+			return { success: true, buffer: copyToArrayBuffer(bytes), extension: ".gif", mimeType: GIF_MIME_TYPE };
+		}
+
+		// Every frame at the project's rate, as numbered PNGs in a zip.
+		const fps = frameRateToFloat(options.fps ?? activeProject.settings.fps);
+		const count = Math.max(1, Math.ceil(seconds * fps - 1e-9));
+		const frames: Uint8Array[] = [];
+		for (let index = 0; index < count; index++) {
+			if (cancelled()) return { success: false, cancelled: true };
+			await renderer.render({ node: scene, time: Math.round((index * TICKS_PER_SECOND) / fps) });
+			const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, "image/png"));
+			if (!blob) return { success: false, error: "A frame could not be saved as PNG" };
+			frames.push(new Uint8Array(await blob.arrayBuffer()));
+			onProgress?.({ progress: ((index + 1) / count) * 0.95 });
+		}
+		const zip = zipFrames(frames);
+		onProgress?.({ progress: 1 });
+		return { success: true, buffer: copyToArrayBuffer(zip), extension: " frames.zip", mimeType: FRAMES_MIME_TYPE };
+	}
+
 	subscribe(listener: () => void): () => void {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
@@ -298,4 +417,11 @@ export class RendererManager {
 			fn();
 		});
 	}
+}
+
+/** A standalone ArrayBuffer holding `bytes`. */
+function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+	const copy = new Uint8Array(bytes.byteLength);
+	copy.set(bytes);
+	return copy.buffer;
 }

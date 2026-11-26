@@ -9,7 +9,7 @@ use gpui::{Context, Entity, FontWeight, Window, div, prelude::*, px};
 use media::{EncodeFormat, EncodeQuality, PlatformEncode, VideoCodec, codecs_for, parse_bitrate_mbps, resolve_codec};
 
 use crate::components::{Button, ButtonSize, ButtonVariant, TextInput, eid};
-use crate::render_thread::ExportSettings;
+use crate::render_thread::{ExportKind, ExportSettings};
 use crate::state::EditorState;
 use crate::theme::ActiveTheme;
 use crate::i18n::{t, tf};
@@ -20,8 +20,23 @@ pub(crate) enum ExportEvent {
 
 impl gpui::EventEmitter<ExportEvent> for ExportDialog {}
 
+/// The kind of file the dialog writes (row 96).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Kind {
+    Video,
+    Gif,
+    Audio,
+    Still,
+    Sequence,
+}
+
 pub(crate) struct ExportDialog {
     state: Entity<EditorState>,
+    kind: Kind,
+    gif_width: u32,
+    gif_fps: u32,
+    gif_dither: bool,
+    audio_format: media::AudioFileFormat,
     output: Option<PathBuf>,
     format: EncodeFormat,
     quality: EncodeQuality,
@@ -64,6 +79,11 @@ impl ExportDialog {
         }
         Self {
             state,
+            kind: Kind::Video,
+            gif_width: 480,
+            gif_fps: 15,
+            gif_dither: true,
+            audio_format: media::AudioFileFormat::Aac,
             output,
             format: EncodeFormat::Mp4,
             quality: EncodeQuality::High,
@@ -92,6 +112,39 @@ impl ExportDialog {
             && self.available.as_ref().is_some_and(|codecs| !codecs.contains(&self.chosen_codec()))
     }
 
+    /// The output's extension for the chosen kind (none for a sequence folder).
+    fn extension(&self) -> Option<&'static str> {
+        match self.kind {
+            Kind::Video => Some(self.format.extension()),
+            Kind::Gif => Some("gif"),
+            Kind::Audio => Some(self.audio_format.extension()),
+            Kind::Still => Some("png"),
+            Kind::Sequence => None,
+        }
+    }
+
+    fn choose_kind(&mut self, kind: Kind, cx: &mut Context<Self>) {
+        self.kind = kind;
+        let extension = self.extension();
+        if let Some(output) = &mut self.output {
+            match extension {
+                Some(extension) => {
+                    if output.extension().is_none() {
+                        // A sequence folder becomes a file again.
+                        let name = output.file_name().map(|name| name.to_string_lossy().trim_end_matches(" frames").to_owned()).unwrap_or_default();
+                        output.set_file_name(name);
+                    }
+                    output.set_extension(extension);
+                }
+                None => {
+                    let stem = output.file_stem().map(|stem| stem.to_string_lossy().into_owned()).unwrap_or_else(|| "export".to_owned());
+                    output.set_file_name(format!("{stem} frames"));
+                }
+            }
+        }
+        cx.notify();
+    }
+
     fn choose_platform(&mut self, id: Option<&str>, cx: &mut Context<Self>) {
         self.platform = id.and_then(platform_preset);
         if self.platform.is_some() && self.format != EncodeFormat::Mp4 {
@@ -105,7 +158,10 @@ impl ExportDialog {
 
     fn choose_path(&mut self, cx: &mut Context<Self>) {
         let name = self.state.read(cx).project().name.clone();
-        let suggested = format!("{}.{}", safe_file_name(&name), self.format.extension());
+        let suggested = match self.extension() {
+            Some(extension) => format!("{}.{extension}", safe_file_name(&name)),
+            None => format!("{} frames", safe_file_name(&name)),
+        };
         let directory = self
             .output
             .as_ref()
@@ -115,7 +171,22 @@ impl ExportDialog {
         cx.spawn(async move |this, cx| {
             if let Ok(Ok(Some(path))) = receiver.await {
                 this.update(cx, |dialog, cx| {
-                    dialog.format = EncodeFormat::from_path(&path);
+                    let extension = path.extension().map(|ext| ext.to_string_lossy().to_ascii_lowercase());
+                    match extension.as_deref() {
+                        Some("gif") => dialog.kind = Kind::Gif,
+                        Some("png") => dialog.kind = Kind::Still,
+                        Some("mp4" | "webm" | "mov" | "mkv") => {
+                            dialog.kind = Kind::Video;
+                            dialog.format = EncodeFormat::from_path(&path);
+                        }
+                        Some(_) => {
+                            if let Some(format) = media::AudioFileFormat::from_path(&path) {
+                                dialog.kind = Kind::Audio;
+                                dialog.audio_format = format;
+                            }
+                        }
+                        None => {}
+                    }
                     dialog.output = Some(path);
                     cx.notify();
                 })
@@ -129,8 +200,33 @@ impl ExportDialog {
         let Some(mut output) = self.output.clone() else {
             return;
         };
-        if output.extension().is_none() {
-            output.set_extension(self.format.extension());
+        if let Some(extension) = self.extension()
+            && output.extension().is_none()
+        {
+            output.set_extension(extension);
+        }
+        let kind = match self.kind {
+            Kind::Video => ExportKind::Video,
+            Kind::Gif => ExportKind::Gif { width: self.gif_width, fps: f64::from(self.gif_fps), dither: self.gif_dither },
+            Kind::Audio => ExportKind::Audio(self.audio_format),
+            Kind::Still => ExportKind::Still(self.state.read(cx).playhead()),
+            Kind::Sequence => ExportKind::Sequence,
+        };
+        if self.kind != Kind::Video {
+            let settings = ExportSettings {
+                kind,
+                output,
+                format: self.format,
+                quality: self.quality,
+                include_audio: self.kind == Kind::Audio,
+                platform: None,
+                codec: None,
+                video_bitrate: None,
+                hardware: false,
+                loudness: if self.kind == Kind::Audio { self.loudness.and_then(render::MixLoudness::target) } else { None },
+            };
+            self.state.update(cx, |state, cx| state.start_export(settings, cx));
+            return;
         }
         let platform = self.platform.filter(|_| self.format == EncodeFormat::Mp4).map(|_| {
             let project = self.state.read(cx).project();
@@ -146,6 +242,7 @@ impl ExportDialog {
             return;
         }
         let settings = ExportSettings {
+            kind,
             output,
             format: self.format,
             quality: self.quality,
@@ -270,7 +367,11 @@ impl Render for ExportDialog {
                 .child(
                     div()
                         .text_sm()
-                        .child(tf("Rendering frame {done} of {total}…", &[("done", &frames.0), ("total", &frames.1)])),
+                        .child(if frames.1 == 0 {
+                            t("Working…").to_owned()
+                        } else {
+                            tf("Rendering frame {done} of {total}…", &[("done", &frames.0), ("total", &frames.1)])
+                        }),
                 )
                 .child(
                     div()
@@ -296,6 +397,94 @@ impl Render for ExportDialog {
                     ),
                 );
         } else {
+            let kind = self.kind;
+            let mut kind_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
+                div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Kind")),
+            );
+            for (label, choice) in [
+                ("Video", Kind::Video),
+                ("GIF", Kind::Gif),
+                ("Audio only", Kind::Audio),
+                ("Still (PNG)", Kind::Still),
+                ("Image sequence", Kind::Sequence),
+            ] {
+                kind_row = kind_row.child(
+                    Button::new(eid("kind", label), t(label))
+                        .variant(if kind == choice { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| this.choose_kind(choice, cx))),
+                );
+            }
+            let row = |label: &'static str| {
+                div().flex().flex_wrap().items_center().gap(px(6.)).child(div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t(label)))
+            };
+            let mut gif_size_row = row("Size");
+            for width in [320u32, 480, 640] {
+                let (w, h) = render::gif_size(canvas.width, canvas.height, width);
+                gif_size_row = gif_size_row.child(
+                    Button::new(eid("gif-width", &width.to_string()), format!("{w}×{h}"))
+                        .variant(if self.gif_width == width { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.gif_width = width;
+                            cx.notify();
+                        })),
+                );
+            }
+            let mut gif_fps_row = row("Frame rate");
+            for rate in [10u32, 15, 25] {
+                gif_fps_row = gif_fps_row.child(
+                    Button::new(eid("gif-fps", &rate.to_string()), format!("{rate} fps"))
+                        .variant(if self.gif_fps == rate { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.gif_fps = rate;
+                            cx.notify();
+                        })),
+                );
+            }
+            let gif_dither = self.gif_dither;
+            let gif_dither_row = row("Dither").child(
+                Button::new("gif-dither", if gif_dither { t("On") } else { t("Off") })
+                    .variant(if gif_dither { ButtonVariant::Default } else { ButtonVariant::Outline })
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.gif_dither = !this.gif_dither;
+                        cx.notify();
+                    })),
+            );
+            let mut audio_format_row = row("Format");
+            for (label, format) in [
+                ("WAV", media::AudioFileFormat::Wav),
+                ("AAC (.m4a)", media::AudioFileFormat::Aac),
+                ("Opus", media::AudioFileFormat::Opus),
+            ] {
+                audio_format_row = audio_format_row.child(
+                    Button::new(eid("audio-format", label), label)
+                        .variant(if self.audio_format == format { ButtonVariant::Default } else { ButtonVariant::Outline })
+                        .size(ButtonSize::Small)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.audio_format = format;
+                            if let Some(output) = &mut this.output {
+                                output.set_extension(format.extension());
+                            }
+                            cx.notify();
+                        })),
+                );
+            }
+            let kind_note = match kind {
+                Kind::Video => None,
+                Kind::Gif => Some(t("Loops forever, up to 255 colours; only what changes is stored for each frame. No sound.").to_owned()),
+                Kind::Audio => Some(t("The sound alone, mixed as in a video export.").to_owned()),
+                Kind::Still => Some(tf(
+                    "The frame at the playhead ({time} s) at {width}×{height}.",
+                    &[("time", &format!("{:.2}", state.playhead().to_seconds_f64())), ("width", &canvas.width), ("height", &canvas.height)],
+                )),
+                Kind::Sequence => Some(tf(
+                    "Every frame at {fps} fps as numbered PNGs (frame_000001.png, …) in a new folder.",
+                    &[("fps", &format!("{fps:.2}"))],
+                )),
+            };
             let platform = self.platform;
             let mut platform_row = div().flex().flex_wrap().items_center().gap(px(6.)).child(
                 div().w(px(80.)).text_xs().text_color(colors.muted_foreground).child(t("Platform")),
@@ -625,9 +814,12 @@ impl Render for ExportDialog {
                                 .on_click(cx.listener(|this, _, _, cx| this.choose_path(cx))),
                         ),
                 )
-                .child(platform_row)
-                .child(platform_notes)
-                .when(platform.is_none(), |this| {
+                .child(kind_row)
+                .children(kind_note.map(|note| div().text_xs().text_color(colors.muted_foreground).child(note)))
+                .when(kind == Kind::Gif, |this| this.child(gif_size_row).child(gif_fps_row).child(gif_dither_row))
+                .when(kind == Kind::Audio, |this| this.child(audio_format_row))
+                .when(kind == Kind::Video, |this| this.child(platform_row).child(platform_notes))
+                .when(kind == Kind::Video && platform.is_none(), |this| {
                     this.child(format_row)
                         .child(codec_row)
                         .child(div().text_xs().text_color(colors.muted_foreground).child(codec_note))
@@ -635,14 +827,14 @@ impl Render for ExportDialog {
                         .child(quality_row)
                         .children(bitrate_row)
                 })
-                .when(codec_missing, |this| {
+                .when(kind == Kind::Video && codec_missing, |this| {
                     this.child(div().text_xs().text_color(colors.destructive).child(tf(
                         "This FFmpeg cannot encode {codec}.",
                         &[("codec", &chosen.label())],
                     )))
                 })
-                .child(audio_row)
-                .child(loudness_row)
+                .when(kind == Kind::Video, |this| this.child(audio_row))
+                .when(matches!(kind, Kind::Video | Kind::Audio), |this| this.child(loudness_row))
                 .when(!has_ffmpeg, |this| {
                     this.child(
                         div()
@@ -675,8 +867,7 @@ impl Render for ExportDialog {
                                     self.output.is_none()
                                         || !has_ffmpeg
                                         || duration <= 0.0
-                                        || codec_missing
-                                        || bitrate_invalid,
+                                        || (kind == Kind::Video && (codec_missing || bitrate_invalid)),
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| this.start(cx))),
                         ),

@@ -325,6 +325,18 @@ export interface ApiExportCodecs {
 }
 
 export interface ApiExportOptions {
+	/**
+	 * What to write (row 96): `video` (default), `gif` (an animated GIF
+	 * through the shared `gifenc` crate, the same bytes as the desktop;
+	 * see `gif`), `audio` (the sound alone as `audioFormat`, with
+	 * `loudness`), `still` (the frame at the playhead as a PNG) or `frames`
+	 * (every frame at the project's rate as numbered PNGs in a zip).
+	 */
+	kind?: "video" | "gif" | "audio" | "still" | "frames";
+	/** GIF width in pixels (default 480; the height keeps the canvas shape), frame rate (default 15, at most 50) and dithering (default on). */
+	gif?: { width?: number; fps?: number; dither?: boolean };
+	/** Audio-only format: `wav` (16-bit), `aac` (.m4a, default) or `opus` (.opus in Ogg). */
+	audioFormat?: "wav" | "aac" | "opus";
 	format?: ApiExportFormat;
 	quality?: ApiExportQuality;
 	includeAudio?: boolean;

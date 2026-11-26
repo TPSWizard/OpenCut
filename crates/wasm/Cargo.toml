@@ -38,6 +38,7 @@ strokes = { workspace = true }
 trimedit = { workspace = true }
 captionedit = { workspace = true }
 subtitleparse = { workspace = true }
+gifenc = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }
