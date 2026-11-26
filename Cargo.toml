@@ -26,6 +26,7 @@ members = [
   'crates/trackmix',
   'crates/scopes',
   'crates/strokes',
+  'crates/trimedit',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -59,6 +60,7 @@ loudness = { path = "crates/loudness" }
 trackmix = { path = "crates/trackmix" }
 scopes = { path = "crates/scopes" }
 strokes = { path = "crates/strokes" }
+trimedit = { path = "crates/trimedit" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 
@@ -95,3 +97,14 @@ tsify-next = "0.5"
 wasm-bindgen = "0.2.116"
 wasm-bindgen-futures = "0.4.66"
 web-sys = "0.3.93"
+
+# Debug builds keep line numbers (backtraces still name file and line) but
+# not full debugger symbols, third-party crates none, and no incremental
+# cache: with full symbols target/debug grew to 197 GB and filled the disk.
+# Set `debug = true` locally when stepping through code in a debugger.
+[profile.dev]
+debug = "line-tables-only"
+incremental = false
+
+[profile.dev.package."*"]
+debug = false

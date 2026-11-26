@@ -131,6 +131,8 @@ pub(crate) struct EditorState {
     /// Freehand drawing on the preview (row 90): the brush when drawing is
     /// on, and the stroke being drawn (when it began, its points).
     pub draw: Option<DrawBrush>,
+    /// Slip, slide or roll (row 93) when picked: what dragging a clip does.
+    pub trim_tool: Option<editor::TrimTool>,
     pub draw_stroke: Option<(std::time::Instant, Vec<strokes::Point>)>,
     /// Points of the selected clip's freeform mask that are selected (they
     /// are what `Delete` removes), as in the web app.
@@ -235,6 +237,7 @@ impl EditorState {
             thumbnails: HashMap::new(),
             pen: None,
             draw: None,
+            trim_tool: None,
             draw_stroke: None,
             selected_mask_points: Vec::new(),
             corner_pin_editing: false,
@@ -736,6 +739,31 @@ impl EditorState {
         let text = editor::chapters_text(&self.project().markers);
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
         self.set_status(t("Chapters copied"), cx);
+    }
+
+    /// Picks slip, slide or roll for clip drags, or moving again (`None`).
+    pub(crate) fn set_trim_tool(&mut self, tool: Option<editor::TrimTool>, cx: &mut Context<Self>) {
+        self.trim_tool = tool;
+        cx.notify();
+    }
+
+    /// Slips, slides or rolls (`editor::trim_tool_command`) in one undo
+    /// step, saying how far it went when the clips allowed less.
+    pub(crate) fn trim_edit(&mut self, tool: editor::TrimTool, element_id: &str, delta: MediaTime, cx: &mut Context<Self>) {
+        match editor::trim_tool_command(self.project(), tool, element_id, delta) {
+            Ok((command, moved)) => {
+                if moved == MediaTime::ZERO {
+                    self.set_status(t("Nothing to move: the clips have no more media or room that way."), cx);
+                    return;
+                }
+                self.execute(command, cx);
+                if moved != delta {
+                    let seconds = format!("{:.2}", moved.to_seconds_f64());
+                    self.set_status(tf("Moved {seconds} s, as far as the clips allow.", &[("seconds", &seconds)]), cx);
+                }
+            }
+            Err(message) => self.set_status(message, cx),
+        }
     }
 
     /// Turns freehand drawing on the preview on (with a brush) or off.

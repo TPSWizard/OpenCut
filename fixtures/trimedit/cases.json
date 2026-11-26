@@ -1,0 +1,1110 @@
+{
+ "cases": [
+  {
+   "name": "slip within",
+   "tool": "slip",
+   "target": "b",
+   "delta": 30000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 30000,
+    "changes": [
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 360000,
+      "trimStart": 90000,
+      "trimEnd": 90000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slip clamped later",
+   "tool": "slip",
+   "target": "b",
+   "delta": 360000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 120000,
+    "changes": [
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 360000,
+      "trimStart": 180000,
+      "trimEnd": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "slip clamped earlier",
+   "tool": "slip",
+   "target": "b",
+   "delta": -360000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": -60000,
+    "changes": [
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 360000,
+      "trimStart": 0,
+      "trimEnd": 180000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slip a still",
+   "tool": "slip",
+   "target": "s",
+   "delta": 120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "error": true
+  },
+  {
+   "name": "slip retimed",
+   "tool": "slip",
+   "target": "x",
+   "delta": 120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "x",
+     "start": 0,
+     "duration": 120000,
+     "trimStart": 0,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": true
+    }
+   ],
+   "error": true
+  },
+  {
+   "name": "roll a-b later",
+   "tool": "roll",
+   "target": "a",
+   "delta": 120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 120000,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 600000,
+      "trimStart": 120000,
+      "trimEnd": 120000
+     },
+     {
+      "id": "b",
+      "start": 600000,
+      "duration": 240000,
+      "trimStart": 180000,
+      "trimEnd": 120000
+     }
+    ]
+   }
+  },
+  {
+   "name": "roll a-b limited by a",
+   "tool": "roll",
+   "target": "a",
+   "delta": 600000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 240000,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 720000,
+      "trimStart": 120000,
+      "trimEnd": 0
+     },
+     {
+      "id": "b",
+      "start": 720000,
+      "duration": 120000,
+      "trimStart": 300000,
+      "trimEnd": 120000
+     }
+    ]
+   }
+  },
+  {
+   "name": "roll a-b earlier limited by b",
+   "tool": "roll",
+   "target": "a",
+   "delta": -240000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": -60000,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 420000,
+      "trimStart": 120000,
+      "trimEnd": 300000
+     },
+     {
+      "id": "b",
+      "start": 420000,
+      "duration": 420000,
+      "trimStart": 0,
+      "trimEnd": 120000
+     }
+    ]
+   }
+  },
+  {
+   "name": "roll with no clip after",
+   "tool": "roll",
+   "target": "c",
+   "delta": 120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "error": true
+  },
+  {
+   "name": "roll stills",
+   "tool": "roll",
+   "target": "s",
+   "delta": 600000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 236000,
+    "changes": [
+     {
+      "id": "s",
+      "start": 1440000,
+      "duration": 596000,
+      "trimStart": 0,
+      "trimEnd": 0
+     },
+     {
+      "id": "t",
+      "start": 2036000,
+      "duration": 4000,
+      "trimStart": 0,
+      "trimEnd": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide b later",
+   "tool": "slide",
+   "target": "b",
+   "delta": 60000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 60000,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 540000,
+      "trimStart": 120000,
+      "trimEnd": 180000
+     },
+     {
+      "id": "b",
+      "start": 540000,
+      "duration": 360000,
+      "trimStart": 60000,
+      "trimEnd": 120000
+     },
+     {
+      "id": "c",
+      "start": 900000,
+      "duration": 180000,
+      "trimStart": 60000,
+      "trimEnd": 600000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide b later limited by c",
+   "tool": "slide",
+   "target": "b",
+   "delta": 480000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 236000,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 716000,
+      "trimStart": 120000,
+      "trimEnd": 4000
+     },
+     {
+      "id": "b",
+      "start": 716000,
+      "duration": 360000,
+      "trimStart": 60000,
+      "trimEnd": 120000
+     },
+     {
+      "id": "c",
+      "start": 1076000,
+      "duration": 4000,
+      "trimStart": 236000,
+      "trimEnd": 600000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide b earlier limited by min",
+   "tool": "slide",
+   "target": "b",
+   "delta": -600000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 0,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 480000,
+      "trimStart": 120000,
+      "trimEnd": 240000
+     },
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 360000,
+      "trimStart": 60000,
+      "trimEnd": 120000
+     },
+     {
+      "id": "c",
+      "start": 840000,
+      "duration": 240000,
+      "trimStart": 0,
+      "trimEnd": 600000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide c into the gap after",
+   "tool": "slide",
+   "target": "c",
+   "delta": 1080000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 120000,
+    "changes": [
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 480000,
+      "trimStart": 60000,
+      "trimEnd": 0
+     },
+     {
+      "id": "c",
+      "start": 960000,
+      "duration": 240000,
+      "trimStart": 0,
+      "trimEnd": 600000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide a from the track start",
+   "tool": "slide",
+   "target": "a",
+   "delta": -120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": 0,
+    "changes": [
+     {
+      "id": "a",
+      "start": 0,
+      "duration": 480000,
+      "trimStart": 120000,
+      "trimEnd": 240000
+     },
+     {
+      "id": "b",
+      "start": 480000,
+      "duration": 360000,
+      "trimStart": 60000,
+      "trimEnd": 120000
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide the still between gap and title",
+   "tool": "slide",
+   "target": "s",
+   "delta": -240000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 480000,
+     "trimStart": 120000,
+     "trimEnd": 240000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "b",
+     "start": 480000,
+     "duration": 360000,
+     "trimStart": 60000,
+     "trimEnd": 120000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "c",
+     "start": 840000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 600000,
+     "limited": true,
+     "retimed": false
+    },
+    {
+     "id": "s",
+     "start": 1440000,
+     "duration": 360000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    },
+    {
+     "id": "t",
+     "start": 1800000,
+     "duration": 240000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": false,
+     "retimed": false
+    }
+   ],
+   "plan": {
+    "delta": -240000,
+    "changes": [
+     {
+      "id": "s",
+      "start": 1200000,
+      "duration": 360000,
+      "trimStart": 0,
+      "trimEnd": 0
+     },
+     {
+      "id": "t",
+      "start": 1560000,
+      "duration": 480000,
+      "trimStart": 0,
+      "trimEnd": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "slide retimed neighbour",
+   "tool": "slide",
+   "target": "b",
+   "delta": 120000,
+   "minDuration": 4000,
+   "track": [
+    {
+     "id": "a",
+     "start": 0,
+     "duration": 120000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": true,
+     "retimed": true
+    },
+    {
+     "id": "b",
+     "start": 120000,
+     "duration": 120000,
+     "trimStart": 0,
+     "trimEnd": 0,
+     "limited": true,
+     "retimed": false
+    }
+   ],
+   "error": true
+  }
+ ]
+}

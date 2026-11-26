@@ -50,6 +50,7 @@ import { GraphEditorPopover } from "./graph-editor/popover";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { useGraphEditorController } from "./graph-editor/use-controller";
 import { useT } from "@/i18n";
+import { TRIM_TOOLS, useTrimToolStore } from "@/timeline/trim-tools";
 
 export function TimelineToolbar({
 	zoomLevel,
@@ -303,6 +304,9 @@ function ToolbarRightSection({
 			</TooltipProvider>
 
 			<div className="bg-border mx-1 h-6 w-px" />
+			<TrimToolPicker />
+
+			<div className="bg-border mx-1 h-6 w-px" />
 
 			<div className="flex items-center gap-1">
 				<Button
@@ -330,6 +334,40 @@ function ToolbarRightSection({
 					<HugeiconsIcon icon={SearchAddIcon} />
 				</Button>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * Select, slip, slide or roll (row 93): what dragging a clip does. Slip
+ * moves what it shows, slide moves it between its neighbours, roll moves
+ * the cut at the half you grab.
+ */
+function TrimToolPicker() {
+	const t = useT();
+	const tool = useTrimToolStore((state) => state.tool);
+	const setTool = useTrimToolStore((state) => state.setTool);
+	const labels: Record<string, [string, string]> = {
+		select: [t("Move"), t("Drag clips to move them")],
+		slip: [t("Slip"), t("Slip: drag a clip to change what it shows, keeping its place")],
+		slide: [t("Slide"), t("Slide: drag a clip between its neighbours; they shorten and lengthen to fit")],
+		roll: [t("Roll"), t("Roll: drag near a cut to move it; one clip ends later, the next starts later")],
+	};
+	return (
+		<div className="flex items-center gap-0.5" data-testid="trim-tools">
+			{TRIM_TOOLS.map((option) => (
+				<Button
+					key={option}
+					variant={tool === option ? "secondary" : "text"}
+					size="sm"
+					className="h-7 px-2 text-xs"
+					title={labels[option][1]}
+					data-testid={`trim-tool-${option}`}
+					onClick={() => setTool(option)}
+				>
+					{labels[option][0]}
+				</Button>
+			))}
 		</div>
 	);
 }

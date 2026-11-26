@@ -65,6 +65,7 @@ import { usePreviewStore } from "@/preview/preview-store";
 import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
 import { textPathPoints } from "opencut-wasm";
 import { setMaskTrack, trackCornerPin, trackMask } from "@/tracking/tracked";
+import { applyTrimEdit, rollTarget } from "@/timeline/trim-tools";
 import { DRAW_TOOLS, DRAW_TOOL_WIDTHS, addDrawingStroke, isDrawing, removeLastStroke, strokeCount, type DrawTool } from "@/drawing/strokes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
@@ -2360,6 +2361,26 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				}
 				const result = await trackMask({ editor, video: ref });
 				return { frames: result.frames, lost: result.lost };
+			} catch (error) {
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"timeline.trimEdit": ({ elementId, trackId, tool, delta, cut }) => {
+			requireProject();
+			if (tool !== "slip" && tool !== "slide" && tool !== "roll") {
+				throw new EditorApiError({ code: "invalid_params", message: "tool is slip, slide or roll" });
+			}
+			if (typeof delta !== "number" || !Number.isFinite(delta)) {
+				throw new EditorApiError({ code: "invalid_params", message: "delta is seconds" });
+			}
+			const { track, element } = resolveElement({ elementId, trackId });
+			const target = tool === "roll" && cut === "start" ? rollTarget({ track, element, laterHalf: false }) : element.id;
+			if (tool === "roll" && cut === "start" && target === element.id) {
+				throw new EditorApiError({ code: "invalid_params", message: "No clip ends where this one starts" });
+			}
+			try {
+				const plan = applyTrimEdit({ editor, tool, trackId: track.id, elementId: target, deltaTicks: Math.round(delta * TICKS_PER_SECOND) });
+				return { delta: plan.delta / TICKS_PER_SECOND, changed: plan.delta === 0 ? [] : plan.changes.map((change) => change.id) };
 			} catch (error) {
 				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
 			}

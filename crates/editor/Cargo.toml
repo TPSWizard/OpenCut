@@ -18,6 +18,7 @@ deflicker = { workspace = true }
 strokes = { workspace = true }
 textwarp = { workspace = true }
 tracking = { workspace = true }
+trimedit = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 retakes = { workspace = true }

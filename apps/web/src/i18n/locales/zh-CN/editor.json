@@ -237,5 +237,15 @@
   "Only a video's mask can follow motion.": "只有视频的蒙版可以跟随运动。",
   "The mask's centre must sit on the video.": "蒙版中心必须位于视频上。",
   "The video's media file is not available.": "视频的媒体文件不可用。",
-  "Put the playhead on the video clip.": "请将播放头放在视频片段上。"
+  "Put the playhead on the video clip.": "请将播放头放在视频片段上。",
+  "Move": "移动",
+  "Slip": "滑移",
+  "Slide": "滑动",
+  "Roll": "滚动",
+  "Drag clips to move them": "拖动片段来移动它们",
+  "Slip: drag a clip to change what it shows, keeping its place": "滑移：拖动片段改变其显示的内容，位置不变",
+  "Slide: drag a clip between its neighbours; they shorten and lengthen to fit": "滑动：在相邻片段之间拖动片段；相邻片段随之缩短或延长",
+  "Roll: drag near a cut to move it; one clip ends later, the next starts later": "滚动：在剪切点附近拖动以移动它；前一片段结束得更晚，后一片段开始得更晚",
+  "Nothing to move: the clips have no more media or room that way.": "无法移动：这个方向上片段没有更多素材或空间。",
+  "Moved {seconds} s, as far as the clips allow.": "已移动 {seconds} 秒，已达片段允许的最大范围。"
 }

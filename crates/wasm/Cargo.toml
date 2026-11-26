@@ -35,6 +35,7 @@ loudness = { workspace = true }
 trackmix = { workspace = true }
 scopes = { workspace = true }
 strokes = { workspace = true }
+trimedit = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

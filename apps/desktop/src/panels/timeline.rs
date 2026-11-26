@@ -28,6 +28,8 @@ enum DragMode {
     TrimStart,
     TrimEnd,
     Scrub,
+    /// Slip, slide or roll (row 93) on the clip, applied on release.
+    Edit(editor::TrimTool),
 }
 
 /// What is being dragged, created by GPUI's drag system on mouse down.
@@ -143,7 +145,7 @@ impl TimelinePanel {
                 });
                 cx.notify();
             }
-            DragMode::TrimStart | DragMode::TrimEnd => {
+            DragMode::TrimStart | DragMode::TrimEnd | DragMode::Edit(_) => {
                 let time = self.seconds_at(position.x, cx).max(0.0);
                 self.preview = Some(DragPreview {
                     drag,
@@ -186,6 +188,30 @@ impl TimelinePanel {
                 DragMode::TrimStart => state.resize_element(&element_id, Edge::Start, time, cx),
                 DragMode::TrimEnd => state.resize_element(&element_id, Edge::End, time, cx),
                 DragMode::Scrub => {}
+                DragMode::Edit(tool) => {
+                    let Some(element) = state.project().element(&element_id).map(|(_, element)| element.clone()) else { return };
+                    // Where the clip was grabbed, and how far the pointer went.
+                    let grab = preview.drag.grab_offset;
+                    let delta = MediaTime::from_seconds_f64(preview.time - (element.start_time.to_seconds_f64() + grab)).unwrap_or(MediaTime::ZERO);
+                    let delta = delta.round_to_frame(rate).unwrap_or(delta);
+                    let (target, delta) = match tool {
+                        // The picture follows the pointer: dragging right shows earlier media.
+                        editor::TrimTool::Slip => (element_id.clone(), MediaTime::ZERO - delta),
+                        // Roll the cut at the half that was grabbed.
+                        editor::TrimTool::Roll if grab < element.duration.to_seconds_f64() / 2.0 => {
+                            let before = state.project().element(&element_id).and_then(|(track, _)| {
+                                track
+                                    .elements
+                                    .iter()
+                                    .find(|other| other.id != element.id && (other.end_time() - element.start_time).as_ticks().abs() <= trimedit::TOUCH_TICKS)
+                                    .map(|other| other.id.clone())
+                            });
+                            (before.unwrap_or(element_id.clone()), delta)
+                        }
+                        _ => (element_id.clone(), delta),
+                    };
+                    state.trim_edit(tool, &target, delta, cx);
+                }
             }
         });
     }
@@ -265,6 +291,7 @@ impl Render for TimelinePanel {
         let can_undo = state.editor.can_undo();
         let can_redo = state.editor.can_redo();
         let selection = state.selection.clone();
+        let trim_tool = state.trim_tool;
         let peaks_by_media: HashMap<String, Arc<Vec<f32>>> = state.peaks.clone();
         let mut peaks_wanted: Vec<String> = Vec::new();
         let status = state.status.clone();
@@ -448,7 +475,8 @@ impl Render for TimelinePanel {
                             shown.push((ghost, true));
                             continue;
                         }
-                        DragMode::Scrub => {}
+                        // Slip, slide and roll show their result on release.
+                        DragMode::Scrub | DragMode::Edit(_) => {}
                     }
                 }
                 shown.push((element.clone(), false));
@@ -612,7 +640,7 @@ impl Render for TimelinePanel {
                     )
                     .when(!locked, |this| this.on_drag(
                         TimelineDrag {
-                            mode: DragMode::Move,
+                            mode: trim_tool.map_or(DragMode::Move, DragMode::Edit),
                             element_id: id.clone(),
                             grab_offset: 0.0,
                         },
@@ -981,6 +1009,18 @@ impl Render for TimelinePanel {
             .child(tool("ungroup", t("Ungroup"), !selection.is_empty(), |s, cx| s.ungroup_selection(cx)))
             .child(tool("compound", t("Compound"), !selection.is_empty(), |s, cx| s.create_compound(cx)))
             .child(tool("break-apart", t("Break apart"), selection.len() == 1, |s, cx| s.break_apart_selected(cx)))
+            .child(div().w(px(8.)))
+            .children(
+                [(None, "Move"), (Some(editor::TrimTool::Slip), "Slip"), (Some(editor::TrimTool::Slide), "Slide"), (Some(editor::TrimTool::Roll), "Roll")]
+                    .into_iter()
+                    .map(|(choice, label)| {
+                        let state = state_entity.clone();
+                        Button::new(eid("trim-tool", label), t(label))
+                            .variant(if trim_tool == choice { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::Small)
+                            .on_click(move |_, _, cx| state.update(cx, |state, cx| state.set_trim_tool(choice, cx)))
+                    }),
+            )
             .child(div().flex_1())
             .child(
                 div()

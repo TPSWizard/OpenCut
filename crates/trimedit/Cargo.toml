@@ -1,0 +1,16 @@
+[package]
+name = "trimedit"
+description = "Slip, slide and roll edits: how a clip's place and trims change, with the limits of its media and its neighbours, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

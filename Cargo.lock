@@ -1632,6 +1632,7 @@ dependencies = [
  "time",
  "tracking",
  "trackmix",
+ "trimedit",
  "uuid",
  "voice",
  "zip",
@@ -4272,6 +4273,7 @@ dependencies = [
  "tempfile",
  "time",
  "tracking",
+ "trimedit",
  "unicode-segmentation",
  "ureq",
  "voice",
@@ -4318,6 +4320,7 @@ dependencies = [
  "time",
  "tracking",
  "trackmix",
+ "trimedit",
  "voice",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6645,6 +6648,14 @@ version = "0.1.0"
 
 [[package]]
 name = "trackmix"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "trimedit"
 version = "0.1.0"
 dependencies = [
  "serde",

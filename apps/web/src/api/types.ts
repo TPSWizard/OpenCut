@@ -1259,6 +1259,18 @@ export interface EditorApiMethods {
 	 * (`track`) and played back by both editors.
 	 */
 	"tracking.mask": { params: ApiElementLocator & { clear?: boolean }; result: { frames: number; lost: number } };
+	/**
+	 * Slip, slide or roll (row 93): `slip` moves what the clip shows by
+	 * `delta` seconds (positive: later media), `slide` moves it between its
+	 * neighbours (they give and take), `roll` moves the cut at its end (or
+	 * at its start with `cut: "start"`). Clamped to what the media and
+	 * neighbours allow; one undo step. The same edit as the desktop
+	 * (`trimedit`).
+	 */
+	"timeline.trimEdit": {
+		params: ApiElementLocator & { tool: "slip" | "slide" | "roll"; delta: number; cut?: "start" | "end" };
+		result: { delta: number; changed: string[] };
+	};
 	"text.setPath": {
 		params: ApiElementLocator & { path: string; amount?: number; points?: [number, number][] };
 		result: { trackId: string; elementId: string; path: string; amount: number };

@@ -90,6 +90,8 @@ import { DragLine } from "./drag-line";
 import { invokeAction } from "@/actions";
 import { resolveTimelineElementIntersections } from "./selection-hit-testing";
 import { cn } from "@/utils/ui";
+import { startTrimDrag, useTrimToolStore } from "@/timeline/trim-tools";
+import { getTimelinePixelsPerSecond } from "@/timeline/pixel-utils";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
@@ -313,6 +315,27 @@ export function Timeline() {
 		onSnapPointChange: handleSnapPointChange,
 	});
 	const isElementDragging = dragView.kind === "dragging";
+	// Slip, slide and roll (row 93): with one of them picked, a clip press
+	// starts that edit instead of a move.
+	const trimTool = useTrimToolStore((state) => state.tool);
+	const handleElementMouseDownWithTools: typeof handleElementMouseDown = (args) => {
+		if (trimTool === "select" || args.event.button !== 0 || args.track.locked) {
+			handleElementMouseDown(args);
+			return;
+		}
+		args.event.stopPropagation();
+		args.event.preventDefault();
+		const rect = args.event.currentTarget.getBoundingClientRect();
+		startTrimDrag({
+			editor,
+			tool: trimTool,
+			track: args.track,
+			element: args.element,
+			startX: args.event.clientX,
+			laterHalf: args.event.clientX > rect.left + rect.width / 2,
+			pixelsPerSecond: getTimelinePixelsPerSecond({ zoomLevel }),
+		});
+	};
 
 	const {
 		dragState: bookmarkDragState,
@@ -553,7 +576,7 @@ export function Timeline() {
 										zoomLevel={zoomLevel}
 										dragView={dragView}
 										onResizeStart={handleResizeStart}
-										onElementMouseDown={handleElementMouseDown}
+										onElementMouseDown={handleElementMouseDownWithTools}
 										onElementClick={handleElementClick}
 										onTrackMouseDown={(event) => {
 											handleSelectionMouseDown(event);
