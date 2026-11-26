@@ -977,6 +977,29 @@ sheet (`--contact-sheet qa/sheet.png`). The export loop lives in
 `crates/render/src/export.rs` and is shared with the desktop's export
 dialog. Fonts and stickers the desktop fetched under `~/.opencut` are used.
 
+## Titles, lower thirds and credit rolls
+
+The media browser's **Titles** tab lists the text template library: titles
+(Bold title, Title and subtitle, Chapter card), lower thirds (Name and
+role, Topic bar), subscribe cards (Subscribe button, Follow card) and
+credits (End credits, News crawl). **Add** puts one at the playhead as
+grouped text clips with their look (boxes, shadows) and animation presets,
+in one undo step; edit the words like any text. Templates are placed for
+the canvas: positions are shares of the frame, and on canvases narrower
+than 16:9 the text gets smaller (by the square root of the width ratio) so
+lines still fit. The designs are our own, in
+`crates/titles/text-templates.json`, and use the default font.
+
+Any text clip can **Roll** (in the inspector): **Up** scrolls it through
+the frame from just below to just above, as end credits do; **Left**
+crawls it from the right edge to past the left. **Fit clip** spreads the
+scroll over the clip (lengthen the clip to slow it down); 60, 120 or 240
+px/s move it at that speed. While it rolls, the clip's position along the
+roll comes from the roll; the other axis, scale and animations stay its
+own. The maths is the shared `titles` crate (checked against
+`fixtures/text-templates/cases.json`, from an independent Python version),
+used by the web editor through WASM.
+
 ## Not there yet
 
 - The media browser does not play files before they go on the timeline;

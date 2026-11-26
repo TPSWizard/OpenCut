@@ -1,0 +1,975 @@
+{
+ "source": "scratchpad templates_ref.py (independent reference)",
+ "rolls": [
+  {
+   "name": "up fitted at the start",
+   "direction": "up",
+   "speed": 0,
+   "local": 0.0,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": 1440.0,
+   "seconds": null
+  },
+  {
+   "name": "up fitted half way",
+   "direction": "up",
+   "speed": 0,
+   "local": 6.0,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": 0.0,
+   "seconds": null
+  },
+  {
+   "name": "up fitted at the end",
+   "direction": "up",
+   "speed": 0,
+   "local": 12.0,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": -1440.0,
+   "seconds": null
+  },
+  {
+   "name": "up fitted past the end holds",
+   "direction": "up",
+   "speed": 0,
+   "local": 14.0,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": -1440.0,
+   "seconds": null
+  },
+  {
+   "name": "up at 120 px/s",
+   "direction": "up",
+   "speed": 120,
+   "local": 3.5,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": 1020.0,
+   "seconds": 24.0
+  },
+  {
+   "name": "up at 120 px/s long gone",
+   "direction": "up",
+   "speed": 120,
+   "local": 60.0,
+   "clip": 12.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -300,
+    -900,
+    600,
+    1800
+   ],
+   "expected": -1440.0,
+   "seconds": 24.0
+  },
+  {
+   "name": "up on a tall canvas with an offset box",
+   "direction": "up",
+   "speed": 0,
+   "local": 2.5,
+   "clip": 10.0,
+   "canvas": [
+    1080,
+    1920
+   ],
+   "rect": [
+    -250.5,
+    -400.25,
+    501,
+    700.75
+   ],
+   "expected": 705.0625,
+   "seconds": null
+  },
+  {
+   "name": "left fitted a quarter in",
+   "direction": "left",
+   "speed": 0,
+   "local": 2.5,
+   "clip": 10.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -1500,
+    -40,
+    3000,
+    80
+   ],
+   "expected": 1230.0,
+   "seconds": null
+  },
+  {
+   "name": "left left-anchored box",
+   "direction": "left",
+   "speed": 0,
+   "local": 5.0,
+   "clip": 10.0,
+   "canvas": [
+    1280,
+    720
+   ],
+   "rect": [
+    0,
+    -30,
+    2200,
+    60
+   ],
+   "expected": -1100.0,
+   "seconds": null
+  },
+  {
+   "name": "left at 300 px/s",
+   "direction": "left",
+   "speed": 300,
+   "local": 4.0,
+   "clip": 10.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -1500,
+    -40,
+    3000,
+    80
+   ],
+   "expected": 1260.0,
+   "seconds": 16.4
+  },
+  {
+   "name": "slow speed clamps to the minimum",
+   "direction": "up",
+   "speed": 2,
+   "local": 10.0,
+   "clip": 10.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -100,
+    -50,
+    200,
+    100
+   ],
+   "expected": 490.0,
+   "seconds": 118.0
+  },
+  {
+   "name": "zero-length clip stays at the start",
+   "direction": "up",
+   "speed": 0,
+   "local": 1.0,
+   "clip": 0.0,
+   "canvas": [
+    1920,
+    1080
+   ],
+   "rect": [
+    -100,
+    -50,
+    200,
+    100
+   ],
+   "expected": 590.0,
+   "seconds": null
+  }
+ ],
+ "placements": [
+  {
+   "template": "bold-title",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 9.0,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "bold-title",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 5.063,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "bold-title",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 6.75,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "bold-title",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 9.0,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "title-subtitle",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 5.0,
+     "fontSize": 8.0,
+     "x": 0.0,
+     "y": -64.8
+    },
+    {
+     "name": "Subtitle",
+     "start": 0.3,
+     "duration": 4.7,
+     "fontSize": 3.6,
+     "x": 0.0,
+     "y": 86.4
+    }
+   ]
+  },
+  {
+   "template": "title-subtitle",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 5.0,
+     "fontSize": 4.5,
+     "x": 0.0,
+     "y": -115.2
+    },
+    {
+     "name": "Subtitle",
+     "start": 0.3,
+     "duration": 4.7,
+     "fontSize": 2.025,
+     "x": 0.0,
+     "y": 153.6
+    }
+   ]
+  },
+  {
+   "template": "title-subtitle",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 5.0,
+     "fontSize": 6.0,
+     "x": 0.0,
+     "y": -64.8
+    },
+    {
+     "name": "Subtitle",
+     "start": 0.3,
+     "duration": 4.7,
+     "fontSize": 2.7,
+     "x": 0.0,
+     "y": 86.4
+    }
+   ]
+  },
+  {
+   "template": "title-subtitle",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Title",
+     "start": 0.0,
+     "duration": 5.0,
+     "fontSize": 8.0,
+     "x": 0.0,
+     "y": -96.0
+    },
+    {
+     "name": "Subtitle",
+     "start": 0.3,
+     "duration": 4.7,
+     "fontSize": 3.6,
+     "x": 0.0,
+     "y": 128.0
+    }
+   ]
+  },
+  {
+   "template": "chapter-card",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Chapter number",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 3.0,
+     "x": 0.0,
+     "y": -75.6
+    },
+    {
+     "name": "Chapter name",
+     "start": 0.2,
+     "duration": 3.8,
+     "fontSize": 7.0,
+     "x": 0.0,
+     "y": 32.4
+    }
+   ]
+  },
+  {
+   "template": "chapter-card",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Chapter number",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 1.688,
+     "x": 0.0,
+     "y": -134.4
+    },
+    {
+     "name": "Chapter name",
+     "start": 0.2,
+     "duration": 3.8,
+     "fontSize": 3.938,
+     "x": 0.0,
+     "y": 57.6
+    }
+   ]
+  },
+  {
+   "template": "chapter-card",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Chapter number",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 2.25,
+     "x": 0.0,
+     "y": -75.6
+    },
+    {
+     "name": "Chapter name",
+     "start": 0.2,
+     "duration": 3.8,
+     "fontSize": 5.25,
+     "x": 0.0,
+     "y": 32.4
+    }
+   ]
+  },
+  {
+   "template": "chapter-card",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Chapter number",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 3.0,
+     "x": 0.0,
+     "y": -112.0
+    },
+    {
+     "name": "Chapter name",
+     "start": 0.2,
+     "duration": 3.8,
+     "fontSize": 7.0,
+     "x": 0.0,
+     "y": 48.0
+    }
+   ]
+  },
+  {
+   "template": "name-and-role",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Name",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 4.4,
+     "x": -460.8,
+     "y": 324.0
+    },
+    {
+     "name": "Role",
+     "start": 0.2,
+     "duration": 5.8,
+     "fontSize": 2.6,
+     "x": -460.8,
+     "y": 415.8
+    }
+   ]
+  },
+  {
+   "template": "name-and-role",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Name",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 2.475,
+     "x": -259.2,
+     "y": 576.0
+    },
+    {
+     "name": "Role",
+     "start": 0.2,
+     "duration": 5.8,
+     "fontSize": 1.463,
+     "x": -259.2,
+     "y": 739.2
+    }
+   ]
+  },
+  {
+   "template": "name-and-role",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Name",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 3.3,
+     "x": -259.2,
+     "y": 324.0
+    },
+    {
+     "name": "Role",
+     "start": 0.2,
+     "duration": 5.8,
+     "fontSize": 1.95,
+     "x": -259.2,
+     "y": 415.8
+    }
+   ]
+  },
+  {
+   "template": "name-and-role",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Name",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 4.4,
+     "x": -921.6,
+     "y": 480.0
+    },
+    {
+     "name": "Role",
+     "start": 0.2,
+     "duration": 5.8,
+     "fontSize": 2.6,
+     "x": -921.6,
+     "y": 616.0
+    }
+   ]
+  },
+  {
+   "template": "topic-bar",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Topic",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 3.6,
+     "x": 0.0,
+     "y": 410.4
+    }
+   ]
+  },
+  {
+   "template": "topic-bar",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Topic",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 2.025,
+     "x": 0.0,
+     "y": 729.6
+    }
+   ]
+  },
+  {
+   "template": "topic-bar",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Topic",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 2.7,
+     "x": 0.0,
+     "y": 410.4
+    }
+   ]
+  },
+  {
+   "template": "topic-bar",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Topic",
+     "start": 0.0,
+     "duration": 6.0,
+     "fontSize": 3.6,
+     "x": 0.0,
+     "y": 608.0
+    }
+   ]
+  },
+  {
+   "template": "subscribe-button",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Subscribe",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 4.2,
+     "x": 576.0,
+     "y": 324.0
+    },
+    {
+     "name": "Note",
+     "start": 0.3,
+     "duration": 3.7,
+     "fontSize": 2.4,
+     "x": 576.0,
+     "y": 432.0
+    }
+   ]
+  },
+  {
+   "template": "subscribe-button",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Subscribe",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 2.363,
+     "x": 324.0,
+     "y": 576.0
+    },
+    {
+     "name": "Note",
+     "start": 0.3,
+     "duration": 3.7,
+     "fontSize": 1.35,
+     "x": 324.0,
+     "y": 768.0
+    }
+   ]
+  },
+  {
+   "template": "subscribe-button",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Subscribe",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 3.15,
+     "x": 324.0,
+     "y": 324.0
+    },
+    {
+     "name": "Note",
+     "start": 0.3,
+     "duration": 3.7,
+     "fontSize": 1.8,
+     "x": 324.0,
+     "y": 432.0
+    }
+   ]
+  },
+  {
+   "template": "subscribe-button",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Subscribe",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 4.2,
+     "x": 1152.0,
+     "y": 480.0
+    },
+    {
+     "name": "Note",
+     "start": 0.3,
+     "duration": 3.7,
+     "fontSize": 2.4,
+     "x": 1152.0,
+     "y": 640.0
+    }
+   ]
+  },
+  {
+   "template": "follow-card",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Follow",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 4.0,
+     "x": 0.0,
+     "y": 345.6
+    }
+   ]
+  },
+  {
+   "template": "follow-card",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Follow",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 2.25,
+     "x": 0.0,
+     "y": 614.4
+    }
+   ]
+  },
+  {
+   "template": "follow-card",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Follow",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 3.0,
+     "x": 0.0,
+     "y": 345.6
+    }
+   ]
+  },
+  {
+   "template": "follow-card",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Follow",
+     "start": 0.0,
+     "duration": 4.0,
+     "fontSize": 4.0,
+     "x": 0.0,
+     "y": 512.0
+    }
+   ]
+  },
+  {
+   "template": "end-credits",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Credits",
+     "start": 0.0,
+     "duration": 12.0,
+     "fontSize": 3.4,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "end-credits",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Credits",
+     "start": 0.0,
+     "duration": 12.0,
+     "fontSize": 1.912,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "end-credits",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Credits",
+     "start": 0.0,
+     "duration": 12.0,
+     "fontSize": 2.55,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "end-credits",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Credits",
+     "start": 0.0,
+     "duration": 12.0,
+     "fontSize": 3.4,
+     "x": 0.0,
+     "y": 0.0
+    }
+   ]
+  },
+  {
+   "template": "news-crawl",
+   "canvas": [
+    1920,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Crawl",
+     "start": 0.0,
+     "duration": 10.0,
+     "fontSize": 3.0,
+     "x": 0.0,
+     "y": 453.6
+    }
+   ]
+  },
+  {
+   "template": "news-crawl",
+   "canvas": [
+    1080,
+    1920
+   ],
+   "items": [
+    {
+     "name": "Crawl",
+     "start": 0.0,
+     "duration": 10.0,
+     "fontSize": 1.688,
+     "x": 0.0,
+     "y": 806.4
+    }
+   ]
+  },
+  {
+   "template": "news-crawl",
+   "canvas": [
+    1080,
+    1080
+   ],
+   "items": [
+    {
+     "name": "Crawl",
+     "start": 0.0,
+     "duration": 10.0,
+     "fontSize": 2.25,
+     "x": 0.0,
+     "y": 453.6
+    }
+   ]
+  },
+  {
+   "template": "news-crawl",
+   "canvas": [
+    3840,
+    1600
+   ],
+   "items": [
+    {
+     "name": "Crawl",
+     "start": 0.0,
+     "duration": 10.0,
+     "fontSize": 3.0,
+     "x": 0.0,
+     "y": 672.0
+    }
+   ]
+  }
+ ]
+}

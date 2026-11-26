@@ -69,6 +69,9 @@ methods answer with the error code `no_project` before that.
 | `timeline.get` | – | `ApiTimelineInfo` |
 | `timeline.addClip` | `{ mediaId, at?, duration?, trackId?, trackType?, name? }` | `ApiElementInfo` |
 | `timeline.addText` | `{ text, at?, duration?, name?, params?, trackId? }` | `ApiElementInfo` |
+| `titles.list` | – | `{ categories: [{ id, label }], templates: [{ id, label, category, description, duration, clips }] }` — the text template library (row 98): titles, lower thirds, subscribe cards, end credits and a news crawl (our own designs, the shared `titles` crate) |
+| `titles.add` | `{ id, at? }` | `ApiElementInfo[]` — puts a template at `at` seconds (default the playhead) as grouped text clips placed for the canvas (positions are shares of the frame; text shrinks on canvases narrower than 16:9), in one undo step |
+| (credit roll params) | `timeline.updateElement` `{ patch: { params: { roll, rollSpeed } } }` | – text clips: `roll` `"up"` (credits: from just below the frame to just above) or `"left"` (a crawl), `"none"` to stop; `rollSpeed` canvas px per second (10–4000), 0 fits the scroll to the clip. The roll sets the position along its axis from the drawn text; the same maths on the desktop |
 | `timeline.addSticker` | `{ stickerId, at?, duration?, name? }` | `ApiElementInfo` — puts a sticker on the timeline (ids from `stickers.search`) |
 | `stickers.search` | `{ query, pack?: "all" \| "emoji" \| "brands" \| "icons" \| "flags", limit? }` | `[{ id, name, pack, license?, requiresCredit?, credit? }]` — emoji come from the set and skin tone chosen in the Stickers panel (Twemoji needs credit); brand logos are Simple Icons (CC0) and remain trademarks of their owners |
 | `timeline.updateElement` | `{ elementId, trackId?, patch }` | `ApiElementInfo` |

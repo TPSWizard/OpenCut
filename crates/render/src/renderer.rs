@@ -344,11 +344,35 @@ impl Renderer {
                 flip_y: zoomed.scale_y < 0.0,
             }
         };
-        let quad = place(layer.transform);
+        // A credit roll or crawl (row 98): the position along the roll from
+        // the text's drawn size (the raster is centred on the text). Shutter
+        // open and close take the same position, so the roll is not blurred.
+        let rolled = |mut transform: editor::LayerTransform| {
+            if let (LayerSource::Text(_), Some((roll, clip_seconds))) = (&layer.source, layer.roll) {
+                let block = editor::RollBox::centred(
+                    (base_width * transform.scale_x.abs()) as f64,
+                    (base_height * transform.scale_y.abs()) as f64,
+                );
+                let position = editor::credit_roll_position(
+                    roll,
+                    layer.local_time.to_seconds_f64(),
+                    clip_seconds,
+                    canvas_width as f64,
+                    canvas_height as f64,
+                    block,
+                ) as f32;
+                match roll.direction {
+                    editor::RollDirection::Up => transform.position_y = position,
+                    editor::RollDirection::Left => transform.position_x = position,
+                }
+            }
+            transform
+        };
+        let quad = place(rolled(layer.transform));
         // Motion blur: the quad at shutter open and close (the same zoom).
         let motion_blur = layer
             .motion
-            .map(|(open, close)| compositor::MotionBlurDescriptor { from: place(open), to: place(close) });
+            .map(|(open, close)| compositor::MotionBlurDescriptor { from: place(rolled(open)), to: place(rolled(close)) });
         let (mask, stroke) = match layer.mask.as_ref() {
             Some(mask) => {
                 let (mask, stroke) =

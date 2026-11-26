@@ -4251,6 +4251,23 @@ impl EditorState {
         self.insert_element(element, cx);
     }
 
+    /// Puts a text template (row 98: `editor::text_templates`) at the
+    /// playhead as grouped text clips, in one undo step, and selects them.
+    pub(crate) fn add_text_template(&mut self, id: &str, cx: &mut Context<Self>) {
+        let Some(template) = editor::text_template(id) else {
+            return;
+        };
+        let elements = editor::text_template_elements(template, self.project().settings.canvas, self.playhead());
+        let commands = elements
+            .into_iter()
+            .map(|element| Command::InsertElement { element, placement: TrackPlacement::Auto })
+            .collect();
+        if let Some(outcome) = self.execute(Command::Batch(commands), cx) {
+            let ids: Vec<String> = outcome.element_refs().iter().map(|r| r.element_id.clone()).collect();
+            self.select_only(ids, cx);
+        }
+    }
+
     fn insert_element(&mut self, element: Element, cx: &mut Context<Self>) {
         if let Some(outcome) = self.execute(
             Command::InsertElement {

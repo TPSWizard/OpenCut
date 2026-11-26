@@ -97,6 +97,10 @@ pub struct LayerPlan {
     /// track from this media, `facetrack`), as shares of the source frame;
     /// effects that work on faces only (Retouch) read them.
     pub faces: Option<Vec<facetrack::FaceBox>>,
+    /// A text clip's credit roll or crawl (`credit_roll`, row 98) and the
+    /// clip's length in seconds; the renderer sets the position along the
+    /// roll from the text's drawn size.
+    pub roll: Option<(crate::CreditRoll, f64)>,
 }
 
 /// An auto zoom at the planned time: `scale` (above 1) about the focus
@@ -371,8 +375,10 @@ impl TextStyle {
         };
         let weight = params.text("fontWeight", "normal");
         let bold = matches!(weight.as_ref(), "bold" | "600" | "700" | "800" | "900");
-        // The web app's limits for the parameter.
-        let font_size_param = params.number("fontSize", 15.0).clamp(5.0, 300.0) as f32;
+        // The web app's limits for a text clip's size (its Font Size control
+        // goes down to 1; 5 is the floor for text masks only, row 98 found
+        // the desktop clamping small text up to 5).
+        let font_size_param = params.number("fontSize", 15.0).clamp(1.0, 300.0) as f32;
         let ratio = font_size_param / FONT_SIZE_RATIO_REFERENCE;
         let background = params.bool("background.enabled", false).then(|| TextBackground {
             color: parse_hex_color(&params.text("background.color", "#000000"))
@@ -732,6 +738,10 @@ fn layer_plan(
         motion,
         brightness_gain,
         faces,
+        roll: matches!(element.kind, ElementKind::Text)
+            .then(|| crate::read_credit_roll(&params))
+            .flatten()
+            .map(|roll| (roll, element.duration.to_seconds_f64())),
     })
 }
 

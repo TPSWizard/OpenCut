@@ -650,6 +650,30 @@ const textElementParams: ElementParamDefinition[] = [
 		keyframable: false,
 	},
 	{
+		// Credit roll or crawl (row 98, `@/titles/templates`): the text
+		// scrolls through the whole frame over the clip, or at `rollSpeed`.
+		key: "roll",
+		label: "Roll",
+		type: "select",
+		default: "none",
+		keyframable: false,
+		options: [
+			{ value: "none", label: "Off" },
+			{ value: "up", label: "Up (credits)" },
+			{ value: "left", label: "Left (crawl)" },
+		],
+	},
+	{
+		key: "rollSpeed",
+		label: "Roll speed (px/s, 0 fits the clip)",
+		type: "number",
+		default: 0,
+		min: 0,
+		max: 4000,
+		step: 10,
+		keyframable: false,
+	},
+	{
 		key: "background.enabled",
 		label: "Background Enabled",
 		type: "boolean",

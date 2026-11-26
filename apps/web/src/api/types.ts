@@ -725,6 +725,25 @@ export interface EditorApiMethods {
 		params: { query: string; pack?: "all" | "emoji" | "brands" | "icons" | "flags"; limit?: number };
 		result: { id: string; name: string; pack: string; license?: string; requiresCredit?: boolean; credit?: string }[];
 	};
+	/**
+	 * The text template library (row 98): titles, lower thirds, subscribe
+	 * cards, end credits and a crawl, by category (the shared `titles` crate).
+	 */
+	"titles.list": {
+		params: Record<string, never>;
+		result: {
+			categories: { id: string; label: string }[];
+			templates: { id: string; label: string; category: string; description: string; duration: number; clips: number }[];
+		};
+	};
+	/**
+	 * Puts a text template at `at` seconds (default the playhead) as grouped
+	 * text clips, placed for the canvas, in one undo step.
+	 */
+	"titles.add": {
+		params: { id: string; at?: number };
+		result: ApiElementInfo[];
+	};
 	/** Puts a sticker (an id from `stickers.search`) on the timeline. */
 	"timeline.addSticker": {
 		params: { stickerId: string; at?: number; duration?: number; name?: string };

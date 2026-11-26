@@ -86,6 +86,8 @@ const TEXT_PARAM_KEYS = [
 	"curve",
 	"textPath",
 	"textPathAmount",
+	"roll",
+	"rollSpeed",
 	"background.enabled",
 	"background.color",
 	"background.cornerRadius",

@@ -1,3 +1,4 @@
+import { creditRollAt, readCreditRoll } from "@/titles/templates";
 import { cornerPinAt } from "@/corner-pin/pin";
 import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { deflickerGainAt } from "@/deflicker/levels";
@@ -672,14 +673,45 @@ function resolveTextNode({
 			...(animationState ? applyClipAnimationState({ ...keyed, state: animationState }) : keyed),
 		};
 	};
-	const { transform, opacity, animationState } = stateAt(localTime);
-	const motion = motionTransforms({
+	const { transform: keyedTransform, opacity, animationState } = stateAt(localTime);
+	const measuredText = measureTextElement({
+		element: node.params,
+		canvasHeight: node.params.canvasHeight,
+		localTime,
+		ctx: getTextMeasurementContext(),
+	});
+	// A credit roll or crawl (row 98, the shared `titles` crate): the
+	// position along the roll from the drawn box. Shutter open and close
+	// take the same position, so the roll is not blurred (as on the desktop).
+	const roll = readCreditRoll(node.params.params);
+	const rolled = (at: Transform): Transform => {
+		if (!roll) return at;
+		const box = measuredText.visualRect;
+		const sx = Math.abs(at.scaleX);
+		const sy = Math.abs(at.scaleY);
+		const placed = creditRollAt({
+			roll,
+			localSeconds: localTime / TICKS_PER_SECOND,
+			clipSeconds: node.params.duration / TICKS_PER_SECOND,
+			canvasWidth: node.params.canvasCenter.x * 2,
+			canvasHeight: node.params.canvasHeight,
+			box: { left: box.left * sx, top: box.top * sy, width: box.width * sx, height: box.height * sy },
+		});
+		if (!placed) return at;
+		return {
+			...at,
+			position: placed.axis === "y" ? { ...at.position, y: placed.position } : { ...at.position, x: placed.position },
+		};
+	};
+	const transform = rolled(keyedTransform);
+	const blurred = motionTransforms({
 		amount: readMotionBlur(node.params.params),
 		fps: context.renderer.fps,
 		ticksPerSecond: TICKS_PER_SECOND,
 		localTime,
 		transformAt: (at) => stateAt(at).transform,
 	});
+	const motion = blurred && roll ? { from: rolled(blurred.from), to: rolled(blurred.to) } : blurred;
 	const content = typeof node.params.params.content === "string" ? node.params.params.content : "";
 
 	return {
@@ -712,12 +744,7 @@ function resolveTextNode({
 			width: context.renderer.width,
 			height: context.renderer.height,
 		}),
-		measuredText: measureTextElement({
-			element: node.params,
-			canvasHeight: node.params.canvasHeight,
-			localTime,
-			ctx: getTextMeasurementContext(),
-		}),
+		measuredText,
 		highlight: resolveCaptionHighlight({
 			element: node.params,
 			localTime: roundMediaTime({ time: localTime }),

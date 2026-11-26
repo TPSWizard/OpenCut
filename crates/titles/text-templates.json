@@ -1,0 +1,224 @@
+{
+  "categories": [
+    { "id": "title", "label": "Titles" },
+    { "id": "lower-third", "label": "Lower thirds" },
+    { "id": "subscribe", "label": "Subscribe cards" },
+    { "id": "credits", "label": "Credits and crawls" }
+  ],
+  "templates": [
+    {
+      "id": "bold-title",
+      "label": "Bold title",
+      "category": "title",
+      "description": "One big spaced-out title that pops in and fades out.",
+      "duration": 4,
+      "items": [
+        {
+          "name": "Title",
+          "content": "YOUR TITLE",
+          "x": 0, "y": 0, "fontSize": 9,
+          "params": {
+            "fontWeight": "bold", "letterSpacing": 6, "color": "#ffffff",
+            "shadow.enabled": true, "shadow.opacity": 0.6, "shadow.blur": 12, "shadow.offsetX": 0, "shadow.offsetY": 6,
+            "animIn": "pop", "animInDuration": 0.5, "animOut": "fade", "animOutDuration": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "title-subtitle",
+      "label": "Title and subtitle",
+      "category": "title",
+      "description": "A title with a smaller line sliding up beneath it.",
+      "duration": 5,
+      "items": [
+        {
+          "name": "Title",
+          "content": "Your title",
+          "x": 0, "y": -0.06, "fontSize": 8,
+          "params": {
+            "fontWeight": "bold", "color": "#ffffff",
+            "shadow.enabled": true, "shadow.opacity": 0.5, "shadow.blur": 10, "shadow.offsetX": 0, "shadow.offsetY": 4,
+            "animIn": "fade", "animInDuration": 0.6, "animOut": "fade", "animOutDuration": 0.5
+          }
+        },
+        {
+          "name": "Subtitle",
+          "content": "A short line that says a little more",
+          "x": 0, "y": 0.08, "fontSize": 3.6, "start": 0.3,
+          "params": {
+            "color": "#e5e7eb",
+            "animIn": "slideUp", "animInDuration": 0.5, "animOut": "fade", "animOutDuration": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter-card",
+      "label": "Chapter card",
+      "category": "title",
+      "description": "A small amber chapter number over the chapter's name.",
+      "duration": 4,
+      "items": [
+        {
+          "name": "Chapter number",
+          "content": "CHAPTER 1",
+          "x": 0, "y": -0.07, "fontSize": 3,
+          "params": {
+            "fontWeight": "bold", "letterSpacing": 10, "color": "#fbbf24",
+            "animIn": "fade", "animInDuration": 0.5, "animOut": "fade", "animOutDuration": 0.4
+          }
+        },
+        {
+          "name": "Chapter name",
+          "content": "The beginning",
+          "x": 0, "y": 0.03, "fontSize": 7, "start": 0.2,
+          "params": {
+            "fontWeight": "bold", "color": "#ffffff",
+            "animIn": "slideUp", "animInDuration": 0.6, "animOut": "fade", "animOutDuration": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "name-and-role",
+      "label": "Name and role",
+      "category": "lower-third",
+      "description": "A name on a dark box with the role on an amber strip below, sliding in from the left.",
+      "duration": 6,
+      "items": [
+        {
+          "name": "Name",
+          "content": "Alex Morgan",
+          "x": -0.24, "y": 0.3, "fontSize": 4.4,
+          "params": {
+            "fontWeight": "bold", "color": "#ffffff",
+            "background.enabled": true, "background.color": "#111827", "background.cornerRadius": 12,
+            "background.paddingX": 60, "background.paddingY": 30,
+            "animIn": "slideRight", "animInDuration": 0.5, "animOut": "fade", "animOutDuration": 0.4
+          }
+        },
+        {
+          "name": "Role",
+          "content": "Producer, Northside Studio",
+          "x": -0.24, "y": 0.385, "fontSize": 2.6, "start": 0.2,
+          "params": {
+            "color": "#111827",
+            "background.enabled": true, "background.color": "#fbbf24", "background.cornerRadius": 8,
+            "background.paddingX": 60, "background.paddingY": 26,
+            "animIn": "slideRight", "animInDuration": 0.5, "animOut": "fade", "animOutDuration": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "topic-bar",
+      "label": "Topic bar",
+      "category": "lower-third",
+      "description": "One line on a blue bar along the bottom.",
+      "duration": 6,
+      "items": [
+        {
+          "name": "Topic",
+          "content": "Today: getting started",
+          "x": 0, "y": 0.38, "fontSize": 3.6,
+          "params": {
+            "fontWeight": "bold", "color": "#ffffff",
+            "background.enabled": true, "background.color": "#2563eb", "background.cornerRadius": 6,
+            "background.paddingX": 80, "background.paddingY": 36,
+            "animIn": "slideUp", "animInDuration": 0.5, "animOut": "slideDown", "animOutDuration": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "subscribe-button",
+      "label": "Subscribe button",
+      "category": "subscribe",
+      "description": "A red pill that pops in and pulses, with a line under it.",
+      "duration": 4,
+      "items": [
+        {
+          "name": "Subscribe",
+          "content": "SUBSCRIBE",
+          "x": 0.3, "y": 0.3, "fontSize": 4.2,
+          "params": {
+            "fontWeight": "bold", "letterSpacing": 2, "color": "#ffffff",
+            "background.enabled": true, "background.color": "#dc2626", "background.cornerRadius": 100,
+            "background.paddingX": 90, "background.paddingY": 40,
+            "animIn": "pop", "animInDuration": 0.4, "animLoop": "pulse", "animLoopPeriod": 1.2,
+            "animOut": "fade", "animOutDuration": 0.4
+          }
+        },
+        {
+          "name": "Note",
+          "content": "for more videos like this",
+          "x": 0.3, "y": 0.4, "fontSize": 2.4, "start": 0.3,
+          "params": {
+            "color": "#ffffff",
+            "shadow.enabled": true, "shadow.opacity": 0.7, "shadow.blur": 8, "shadow.offsetX": 0, "shadow.offsetY": 3,
+            "animIn": "fade", "animInDuration": 0.4, "animOut": "fade", "animOutDuration": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "follow-card",
+      "label": "Follow card",
+      "category": "subscribe",
+      "description": "A white pill with your handle that drops in and bounces.",
+      "duration": 4,
+      "items": [
+        {
+          "name": "Follow",
+          "content": "Follow @yourname",
+          "x": 0, "y": 0.32, "fontSize": 4,
+          "params": {
+            "fontWeight": "bold", "color": "#111827",
+            "background.enabled": true, "background.color": "#ffffff", "background.cornerRadius": 100,
+            "background.paddingX": 80, "background.paddingY": 36,
+            "animIn": "bounce", "animInDuration": 0.8, "animOut": "fade", "animOutDuration": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "end-credits",
+      "label": "End credits",
+      "category": "credits",
+      "description": "Credits that roll up through the frame over the clip; lengthen the clip to slow them down.",
+      "duration": 12,
+      "items": [
+        {
+          "name": "Credits",
+          "content": "THANKS FOR WATCHING\n\nDirected by\nYour Name\n\nEdited by\nYour Name\n\nMusic\nArtist, Track title\n\nSpecial thanks\nEveryone who helped\n\nMade with ConzaCut",
+          "x": 0, "y": 0, "fontSize": 3.4,
+          "params": {
+            "color": "#ffffff", "lineHeight": 1.5,
+            "roll": "up", "rollSpeed": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "news-crawl",
+      "label": "News crawl",
+      "category": "credits",
+      "description": "One line on a red bar crawling from right to left across the bottom.",
+      "duration": 10,
+      "items": [
+        {
+          "name": "Crawl",
+          "content": "LATEST   •   Your headline goes here   •   Add as many stories as you like   •   Lengthen the clip to slow it down",
+          "x": 0, "y": 0.42, "fontSize": 3,
+          "params": {
+            "fontWeight": "bold", "color": "#ffffff",
+            "background.enabled": true, "background.color": "#b91c1c",
+            "background.paddingX": 40, "background.paddingY": 30,
+            "roll": "left", "rollSpeed": 0
+          }
+        }
+      ]
+    }
+  ]
+}

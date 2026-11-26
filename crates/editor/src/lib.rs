@@ -24,6 +24,8 @@ mod bundle;
 mod captions;
 mod caption_keywords;
 mod colour_match;
+mod credit_roll;
+mod text_templates;
 mod colour_tools;
 mod drawing;
 mod tracked;
@@ -154,6 +156,14 @@ pub use frame::{
 pub use auto_zoom::{
     ClipZoom, MIN_PUNCH_SECONDS, SENTENCE_GAP_SECONDS, TAIL_SECONDS, ZOOM_FOCUS_Y_DEFAULT, ZOOM_RAMP_DEFAULT, ZOOM_RAMP_MAX, ZOOM_SCALE_MAX,
     ZOOM_STRENGTHS, ZoomPunch, ZoomWord, clip_words, format_punches, parse_punches, plan_punches, read_clip_zoom, zoom_at, zoom_offset,
+};
+pub use credit_roll::{
+    CreditRoll, ROLL_SPEED_MAX, ROLL_SPEED_MIN, RollBox, RollDirection, credit_roll_position, credit_roll_seconds,
+    credit_roll_span, read_credit_roll,
+};
+pub use text_templates::{
+    PlacedTextItem, TextTemplate, TextTemplateCategory, TextTemplateItem, place_text_template, text_template,
+    text_template_categories, text_template_elements, text_template_font_scale, text_templates,
 };
 pub use colour_match::{
     COLOUR_MATCH_LUT_SIZE, COLOUR_MATCH_NAME, ColourAccumulator, ColourStats, colour_match_commands, colour_match_lut, colour_match_param,

@@ -1,3 +1,4 @@
+import { getTextTemplateLibrary, insertTextTemplate } from "@/titles/templates";
 import { DEFAULT_GIF_OPTIONS, type ExportKind, isAudioExportFormat, isExportKind } from "@/export/kinds";
 import {
 	DEFAULT_TRANSITION_DURATION,
@@ -1546,6 +1547,35 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 						},
 			});
 			return findInsertedElement({ before, after: tracksOf() });
+		},
+		"titles.list": () => {
+			const { categories, templates } = getTextTemplateLibrary();
+			return {
+				categories,
+				templates: templates.map(({ id, label, category, description, duration, items }) => ({
+					id,
+					label,
+					category,
+					description,
+					duration,
+					clips: items.length,
+				})),
+			};
+		},
+		"titles.add": ({ id, at }) => {
+			requireProject();
+			const templateId = requireString(id, "id");
+			if (!getTextTemplateLibrary().templates.some((template) => template.id === templateId)) {
+				throw new EditorApiError({ code: "invalid_params", message: `Unknown text template ${templateId}` });
+			}
+			const startTime = at === undefined ? editor.playback.getCurrentTime() : ticks(at, "at");
+			const before = elementIds(tracksOf());
+			insertTextTemplate({ editor, id: templateId, startTime });
+			return allTracks(tracksOf()).flatMap((track) =>
+				(track.elements as TimelineElement[])
+					.filter((element) => !before.has(element.id))
+					.map((element) => toElementInfo({ element, trackId: track.id })),
+			);
 		},
 		"stickers.search": async ({ query, pack = "all", limit = 40 }) => {
 			const category = ({ all: "all", emoji: "emoji", brands: "logos", icons: "icons", flags: "flags" } as const)[pack];

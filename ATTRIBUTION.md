@@ -391,3 +391,11 @@ this repository. Templates you save stay in your browser or in
 - `fixtures/lottie/bounce.json`, `bounce.lottie` and `features.json` were
   written for the tests in this repository (a square, a dot, a matte, a ring
   and a gradient) and are covered by the repository's MIT licence.
+
+## Text templates (`crates/titles/text-templates.json`, added 2026-11-26)
+
+- The nine text templates (titles, lower thirds, subscribe cards, end
+  credits, a news crawl) are our own designs for this repository: their
+  layouts, colours, wording and animation choices are covered by the
+  repository's MIT licence. They copy no other editor's templates and use
+  the default font (no font files are bundled for them).

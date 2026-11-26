@@ -23,6 +23,8 @@ pub(crate) struct MediaPanel {
     show_voice: bool,
     /// Showing stock search instead of the media.
     show_stock: bool,
+    /// The Titles tab: the text template library (row 98).
+    show_titles: bool,
     stock_input: Option<Entity<TextInput>>,
     stock_query: String,
     stock_provider: &'static str,
@@ -63,6 +65,7 @@ impl MediaPanel {
             show_stickers: false,
             show_voice: false,
             show_stock: false,
+            show_titles: false,
             stock_input: None,
             stock_query: String::new(),
             stock_provider: "openverse",
@@ -124,6 +127,59 @@ impl MediaPanel {
 
     /// The stock tab: search, source, pictures or videos, results with
     /// licence and creator, Add, and the project's credits.
+    /// The text template library (row 98), by category: each template's
+    /// name and description, and Add to put it at the playhead.
+    fn title_rows(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
+        let colors = window.theme().colors;
+        let mut rows: Vec<gpui::AnyElement> = Vec::new();
+        for category in editor::text_template_categories() {
+            rows.push(
+                div()
+                    .px(px(6.))
+                    .pt(px(8.))
+                    .pb(px(2.))
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(colors.muted_foreground)
+                    .child(t(&category.label))
+                    .into_any_element(),
+            );
+            for template in editor::text_templates().iter().filter(|template| template.category == category.id) {
+                let state = self.state.clone();
+                let id = template.id.clone();
+                rows.push(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .px(px(6.))
+                        .py(px(4.))
+                        .rounded(px(4.))
+                        .hover(|style| style.bg(colors.sidebar_accent))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .flex_1()
+                                .min_w_0()
+                                .child(div().text_sm().child(t(&template.label)))
+                                .child(div().text_xs().text_color(colors.muted_foreground).child(t(&template.description))),
+                        )
+                        .child(
+                            Button::new(eid("add-template", &template.id), t("Add"))
+                                .variant(ButtonVariant::Outline)
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.add_text_template(&id, cx));
+                                }),
+                        )
+                        .into_any_element(),
+                );
+            }
+        }
+        rows
+    }
+
     fn stock_rows(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
         let colors = window.theme().colors;
         let editor_focus = self.state.read(cx).focus_handle.clone();
@@ -816,7 +872,8 @@ impl Render for MediaPanel {
         let show_stickers = self.show_stickers;
         let show_voice = self.show_voice;
         let show_stock = self.show_stock;
-        let show_media = !show_markers && !show_stickers && !show_voice && !show_stock;
+        let show_titles = self.show_titles;
+        let show_media = !show_markers && !show_stickers && !show_voice && !show_stock && !show_titles;
 
         let rows: Vec<_> = project
             .media
@@ -983,6 +1040,7 @@ impl Render for MediaPanel {
         let sticker_rows = if show_stickers { self.sticker_rows(window, cx) } else { Vec::new() };
         let voice_rows = if show_voice { self.voice_rows(window, cx) } else { Vec::new() };
         let stock_rows = if show_stock { self.stock_rows(window, cx) } else { Vec::new() };
+        let title_rows = if show_titles { self.title_rows(window, cx) } else { Vec::new() };
         div()
             .flex()
             .flex_col()
@@ -1007,6 +1065,7 @@ impl Render for MediaPanel {
                                 this.show_stickers = false;
                                 this.show_voice = false;
                                 this.show_stock = false;
+                                this.show_titles = false;
                                 cx.notify();
                             })),
                     )
@@ -1019,6 +1078,7 @@ impl Render for MediaPanel {
                                 this.show_stickers = false;
                                 this.show_voice = false;
                                 this.show_stock = false;
+                                this.show_titles = false;
                                 cx.notify();
                             })),
                     )
@@ -1031,6 +1091,7 @@ impl Render for MediaPanel {
                                 this.show_markers = false;
                                 this.show_voice = false;
                                 this.show_stock = false;
+                                this.show_titles = false;
                                 cx.notify();
                             })),
                     )
@@ -1041,6 +1102,7 @@ impl Render for MediaPanel {
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_voice = true;
                                 this.show_stock = false;
+                                this.show_titles = false;
                                 this.show_markers = false;
                                 this.show_stickers = false;
                                 this.load_voices(cx);
@@ -1053,6 +1115,20 @@ impl Render for MediaPanel {
                             .size(ButtonSize::XSmall)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.show_stock = true;
+                                this.show_titles = false;
+                                this.show_voice = false;
+                                this.show_markers = false;
+                                this.show_stickers = false;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("tab-titles", t("Titles"))
+                            .variant(if show_titles { ButtonVariant::Secondary } else { ButtonVariant::Ghost })
+                            .size(ButtonSize::XSmall)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_titles = true;
+                                this.show_stock = false;
                                 this.show_voice = false;
                                 this.show_markers = false;
                                 this.show_stickers = false;
@@ -1119,6 +1195,7 @@ impl Render for MediaPanel {
                     .when(show_stickers, |this| this.children(sticker_rows))
                     .when(show_voice, |this| this.children(voice_rows))
                     .when(show_stock, |this| this.children(stock_rows))
+                    .when(show_titles, |this| this.children(title_rows))
                     .when(show_media && rows.is_empty(), |this| {
                         this.child(
                             div()

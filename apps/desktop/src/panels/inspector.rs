@@ -1422,6 +1422,50 @@ impl Render for InspectorPanel {
                         path_row = path_row.child(div().text_xs().text_color(colors.muted_foreground).child(t("Custom (set in the web editor or the API)")));
                     }
                     content = content.child(path_row);
+                    // Credit roll or crawl (row 98): scrolls through the frame over the
+                    // clip ("Fit clip") or at a speed in canvas pixels a second.
+                    let current_roll = params.text("roll", "").into_owned();
+                    let current_speed = params.number("rollSpeed", 0.0);
+                    let mut roll_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Roll"), window));
+                    for (option, label) in [("", "Off"), ("up", "Up (credits)"), ("left", "Left (crawl)")] {
+                        let state = self.state.clone();
+                        roll_row = roll_row.child(
+                            Button::new(eid("text-roll", if option.is_empty() { "off" } else { option }), t(label))
+                                .variant(if current_roll == option || (option.is_empty() && editor::RollDirection::parse(&current_roll).is_none()) {
+                                    ButtonVariant::Default
+                                } else {
+                                    ButtonVariant::Outline
+                                })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| {
+                                    let mut params = Params::new();
+                                    params.set("roll", option);
+                                    state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                }),
+                        );
+                    }
+                    content = content.child(roll_row);
+                    if editor::RollDirection::parse(&current_roll).is_some() {
+                        let mut speed_row = div().flex().flex_wrap().items_center().gap(px(4.)).child(Self::label_cell(t("Speed"), window));
+                        for (speed, label) in [(0.0, t("Fit clip").to_owned()), (60.0, "60 px/s".to_owned()), (120.0, "120 px/s".to_owned()), (240.0, "240 px/s".to_owned())] {
+                            let state = self.state.clone();
+                            speed_row = speed_row.child(
+                                Button::new(eid("text-roll-speed", &speed.to_string()), label)
+                                    .variant(if (current_speed.max(0.0) - speed).abs() < 0.5 { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                    .size(ButtonSize::XSmall)
+                                    .on_click(move |_, _, cx| {
+                                        let mut params = Params::new();
+                                        params.set("rollSpeed", speed);
+                                        state.update(cx, |state, cx| state.update_selected_params(params, cx));
+                                    }),
+                            );
+                        }
+                        content = content
+                            .child(speed_row)
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                                "The text scrolls through the whole frame, starting just past the edge. Fit clip spreads it over the clip; lengthen the clip to slow it down.",
+                            )));
+                    }
                     let mut align_row = div()
                         .flex()
                         .items_center()
