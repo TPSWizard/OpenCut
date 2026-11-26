@@ -36,6 +36,7 @@ trackmix = { workspace = true }
 scopes = { workspace = true }
 strokes = { workspace = true }
 trimedit = { workspace = true }
+captionedit = { workspace = true }
 serde_json = { workspace = true }
 voice = { workspace = true }
 wasm-bindgen = { workspace = true }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { type CaptionEditOp, countCaptionMatches, editCaptions } from "../find-replace";
 import { ElementParamsTab } from "@/components/editor/panels/properties/components/element-params-tab";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import { Button } from "@/components/ui/button";
@@ -163,6 +164,57 @@ export function CaptionsTab({
 					))}
 				</ol>
 			</div>
+			<FindReplaceCaptions />
+		</div>
+	);
+}
+
+/** Find and replace across every caption, highlight matches, and auto emoji (row 94). */
+function FindReplaceCaptions() {
+	const t = useT();
+	const editor = useEditor();
+	const [find, setFind] = useState("");
+	const [replace, setReplace] = useState("");
+	const [status, setStatus] = useState<string | null>(null);
+	useEditor((e) => e.scenes.getActiveSceneOrNull()?.tracks);
+	const matches = countCaptionMatches({ editor, query: find });
+	const run = (op: CaptionEditOp) => {
+		const changed = editCaptions({ editor, op, query: find, replacement: replace });
+		setStatus(changed > 0 ? t("Changed {count} caption(s).", { count: changed }) : t("Nothing to change in the captions."));
+	};
+	return (
+		<div className="flex flex-col gap-2 border-t px-4 py-3" data-testid="caption-find-replace">
+			<p className="text-xs font-medium">{t("Find and replace in captions")}</p>
+			<Input className="h-7 text-xs" placeholder={t("Find")} value={find} data-testid="caption-find" onChange={(event) => setFind(event.target.value)} />
+			<Input
+				className="h-7 text-xs"
+				placeholder={t("Replace with")}
+				value={replace}
+				data-testid="caption-replace"
+				onChange={(event) => setReplace(event.target.value)}
+			/>
+			<p className="text-muted-foreground text-xs" data-testid="caption-match-count">
+				{find.trim() ? t("{count} match(es) across the captions.", { count: matches }) : t("Whole words, any case; the words keep their timing.")}
+			</p>
+			<div className="flex flex-wrap gap-1">
+				<Button size="sm" variant="outline" className="h-7 text-xs" disabled={matches === 0} data-testid="caption-replace-all" onClick={() => run("replace")}>
+					{t("Replace all")}
+				</Button>
+				<Button size="sm" variant="outline" className="h-7 text-xs" disabled={matches === 0} onClick={() => run("highlight")}>
+					{t("Highlight matches")}
+				</Button>
+				<Button size="sm" variant="outline" className="h-7 text-xs" data-testid="caption-add-emoji" onClick={() => run("addEmoji")}>
+					{t("Add emoji")}
+				</Button>
+				<Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => run("removeEmoji")}>
+					{t("Remove emoji")}
+				</Button>
+			</div>
+			{status && (
+				<p className="text-muted-foreground text-xs" role="status">
+					{status}
+				</p>
+			)}
 		</div>
 	);
 }

@@ -1041,5 +1041,16 @@
   "Slide: drag a clip between its neighbours; they shorten and lengthen to fit": "滑动：在相邻片段之间拖动片段；相邻片段随之缩短或延长",
   "Roll: drag near a cut to move it; one clip ends later, the next starts later": "滚动：在剪切点附近拖动以移动它；前一片段结束得更晚，后一片段开始得更晚",
   "Nothing to move: the clips have no more media or room that way.": "无法移动：这个方向上片段没有更多素材或空间。",
-  "Moved {seconds} s, as far as the clips allow.": "已移动 {seconds} 秒，已达片段允许的最大范围。"
+  "Moved {seconds} s, as far as the clips allow.": "已移动 {seconds} 秒，已达片段允许的最大范围。",
+  "Find and replace in captions": "在字幕中查找和替换",
+  "Find": "查找",
+  "Replace with": "替换为",
+  "Whole words, any case; the words keep their timing.": "整词匹配，不区分大小写；词语保留原有时间。",
+  "{count} match(es) across the captions.": "字幕中共 {count} 处匹配。",
+  "Replace all": "全部替换",
+  "Highlight matches": "突出显示匹配项",
+  "Add emoji": "添加表情",
+  "Remove emoji": "移除表情",
+  "Changed {count} caption(s).": "已更改 {count} 条字幕。",
+  "Nothing to change in the captions.": "字幕中没有可更改的内容。"
 }

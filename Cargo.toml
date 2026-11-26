@@ -27,6 +27,7 @@ members = [
   'crates/scopes',
   'crates/strokes',
   'crates/trimedit',
+  'crates/captionedit',
   'crates/facetrack',
   'crates/voice',
   'crates/wasm',
@@ -61,6 +62,7 @@ trackmix = { path = "crates/trackmix" }
 scopes = { path = "crates/scopes" }
 strokes = { path = "crates/strokes" }
 trimedit = { path = "crates/trimedit" }
+captionedit = { path = "crates/captionedit" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }
 

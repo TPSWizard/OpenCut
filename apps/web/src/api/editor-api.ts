@@ -66,6 +66,7 @@ import { isVideoScope, scopeOfCanvas, useScopeStore } from "@/scopes/capture";
 import { textPathPoints } from "opencut-wasm";
 import { setMaskTrack, trackCornerPin, trackMask } from "@/tracking/tracked";
 import { applyTrimEdit, rollTarget } from "@/timeline/trim-tools";
+import { countCaptionMatches, editCaptions } from "@/captions/find-replace";
 import { DRAW_TOOLS, DRAW_TOOL_WIDTHS, addDrawingStroke, isDrawing, removeLastStroke, strokeCount, type DrawTool } from "@/drawing/strokes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
@@ -2364,6 +2365,18 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			} catch (error) {
 				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
 			}
+		},
+		"captions.findReplace": ({ op, query, replacement }) => {
+			requireProject();
+			const ops = ["count", "replace", "highlight", "addEmoji", "removeEmoji"];
+			if (!ops.includes(op)) throw new EditorApiError({ code: "invalid_params", message: "op is count, replace, highlight, addEmoji or removeEmoji" });
+			if ((op === "replace" || op === "highlight" || op === "count") && (typeof query !== "string" || !query.trim())) {
+				throw new EditorApiError({ code: "invalid_params", message: "query is the words to find" });
+			}
+			const matches = typeof query === "string" ? countCaptionMatches({ editor, query }) : 0;
+			if (op === "count") return { matches, changed: 0 };
+			const changed = editCaptions({ editor, op, query: query ?? "", replacement: typeof replacement === "string" ? replacement : "" });
+			return { matches, changed };
 		},
 		"timeline.trimEdit": ({ elementId, trackId, tool, delta, cut }) => {
 			requireProject();

@@ -1267,6 +1267,18 @@ export interface EditorApiMethods {
 	 * neighbours allow; one undo step. The same edit as the desktop
 	 * (`trimedit`).
 	 */
+	/**
+	 * Caption find and replace (row 94) across every caption: `replace`
+	 * (whole words, any case; the words keep their timing; empty
+	 * `replacement` removes them), `highlight` (matches become keywords),
+	 * `addEmoji` / `removeEmoji` (one emoji from our own word list after the
+	 * first fitting word of each caption). `count` only counts matches.
+	 * One undo step; the same as the desktop (`captionedit`).
+	 */
+	"captions.findReplace": {
+		params: { op: "count" | "replace" | "highlight" | "addEmoji" | "removeEmoji"; query?: string; replacement?: string };
+		result: { matches: number; changed: number };
+	};
 	"timeline.trimEdit": {
 		params: ApiElementLocator & { tool: "slip" | "slide" | "roll"; delta: number; cut?: "start" | "end" };
 		result: { delta: number; changed: string[] };

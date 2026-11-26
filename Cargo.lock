@@ -804,6 +804,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "captionedit"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cbc"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1616,6 +1624,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "editor"
 version = "0.1.0"
 dependencies = [
+ "captionedit",
  "crossfade",
  "deflicker",
  "facetrack",
@@ -4296,6 +4305,7 @@ name = "opencut-wasm"
 version = "0.2.10"
 dependencies = [
  "bridge",
+ "captionedit",
  "compositor",
  "console_error_panic_hook",
  "crossfade",

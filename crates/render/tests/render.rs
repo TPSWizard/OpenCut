@@ -1318,3 +1318,24 @@ fn text_on_a_rising_path_climbs_left_to_right() {
     assert!((middle - 180.0).abs() < 15.0, "the middle stays at the text's place: {middle}");
     assert!(left > middle + 25.0 && right < middle - 25.0, "it climbs: {left} / {middle} / {right}");
 }
+
+/// Auto emoji (row 94) adds emoji to captions: the desktop's text
+/// renderer draws them from the system's emoji font (Segoe UI Emoji on
+/// Windows), so a caption with one covers more of the frame.
+#[test]
+fn caption_emoji_draw() {
+    let Some(mut renderer) = renderer(None) else { return };
+    let lit = |renderer: &mut Renderer, content: &str| {
+        let mut project = Project::new("Emoji");
+        project.settings.canvas = editor::CanvasSize { width: 640, height: 360 };
+        project.settings.background = editor::Background::Color { color: "#000000".to_owned() };
+        let mut text = Element::text(content, seconds(0.0));
+        text.params.set("fontSize", 12.0).set("color", "#ffffff");
+        apply(&mut project, &EditorCommand::InsertElement { element: text, placement: TrackPlacement::Auto }).unwrap();
+        let frame = renderer.render(&project, seconds(0.5), 640, 360).unwrap();
+        frame.bgra.chunks(4).filter(|p| p[0] as u32 + p[1] as u32 + p[2] as u32 > 60).count()
+    };
+    let (plain, with_emoji) = (lit(&mut renderer, "fire"), lit(&mut renderer, "fire 🔥"));
+    eprintln!("caption emoji: plain {plain} px, with emoji {with_emoji} px");
+    assert!(with_emoji > plain + 200, "the emoji draws: {plain} vs {with_emoji}");
+}

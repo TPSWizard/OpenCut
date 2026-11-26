@@ -19,6 +19,7 @@ strokes = { workspace = true }
 textwarp = { workspace = true }
 tracking = { workspace = true }
 trimedit = { workspace = true }
+captionedit = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 retakes = { workspace = true }

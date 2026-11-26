@@ -133,6 +133,9 @@ pub(crate) struct EditorState {
     pub draw: Option<DrawBrush>,
     /// Slip, slide or roll (row 93) when picked: what dragging a clip does.
     pub trim_tool: Option<editor::TrimTool>,
+    /// Caption find and replace (row 94): what to find and what replaces it.
+    pub caption_find: String,
+    pub caption_replace: String,
     pub draw_stroke: Option<(std::time::Instant, Vec<strokes::Point>)>,
     /// Points of the selected clip's freeform mask that are selected (they
     /// are what `Delete` removes), as in the web app.
@@ -238,6 +241,8 @@ impl EditorState {
             pen: None,
             draw: None,
             trim_tool: None,
+            caption_find: String::new(),
+            caption_replace: String::new(),
             draw_stroke: None,
             selected_mask_points: Vec::new(),
             corner_pin_editing: false,
@@ -739,6 +744,17 @@ impl EditorState {
         let text = editor::chapters_text(&self.project().markers);
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
         self.set_status(t("Chapters copied"), cx);
+    }
+
+    /// A caption edit across every caption (row 94), in one undo step.
+    pub(crate) fn edit_captions(&mut self, edit: editor::CaptionEdit, cx: &mut Context<Self>) {
+        match editor::caption_edit_command(self.project(), &edit) {
+            Some((command, changed)) => {
+                self.execute(command, cx);
+                self.set_status(tf("Changed {count} caption(s).", &[("count", &changed)]), cx);
+            }
+            None => self.set_status(t("Nothing to change in the captions.").to_owned(), cx),
+        }
     }
 
     /// Picks slip, slide or roll for clip drags, or moving again (`None`).

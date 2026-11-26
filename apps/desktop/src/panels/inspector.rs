@@ -1582,6 +1582,74 @@ impl Render for InspectorPanel {
                                         }),
                                 ),
                         );
+                    // Find and replace across every caption (row 94).
+                    let (find, replace) = {
+                        let state = self.state.read(cx);
+                        (state.caption_find.clone(), state.caption_replace.clone())
+                    };
+                    let matches = editor::caption_match_count(self.state.read(cx).project(), &find);
+                    let find_row = self.row(
+                        t("Find"),
+                        "captions.find",
+                        "",
+                        find.clone(),
+                        None,
+                        window,
+                        cx,
+                        Box::new(|text, state, cx| {
+                            state.caption_find = text.to_owned();
+                            cx.notify();
+                        }),
+                    );
+                    let replace_row = self.row(
+                        t("Replace with"),
+                        "captions.replace",
+                        "",
+                        replace.clone(),
+                        None,
+                        window,
+                        cx,
+                        Box::new(|text, state, cx| {
+                            state.caption_replace = text.to_owned();
+                            cx.notify();
+                        }),
+                    );
+                    let button = |id: &'static str, label: &'static str, enabled: bool, edit: editor::CaptionEdit| {
+                        let state = self.state.clone();
+                        Button::new(id, t(label))
+                            .variant(ButtonVariant::Outline)
+                            .size(ButtonSize::XSmall)
+                            .disabled(!enabled)
+                            .on_click(move |_, _, cx| {
+                                let edit = edit.clone();
+                                state.update(cx, |state, cx| state.edit_captions(edit, cx));
+                            })
+                    };
+                    content = content
+                        .child(Separator::horizontal())
+                        .child(self.heading(t("Find and replace in captions"), window))
+                        .child(find_row)
+                        .child(replace_row)
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(if find.trim().is_empty() {
+                            t("Whole words, any case; the words keep their timing.").to_string()
+                        } else {
+                            tf("{count} match(es) across the captions.", &[("count", &matches)])
+                        }))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .gap(px(4.))
+                                .child(button(
+                                    "captions-replace",
+                                    "Replace all",
+                                    matches > 0,
+                                    editor::CaptionEdit::Replace { query: find.clone(), replacement: replace.clone() },
+                                ))
+                                .child(button("captions-highlight", "Highlight matches", matches > 0, editor::CaptionEdit::Highlight { query: find.clone() }))
+                                .child(button("captions-emoji", "Add emoji", true, editor::CaptionEdit::AddEmoji))
+                                .child(button("captions-emoji-remove", "Remove emoji", true, editor::CaptionEdit::RemoveEmoji)),
+                        );
                 }
 
                 if has_audio {

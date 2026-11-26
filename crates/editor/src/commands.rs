@@ -36,6 +36,9 @@ pub struct ElementPatch {
     /// Sets the caption words' keyword flags: exactly these word indices
     /// become keywords (out-of-range ones are ignored).
     pub keywords: Option<Vec<usize>>,
+    /// Replaces the caption's timed words (caption find and replace, auto
+    /// emoji); give the matching `content` in `params`.
+    pub words: Option<Vec<crate::CaptionWord>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -917,6 +920,9 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
             }
             if let Some(cutout) = &patch.cutout {
                 element.cutout = cutout.clone();
+            }
+            if let Some(words) = &patch.words {
+                element.words = words.clone();
             }
             if let Some(keywords) = &patch.keywords {
                 for (index, word) in element.words.iter_mut().enumerate() {

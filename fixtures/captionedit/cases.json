@@ -1,0 +1,1035 @@
+{
+ "captions": [
+  {
+   "id": "c1",
+   "words": [
+    {
+     "text": "The",
+     "start": 0,
+     "end": 50000
+    },
+    {
+     "text": "plan,",
+     "start": 60000,
+     "end": 110000,
+     "keyword": true
+    },
+    {
+     "text": "simply",
+     "start": 120000,
+     "end": 170000
+    },
+    {
+     "text": "put,",
+     "start": 180000,
+     "end": 230000
+    },
+    {
+     "text": "is",
+     "start": 240000,
+     "end": 290000
+    },
+    {
+     "text": "to",
+     "start": 300000,
+     "end": 350000
+    },
+    {
+     "text": "launch",
+     "start": 360000,
+     "end": 410000
+    },
+    {
+     "text": "in",
+     "start": 420000,
+     "end": 470000
+    },
+    {
+     "text": "May.",
+     "start": 480000,
+     "end": 530000
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "words": [
+    {
+     "text": "Our",
+     "start": 0,
+     "end": 50000
+    },
+    {
+     "text": "\"Plan",
+     "start": 60000,
+     "end": 110000
+    },
+    {
+     "text": "B\"",
+     "start": 120000,
+     "end": 170000
+    },
+    {
+     "text": "costs",
+     "start": 180000,
+     "end": 230000
+    },
+    {
+     "text": "money",
+     "start": 240000,
+     "end": 290000
+    },
+    {
+     "text": "and",
+     "start": 300000,
+     "end": 350000
+    },
+    {
+     "text": "time.",
+     "start": 360000,
+     "end": 410000
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "words": [
+    {
+     "text": "No",
+     "start": 0,
+     "end": 50000
+    },
+    {
+     "text": "planned",
+     "start": 60000,
+     "end": 110000
+    },
+    {
+     "text": "changes;",
+     "start": 120000,
+     "end": 170000
+    },
+    {
+     "text": "the",
+     "start": 180000,
+     "end": 230000
+    },
+    {
+     "text": "PLAN",
+     "start": 240000,
+     "end": 290000
+    },
+    {
+     "text": "stays.",
+     "start": 300000,
+     "end": 350000
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "words": [
+    {
+     "text": "Big",
+     "start": 0,
+     "end": 50000
+    },
+    {
+     "text": "ideas",
+     "start": 60000,
+     "end": 110000
+    },
+    {
+     "text": "need",
+     "start": 120000,
+     "end": 170000
+    },
+    {
+     "text": "coffee",
+     "start": 180000,
+     "end": 230000
+    },
+    {
+     "text": "☕",
+     "start": 240000,
+     "end": 290000
+    },
+    {
+     "text": "first.",
+     "start": 300000,
+     "end": 350000
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "words": [
+    {
+     "text": "Nothing",
+     "start": 0,
+     "end": 50000
+    },
+    {
+     "text": "to",
+     "start": 60000,
+     "end": 110000
+    },
+    {
+     "text": "see",
+     "start": 120000,
+     "end": 170000
+    },
+    {
+     "text": "here.",
+     "start": 180000,
+     "end": 230000
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "name": "find plan",
+   "op": "find",
+   "query": "plan",
+   "matches": [
+    {
+     "caption": 0,
+     "start": 1,
+     "count": 1
+    },
+    {
+     "caption": 1,
+     "start": 1,
+     "count": 1
+    },
+    {
+     "caption": 2,
+     "start": 4,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "name": "find the plan",
+   "op": "find",
+   "query": "the plan",
+   "matches": [
+    {
+     "caption": 0,
+     "start": 0,
+     "count": 2
+    },
+    {
+     "caption": 2,
+     "start": 3,
+     "count": 2
+    }
+   ]
+  },
+  {
+   "name": "find plan b",
+   "op": "find",
+   "query": "plan b",
+   "matches": [
+    {
+     "caption": 1,
+     "start": 1,
+     "count": 2
+    }
+   ]
+  },
+  {
+   "name": "find !!!",
+   "op": "find",
+   "query": "!!!",
+   "matches": []
+  },
+  {
+   "name": "find nothing to see here",
+   "op": "find",
+   "query": "nothing to see here",
+   "matches": [
+    {
+     "caption": 4,
+     "start": 0,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "replace plan -> strategy",
+   "op": "replace",
+   "query": "plan",
+   "replacement": "strategy",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "The strategy, simply put, is to launch in May.",
+     "words": [
+      {
+       "text": "The",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "strategy,",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000
+      },
+      {
+       "text": "in",
+       "start": 420000,
+       "end": 470000
+      },
+      {
+       "text": "May.",
+       "start": 480000,
+       "end": 530000
+      }
+     ]
+    },
+    {
+     "id": "c2",
+     "content": "Our \"strategy B\" costs money and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "\"strategy",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "B\"",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "money",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    },
+    {
+     "id": "c3",
+     "content": "No planned changes; the strategy stays.",
+     "words": [
+      {
+       "text": "No",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "planned",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "changes;",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "the",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "strategy",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "stays.",
+       "start": 300000,
+       "end": 350000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "replace the plan -> our roadmap for growth",
+   "op": "replace",
+   "query": "the plan",
+   "replacement": "our roadmap for growth",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "our roadmap for growth, simply put, is to launch in May.",
+     "words": [
+      {
+       "text": "our",
+       "start": 0,
+       "end": 19130,
+       "keyword": true
+      },
+      {
+       "text": "roadmap",
+       "start": 19130,
+       "end": 57391,
+       "keyword": true
+      },
+      {
+       "text": "for",
+       "start": 57391,
+       "end": 76521,
+       "keyword": true
+      },
+      {
+       "text": "growth,",
+       "start": 76521,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000
+      },
+      {
+       "text": "in",
+       "start": 420000,
+       "end": 470000
+      },
+      {
+       "text": "May.",
+       "start": 480000,
+       "end": 530000
+      }
+     ]
+    },
+    {
+     "id": "c3",
+     "content": "No planned changes; our roadmap for growth stays.",
+     "words": [
+      {
+       "text": "No",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "planned",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "changes;",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "our",
+       "start": 180000,
+       "end": 199130
+      },
+      {
+       "text": "roadmap",
+       "start": 199130,
+       "end": 237391
+      },
+      {
+       "text": "for",
+       "start": 237391,
+       "end": 256521
+      },
+      {
+       "text": "growth",
+       "start": 256521,
+       "end": 290000
+      },
+      {
+       "text": "stays.",
+       "start": 300000,
+       "end": 350000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "replace plan b -> ",
+   "op": "replace",
+   "query": "plan b",
+   "replacement": "",
+   "edited": [
+    {
+     "id": "c2",
+     "content": "Our costs money and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "money",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "replace in may -> next week",
+   "op": "replace",
+   "query": "in may",
+   "replacement": "next week",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "The plan, simply put, is to launch next week.",
+     "words": [
+      {
+       "text": "The",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "plan,",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000
+      },
+      {
+       "text": "next",
+       "start": 420000,
+       "end": 475000
+      },
+      {
+       "text": "week.",
+       "start": 475000,
+       "end": 530000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "replace money -> a lot of money",
+   "op": "replace",
+   "query": "money",
+   "replacement": "a lot of money",
+   "edited": [
+    {
+     "id": "c2",
+     "content": "Our \"Plan B\" costs a lot of money and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "\"Plan",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "B\"",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "a",
+       "start": 240000,
+       "end": 246666
+      },
+      {
+       "text": "lot",
+       "start": 246666,
+       "end": 260000
+      },
+      {
+       "text": "of",
+       "start": 260000,
+       "end": 270000
+      },
+      {
+       "text": "money",
+       "start": 270000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "highlight plan",
+   "op": "highlight",
+   "query": "plan",
+   "edited": [
+    {
+     "id": "c2",
+     "content": "Our \"Plan B\" costs money and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "\"Plan",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "B\"",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "money",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    },
+    {
+     "id": "c3",
+     "content": "No planned changes; the PLAN stays.",
+     "words": [
+      {
+       "text": "No",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "planned",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "changes;",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "the",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "PLAN",
+       "start": 240000,
+       "end": 290000,
+       "keyword": true
+      },
+      {
+       "text": "stays.",
+       "start": 300000,
+       "end": 350000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "highlight to launch",
+   "op": "highlight",
+   "query": "to launch",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "The plan, simply put, is to launch in May.",
+     "words": [
+      {
+       "text": "The",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "plan,",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000,
+       "keyword": true
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000,
+       "keyword": true
+      },
+      {
+       "text": "in",
+       "start": 420000,
+       "end": 470000
+      },
+      {
+       "text": "May.",
+       "start": 480000,
+       "end": 530000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "add emoji",
+   "op": "addEmoji",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "The plan, simply put, is to launch 🚀 in May.",
+     "words": [
+      {
+       "text": "The",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "plan,",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000
+      },
+      {
+       "text": "🚀",
+       "start": 410000,
+       "end": 410000
+      },
+      {
+       "text": "in",
+       "start": 420000,
+       "end": 470000
+      },
+      {
+       "text": "May.",
+       "start": 480000,
+       "end": 530000
+      }
+     ]
+    },
+    {
+     "id": "c2",
+     "content": "Our \"Plan B\" costs money 💰 and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "\"Plan",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "B\"",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "money",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "💰",
+       "start": 290000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "remove emoji",
+   "op": "removeEmoji",
+   "edited": [
+    {
+     "id": "c1",
+     "content": "The plan, simply put, is to launch in May.",
+     "words": [
+      {
+       "text": "The",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "plan,",
+       "start": 60000,
+       "end": 110000,
+       "keyword": true
+      },
+      {
+       "text": "simply",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "put,",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "is",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "to",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "launch",
+       "start": 360000,
+       "end": 410000
+      },
+      {
+       "text": "in",
+       "start": 420000,
+       "end": 470000
+      },
+      {
+       "text": "May.",
+       "start": 480000,
+       "end": 530000
+      }
+     ]
+    },
+    {
+     "id": "c2",
+     "content": "Our \"Plan B\" costs money and time.",
+     "words": [
+      {
+       "text": "Our",
+       "start": 0,
+       "end": 50000
+      },
+      {
+       "text": "\"Plan",
+       "start": 60000,
+       "end": 110000
+      },
+      {
+       "text": "B\"",
+       "start": 120000,
+       "end": 170000
+      },
+      {
+       "text": "costs",
+       "start": 180000,
+       "end": 230000
+      },
+      {
+       "text": "money",
+       "start": 240000,
+       "end": 290000
+      },
+      {
+       "text": "and",
+       "start": 300000,
+       "end": 350000
+      },
+      {
+       "text": "time.",
+       "start": 360000,
+       "end": 410000
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
