@@ -258,5 +258,11 @@
   "Add emoji": "添加表情",
   "Remove emoji": "移除表情",
   "Changed {count} caption(s).": "已更改 {count} 条字幕。",
-  "Nothing to change in the captions.": "字幕中没有可更改的内容。"
+  "Nothing to change in the captions.": "字幕中没有可更改的内容。",
+  "Import captions…": "导入字幕…",
+  "Import subtitles": "导入字幕文件",
+  "Added {count} caption(s).": "已添加 {count} 条字幕。",
+  "Added {count} caption(s); skipped {skipped} unreadable cue(s).": "已添加 {count} 条字幕；跳过 {skipped} 条无法读取的字幕。",
+  "No captions found in that file.": "该文件中没有找到字幕。",
+  "Subtitles not read: {error}": "未能读取字幕：{error}"
 }

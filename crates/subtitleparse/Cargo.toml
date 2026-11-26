@@ -1,0 +1,16 @@
+[package]
+name = "subtitleparse"
+description = "SRT and WebVTT subtitle parsing (cues, timing, and WebVTT word timestamps), shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

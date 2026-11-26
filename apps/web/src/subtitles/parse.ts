@@ -1,5 +1,5 @@
 import { parseAss } from "./ass";
-import { parseSrt } from "./srt";
+import { parseSharedSubtitles } from "./shared";
 import type { ParseSubtitleResult } from "./types";
 export type { ParseSubtitleResult, SubtitleCue } from "./types";
 
@@ -14,7 +14,8 @@ export function parseSubtitleFile({
 
 	switch (extension) {
 		case "srt":
-			return parseSrt({ input });
+		case "vtt":
+			return parseSharedSubtitles({ input, fileName });
 		case "ass":
 			return parseAss({ input });
 		default:

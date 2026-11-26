@@ -238,6 +238,49 @@ impl Shell {
         .detach();
     }
 
+    /// Reads an SRT or WebVTT file into captions on a new text track (one
+    /// undo step); WebVTT word timings become the captions' timed words.
+    fn import_captions(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let receiver = cx.prompt_for_paths(gpui::PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some(t("Import subtitles").into()),
+        });
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
+            let name = path.file_stem().and_then(|stem| stem.to_str()).unwrap_or("Subtitles").to_owned();
+            let parsed = cx.background_executor().spawn(async move { editor::read_subtitle_file(&path) }).await;
+            state
+                .update(cx, |state, cx| match parsed {
+                    Ok(parsed) => match editor::subtitle_import_command(state.project(), &parsed, &name) {
+                        Some((command, count)) => {
+                            state.execute(command, cx);
+                            let status = if parsed.skipped > 0 {
+                                tf("Added {count} caption(s); skipped {skipped} unreadable cue(s).", &[("count", &count), ("skipped", &parsed.skipped)])
+                            } else {
+                                tf("Added {count} caption(s).", &[("count", &count)])
+                            };
+                            state.set_status(status, cx);
+                        }
+                        None => state.set_status(t("No captions found in that file.").to_owned(), cx),
+                    },
+                    Err(error) => state.set_status(tf("Subtitles not read: {error}", &[("error", &error)]), cx),
+                })
+                .ok();
+        })
+        .detach();
+    }
+
     /// Writes the captions (the text elements) as a subtitle file; the
     /// extension the user picks (`.srt`, `.vtt`, `.ass`) chooses the format.
     fn export_captions(&mut self, cx: &mut Context<Self>) {
@@ -377,6 +420,12 @@ impl Render for Shell {
                     .size(ButtonSize::Small)
                     .on_click(move |_, _, cx| MediaPanel::import(&state, cx))
             })
+            .child(
+                Button::new("import-captions", t("Import captions…"))
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.import_captions(cx))),
+            )
             .child(
                 Button::new("export-captions", t("Captions…"))
                     .variant(ButtonVariant::Outline)

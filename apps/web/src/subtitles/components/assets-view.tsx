@@ -352,7 +352,7 @@ export function Captions() {
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept=".srt,.ass"
+				accept=".srt,.vtt,.ass"
 				className="hidden"
 				onChange={(event) => void handleFileChange({ event })}
 			/>

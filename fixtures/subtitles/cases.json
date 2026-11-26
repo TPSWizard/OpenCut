@@ -1,0 +1,153 @@
+{
+ "cases": [
+  {
+   "name": "srt basic",
+   "format": "srt",
+   "input": "1\r\n00:00:01,000 --> 00:00:03,500\r\nHello <i>there</i>,\r\nfriend.\r\n\r\n2\r\n00:00:04,000 --> 00:00:06,250\r\nSecond &amp; last\r\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "Hello there,\nfriend.",
+      "start": 1.0,
+      "end": 3.5
+     },
+     {
+      "text": "Second & last",
+      "start": 4.0,
+      "end": 6.25
+     }
+    ],
+    "skipped": 0
+   }
+  },
+  {
+   "name": "srt odd blocks",
+   "format": "srt",
+   "input": "1\n00:00:01.5 --> 00:00:02.0\n{\\an8}Top line\n\n2\nno timing here\n\n3\n00:00:05,000 --> 00:00:05,000\nZero length\n\n4\n00:00:06,000 --> 00:00:07,000\n<b></b>\n\n5\n00:00:08,000 --> 00:00:09,000\n<font color=\"#ff0000\">Red</font>   words\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "Top line",
+      "start": 1.5,
+      "end": 2.0
+     },
+     {
+      "text": "Red words",
+      "start": 8.0,
+      "end": 9.0
+     }
+    ],
+    "skipped": 3
+   }
+  },
+  {
+   "name": "vtt features",
+   "format": "vtt",
+   "input": "WEBVTT - Example\nKind: captions\n\nNOTE this is a note\nspanning lines\n\nSTYLE\n::cue { color: lime }\n\nintro\n00:01.000 --> 00:02.500 align:start position:10%\n<v Roger>Hi &lt;there&gt;&nbsp;friend\n\n00:00:03.000 --> 00:00:04.000\n<c.yellow>Coloured</c> line\nand a second\n\n00:05.000 --> 00:04.000\nBackwards\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "Hi <there> friend",
+      "start": 1.0,
+      "end": 2.5
+     },
+     {
+      "text": "Coloured line\nand a second",
+      "start": 3.0,
+      "end": 4.0
+     }
+    ],
+    "skipped": 1
+   }
+  },
+  {
+   "name": "vtt word timings",
+   "format": "vtt",
+   "input": "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nhello <00:00:02.600>world\n\n2\n00:00:03.000 --> 00:00:06.000\nso the <00:00:04.500>plan is <00:00:09.000>done\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "hello world",
+      "start": 1.0,
+      "end": 3.0,
+      "words": [
+       {
+        "text": "hello",
+        "start": 1.0,
+        "end": 2.6
+       },
+       {
+        "text": "world",
+        "start": 2.6,
+        "end": 3.0
+       }
+      ]
+     },
+     {
+      "text": "so the plan is done",
+      "start": 3.0,
+      "end": 6.0,
+      "words": [
+       {
+        "text": "so",
+        "start": 3.0,
+        "end": 3.643
+       },
+       {
+        "text": "the",
+        "start": 3.643,
+        "end": 4.5
+       },
+       {
+        "text": "plan",
+        "start": 4.5,
+        "end": 5.438
+       },
+       {
+        "text": "is",
+        "start": 5.438,
+        "end": 6.0
+       },
+       {
+        "text": "done",
+        "start": 6.0,
+        "end": 6.0
+       }
+      ]
+     }
+    ],
+    "skipped": 0
+   }
+  },
+  {
+   "name": "sniffed vtt",
+   "format": null,
+   "input": "﻿WEBVTT\n\n00:00.500 --> 00:01.250\nSniffed <b>bold</b>\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "Sniffed bold",
+      "start": 0.5,
+      "end": 1.25
+     }
+    ],
+    "skipped": 0
+   }
+  },
+  {
+   "name": "sniffed srt",
+   "format": null,
+   "input": "1\n00:00:00,100 --> 00:00:00,900\nPlain\n",
+   "parsed": {
+    "cues": [
+     {
+      "text": "Plain",
+      "start": 0.1,
+      "end": 0.9
+     }
+    ],
+    "skipped": 0
+   }
+  }
+ ]
+}

@@ -874,6 +874,21 @@ encoder can move the true peak a few hundredths of a decibel.
 yellow from −6 dBFS, red from −1) and the momentary (400 ms) and
 short-term (3 s) loudness of what the audio device is playing.
 
+## Importing captions
+
+**Import captions…** in the header reads an SRT or WebVTT file into captions
+on a new text track named after the file (one undo step). Formatting tags
+(`<i>`, `<b>`, `<c.class>`, `<v Speaker>`, `<font>`) and SSA codes such as
+`{n8}` are taken out and the common character references read; WebVTT
+`NOTE`, `STYLE` and `REGION` blocks and cue settings are skipped. When a
+WebVTT file carries inline word timestamps (`hello <00:00:02.600>world`, as
+the **Captions…** export writes them) they become the captions' timed words,
+so the spoken-word highlight works; plain cues get no highlight. Cues that
+cannot be read (no timing, an end not after the start, no text) are skipped
+and counted in the status line. The parser is the shared `subtitleparse`
+crate, which the web editor's Captions panel uses through WASM, so a file
+reads the same in both editors.
+
 ## Exporting captions
 
 **Captions…** in the header writes the timeline's captions (the text elements

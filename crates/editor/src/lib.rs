@@ -29,6 +29,7 @@ mod drawing;
 mod tracked;
 mod trim_tools;
 mod caption_edit;
+mod subtitle_import;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
@@ -138,6 +139,7 @@ pub use colour_tools::{
     COLOUR_WHEEL_ANGLES, COLOUR_WHEEL_RANGE, COLOUR_WHEELS, HSL_BANDS, HSL_CONTROLS, HSL_HUE_RANGE, colour_wheel_move,
     colour_wheel_offsets, colour_wheel_point, colour_wheel_rgba, hsl_band_swatch, hsl_band_value, hsl_param_key,
 };
+pub use subtitle_import::{read_subtitle_file, subtitle_import_command};
 pub use caption_edit::{CaptionEdit, caption_edit_command, caption_match_count};
 pub use trim_tools::{TrimTool, trim_tool_command};
 pub use tracked::{tracked_corner_pin_command, tracked_mask_command};

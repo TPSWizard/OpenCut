@@ -20,6 +20,7 @@ textwarp = { workspace = true }
 tracking = { workspace = true }
 trimedit = { workspace = true }
 captionedit = { workspace = true }
+subtitleparse = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 retakes = { workspace = true }
