@@ -24,6 +24,7 @@ subtitleparse = { workspace = true }
 titles = { workspace = true }
 wordart = { workspace = true }
 audiogram = { workspace = true }
+musicfit = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 retakes = { workspace = true }

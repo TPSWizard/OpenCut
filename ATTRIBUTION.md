@@ -414,3 +414,12 @@ this repository. Templates you save stay in your browser or in
   bars, line, circle) are our own code for this repository, under its MIT
   licence. No visualiser templates, artwork or third-party code are
   bundled.
+
+## Fit music to length (`crates/musicfit`, added 2026-11-26)
+
+- The beat and bar analysis, the join scores, the cut and loop planning
+  and the piece layout are our own code for this repository, under its
+  MIT licence (the beat tracker is the repository's own beat-marker code).
+  No model, music or third-party code is bundled. The music in
+  `fixtures/music-fit/cases.json` is synthesised sine tones made for the
+  fixture, not a recording.

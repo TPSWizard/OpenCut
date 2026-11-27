@@ -762,6 +762,24 @@ export interface EditorApiMethods {
 		result: { changed: number };
 	};
 	/**
+	 * Fits an audio clip to a length (row 101): cuts bars out or repeats
+	 * bars where the music sounds the same either side (the shared
+	 * `musicfit` crate), replacing the clip with pieces of the same source
+	 * back to back that crossfade into each other, in one undo step.
+	 * Without `seconds` it ends with everything else on the timeline.
+	 */
+	"music.fitToLength": {
+		params: { elementId: string; trackId?: string; seconds?: number };
+		result: {
+			kind: "cut" | "loop" | "trim";
+			seconds: number;
+			bpm: number | null;
+			trimmed: number;
+			joins: { fromSeconds: number; toSeconds: number; score: number }[];
+			pieces: ApiElementInfo[];
+		};
+	};
+	/**
 	 * Makes an audiogram (row 100) of a video or audio clip: listens to its
 	 * sound and puts a graphic over the clip's span whose bars move with it
 	 * (the shared `audiogram` crate; up to 10 minutes). Style it with

@@ -1,6 +1,7 @@
 import { getTextTemplateLibrary, insertTextTemplate } from "@/titles/templates";
 import { applyWordArtStyle, getWordArtStyles } from "@/text/word-art";
 import { makeAudiogram } from "@/audiogram/audiogram";
+import { fitMusic } from "@/music-fit/fit";
 import { DEFAULT_GIF_OPTIONS, type ExportKind, isAudioExportFormat, isExportKind } from "@/export/kinds";
 import {
 	DEFAULT_TRANSITION_DURATION,
@@ -1563,6 +1564,35 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 					clips: items.length,
 				})),
 			};
+		},
+		"music.fitToLength": async ({ elementId, trackId, seconds }) => {
+			requireProject();
+			const id = requireString(elementId, "elementId");
+			if (seconds !== undefined && (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "seconds must be a positive number" });
+			}
+			try {
+				const done = await fitMusic({ editor, elementId: id, trackId: typeof trackId === "string" ? trackId : undefined, seconds });
+				const track = editor.scenes.getActiveScene().tracks;
+				const pieces: ApiElementInfo[] = [];
+				for (const candidate of [track.main, ...track.overlay, ...track.audio]) {
+					if (candidate.id !== done.trackId) continue;
+					for (const piece of done.fit.pieces) {
+						const element = (candidate.elements as TimelineElement[]).find((item) => Number(item.startTime) === piece.start && Number(item.trimStart) === piece.trimStart);
+						if (element) pieces.push(elementInfoById({ trackId: candidate.id, elementId: element.id }));
+					}
+				}
+				return {
+					kind: done.fit.kind,
+					seconds: done.length / 120_000,
+					bpm: done.fit.bpm,
+					trimmed: done.fit.trimmed,
+					joins: done.fit.jumps.map((jump) => ({ fromSeconds: jump.fromSeconds, toSeconds: jump.toSeconds, score: jump.score })),
+					pieces,
+				};
+			} catch (error) {
+				throw new EditorApiError({ code: "failed", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"audiogram.make": async ({ elementId, trackId }) => {
 			requireProject();

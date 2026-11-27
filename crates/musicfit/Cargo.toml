@@ -1,0 +1,14 @@
+[package]
+name = "musicfit"
+description = "Fit music to a length: beat and bar analysis, similar-bar jumps (cuts and loops) and the pieces with crossfades, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -1050,6 +1050,29 @@ the same sound and the same picture. Checked against
 `fixtures/audiogram/cases.json` (an independent Python version: a direct
 DFT and per-pixel drawing).
 
+## Fit music to length
+
+Select an audio clip (without a speed change); the inspector's **Fit to
+length** section has **Fit to video**, which makes the music end with
+everything else on the timeline, and a **Length (s)** field for any other
+length (type it, then Enter). The part of the clip that plays is decoded
+by FFmpeg to mono at 16 kHz, beat-tracked (the beat-marker arithmetic,
+each beat then moved to the strongest onset within an eighth of a beat),
+grouped into bars of four, and each beat described by its pitch classes
+and band levels. A join plays up to one bar line and carries on from
+another; it scores well when the music either side matches what would
+have been there, or when the bar after it follows the bar before it as
+bars within a section do. Shorter: one cut of whole bars; longer: one
+loop, or a loop repeated and a second one for the rest; a join that leaves
+less to cut off the end is preferred, and whatever is still over comes
+off the end with a 1 s fade-out. Music without a steady beat can only be
+shortened, by ending it early. The clip becomes pieces of the same source
+back to back on its track, each crossfading into the next over 0.1 s
+(equal power; the crossfade of row 84), in one undo step; the first piece
+keeps the clip. The analysis and plan are the shared `musicfit` crate,
+which the web editor uses through WASM. Checked against
+`fixtures/music-fit/cases.json` (an independent Python version).
+
 ## Not there yet
 
 - The media browser does not play files before they go on the timeline;

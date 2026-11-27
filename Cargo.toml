@@ -32,6 +32,7 @@ members = [
   'crates/titles',
   'crates/wordart',
   'crates/audiogram',
+  'crates/musicfit',
   'crates/gifenc',
   'crates/facetrack',
   'crates/voice',
@@ -72,6 +73,7 @@ subtitleparse = { path = "crates/subtitleparse" }
 titles = { path = "crates/titles" }
 wordart = { path = "crates/wordart" }
 audiogram = { path = "crates/audiogram" }
+musicfit = { path = "crates/musicfit" }
 gifenc = { path = "crates/gifenc" }
 facetrack = { path = "crates/facetrack" }
 voice = { path = "crates/voice" }

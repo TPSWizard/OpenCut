@@ -1639,6 +1639,7 @@ dependencies = [
  "facetrack",
  "loudness",
  "multicam",
+ "musicfit",
  "retakes",
  "richtext",
  "serde",
@@ -3756,6 +3757,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "musicfit"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "naga"
 version = "25.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4339,6 +4348,7 @@ dependencies = [
  "loudness",
  "masks",
  "multicam",
+ "musicfit",
  "num-traits",
  "retakes",
  "richtext",

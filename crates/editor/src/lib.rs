@@ -29,6 +29,7 @@ mod text_templates;
 mod colour_tools;
 mod drawing;
 mod audiogram;
+mod music_fit;
 mod tracked;
 mod trim_tools;
 mod caption_edit;
@@ -153,6 +154,11 @@ pub use audiogram::{
 };
 /// The shared audiogram crate (analysis and drawing).
 pub use ::audiogram as audiogram_crate;
+pub use music_fit::{
+    MUSIC_FIT_SAMPLE_RATE, MusicFit, MusicFitError, MusicFitKind, can_fit_music, music_fit_clip, music_fit_command,
+    music_fit_default_length,
+};
+pub use ::musicfit as musicfit_crate;
 pub use effect_catalogue::{EFFECT_CATALOGUE, EffectParamSpec, EffectSpec, LIGHT_LEAK_COLOURS, effect_spec};
 pub use error::EditorError;
 pub use frame::{

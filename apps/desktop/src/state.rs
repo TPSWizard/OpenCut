@@ -4302,6 +4302,57 @@ impl EditorState {
         .detach();
     }
 
+    /// Fits the selected audio clip to `seconds` (or, with `None`, to end
+    /// with everything else on the timeline) by cutting or looping bars
+    /// that sound alike (row 101), in the background, then replaces it
+    /// with the pieces in one undo step (`editor::music_fit_command`).
+    pub(crate) fn fit_music_selected(&mut self, seconds: Option<f64>, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        if !editor::can_fit_music(element) {
+            self.set_status(t("Select an audio clip without a speed change to fit it to a length."), cx);
+            return;
+        }
+        let element_id = element.id.clone();
+        let length = match seconds {
+            Some(seconds) => match MediaTime::from_seconds_f64(seconds) {
+                Some(length) if seconds > 0.0 => length,
+                _ => return self.set_status(t("Type a length in seconds."), cx),
+            },
+            None => match editor::music_fit_default_length(self.project(), &element_id) {
+                Some(length) => length,
+                None => return self.set_status(t("Nothing else on the timeline to fit the music to; type a length instead."), cx),
+            },
+        };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read the clip's sound."), cx);
+            return;
+        };
+        let project = self.project().clone();
+        self.set_status(t("Finding the beats and bars that sound alike…"), cx);
+        cx.spawn(async move |this, cx| {
+            let fitted = cx
+                .background_executor()
+                .spawn(async move { crate::music_fit::fit_clip(&ffmpeg, &project, &element_id, length).map(|fit| (element_id, fit)) })
+                .await;
+            this.update(cx, |state, cx| {
+                let (element_id, fit) = match fitted {
+                    Ok(done) => done,
+                    Err(message) => return state.set_status(format!("{message}."), cx),
+                };
+                let command = match editor::music_fit_command(state.project(), &element_id, &fit) {
+                    Ok(command) => command,
+                    Err(message) => return state.set_status(format!("{}.", crate::i18n::tr(&message)), cx),
+                };
+                if state.execute(command, cx).is_none() {
+                    return;
+                }
+                state.set_status(music_fit_summary(&fit, length), cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn insert_element(&mut self, element: Element, cx: &mut Context<Self>) {
         if let Some(outcome) = self.execute(
             Command::InsertElement {
@@ -5424,4 +5475,20 @@ impl DrawBrush {
     pub(crate) fn new(tool: strokes::Tool) -> Self {
         Self { tool, color: if tool == strokes::Tool::Highlighter { "#ffeb3b".to_owned() } else { "#ff3b30".to_owned() }, width: tool.default_width() }
     }
+}
+
+/// What fitting music did, for the status line.
+fn music_fit_summary(fit: &editor::MusicFit, length: MediaTime) -> String {
+    let joins = fit.jumps.len().to_string();
+    let what = match fit.kind {
+        editor::MusicFitKind::Cut => tf("bars cut out at {joins} join(s)", &[("joins", &joins)]),
+        editor::MusicFitKind::Loop => tf("bars repeated at {joins} join(s)", &[("joins", &joins)]),
+        editor::MusicFitKind::Trim => t("no bars to cut, so it ends early").to_owned(),
+    };
+    let mut message = format!("{} {:.2} s: {what}", t("Music fitted to"), length.to_seconds_f64());
+    if fit.trimmed > 0.01 {
+        message.push_str(&format!("; {:.2} s {}", fit.trimmed, t("off the end, fading out")));
+    }
+    message.push('.');
+    message
 }

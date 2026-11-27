@@ -623,6 +623,13 @@ impl Render for InspectorPanel {
         };
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
+        // Fit music (row 101): the length to end with the rest of the timeline.
+        let can_fit_music = selected.as_ref().is_some_and(|element| editor::can_fit_music(element));
+        let music_fit_default = selected
+            .as_ref()
+            .filter(|_| can_fit_music)
+            .and_then(|element| editor::music_fit_default_length(project, &element.id))
+            .map(|length| length.to_seconds_f64());
         let has_realesrgan = state.has_realesrgan();
         let has_facefusion = state.has_facefusion();
         let loudness = state.loudness.clone();
@@ -2529,6 +2536,36 @@ impl Render for InspectorPanel {
                                 .child(t("Changes the voice (pitch down or up, robot, echo, radio, hall) into a copy the clip then plays, the same length as the original; undo puts the original back.")),
                         )
                         .child(voice_row);
+
+                    // Fit to length (row 101): cut or loop bars that sound alike.
+                    if can_fit_music {
+                        let default_text = music_fit_default.map(|seconds| format!("{seconds:.2}")).unwrap_or_default();
+                        content = content
+                            .child(self.heading(t("Fit to length"), window))
+                            .child(div().text_xs().text_color(colors.muted_foreground).child(t(
+                                "Shortens the music by cutting bars out, or lengthens it by repeating bars, where the music sounds the same either side, with short crossfades. Fit to video ends it with everything else; or type a length in seconds.",
+                            )))
+                            .child(self.row(
+                                t("Length (s)"),
+                                "musicFit.length",
+                                "seconds",
+                                default_text,
+                                None,
+                                window,
+                                cx,
+                                Box::new(|text, state, cx| match text.trim().parse::<f64>() {
+                                    Ok(seconds) => state.fit_music_selected(Some(seconds), cx),
+                                    Err(_) => state.set_status(t("Type a length in seconds."), cx),
+                                }),
+                            ))
+                            .child({
+                                let state = self.state.clone();
+                                Button::new("fit-music-video", t("Fit to video"))
+                                    .size(ButtonSize::XSmall)
+                                    .disabled(!has_ffmpeg || music_fit_default.is_none())
+                                    .on_click(move |_, _, cx| state.update(cx, |state, cx| state.fit_music_selected(None, cx)))
+                            });
+                    }
 
                     // Audiogram (row 100): bars, a waveform, a line or a circle
                     // that move with this clip's sound, as a new layer.

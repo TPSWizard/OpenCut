@@ -13,6 +13,7 @@ mod assets;
 mod audio;
 mod beats;
 mod audiogram;
+mod music_fit;
 mod colour_match;
 mod broll;
 mod ducking;
