@@ -186,6 +186,7 @@ import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
 import { cutCount, groupCuts, multicamGroup, multicamSwitchCommand } from "@/multicam/group";
 import { syncMulticam } from "@/multicam/sync";
+import { gridAngles, gridCells, liveAngle, multicamTarget, useMulticamGridStore } from "@/multicam/grid";
 import { applyRichStyle, RICH_SCALE_MAX, RICH_SCALE_MIN, type RichPatch } from "@/text/rich";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
 import { mediaTime } from "@/wasm";
@@ -2418,6 +2419,35 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
 			}
 			return { cleared: true };
+		},
+		"multicam.grid": ({ elementId, trackId, open, at }) => {
+			requireProject();
+			if (at !== undefined && (typeof at !== "number" || !Number.isFinite(at) || at < 0)) {
+				throw new EditorApiError({ code: "invalid_params", message: "at must be timeline seconds" });
+			}
+			const store = useMulticamGridStore.getState();
+			const target = elementId ? resolveElement({ elementId, trackId }).element.id : multicamTarget(editor);
+			const tracks = editor.scenes.getActiveScene().tracks;
+			if (!target || !multicamGroup(tracks, target)) {
+				throw new EditorApiError({ code: "invalid_params", message: "The clip is not in a multicam group" });
+			}
+			if (open === false) store.setElementId(null);
+			else store.setElementId(target);
+			const canvas = editor.project.getActive().settings.canvasSize;
+			const found = gridAngles(tracks, target, editor.media.getAssets(), canvas);
+			if (!found) throw new EditorApiError({ code: "invalid_params", message: "The clip is not in a multicam group" });
+			const cells = gridCells(canvas, found.sources);
+			const time = at ?? editor.playback.getCurrentTime() / TICKS_PER_SECOND;
+			return {
+				open: open !== false,
+				live: liveAngle(found.angles, time) + 1,
+				angles: found.angles.map((angle, index) => ({
+					elementId: angle.element.id,
+					name: angle.element.name,
+					angle: angle.angle + 1,
+					cell: { x: cells[index].x, y: cells[index].y, width: cells[index].width, height: cells[index].height },
+				})),
+			};
 		},
 		"text.styleRange": ({ elementId, trackId, start, end, color, bold, italic, scale }) => {
 			requireProject();

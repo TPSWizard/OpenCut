@@ -43,7 +43,7 @@ pub use face_retouch::{face_blur_commands, face_retouch_commands};
 pub use facetrack::{FACE_TRACK_PARAM, FaceBox, FaceTrack};
 pub use multicam_group::{
     MULTICAM_ANGLE, MULTICAM_CUTS, MULTICAM_GROUP, MulticamAngle, multicam_clear_commands, multicam_cuts, multicam_group,
-    multicam_switch_commands, multicam_sync_commands,
+    multicam_grid_project, multicam_live_angle, multicam_switch_commands, multicam_sync_commands,
 };
 
 /// Rich text: the param holding a text clip's styled ranges (`richtext`).

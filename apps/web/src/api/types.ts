@@ -1255,6 +1255,21 @@ export interface EditorApiMethods {
 		result: { cleared: true };
 	};
 	/**
+	 * The multicam grid (row 102): opens the preview's grid of every angle
+	 * of the clip's group (default: the selected or first group) or closes
+	 * it (`open: false`); keys 1-9 cut to an angle at the playhead. Cells
+	 * are canvas pixels; `live` (from 1) is the angle showing at `at`
+	 * (default: the playhead). Nothing on the timeline changes.
+	 */
+	"multicam.grid": {
+		params: { elementId?: string; trackId?: string; open?: boolean; at?: number };
+		result: {
+			open: boolean;
+			live: number | null;
+			angles: { elementId: string; name: string; angle: number; cell: { x: number; y: number; width: number; height: number } }[];
+		};
+	};
+	/**
 	 * Rich text: gives characters `start..end` of a text element's text
 	 * (counting characters, not UTF-16 units; end exclusive) a colour
 	 * (`#rgb` / `#rrggbb`), weight, slant or size (`scale` 0.25 to 4,

@@ -15,6 +15,9 @@
 //! against `fixtures/multicam/cases.json`.
 
 /// Envelope values a second.
+mod grid;
+pub use grid::*;
+
 pub const ENVELOPE_RATE: f64 = 200.0;
 /// Below this score the sound does not match well enough to sync.
 pub const MIN_SYNC_SCORE: f64 = 0.2;

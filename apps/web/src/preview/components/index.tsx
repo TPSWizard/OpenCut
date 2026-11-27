@@ -23,6 +23,8 @@ import { PreviewToolbar } from "./toolbar";
 import { captureScope } from "@/scopes/capture";
 import { ScopesPanel } from "@/scopes/components/scopes-panel";
 import { DrawBar, DrawOverlay } from "@/drawing/components/draw-overlay";
+import { multicamGridTracks, useMulticamGridStore } from "@/multicam/grid";
+import { MulticamGridOverlay, MulticamKeys } from "@/multicam/components/multicam-grid";
 import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
@@ -105,6 +107,8 @@ function RenderTreeController() {
 	const activeProject = useEditor((e) => e.project.getActive());
 	const previewQuality = usePreviewStore((state) => state.previewQuality);
 	const useProxies = usePreviewStore((state) => state.useProxies);
+	// The multicam grid (row 102) draws the group's angles side by side.
+	const gridElementId = useMulticamGridStore((state) => state.elementId);
 
 	const { width, height } = usePreviewSize();
 
@@ -112,8 +116,12 @@ function RenderTreeController() {
 		if (!activeProject) return;
 
 		const duration = editor.timeline.getTotalDuration();
+		const gridTracks =
+			gridElementId && width && height
+				? multicamGridTracks({ tracks, elementId: gridElementId, assets: mediaAssets, canvas: { width, height } })
+				: null;
 		const renderTree = buildScene({
-			tracks,
+			tracks: gridTracks ?? tracks,
 			mediaAssets,
 			duration,
 			canvasSize: { width, height },
@@ -132,6 +140,7 @@ function RenderTreeController() {
 		height,
 		previewQuality,
 		useProxies,
+		gridElementId,
 	]);
 
 	return null;
@@ -163,6 +172,8 @@ function PreviewCanvas({
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const renderTree = useEditor((e) => e.renderer.getRenderTree());
+	// While the multicam grid shows, the clips' handles would not match it.
+	const gridOpen = useMulticamGridStore((state) => state.elementId !== null);
 	const viewport = usePreviewViewportState({
 		canvasHeight: nativeHeight,
 		canvasWidth: nativeWidth,
@@ -348,7 +359,7 @@ function PreviewCanvas({
 									instances={overlayInstances}
 									plane="under-interaction"
 								/>
-								<PreviewInteractionOverlay />
+								{!gridOpen && <PreviewInteractionOverlay />}
 								<PreviewOverlayLayer
 									instances={overlayInstances}
 									plane="over-interaction"
@@ -360,6 +371,8 @@ function PreviewCanvas({
 									height={viewport.sceneHeight}
 								/>
 								<DrawBar />
+								<MulticamGridOverlay />
+								<MulticamKeys />
 							</div>
 						</ContextMenuTrigger>
 						<PreviewContextMenu

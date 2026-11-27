@@ -34,6 +34,7 @@ import { useT } from "@/i18n";
 import { useScopeStore } from "@/scopes/capture";
 import { brushFor, useDrawStore } from "@/drawing/strokes";
 import { formatMeterLufs, meterFraction, type MeterReadings } from "@/loudness/mix";
+import { MulticamGridButton } from "@/multicam/components/multicam-grid";
 
 /** Preview quality names (PREVIEW_QUALITIES holds the English; fractions stay as they are). */
 function qualityLabel(value: string, fallback: string, t: ReturnType<typeof useT>): string {
@@ -78,6 +79,7 @@ export function PreviewToolbar({
 					</Button>
 				</GridPopover>
 				<DrawButton />
+				<MulticamGridButton />
 				<ScopesButton />
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />

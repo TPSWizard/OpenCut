@@ -44,3 +44,37 @@ pub fn multicam_opacity_keys(cuts: &str, angle: u32, start: f64, end: f64) -> Ve
         .flat_map(|(time, value)| [time, value])
         .collect()
 }
+
+/// The most angles the multicam grid draws (row 102).
+#[wasm_bindgen(js_name = multicamGridMaxAngles)]
+pub fn multicam_grid_max_angles() -> u32 {
+    ::multicam::GRID_MAX_ANGLES as u32
+}
+
+/// The multicam grid on a `width` x `height` canvas for angles of
+/// `sources` sizes (flat `[width, height, …]`): per angle, flat, the cell
+/// `x, y, width, height` (canvas pixels) and the clip's `positionX,
+/// positionY, scale` transform (`multicam::grid_placements`).
+#[wasm_bindgen(js_name = multicamGrid)]
+pub fn multicam_grid(width: f64, height: f64, sources: &[f64]) -> Vec<f64> {
+    let sizes: Vec<(f64, f64)> = sources.chunks_exact(2).map(|pair| (pair[0], pair[1])).collect();
+    ::multicam::grid_placements((width, height), &sizes)
+        .into_iter()
+        .flat_map(|placement| {
+            let [x, y, w, h] = placement.cell;
+            [x, y, w, h, placement.position_x, placement.position_y, placement.scale]
+        })
+        .collect()
+}
+
+/// The angle whose grid cell holds canvas point `(x, y)`, or -1.
+#[wasm_bindgen(js_name = multicamGridCellAt)]
+pub fn multicam_grid_cell_at(count: u32, width: f64, height: f64, x: f64, y: f64) -> i32 {
+    ::multicam::grid_cell_at(count as usize, (width, height), x, y).map_or(-1, |index| index as i32)
+}
+
+/// The angle a stored cut list shows at timeline second `time`.
+#[wasm_bindgen(js_name = multicamLiveAngle)]
+pub fn multicam_live_angle(cuts: &str, time: f64) -> u32 {
+    ::multicam::angle_at(&::multicam::parse_cuts(cuts), time) as u32
+}

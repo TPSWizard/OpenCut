@@ -88,4 +88,89 @@ mod tests {
         let lags = sync_lags(&ffmpeg, &angles).unwrap();
         assert!((lags[1].1 - 0.75).abs() < 0.01, "{lags:?}");
     }
+
+
+    /// The multicam grid through the real renderer (row 102): three solid
+    /// colour "cameras" made with FFmpeg are grouped, cut to the third at
+    /// 1 s, and the grid draws each in its own cell while the program shows
+    /// only the live one. Needs FFmpeg and a GPU adapter; skips otherwise.
+    #[test]
+    fn the_grid_draws_every_angle_in_its_cell() {
+        use editor::{Command, Element, MediaItem, MediaKind, Project, TrackPlacement, apply};
+        use render::{Renderer, RendererOptions};
+        use time::MediaTime;
+        let Ok(ffmpeg) = Ffmpeg::locate() else { return };
+        let Ok(mut renderer) = Renderer::new(RendererOptions { ffmpeg: Some(ffmpeg.clone()), ..Default::default() }) else {
+            eprintln!("no GPU adapter; skipping");
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let mut project = Project::new("Grid");
+        project.settings.canvas = editor::CanvasSize { width: 320, height: 180 };
+        let mut ids = Vec::new();
+        for (index, colour) in ["red", "lime", "blue"].iter().enumerate() {
+            let path = dir.path().join(format!("{colour}.mp4"));
+            let made = std::process::Command::new(ffmpeg.ffmpeg_path())
+                .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"])
+                .arg(format!("color=c={colour}:size=320x180:rate=30:duration=3"))
+                .args(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
+                .arg(&path)
+                .output()
+                .unwrap();
+            assert!(made.status.success(), "{}", String::from_utf8_lossy(&made.stderr));
+            let id = format!("cam{index}");
+            apply(
+                &mut project,
+                &Command::AddMedia(MediaItem {
+                    id: id.clone(),
+                    name: format!("{colour}.mp4"),
+                    kind: MediaKind::Video,
+                    path,
+                    duration: MediaTime::from_seconds_f64(3.0),
+                    width: Some(320),
+                    height: Some(180),
+                    fps: Some(30.0),
+                    has_audio: false,
+                }),
+            )
+            .unwrap();
+            let element = Element::from_media(project.media_item(&id).unwrap(), MediaTime::ZERO);
+            ids.push(element.id.clone());
+            apply(&mut project, &Command::InsertElement { element, placement: TrackPlacement::Auto }).unwrap();
+        }
+        let lags: Vec<(String, f64)> = ids.iter().map(|id| (id.clone(), 0.0)).collect();
+        let commands = editor::multicam_sync_commands(&project, &lags, "grid-test").unwrap();
+        apply(&mut project, &Command::Batch(commands)).unwrap();
+        let commands = editor::multicam_switch_commands(&project, &ids[0], 1.0, 2).unwrap();
+        apply(&mut project, &Command::Batch(commands)).unwrap();
+
+        let pixel = |frame: &render::RenderedFrame, x: f64, y: f64| {
+            let index = ((y as usize) * frame.width as usize + x as usize) * 4;
+            let bgra = &frame.bgra[index..index + 4];
+            (bgra[2], bgra[1], bgra[0])
+        };
+        let near = |(r, g, b): (u8, u8, u8), want: (u8, u8, u8)| {
+            (r as i32 - want.0 as i32).abs() < 40 && (g as i32 - want.1 as i32).abs() < 40 && (b as i32 - want.2 as i32).abs() < 40
+        };
+        let at = |seconds: f64| MediaTime::from_seconds_f64(seconds).unwrap();
+        // The program: red before the cut, blue after.
+        let before = renderer.render(&project, at(0.5), 320, 180).unwrap();
+        let after = renderer.render(&project, at(1.5), 320, 180).unwrap();
+        assert!(near(pixel(&before, 160.0, 90.0), (255, 0, 0)), "{:?}", pixel(&before, 160.0, 90.0));
+        assert!(near(pixel(&after, 160.0, 90.0), (0, 0, 255)), "{:?}", pixel(&after, 160.0, 90.0));
+
+        // The grid: every angle in its cell, whichever is live.
+        let grid = editor::multicam_grid_project(&project, &ids[1]).unwrap();
+        let frame = renderer.render(&grid, at(1.5), 320, 180).unwrap();
+        let cells = ::multicam::grid_cells(3, (320.0, 180.0));
+        for (cell, want) in cells.iter().zip([(255, 0, 0), (0, 255, 0), (0, 0, 255)]) {
+            let centre = (cell[0] + cell[2] / 2.0, cell[1] + cell[3] / 2.0);
+            let got = pixel(&frame, centre.0, centre.1);
+            assert!(near(got, want), "cell {cell:?}: {got:?} vs {want:?}");
+        }
+        // The gap between the cells is not a camera.
+        let gap = pixel(&frame, 1.0, 90.0);
+        assert!(!near(gap, (255, 0, 0)) && !near(gap, (0, 255, 0)) && !near(gap, (0, 0, 255)), "{gap:?}");
+        assert_eq!(editor::multicam_live_angle(&project, &ids[0], 1.5).unwrap().0, 2);
+    }
 }

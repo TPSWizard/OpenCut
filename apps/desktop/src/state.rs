@@ -149,6 +149,9 @@ pub(crate) struct EditorState {
     pub scope: Option<scopes::Scope>,
     /// The scope drawn from the last preview frame.
     pub scope_frame: Option<crate::render_thread::ScopeFrame>,
+    /// The multicam grid (row 102): an angle of the group whose angles the
+    /// preview draws side by side instead of the program.
+    pub multicam_grid: Option<String>,
     /// The last loudness measurement: the clip's id and its report.
     pub loudness: Option<(String, editor::LoudnessReport)>,
     /// In and out marks: a stretch of the timeline to ripple-delete.
@@ -249,6 +252,7 @@ impl EditorState {
             guide: None,
             scope: None,
             scope_frame: None,
+            multicam_grid: None,
             loudness: None,
             mark_in: None,
             mark_out: None,
@@ -2258,6 +2262,55 @@ impl EditorState {
             .ok();
         })
         .detach();
+    }
+
+    /// The multicam group the grid and keys 1-9 work on: the grid's while it
+    /// is open, else the selected clip's, else the first on the timeline.
+    pub(crate) fn multicam_target(&self) -> Option<String> {
+        let project = self.project();
+        let grouped = |id: &str| editor::multicam_group(project, id).is_some();
+        if let Some(id) = self.multicam_grid.as_deref().filter(|id| grouped(id)) {
+            return Some(id.to_owned());
+        }
+        if let Some(element) = self.selected_element().filter(|element| grouped(&element.id)) {
+            return Some(element.id.clone());
+        }
+        project.tracks.iter().flat_map(|track| &track.elements).find(|element| grouped(&element.id)).map(|element| element.id.clone())
+    }
+
+    /// The grid while it is open: each angle's name, and the angle that is
+    /// live at the playhead.
+    pub(crate) fn multicam_grid_view(&self) -> Option<(Vec<String>, usize)> {
+        let id = self.multicam_grid.as_deref()?;
+        let (live, angles) = editor::multicam_live_angle(self.project(), id, self.playhead().to_seconds_f64())?;
+        let mut names: Vec<String> = angles.into_iter().map(|angle| angle.name).collect();
+        names.truncate(::multicam::GRID_MAX_ANGLES);
+        Some((names, live))
+    }
+
+    /// Opens or closes the multicam grid in the preview.
+    pub(crate) fn toggle_multicam_grid(&mut self, cx: &mut Context<Self>) {
+        if self.multicam_grid.take().is_none() {
+            match self.multicam_target() {
+                Some(id) => self.multicam_grid = Some(id),
+                None => self.set_status(t("Sync two or more angles by audio first; the grid shows a multicam group."), cx),
+            }
+        }
+        self.request_render(cx);
+        cx.notify();
+    }
+
+    /// Keys 1-9 and clicks on the grid: the group cuts to `angle` at the
+    /// playhead, playing or not (one undo step each).
+    pub(crate) fn multicam_key(&mut self, angle: usize, cx: &mut Context<Self>) {
+        let Some(element_id) = self.multicam_target() else { return };
+        let time = self.playhead().to_seconds_f64();
+        match editor::multicam_switch_commands(self.project(), &element_id, time, angle) {
+            Ok(commands) => {
+                self.execute(Command::Batch(commands), cx);
+            }
+            Err(message) => self.set_status(crate::i18n::tr(&message), cx),
+        }
     }
 
     /// Multicam: the selected angle's group shows `angle` from the playhead
@@ -4669,8 +4722,10 @@ impl EditorState {
     pub(crate) fn request_render(&mut self, _cx: &mut Context<Self>) {
         self.render_generation += 1;
         let (width, height) = self.preview_size;
+        // The multicam grid draws the group's angles side by side instead.
+        let grid = self.multicam_grid.as_deref().and_then(|id| editor::multicam_grid_project(self.project(), id));
         self.render.send(RenderRequest::Frame {
-            project: Arc::new(self.project().clone()),
+            project: Arc::new(grid.unwrap_or_else(|| self.project().clone())),
             time: self.playhead(),
             width,
             height,

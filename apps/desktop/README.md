@@ -574,6 +574,22 @@ list (`multicam.cuts`) and rewriting every angle's opacity as stepped keys
 stay ordinary clips and render everywhere. **Clear cuts** shows angle 1
 throughout. The web editor does the same through WASM.
 
+**Multicam grid** (the preview toolbar, shown when the timeline has a
+group) draws every angle of the group at once instead of the program: the
+canvas is split into a grid as square as the count allows (columns first,
+a short last row centred, a 1% gap), each angle fitted into its cell
+without cropping, fully opaque, its opacity and transform keys set aside
+(`editor::multicam_grid_project`, a copy of the project the renderer draws;
+the timeline is not changed). Each cell carries the angle's number and
+name, and the live angle (the last cut at or before the playhead) is framed,
+red while playing. Keys **1-9** cut the group to that angle at the playhead,
+playing or not, whether the grid is open or not (the grid's group, else the
+selected clip's, else the first on the timeline); clicking a cell does the
+same. Each cut is one undo step. The cells, placements and the live angle
+are the shared `multicam` crate's (`grid_placements`, `grid_cell_at`,
+`angle_at`), checked against `fixtures/multicam/grid.json`; at most 16
+angles are drawn.
+
 ## Rich text
 
 A text element's inspector has a **Selection** row under the Text field:

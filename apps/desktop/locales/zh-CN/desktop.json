@@ -1196,5 +1196,7 @@
   "That is too long for this music: it would take more than 64 pieces": "对这段音乐来说太长了：需要超过 64 个片段",
   "Fit to length works on audio clips without a speed change": "适配时长仅适用于未变速的音频片段",
   "Another clip on this track is in the way; move it or put the music on its own track": "此轨道上有其他片段挡住了；请移开它，或把音乐放到单独的轨道上",
-  "Nothing to fit": "没有可适配的内容"
+  "Nothing to fit": "没有可适配的内容",
+  "Multicam grid": "多机位网格",
+  "Sync two or more angles by audio first; the grid shows a multicam group.": "请先按音频同步两个或更多机位；网格显示一个多机位组。"
 }

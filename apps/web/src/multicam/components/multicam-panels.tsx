@@ -8,6 +8,7 @@ import { useT } from "@/i18n";
 import type { TimelineElement, VideoElement } from "@/timeline/types";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { cutCount, multicamGroup, multicamSwitchCommand } from "../group";
+import { useMulticamGridStore } from "../grid";
 import { type ElementRef, syncMulticam } from "../sync";
 
 /** With two or more video clips selected: line them up by their sound as multicam angles. */
@@ -69,6 +70,7 @@ export function MulticamSection({ element, trackId }: { element: VideoElement; t
 	const editor = useEditor();
 	const tracks = useEditor((e) => e.scenes.getActiveScene().tracks);
 	const [status, setStatus] = useState<string | null>(null);
+	const gridOpen = useMulticamGridStore((state) => state.elementId !== null);
 	const group = multicamGroup(tracks, element.id);
 	if (!group) return null;
 	const cuts = cutCount(group.angles);
@@ -117,6 +119,17 @@ export function MulticamSection({ element, trackId }: { element: VideoElement; t
 							{t("Clear cuts")}
 						</Button>
 					</div>
+					<Button
+						size="sm"
+						variant={gridOpen ? "secondary" : "outline"}
+						data-testid="multicam-grid-panel-toggle"
+						onClick={() => useMulticamGridStore.getState().setElementId(gridOpen ? null : element.id)}
+					>
+						{gridOpen ? t("Hide the grid") : t("Show the grid")}
+					</Button>
+					<p className="text-muted-foreground text-xs">
+						{t("The grid shows every angle in the preview; press 1-9 to cut to that angle at the playhead, also while playing.")}
+					</p>
 					{status && (
 						<p className="text-muted-foreground text-xs" role="status">
 							{status}

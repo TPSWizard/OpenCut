@@ -248,6 +248,20 @@ fn paint_safe_area(bounds: Bounds<Pixels>, canvas_size: (f32, f32), area: editor
     }
 }
 
+/// The multicam grid's frame round the live angle's cell (row 102): red
+/// while playing, as a tally light, else white.
+fn paint_grid_live(bounds: Bounds<Pixels>, canvas_size: (f32, f32), count: usize, live: usize, playing: bool, window: &mut Window) {
+    let (origin, scale) = fitted_frame(bounds, canvas_size);
+    let cells = ::multicam::grid_cells(count, (canvas_size.0 as f64, canvas_size.1 as f64));
+    let Some(&[x, y, w, h]) = cells.get(live) else { return };
+    let (x, y, w, h) = (x as f32 * scale, y as f32 * scale, w as f32 * scale, h as f32 * scale);
+    let colour = if playing { hsla(0.0, 0.85, 0.55, 1.0) } else { hsla(0.0, 0.0, 1.0, 0.95) };
+    let edge = 3.0_f32;
+    for (qx, qy, qw, qh) in [(x - edge, y - edge, w + 2.0 * edge, edge), (x - edge, y + h, w + 2.0 * edge, edge), (x - edge, y, edge, h), (x + w, y, edge, h)] {
+        window.paint_quad(fill(Bounds::new(point(origin.x + px(qx), origin.y + px(qy)), size(px(qw), px(qh))), colour));
+    }
+}
+
 /// A thin quad from `a` to `b`.
 fn paint_line(a: Point<Pixels>, b: Point<Pixels>, half_width: f32, color: gpui::Hsla, window: &mut Window) {
     let (dx, dy) = (f32::from(b.x - a.x), f32::from(b.y - a.y));
@@ -363,6 +377,11 @@ impl Render for PreviewPanel {
         let overlay = state.freeform_overlay();
         let path_editable = overlay.as_ref().is_some_and(|overlay| overlay.editable);
         let pin_overlay = state.corner_pin_overlay();
+        // The multicam grid (row 102): the angles' names and the live one.
+        let grid_view = state.multicam_grid_view();
+        let grid_count = grid_view.as_ref().map_or(0, |(names, _)| names.len());
+        let grid_open = state.multicam_grid.is_some();
+        let grid_available = grid_open || state.multicam_target().is_some();
         let pin_dragging = self.pin_drag.borrow().is_some();
         let dragging = self.path_drag.borrow().is_some() || pin_dragging;
 
@@ -400,6 +419,16 @@ impl Render for PreviewPanel {
                 move |event: &MouseDownEvent, window, cx| {
                     window.focus(&focus_handle);
                     let bounds = bounds_cell.get();
+                    // On the multicam grid a click cuts to that angle at the playhead.
+                    if grid_count > 0 {
+                        if let Some((x, y)) = canvas_point(bounds, canvas_size, event.position) {
+                            let hit = ::multicam::grid_cell_at(grid_count, (canvas_size.0 as f64, canvas_size.1 as f64), x as f64, y as f64);
+                            if let Some(angle) = hit {
+                                state.update(cx, |state, cx| state.multicam_key(angle, cx));
+                            }
+                        }
+                        return;
+                    }
                     // A corner pin handle may sit outside the frame (a
                     // corner dragged past the edge), so it is hit first.
                     if let Some(corners) = pin_overlay {
@@ -607,6 +636,35 @@ impl Render for PreviewPanel {
                     .absolute()
                     .inset_0(),
                 )
+            })
+            .when_some(grid_view.clone(), |this, (names, live)| {
+                let count = names.len();
+                let bounds = self.frame_bounds.get();
+                let (origin, scale) = fitted_frame(bounds, canvas_size);
+                let cells = ::multicam::grid_cells(count, (canvas_size.0 as f64, canvas_size.1 as f64));
+                let labels = names.into_iter().zip(cells).enumerate().map(|(index, (name, [x, y, _, _]))| {
+                    let key = if index < 9 { format!("{}", index + 1) } else { "·".to_owned() };
+                    div()
+                        .absolute()
+                        .left(origin.x - bounds.origin.x + px(x as f32 * scale + 4.0))
+                        .top(origin.y - bounds.origin.y + px(y as f32 * scale + 4.0))
+                        .px(px(5.))
+                        .py(px(1.))
+                        .rounded(px(3.))
+                        .bg(if index == live { hsla(0.0, 0.85, 0.45, 0.9) } else { hsla(0.0, 0.0, 0.0, 0.6) })
+                        .text_xs()
+                        .text_color(gpui::white())
+                        .child(format!("{key}  {name}"))
+                });
+                this.child(
+                    canvas(
+                        |_, _, _| (),
+                        move |bounds, _, window, _| paint_grid_live(bounds, canvas_size, count, live, playing, window),
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
+                .children(labels)
             })
             .when_some(pin_overlay, |this, corners| {
                 this.child(
@@ -885,6 +943,15 @@ impl Render for PreviewPanel {
                     }))
                     .child(div().flex_1())
                     .child(draw_row)
+                    .when(grid_available, |this| {
+                        let state = self.state.clone();
+                        this.child(
+                            Button::new("multicam-grid", t("Multicam grid"))
+                                .variant(if grid_open { ButtonVariant::Default } else { ButtonVariant::Ghost })
+                                .size(ButtonSize::XSmall)
+                                .on_click(move |_, _, cx| state.update(cx, |state, cx| state.toggle_multicam_grid(cx))),
+                        )
+                    })
                     .child(scope_toggle)
                     .child(guide_row)
                     .child(quality_row)

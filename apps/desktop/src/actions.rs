@@ -42,6 +42,15 @@ actions!(
         UngroupSelection,
         CreateCompound,
         BreakApartCompound,
+        SwitchAngle1,
+        SwitchAngle2,
+        SwitchAngle3,
+        SwitchAngle4,
+        SwitchAngle5,
+        SwitchAngle6,
+        SwitchAngle7,
+        SwitchAngle8,
+        SwitchAngle9,
     ]
 );
 
@@ -165,6 +174,16 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new(&format!("{primary}--"), ZoomOut, anywhere),
         KeyBinding::new(&format!("{primary}-i"), ImportMedia, anywhere),
         KeyBinding::new("t", AddText, editor),
+        // Multicam (row 102): cut the group to angle 1-9 at the playhead.
+        KeyBinding::new("1", SwitchAngle1, editor),
+        KeyBinding::new("2", SwitchAngle2, editor),
+        KeyBinding::new("3", SwitchAngle3, editor),
+        KeyBinding::new("4", SwitchAngle4, editor),
+        KeyBinding::new("5", SwitchAngle5, editor),
+        KeyBinding::new("6", SwitchAngle6, editor),
+        KeyBinding::new("7", SwitchAngle7, editor),
+        KeyBinding::new("8", SwitchAngle8, editor),
+        KeyBinding::new("9", SwitchAngle9, editor),
         KeyBinding::new(&format!("{primary}-s"), SaveProject, anywhere),
         KeyBinding::new(&format!("{primary}-e"), ExportProject, anywhere),
         KeyBinding::new(&format!("{primary}-w"), CloseProject, anywhere),

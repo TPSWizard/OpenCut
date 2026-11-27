@@ -423,3 +423,10 @@ this repository. Templates you save stay in your browser or in
   No model, music or third-party code is bundled. The music in
   `fixtures/music-fit/cases.json` is synthesised sine tones made for the
   fixture, not a recording.
+
+## Multicam grid (`crates/multicam` grid, added 2026-11-27)
+
+- The grid layout, the placements, the cell hit test and the live angle
+  are our own code for this repository, under its MIT licence. The icon is
+  Hugeicons' free GridView icon, already used by the web editor. The
+  test cameras are synthesised by FFmpeg (solid colours and sine tones).

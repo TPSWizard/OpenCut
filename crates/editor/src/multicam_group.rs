@@ -126,6 +126,58 @@ pub fn multicam_switch_commands(project: &Project, element_id: &str, time: f64, 
     Ok(apply_cuts(&angles, &cuts))
 }
 
+/// The angle the group of `element_id` shows at timeline second `time`
+/// (0-based), with the group's angles; `None` when it is not in a group.
+pub fn multicam_live_angle(project: &Project, element_id: &str, time: f64) -> Option<(usize, Vec<MulticamAngle>)> {
+    let (_, angles) = multicam_group(project, element_id)?;
+    let live = ::multicam::angle_at(&multicam_cuts(project, &angles), time);
+    Some((live, angles))
+}
+
+/// The multicam grid (row 102): a copy of the project with only the
+/// group's angles, each fitted into its cell of the canvas, fully opaque
+/// and blended normally (its opacity and transform keys dropped), for the
+/// preview to draw instead of the program. Angles past
+/// [`::multicam::GRID_MAX_ANGLES`] are left out. `None` when `element_id`
+/// is not in a group.
+pub fn multicam_grid_project(project: &Project, element_id: &str) -> Option<Project> {
+    let (_, mut angles) = multicam_group(project, element_id)?;
+    angles.truncate(::multicam::GRID_MAX_ANGLES);
+    let canvas = (project.settings.canvas.width as f64, project.settings.canvas.height as f64);
+    let sources: Vec<(f64, f64)> = angles
+        .iter()
+        .map(|angle| {
+            let size = project.element(&angle.element_id).and_then(|(_, element)| match &element.kind {
+                ElementKind::Video { media_id } => project.media_item(media_id).and_then(|media| Some((media.width? as f64, media.height? as f64))),
+                _ => None,
+            });
+            size.unwrap_or(canvas)
+        })
+        .collect();
+    let placements = ::multicam::grid_placements(canvas, &sources);
+    let mut grid = project.clone();
+    for track in &mut grid.tracks {
+        track.elements.retain(|element| angles.iter().any(|angle| angle.element_id == element.id));
+        for element in &mut track.elements {
+            let Some(index) = angles.iter().position(|angle| angle.element_id == element.id) else { continue };
+            let placement = placements[index];
+            for path in ["opacity", "transform.positionX", "transform.positionY", "transform.scaleX", "transform.scaleY", "transform.rotate"] {
+                element.animations.remove(path);
+            }
+            element
+                .params
+                .set("opacity", 1.0)
+                .set("blendMode", "normal")
+                .set("transform.positionX", placement.position_x)
+                .set("transform.positionY", placement.position_y)
+                .set("transform.scaleX", placement.scale)
+                .set("transform.scaleY", placement.scale)
+                .set("transform.rotate", 0.0);
+        }
+    }
+    Some(grid)
+}
+
 /// Takes every cut out of the group of `element_id`: the first angle shows
 /// throughout again.
 pub fn multicam_clear_commands(project: &Project, element_id: &str) -> Result<Vec<Command>, String> {
@@ -237,6 +289,33 @@ mod tests {
         run(&mut project, commands);
         assert_eq!(opacity_at(&project, &ids[0], 6.0), 1.0);
         assert_eq!(opacity_at(&project, &ids[1], 6.0), 0.0);
+    }
+
+    #[test]
+    fn the_grid_shows_every_angle_in_its_cell() {
+        let (mut project, ids) = project_with_angles();
+        let commands =
+            multicam_sync_commands(&project, &[(ids[0].clone(), 0.0), (ids[1].clone(), 0.0), (ids[2].clone(), 0.0)], "g").unwrap();
+        run(&mut project, commands);
+        let commands = multicam_switch_commands(&project, &ids[0], 4.0, 2).unwrap();
+        run(&mut project, commands);
+        assert_eq!(multicam_live_angle(&project, &ids[1], 3.0).unwrap().0, 0);
+        assert_eq!(multicam_live_angle(&project, &ids[1], 4.5).unwrap().0, 2);
+
+        let grid = multicam_grid_project(&project, &ids[0]).expect("a grid");
+        let canvas = (project.settings.canvas.width as f64, project.settings.canvas.height as f64);
+        let placements = ::multicam::grid_placements(canvas, &[(1920.0, 1080.0); 3]);
+        for (id, placement) in ids.iter().zip(placements) {
+            let (_, element) = grid.element(id).unwrap();
+            assert!(element.animations.get("opacity").is_none(), "no opacity keys");
+            let params = element.params_at(seconds(6.0));
+            assert_eq!(params.number("opacity", 0.0), 1.0);
+            assert_eq!(params.number("transform.positionX", 0.0), placement.position_x);
+            assert_eq!(params.number("transform.scaleX", 0.0), placement.scale);
+        }
+        // Only the angles are drawn.
+        assert_eq!(grid.tracks.iter().map(|track| track.elements.len()).sum::<usize>(), 3);
+        assert!(multicam_grid_project(&project, "nope").is_none());
     }
 
     #[test]
