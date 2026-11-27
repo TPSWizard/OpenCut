@@ -186,6 +186,7 @@ import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
 import { cutCount, groupCuts, multicamGroup, multicamSwitchCommand } from "@/multicam/group";
 import { syncMulticam } from "@/multicam/sync";
+import { currentJumpCuts, smoothJumpCuts } from "@/jump-cuts/make";
 import { gridAngles, gridCells, liveAngle, multicamTarget, useMulticamGridStore } from "@/multicam/grid";
 import { applyRichStyle, RICH_SCALE_MAX, RICH_SCALE_MIN, type RichPatch } from "@/text/rich";
 import { getElementLocalTime, hasKeyframesForPath } from "@/animation";
@@ -2493,6 +2494,25 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			}
 			const richText = applyRichStyle({ editor, trackId: track.id, element, start: from, end: to, patch: null });
 			return { trackId: track.id, elementId: element.id, richText: JSON.parse(richText) };
+		},
+		"video.findJumpCuts": () => {
+			requireProject();
+			return {
+				cuts: currentJumpCuts(editor).map((cut) => ({ ...cut, time: cut.time / TICKS_PER_SECOND })),
+			};
+		},
+		"video.smoothJumpCuts": async ({ elementId, trackId, frames }) => {
+			requireProject();
+			if (frames !== undefined && (!Number.isInteger(frames) || frames < 2 || frames > 30)) {
+				throw new EditorApiError({ code: "invalid_params", message: "frames must be a whole number from 2 to 30" });
+			}
+			const target = elementId ? resolveElement({ elementId, trackId }).element.id : undefined;
+			try {
+				return await smoothJumpCuts({ editor, elementId: target, frames });
+			} catch (error) {
+				if (error instanceof EditorApiError) throw error;
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
 		},
 		"video.deflicker": async ({ elementId, trackId, strength }) => {
 			requireProject();

@@ -430,3 +430,12 @@ this repository. Templates you save stay in your browser or in
   are our own code for this repository, under its MIT licence. The icon is
   Hugeicons' free GridView icon, already used by the web editor. The
   test cameras are synthesised by FFmpeg (solid colours and sine tones).
+
+## Smooth jump cuts (`crates/jumpcut`, added 2026-11-27)
+
+- Finding jump cuts, planning bridges, the motion estimate (symmetric
+  Lucas–Kanade, a textbook method; no code copied) and the in-between
+  frames are our own code for this repository, under its MIT licence. No
+  model is used or bundled. The test footage is synthesised: FFmpeg's
+  `testsrc2` picture panned by cropping, and sine-tone sound; the fixture's
+  pictures are formulas.

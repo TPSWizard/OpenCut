@@ -184,6 +184,15 @@ pub enum Command {
         name: String,
         elements: Vec<Element>,
     },
+    /// Puts each bridge clip (row 106, [`crate::jump_cut_bridge_element`])
+    /// on the video track directly above its cut's track when that one is
+    /// unlocked, shown and free there, else on a new video track (named
+    /// [`crate::JUMP_CUT_TRACK_NAME`]) put directly above it. The cut clips
+    /// are not changed.
+    InsertJumpCutBridges {
+        /// `(the cut's track id, the bridge clip)`.
+        bridges: Vec<(String, Element)>,
+    },
     RemoveTrack {
         track_id: String,
     },
@@ -958,6 +967,32 @@ pub fn apply(project: &mut Project, command: &Command) -> Result<Outcome, Editor
                 .collect();
             let index = insertion_index(project, *kind);
             project.tracks.insert(index, track);
+            Outcome::Elements(references)
+        }
+        Command::InsertJumpCutBridges { bridges } => {
+            let mut references = Vec::new();
+            for (source, element) in bridges {
+                validate_element(project, element)?;
+                let index = project.track_index(source).ok_or_else(|| EditorError::TrackNotFound(source.clone()))?;
+                let (start, end) = (element.start_time, element.end_time());
+                let above = index.checked_sub(1).filter(|&above| {
+                    let track = &project.tracks[above];
+                    track.kind == TrackKind::Video && !track.locked && !track.hidden && track.is_free(start, end, None)
+                });
+                let target = match above {
+                    Some(above) => above,
+                    None => {
+                        let mut track = new_track(project, TrackKind::Video);
+                        track.name = crate::JUMP_CUT_TRACK_NAME.to_owned();
+                        project.tracks.insert(index, track);
+                        index
+                    }
+                };
+                let track = &mut project.tracks[target];
+                track.elements.push(element.clone());
+                track.sort_elements();
+                references.push(ElementRef { track_id: track.id.clone(), element_id: element.id.clone() });
+            }
             Outcome::Elements(references)
         }
         Command::AddTrack { kind } => {

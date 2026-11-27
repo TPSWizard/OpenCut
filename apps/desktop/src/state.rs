@@ -2425,6 +2425,95 @@ impl EditorState {
         .detach();
     }
 
+    /// Smooth jump cuts (row 106): bridges the jump cuts at the selected
+    /// clip (or all on the timeline) that have no bridge yet with `frames`
+    /// in-between frames each, made on a background thread from the frames
+    /// either side; the bridges go on the track above in one undo step.
+    pub(crate) fn smooth_jump_cuts(&mut self, only_selected: bool, frames: usize, cx: &mut Context<Self>) {
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to smooth jump cuts."), cx);
+            return;
+        };
+        let selected = self.selected_element().map(|element| element.id.clone());
+        let cuts: Vec<editor::ProjectJumpCut> = editor::project_jump_cuts(self.project())
+            .into_iter()
+            .filter(|cut| !cut.smoothed)
+            .filter(|cut| !only_selected || selected.as_deref().is_some_and(|id| id == cut.before_id || id == cut.after_id))
+            .collect();
+        if cuts.is_empty() {
+            self.set_status(
+                t("No jump cuts to smooth: a jump cut is two clips from the same take back to back, with part of the take cut out between them."),
+                cx,
+            );
+            return;
+        }
+        let jobs: Vec<(editor::JumpCutBridgeJob, MediaItem)> = cuts
+            .iter()
+            .filter_map(|cut| editor::plan_jump_cut_bridge(self.project(), cut, frames))
+            .filter_map(|job| self.project().media_item(&job.media_id).cloned().map(|item| (job, item)))
+            .collect();
+        let too_short = cuts.len() - jobs.len();
+        if jobs.is_empty() {
+            self.set_status(t("The clips at these cuts are too short to bridge."), cx);
+            return;
+        }
+        let fps = self.project().settings.fps.as_f64().unwrap_or(30.0).max(1.0);
+        let dir = editor::ProjectStore::default_root()
+            .parent()
+            .map(|root| root.join("processed"))
+            .unwrap_or_else(|| std::path::PathBuf::from("processed"));
+        self.set_status(tf("Making in-between frames for jump cuts: {count}…", &[("count", &jobs.len())]), cx);
+        cx.spawn(async move |this, cx| {
+            let produced = cx
+                .background_executor()
+                .spawn(async move {
+                    let mut made = Vec::new();
+                    for (job, source) in jobs {
+                        let output = dir.join(format!(
+                            "{}-smoothcut-{}-{}-{}f-{}fps.mp4",
+                            source.id,
+                            (job.from_source * 1000.0).round() as i64,
+                            (job.to_source * 1000.0).round() as i64,
+                            job.plan.frames,
+                            (fps * 1000.0).round() as i64,
+                        ));
+                        if !output.exists() {
+                            crate::smooth_cuts::make_bridge_file(&ffmpeg, &source, &job, fps, &output)?;
+                        }
+                        let mut item = probe_media(Some(&ffmpeg), output)?;
+                        let base = std::path::Path::new(&source.name)
+                            .file_stem()
+                            .map(|stem| stem.to_string_lossy().into_owned())
+                            .unwrap_or(source.name.clone());
+                        item.name = format!("{base} (smooth cut {:.2} s).mp4", job.cut.time.to_seconds_f64());
+                        made.push((job, item));
+                    }
+                    Ok::<_, String>(made)
+                })
+                .await;
+            this.update(cx, |state, cx| match produced {
+                Ok(made) => {
+                    let commands = crate::smooth_cuts::bridge_commands(state.project(), &made);
+                    let count = made.len();
+                    if state.execute(Command::Batch(commands), cx).is_some() {
+                        let message = if too_short > 0 {
+                            tf(
+                                "Jump cuts smoothed: {count}. The in-between frames are on the track above; too short to bridge: {short}.",
+                                &[("count", &count), ("short", &too_short)],
+                            )
+                        } else {
+                            tf("Jump cuts smoothed: {count}. The in-between frames are on the track above.", &[("count", &count)])
+                        };
+                        state.set_status(message, cx);
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(crate) fn rewrite_video_selected(&mut self, tool: VideoTool, cx: &mut Context<Self>) {
         let Some(element) = self.selected_element() else { return };
         if !matches!(element.kind, editor::ElementKind::Video { .. }) {

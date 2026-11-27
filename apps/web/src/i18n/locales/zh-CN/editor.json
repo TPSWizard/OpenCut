@@ -407,5 +407,14 @@
   "Cut to {name} at the playhead": "在播放头处切换到 {name}",
   "Show the grid": "显示网格",
   "Hide the grid": "隐藏网格",
-  "The grid shows every angle in the preview; press 1-9 to cut to that angle at the playhead, also while playing.": "网格在预览中显示所有机位；按 1-9 可在播放头处切换到对应机位，播放时也可以。"
+  "The grid shows every angle in the preview; press 1-9 to cut to that angle at the playhead, also while playing.": "网格在预览中显示所有机位；按 1-9 可在播放头处切换到对应机位，播放时也可以。",
+  "Jump cuts smoothed: {count}. The in-between frames are on the track above; too short to bridge: {short}.": "已平滑的跳切：{count}。中间帧位于上方轨道；太短无法过渡：{short}。",
+  "Jump cuts smoothed: {count}. The in-between frames are on the track above.": "已平滑的跳切：{count}。中间帧位于上方轨道。",
+  "Smoothing the jump cuts failed": "平滑跳切失败",
+  "Smooth jump cuts": "平滑跳切",
+  "Where words or a pause were cut out of one take, in-between frames made from the motion bridge the jump; the clips and their sound stay as they are. Jump cuts on the timeline: {all}; at this clip: {here}; smoothed: {smoothed}.": "在同一条素材中剪掉词语或停顿的地方，根据运动生成的中间帧会衔接跳变；片段和声音保持不变。时间线上的跳切：{all}；此片段处：{here}；已平滑：{smoothed}。",
+  "Frames": "帧",
+  "Smooth this clip's cuts": "平滑此片段的剪切",
+  "Smooth every jump cut": "平滑所有跳切",
+  "Making in-between frames from the motion…": "正在根据运动生成中间帧…"
 }

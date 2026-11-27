@@ -301,6 +301,46 @@ with the same settings is reused. Both live in `crates/media/src/motion.rs`.
 
 The whole source file is processed, not only the part on the timeline.
 
+## Smooth jump cuts
+
+Where words or a pause were cut out of one take, the picture jumps at the
+cut. **Smooth jump cuts** (an inspector section on video clips, shown with
+the count of jump cuts on the timeline, at the clip and already smoothed)
+bridges each jump with in-between frames made from the motion: 4, 6
+(default) or 10 frames, half before the cut and half after (fewer when a
+clip is short; none when not even two fit). **Smooth this clip's cuts**
+does the cuts at the selected clip, **Smooth every jump cut** all of them.
+
+A jump cut is two video clips back to back on one track showing the same
+file, where the second does not carry on from where the first stopped in
+the file (by at least half a frame; a plain split is not one, nor a cut to
+another file). For each, the frame shown just before the bridge and the
+frame just after it are decoded at full size, the motion between them is
+measured (symmetric Lucas–Kanade, coarse to fine, on a copy at most 320
+pixels across; flat patches take the motion of the textured places round
+them), and each in-between frame warps both towards the moment it stands
+for and blends them. The frames are encoded (H.264, no sound) into
+`~/.opencut/processed/` and put on the timeline as a short clip on the video
+track directly above the cut (a new **Smooth cuts** track when that one is
+not free), with the first clip's look at the cut (position, scale,
+effects, masks). The clips under it and their sound are not changed;
+deleting the bridge, or undo (one step for all of them), puts the cut back.
+A cut that already has a bridge is skipped.
+
+All of it is the shared `jumpcut` crate (`find_jump_cuts`, `plan_bridge`,
+`motion_between`, `in_between`), with `editor::project_jump_cuts`,
+`plan_jump_cut_bridge`, `jump_cut_bridge_element` and
+`Command::InsertJumpCutBridges`; the web editor does the same through
+WASM. It is checked against `fixtures/jumpcut/jumpcut.json`, written by an
+independent Python reference. On a camera panning 2 px a frame across a
+still picture, cut so it jumps 44 px, the bridge's frames are 1.4 to 4.8
+grey levels (mean, of 255) from the frames the camera really passed
+through, against 12 to 26 for a crossfade. A 1080p pair takes about 0.1 s
+to measure and 0.13 s a frame (release build). A head that turns, or
+something that appears, has no motion to follow and comes out as a
+crossfade; big moves of fine repeating texture can be matched to the wrong
+repeat.
+
 ## Face swap (local, with your own FaceFusion)
 
 **Face swap** in the inspector (video and picture clips) puts the face from

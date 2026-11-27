@@ -33,6 +33,7 @@ members = [
   'crates/wordart',
   'crates/audiogram',
   'crates/musicfit',
+  'crates/jumpcut',
   'crates/gifenc',
   'crates/facetrack',
   'crates/voice',
@@ -61,6 +62,7 @@ textwarp = { path = "crates/textwarp" }
 deflicker = { path = "crates/deflicker" }
 richtext = { path = "crates/richtext" }
 multicam = { path = "crates/multicam" }
+jumpcut = { path = "crates/jumpcut" }
 retakes = { path = "crates/retakes" }
 crossfade = { path = "crates/crossfade" }
 loudness = { path = "crates/loudness" }

@@ -1,0 +1,15 @@
+[package]
+name = "jumpcut"
+description = "Smooth jump cuts: finds cuts inside one take and makes in-between frames across them, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+
+[dev-dependencies]
+serde_json = { workspace = true }

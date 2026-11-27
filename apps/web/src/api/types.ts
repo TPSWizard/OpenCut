@@ -1302,6 +1302,32 @@ export interface EditorApiMethods {
 	 * medium 11, strong 25 frames; cuts left alone), the same in both
 	 * editors. One undo step.
 	 */
+	/**
+	 * The jump cuts on the timeline (row 106): two video clips back to back
+	 * on one track from the same file, the file jumping between them (words
+	 * or a pause cut out, or a retake going back). `smoothed` when a bridge
+	 * already covers the cut.
+	 */
+	"video.findJumpCuts": {
+		params: Record<string, never>;
+		result: { cuts: { trackId: string; beforeId: string; afterId: string; time: number; sourceGap: number; smoothed: boolean }[] };
+	};
+	/**
+	 * Smooth jump cuts (row 106): bridges the jump cuts at the clip (default:
+	 * every one on the timeline) that have none yet with `frames` (2 to 30,
+	 * default 6) in-between frames, made from the motion between the frame
+	 * before the bridge and the frame after it (the shared `jumpcut` crate),
+	 * on the video track directly above the cut (a new one when that is not
+	 * free). The clips and their sound are not changed. One undo step.
+	 */
+	"video.smoothJumpCuts": {
+		params: { elementId?: string; trackId?: string; frames?: number };
+		result: {
+			smoothed: number;
+			tooShort: number;
+			bridges: { trackId: string; elementId: string; assetId: string; cutAt: number; frames: number; motion: number }[];
+		};
+	};
 	"video.deflicker": {
 		params: ApiElementLocator & { strength: "off" | "light" | "medium" | "strong" };
 		result: {

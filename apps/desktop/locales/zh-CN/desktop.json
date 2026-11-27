@@ -1198,5 +1198,15 @@
   "Another clip on this track is in the way; move it or put the music on its own track": "此轨道上有其他片段挡住了；请移开它，或把音乐放到单独的轨道上",
   "Nothing to fit": "没有可适配的内容",
   "Multicam grid": "多机位网格",
-  "Sync two or more angles by audio first; the grid shows a multicam group.": "请先按音频同步两个或更多机位；网格显示一个多机位组。"
+  "Sync two or more angles by audio first; the grid shows a multicam group.": "请先按音频同步两个或更多机位；网格显示一个多机位组。",
+  "FFmpeg is needed to smooth jump cuts.": "平滑跳切需要 FFmpeg。",
+  "No jump cuts to smooth: a jump cut is two clips from the same take back to back, with part of the take cut out between them.": "没有可平滑的跳切：跳切是同一条素材前后相接的两个片段，中间剪掉了一部分。",
+  "The clips at these cuts are too short to bridge.": "这些剪切处的片段太短，无法过渡。",
+  "Making in-between frames for jump cuts: {count}…": "正在为跳切生成中间帧：{count}…",
+  "Jump cuts smoothed: {count}. The in-between frames are on the track above; too short to bridge: {short}.": "已平滑的跳切：{count}。中间帧位于上方轨道；太短无法过渡：{short}。",
+  "Jump cuts smoothed: {count}. The in-between frames are on the track above.": "已平滑的跳切：{count}。中间帧位于上方轨道。",
+  "Smooth jump cuts": "平滑跳切",
+  "Where words or a pause were cut out of one take, in-between frames made from the motion bridge the jump; the clips and their sound stay as they are. Jump cuts on the timeline: {all}; at this clip: {here}; smoothed: {smoothed}.": "在同一条素材中剪掉词语或停顿的地方，根据运动生成的中间帧会衔接跳变；片段和声音保持不变。时间线上的跳切：{all}；此片段处：{here}；已平滑：{smoothed}。",
+  "Smooth this clip's cuts": "平滑此片段的剪切",
+  "Smooth every jump cut": "平滑所有跳切"
 }

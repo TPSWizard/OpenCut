@@ -37,6 +37,7 @@ mod stock;
 mod tracking;
 mod deflicker;
 mod multicam;
+mod smooth_cuts;
 mod faces;
 mod templates;
 mod transcribe;

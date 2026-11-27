@@ -38,6 +38,11 @@ mod corner_pin;
 mod motion_blur;
 mod deflicker;
 mod multicam_group;
+mod jump_cuts;
+pub use jump_cuts::{
+    JUMP_CUT_BRIDGE_PARAM, JUMP_CUT_TRACK_NAME, JumpCutBridgeJob, ProjectJumpCut, jump_cut_bridge_element, plan_jump_cut_bridge,
+    project_jump_cuts,
+};
 mod face_retouch;
 pub use face_retouch::{face_blur_commands, face_retouch_commands};
 pub use facetrack::{FACE_TRACK_PARAM, FaceBox, FaceTrack};

@@ -27,6 +27,7 @@ audiogram = { workspace = true }
 musicfit = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
+jumpcut = { workspace = true }
 retakes = { workspace = true }
 crossfade = { workspace = true }
 loudness = { workspace = true }

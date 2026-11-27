@@ -44,6 +44,8 @@ pub(crate) struct InspectorPanel {
     denoise_db: f64,
     stabilise_strength: media::StabiliseStrength,
     frames_factor: u32,
+    /// In-between frames per smoothed jump cut (row 106).
+    jump_cut_frames: usize,
     upscale_model: media::UpscaleModel,
     upscale_scale: u32,
     /// Local face swap settings; consent is asked again for each clip.
@@ -159,6 +161,7 @@ impl InspectorPanel {
             denoise_db: 12.0,
             stabilise_strength: media::StabiliseStrength::Medium,
             frames_factor: 2,
+            jump_cut_frames: jumpcut::BRIDGE_DEFAULT_FRAMES,
             upscale_model: media::UpscaleModel::Animation,
             upscale_scale: 2,
             faceswap: media::SwapOptions::default(),
@@ -623,6 +626,8 @@ impl Render for InspectorPanel {
         };
         let canvas = project.settings.canvas;
         let has_ffmpeg = state.has_ffmpeg();
+        // Smooth jump cuts (row 106): the timeline's jump cuts.
+        let jump_cuts = editor::project_jump_cuts(project);
         // Fit music (row 101): the length to end with the rest of the timeline.
         let can_fit_music = selected.as_ref().is_some_and(|element| editor::can_fit_music(element));
         let music_fit_default = selected
@@ -3017,6 +3022,64 @@ impl Render for InspectorPanel {
                                         state.rewrite_video_selected(crate::state::VideoTool::Interpolate(factor), cx)
                                     });
                                 }),
+                        );
+
+                    // Smooth jump cuts (row 106): bridges across cuts inside one take.
+                    let cuts = &jump_cuts;
+                    let here = cuts.iter().filter(|cut| cut.before_id == element.id || cut.after_id == element.id).count();
+                    let open_here = cuts
+                        .iter()
+                        .filter(|cut| !cut.smoothed && (cut.before_id == element.id || cut.after_id == element.id))
+                        .count();
+                    let open_all = cuts.iter().filter(|cut| !cut.smoothed).count();
+                    let smoothed = cuts.len() - open_all;
+                    let mut bridge_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Frames"), window));
+                    for frames in jumpcut::BRIDGE_FRAMES {
+                        bridge_row = bridge_row.child(
+                            Button::new(eid("jump-cut-frames", &frames.to_string()), frames.to_string())
+                                .variant(if self.jump_cut_frames == frames { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.jump_cut_frames = frames;
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    let frames = self.jump_cut_frames;
+                    let (this_state, all_state) = (self.state.clone(), self.state.clone());
+                    content = content
+                        .child(self.heading(t("Smooth jump cuts"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(tf(
+                            "Where words or a pause were cut out of one take, in-between frames made from the motion bridge the jump; the clips and their sound stay as they are. Jump cuts on the timeline: {all}; at this clip: {here}; smoothed: {smoothed}.",
+                            &[("all", &cuts.len()), ("here", &here), ("smoothed", &smoothed)],
+                        )))
+                        .child(bridge_row)
+                        .child(
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .gap(px(4.))
+                                .child(
+                                    Button::new("smooth-jump-cuts-here", t("Smooth this clip's cuts"))
+                                        .size(ButtonSize::XSmall)
+                                        .disabled(!has_ffmpeg || open_here == 0)
+                                        .on_click(move |_, _, cx| {
+                                            this_state.update(cx, |state, cx| state.smooth_jump_cuts(true, frames, cx));
+                                        }),
+                                )
+                                .child(
+                                    Button::new("smooth-jump-cuts-all", t("Smooth every jump cut"))
+                                        .size(ButtonSize::XSmall)
+                                        .disabled(!has_ffmpeg || open_all == 0)
+                                        .on_click(move |_, _, cx| {
+                                            all_state.update(cx, |state, cx| state.smooth_jump_cuts(false, frames, cx));
+                                        }),
+                                ),
                         );
                 }
 
