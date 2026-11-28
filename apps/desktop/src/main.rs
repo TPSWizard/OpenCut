@@ -39,6 +39,7 @@ mod deflicker;
 mod multicam;
 mod smooth_cuts;
 mod stabilise;
+mod timeline_files;
 mod faces;
 mod templates;
 mod transcribe;

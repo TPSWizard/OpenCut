@@ -595,6 +595,29 @@ export interface EditorApiMethods {
 		result: ApiProjectSummary[];
 	};
 	"project.rename": { params: { name: string }; result: ApiProjectInfo };
+	/**
+	 * The timeline as a file for other editors (row 111): `otio`
+	 * (OpenTimelineIO, every video and audio track), `fcpxml` (FCPXML 1.10)
+	 * or `edl` (CMX 3600: the main video track and two sound channels).
+	 * Clips, trims, constant speed changes, hidden clips, video clips' sound
+	 * and transitions (wipes as wipes, others as dissolves) go in; `notes`
+	 * says what else was left out. Media files are not included.
+	 */
+	"project.exportTimeline": {
+		params: { format?: "otio" | "fcpxml" | "edl" };
+		result: { fileName: string; mimeType: string; text: string; notes: string[] };
+	};
+	/**
+	 * Brings in an OpenTimelineIO, FCPXML or EDL file (row 111): each track
+	 * onto a new track (or the main track when the timeline is empty), in
+	 * one undo step. Files are matched to the project's media by name;
+	 * clips of files not imported yet are skipped and named in `missing`.
+	 * An EDL is read at the project's frame rate.
+	 */
+	"project.importTimeline": {
+		params: { text: string; fileName?: string };
+		result: { clips: number; tracks: number; missing: string[]; notes: string[] };
+	};
 	"project.updateSettings": {
 		params: {
 			fps?: number;

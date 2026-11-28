@@ -43,6 +43,7 @@ mod rich_text;
 mod multicam_sync;
 mod jump_cuts;
 mod steady;
+mod timeline_exchange;
 mod face_track;
 mod retakes;
 mod crossfade;

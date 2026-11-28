@@ -38,6 +38,7 @@ mod corner_pin;
 mod motion_blur;
 mod deflicker;
 mod stabilise;
+mod project_interchange;
 mod multicam_group;
 mod jump_cuts;
 pub use jump_cuts::{
@@ -193,6 +194,10 @@ pub use colour_match::{
 pub use cover::{
     COVER_SAMPLES, CoverBackground, CoverSettings, CoverShape, CoverScore, CoverStyle, CoverTitle, MAX_TITLE_LINES, cover_project,
     cover_sample_times, cover_size, cover_title, frame_score_bgra, frame_score_rgba, pick_cover_time, wrap_title,
+};
+pub use project_interchange::{
+    NOTE_COMPOUND, NOTE_FADE_IN, NOTE_LOOK, NOTE_SPEED, NOTE_TEXT, NOTE_TRANSITION, TimelineImport, find_media, project_timeline,
+    timeline_import,
 };
 pub use stabilise::{
     STABILISE_PATH, STABILISE_STRENGTH, StabiliseStrength, read_stabilise_path, read_stabilise_strength, stabilise_correction,

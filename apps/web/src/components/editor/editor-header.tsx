@@ -15,6 +15,7 @@ import { DeleteProjectDialog } from "@/project/components/delete-project-dialog"
 import { AssetLicencesDialog } from "@/project/components/asset-licences-dialog";
 import { SaveTemplateDialog } from "@/templates/components/save-template-dialog";
 import { ShareDialog } from "@/project/components/share-dialog";
+import { TimelineFileDialog } from "@/interchange/components/timeline-file-dialog";
 import { useRouter } from "@/compat/navigation";
 import { FaGithub } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
@@ -24,7 +25,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, ComputerIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Link01Icon, Logout05Icon, SmartPhone01Icon } from "@hugeicons/core-free-icons";
+import { ArrowDataTransferHorizontalIcon, CommandIcon, ComputerIcon, Download01Icon, LayoutTemplateIcon, LicenseIcon, Link01Icon, Logout05Icon, SmartPhone01Icon } from "@hugeicons/core-free-icons";
 import { usePhoneLayout } from "@/mobile/use-phone-layout";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
@@ -51,7 +52,7 @@ export function EditorHeader() {
 export function ProjectDropdown() {
 	const t = useT();
 	const [openDialog, setOpenDialog] = useState<
-		"delete" | "rename" | "shortcuts" | "licences" | "template" | "share" | null
+		"delete" | "rename" | "shortcuts" | "licences" | "template" | "share" | "timeline" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
 	const [isExportingBundle, setIsExportingBundle] = useState(false);
@@ -187,6 +188,14 @@ export function ProjectDropdown() {
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
+						onClick={() => setOpenDialog("timeline")}
+						icon={<HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} />}
+						data-testid="timeline-file-menu"
+					>
+						{t("Timeline file…")}
+					</DropdownMenuItem>
+
+					<DropdownMenuItem
 						onClick={() => setOpenDialog("share")}
 						icon={<HugeiconsIcon icon={Link01Icon} />}
 					>
@@ -235,6 +244,10 @@ export function ProjectDropdown() {
 			<ShortcutsDialog
 				isOpen={openDialog === "shortcuts"}
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
+			/>
+			<TimelineFileDialog
+				isOpen={openDialog === "timeline"}
+				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "timeline" : null)}
 			/>
 			<ShareDialog
 				isOpen={openDialog === "share"}

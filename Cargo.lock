@@ -1637,6 +1637,7 @@ dependencies = [
  "crossfade",
  "deflicker",
  "facetrack",
+ "interchange",
  "jumpcut",
  "loudness",
  "multicam",
@@ -3186,6 +3187,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "interchange"
+version = "0.1.0"
+dependencies = [
+ "roxmltree 0.20.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "interpolate_name"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4305,6 +4315,7 @@ dependencies = [
  "futures",
  "gpui",
  "image",
+ "interchange",
  "jumpcut",
  "lottie",
  "media",
@@ -4354,6 +4365,7 @@ dependencies = [
  "facetrack",
  "gifenc",
  "gpu",
+ "interchange",
  "js-sys",
  "jumpcut",
  "lottie",

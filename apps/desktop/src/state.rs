@@ -2425,6 +2425,89 @@ impl EditorState {
         .detach();
     }
 
+    /// Writes the timeline as OpenTimelineIO, FCPXML or a CMX 3600 EDL (row
+    /// 111), the format by `path`'s extension; says what was left out.
+    pub(crate) fn export_timeline_file(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let format = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .and_then(interchange::Format::parse)
+            .unwrap_or(interchange::Format::Otio);
+        let timeline = editor::project_timeline(self.project());
+        let mut notes: Vec<String> = timeline.notes.iter().map(|n| crate::i18n::tr(n).to_owned()).collect();
+        notes.extend(interchange::format_notes(&timeline, format).iter().map(|n| crate::i18n::tr(n).to_owned()));
+        let shown = path.display().to_string();
+        match std::fs::write(&path, interchange::write(&timeline, format)) {
+            Ok(()) if notes.is_empty() => self.set_status(tf("Saved the timeline to {path}.", &[("path", &shown)]), cx),
+            Ok(()) => self.set_status(
+                tf("Saved the timeline to {path}. Not carried: {notes}", &[("path", &shown), ("notes", &notes.join(" "))]),
+                cx,
+            ),
+            Err(error) => self.set_status(tf("Timeline not saved: {error}", &[("error", &error)]), cx),
+        }
+    }
+
+    /// Reads an OpenTimelineIO, FCPXML or EDL file (row 111) onto new tracks
+    /// (the main track when the timeline is empty) in one undo step. Files
+    /// the project does not have yet are brought in from where the timeline
+    /// says, or from beside the timeline file; the rest are named.
+    pub(crate) fn import_timeline_file(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let ffmpeg = self.ffmpeg.clone();
+        let fps = self.project().settings.fps;
+        let rate = interchange::Rate::new(fps.numerator, fps.denominator);
+        let known = self.project().media.clone();
+        self.set_status(t("Reading the timeline…"), cx);
+        cx.spawn(async move |this, cx| {
+            let read = cx
+                .background_executor()
+                .spawn(async move {
+                    crate::timeline_files::read_timeline_file(&path, rate, &known, ffmpeg.as_deref())
+                })
+                .await;
+            this.update(cx, |state, cx| match read {
+                Ok((timeline, brought)) => {
+                    let project = state.project().clone();
+                    let import = editor::timeline_import(&project, &timeline, |media| {
+                        editor::find_media(&project.media, media)
+                            .cloned()
+                            .or_else(|| brought.iter().find(|(id, _)| *id == media.id).map(|(_, item)| item.clone()))
+                    });
+                    let Some(command) = import.command else {
+                        state.set_status(
+                            if import.missing.is_empty() {
+                                t("The timeline has no video or audio clips to bring in.").to_owned()
+                            } else {
+                                tf("None of the timeline's files were found: {files}", &[("files", &import.missing.join(", "))])
+                            },
+                            cx,
+                        );
+                        return;
+                    };
+                    if state.execute(command, cx).is_none() {
+                        return;
+                    }
+                    let mut status = tf(
+                        "Imported {clips} clip(s) on {tracks} track(s).",
+                        &[("clips", &import.clips), ("tracks", &import.tracks)],
+                    );
+                    if !import.missing.is_empty() {
+                        status.push(' ');
+                        status.push_str(&tf("Not found: {files}.", &[("files", &import.missing.join(", "))]));
+                    }
+                    if !timeline.notes.is_empty() {
+                        status.push(' ');
+                        let notes: Vec<&str> = timeline.notes.iter().map(|n| crate::i18n::tr(n)).collect();
+                        status.push_str(&tf("Not carried: {notes}", &[("notes", &notes.join(" "))]));
+                    }
+                    state.set_status(status, cx);
+                }
+                Err(message) => state.set_status(tf("Timeline not read: {error}", &[("error", &message)]), cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Stabilise (row 107): sets the selected video clip's strength,
     /// measuring its camera path first (on a background thread) when it has
     /// none from its file; the strength and the path are one undo step.
@@ -5603,7 +5686,7 @@ fn probe_lottie(name: String, path: PathBuf) -> Result<MediaItem, String> {
     })
 }
 
-fn probe_media(ffmpeg: Option<&Ffmpeg>, path: PathBuf) -> Result<MediaItem, String> {
+pub(crate) fn probe_media(ffmpeg: Option<&Ffmpeg>, path: PathBuf) -> Result<MediaItem, String> {
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())

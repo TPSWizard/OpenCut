@@ -29,6 +29,7 @@ richtext = { workspace = true }
 multicam = { workspace = true }
 jumpcut = { workspace = true }
 stabilise = { workspace = true }
+interchange = { workspace = true }
 retakes = { workspace = true }
 crossfade = { workspace = true }
 loudness = { workspace = true }

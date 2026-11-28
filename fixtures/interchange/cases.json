@@ -1,0 +1,2940 @@
+{
+ "cases": [
+  {
+   "timeline": {
+    "name": "Basic & <cut>",
+    "rate": {
+     "num": 30,
+     "den": 1
+    },
+    "width": 1920,
+    "height": 1080,
+    "media": [
+     {
+      "id": "m1",
+      "name": "take 1.mp4",
+      "url": "C:/Clips/take 1.mp4",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 300,
+      "width": 1920,
+      "height": 1080
+     },
+     {
+      "id": "m2",
+      "name": "broll.mov",
+      "url": "/Users/me/broll.mov",
+      "hasVideo": true,
+      "hasAudio": false,
+      "still": false,
+      "duration": 600
+     },
+     {
+      "id": "m3",
+      "name": "music.wav",
+      "url": "C:/Audio/music.wav",
+      "hasVideo": false,
+      "hasAudio": true,
+      "still": false,
+      "duration": 900
+     },
+     {
+      "id": "m4",
+      "name": "logo.png",
+      "url": "C:/Pics/logo.png",
+      "hasVideo": true,
+      "hasAudio": false,
+      "still": true
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "Main",
+      "clips": [
+       {
+        "name": "Intro",
+        "mediaId": "m1",
+        "start": 0,
+        "duration": 90,
+        "sourceStart": 30,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true,
+        "transition": {
+         "frames": 10,
+         "kind": "dissolve"
+        }
+       },
+       {
+        "name": "Answer",
+        "mediaId": "m1",
+        "start": 90,
+        "duration": 60,
+        "sourceStart": 200,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       },
+       {
+        "name": "B-roll",
+        "mediaId": "m2",
+        "start": 200,
+        "duration": 100,
+        "sourceStart": 0,
+        "speed": 2.0,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "video",
+      "name": "Overlay",
+      "clips": [
+       {
+        "name": "Logo",
+        "mediaId": "m4",
+        "start": 30,
+        "duration": 60,
+        "sourceStart": 0,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "Music",
+      "clips": [
+       {
+        "name": "Music",
+        "mediaId": "m3",
+        "start": 0,
+        "duration": 300,
+        "sourceStart": 0,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     }
+    ],
+    "notes": [
+     "Text, stickers and graphics were left out."
+    ]
+   },
+   "otio": {
+    "OTIO_SCHEMA": "Timeline.1",
+    "global_start_time": null,
+    "metadata": {
+     "conzacut": {
+      "width": 1920,
+      "height": 1080,
+      "notes": [
+       "Text, stickers and graphics were left out."
+      ]
+     }
+    },
+    "name": "Basic & <cut>",
+    "tracks": {
+     "OTIO_SCHEMA": "Stack.1",
+     "children": [
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 300.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "take 1.mp4",
+           "target_url": "file:///C:/Clips/take%201.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Intro",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 90.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 30.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Transition.1",
+         "enabled": true,
+         "in_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 30.0,
+          "value": 5.0
+         },
+         "metadata": {},
+         "name": "Cross Dissolve",
+         "out_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 30.0,
+          "value": 5.0
+         },
+         "transition_type": "SMPTE_Dissolve"
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 300.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "take 1.mp4",
+           "target_url": "file:///C:/Clips/take%201.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Answer",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 60.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 200.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 50.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [
+          {
+           "OTIO_SCHEMA": "LinearTimeWarp.1",
+           "effect_name": "LinearTimeWarp",
+           "metadata": {},
+           "name": "",
+           "time_scalar": 2.0
+          }
+         ],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 600.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "broll.mov",
+           "target_url": "file:///Users/me/broll.mov"
+          }
+         },
+         "metadata": {},
+         "name": "B-roll",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 100.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 0.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Video",
+       "markers": [],
+       "metadata": {},
+       "name": "Main",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 30.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": null,
+           "metadata": {},
+           "name": "logo.png",
+           "target_url": "file:///C:/Pics/logo.png"
+          }
+         },
+         "metadata": {},
+         "name": "Logo",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 60.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 0.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Video",
+       "markers": [],
+       "metadata": {},
+       "name": "Overlay",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 300.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "take 1.mp4",
+           "target_url": "file:///C:/Clips/take%201.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Intro",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 90.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 30.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Transition.1",
+         "enabled": true,
+         "in_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 30.0,
+          "value": 5.0
+         },
+         "metadata": {},
+         "name": "Cross Dissolve",
+         "out_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 30.0,
+          "value": 5.0
+         },
+         "transition_type": "SMPTE_Dissolve"
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 300.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "take 1.mp4",
+           "target_url": "file:///C:/Clips/take%201.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Answer",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 60.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 200.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Audio",
+       "markers": [],
+       "metadata": {},
+       "name": "Main sound",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 900.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 30.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "music.wav",
+           "target_url": "file:///C:/Audio/music.wav"
+          }
+         },
+         "metadata": {},
+         "name": "Music",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 300.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 30.0,
+           "value": 0.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Audio",
+       "markers": [],
+       "metadata": {},
+       "name": "Music",
+       "source_range": null
+      }
+     ],
+     "effects": [],
+     "enabled": true,
+     "markers": [],
+     "metadata": {},
+     "name": "tracks",
+     "source_range": null
+    }
+   },
+   "fcpxml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE fcpxml>\n<fcpxml version=\"1.10\">\n    <!-- ConzaCut: Text, stickers and graphics were left out. -->\n    <resources>\n        <format id=\"r1\" frameDuration=\"1/30s\" width=\"1920\" height=\"1080\"/>\n        <asset id=\"r2\" name=\"take 1.mp4\" start=\"0s\" duration=\"10s\" hasVideo=\"1\" hasAudio=\"1\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///C:/Clips/take%201.mp4\"/>\n        </asset>\n        <asset id=\"r3\" name=\"broll.mov\" start=\"0s\" duration=\"20s\" hasVideo=\"1\" hasAudio=\"0\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///Users/me/broll.mov\"/>\n        </asset>\n        <asset id=\"r4\" name=\"music.wav\" start=\"0s\" duration=\"30s\" hasVideo=\"0\" hasAudio=\"1\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///C:/Audio/music.wav\"/>\n        </asset>\n        <asset id=\"r5\" name=\"logo.png\" start=\"0s\" duration=\"0s\" hasVideo=\"1\" hasAudio=\"0\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///C:/Pics/logo.png\"/>\n        </asset>\n    </resources>\n    <library>\n        <event name=\"ConzaCut\">\n            <project name=\"Basic &amp; &lt;cut&gt;\">\n                <sequence format=\"r1\" duration=\"10s\" tcStart=\"0s\" tcFormat=\"NDF\">\n                    <spine>\n                        <asset-clip ref=\"r2\" offset=\"0s\" name=\"Intro\" start=\"1s\" duration=\"3s\">\n                            <asset-clip ref=\"r5\" lane=\"1\" offset=\"2s\" name=\"Logo\" start=\"0s\" duration=\"2s\"/>\n                            <asset-clip ref=\"r4\" lane=\"-1\" offset=\"1s\" name=\"Music\" start=\"0s\" duration=\"10s\"/>\n                        </asset-clip>\n                        <transition name=\"Cross Dissolve\" offset=\"17/6s\" duration=\"1/3s\"/>\n                        <asset-clip ref=\"r2\" offset=\"3s\" name=\"Answer\" start=\"20/3s\" duration=\"2s\"/>\n                        <gap name=\"Gap\" offset=\"5s\" start=\"0s\" duration=\"5/3s\"/>\n                        <asset-clip ref=\"r3\" offset=\"20/3s\" name=\"B-roll\" start=\"0s\" duration=\"10/3s\">\n                            <timeMap>\n                                <timept time=\"0s\" value=\"0s\" interp=\"linear\"/>\n                                <timept time=\"10/3s\" value=\"20/3s\" interp=\"linear\"/>\n                            </timeMap>\n                        </asset-clip>\n                    </spine>\n                </sequence>\n            </project>\n        </event>\n    </library>\n</fcpxml>\n",
+   "edl": "TITLE: Basic & <cut>\nFCM: NON-DROP FRAME\n\n001  TAKE1    V     C        00:00:01:00 00:00:03:25 01:00:00:00 01:00:02:25\n* FROM CLIP NAME: Intro\n* SOURCE FILE: C:/Clips/take 1.mp4\n\n002  TAKE1    A     C        00:00:01:00 00:00:03:25 01:00:00:00 01:00:02:25\n* FROM CLIP NAME: Intro\n* SOURCE FILE: C:/Clips/take 1.mp4\n\n003  MUSIC    A2    C        00:00:00:00 00:00:10:00 01:00:00:00 01:00:10:00\n* FROM CLIP NAME: Music\n* SOURCE FILE: C:/Audio/music.wav\n\n004  TAKE1    V     C        00:00:03:25 00:00:03:25 01:00:02:25 01:00:02:25\n004  TAKE1    V     D    010 00:00:06:15 00:00:08:20 01:00:02:25 01:00:05:00\n* FROM CLIP NAME: Answer\n* SOURCE FILE: C:/Clips/take 1.mp4\n\n005  TAKE1    A     C        00:00:03:25 00:00:03:25 01:00:02:25 01:00:02:25\n005  TAKE1    A     D    010 00:00:06:15 00:00:08:20 01:00:02:25 01:00:05:00\n* FROM CLIP NAME: Answer\n* SOURCE FILE: C:/Clips/take 1.mp4\n\n006  BROLL    V     C        00:00:00:00 00:00:06:20 01:00:06:20 01:00:10:00\nM2   BROLL          060.0                00:00:00:00\n* FROM CLIP NAME: B-roll\n* SOURCE FILE: /Users/me/broll.mov\n\n* NOTE: Text, stickers and graphics were left out.\n* NOTE: An EDL holds one video track: only the main track went in.\n",
+   "back": {
+    "otio": {
+     "name": "Basic & <cut>",
+     "rate": {
+      "num": 30,
+      "den": 1
+     },
+     "width": 1920,
+     "height": 1080,
+     "media": [
+      {
+       "id": "m1",
+       "name": "take 1.mp4",
+       "url": "C:/Clips/take 1.mp4",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 300
+      },
+      {
+       "id": "m2",
+       "name": "broll.mov",
+       "url": "/Users/me/broll.mov",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": false,
+       "duration": 600
+      },
+      {
+       "id": "m3",
+       "name": "logo.png",
+       "url": "C:/Pics/logo.png",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": false
+      },
+      {
+       "id": "m4",
+       "name": "music.wav",
+       "url": "C:/Audio/music.wav",
+       "hasVideo": false,
+       "hasAudio": true,
+       "still": false,
+       "duration": 900
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "Main",
+       "clips": [
+        {
+         "name": "Intro",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 90,
+         "sourceStart": 30,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 10,
+          "kind": "dissolve"
+         }
+        },
+        {
+         "name": "Answer",
+         "mediaId": "m1",
+         "start": 90,
+         "duration": 60,
+         "sourceStart": 200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        },
+        {
+         "name": "B-roll",
+         "mediaId": "m2",
+         "start": 200,
+         "duration": 100,
+         "sourceStart": 0,
+         "speed": 2.0,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "video",
+       "name": "Overlay",
+       "clips": [
+        {
+         "name": "Logo",
+         "mediaId": "m3",
+         "start": 30,
+         "duration": 60,
+         "sourceStart": 0,
+         "speed": 1.0,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "Music",
+       "clips": [
+        {
+         "name": "Music",
+         "mediaId": "m4",
+         "start": 0,
+         "duration": 300,
+         "sourceStart": 0,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    },
+    "fcpxml": {
+     "name": "Basic & <cut>",
+     "rate": {
+      "num": 30,
+      "den": 1
+     },
+     "width": 1920,
+     "height": 1080,
+     "media": [
+      {
+       "id": "m1",
+       "name": "take 1.mp4",
+       "url": "C:/Clips/take 1.mp4",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 300,
+       "width": 1920,
+       "height": 1080
+      },
+      {
+       "id": "m2",
+       "name": "broll.mov",
+       "url": "/Users/me/broll.mov",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": false,
+       "duration": 600,
+       "width": 1920,
+       "height": 1080
+      },
+      {
+       "id": "m3",
+       "name": "music.wav",
+       "url": "C:/Audio/music.wav",
+       "hasVideo": false,
+       "hasAudio": true,
+       "still": false,
+       "duration": 900,
+       "width": 1920,
+       "height": 1080
+      },
+      {
+       "id": "m4",
+       "name": "logo.png",
+       "url": "C:/Pics/logo.png",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": true,
+       "width": 1920,
+       "height": 1080
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Intro",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 90,
+         "sourceStart": 30,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 10,
+          "kind": "dissolve"
+         }
+        },
+        {
+         "name": "Answer",
+         "mediaId": "m1",
+         "start": 90,
+         "duration": 60,
+         "sourceStart": 200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        },
+        {
+         "name": "B-roll",
+         "mediaId": "m2",
+         "start": 200,
+         "duration": 100,
+         "sourceStart": 0,
+         "speed": 2.0,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "video",
+       "name": "V2",
+       "clips": [
+        {
+         "name": "Logo",
+         "mediaId": "m4",
+         "start": 30,
+         "duration": 60,
+         "sourceStart": 0,
+         "speed": 1.0,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "A1",
+       "clips": [
+        {
+         "name": "Music",
+         "mediaId": "m3",
+         "start": 0,
+         "duration": 300,
+         "sourceStart": 0,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    },
+    "edl": {
+     "name": "Basic & <cut>",
+     "rate": {
+      "num": 30,
+      "den": 1
+     },
+     "width": 0,
+     "height": 0,
+     "media": [
+      {
+       "id": "m1",
+       "name": "take 1.mp4",
+       "url": "C:/Clips/take 1.mp4",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false
+      },
+      {
+       "id": "m2",
+       "name": "music.wav",
+       "url": "C:/Audio/music.wav",
+       "hasVideo": false,
+       "hasAudio": true,
+       "still": false
+      },
+      {
+       "id": "m3",
+       "name": "broll.mov",
+       "url": "/Users/me/broll.mov",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": false
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Intro",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 90,
+         "sourceStart": 30,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 10,
+          "kind": "dissolve"
+         }
+        },
+        {
+         "name": "Answer",
+         "mediaId": "m1",
+         "start": 90,
+         "duration": 60,
+         "sourceStart": 200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        },
+        {
+         "name": "B-roll",
+         "mediaId": "m3",
+         "start": 200,
+         "duration": 100,
+         "sourceStart": 0,
+         "speed": 2.0,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "A2",
+       "clips": [
+        {
+         "name": "Music",
+         "mediaId": "m2",
+         "start": 0,
+         "duration": 300,
+         "sourceStart": 0,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "timeline": {
+    "name": "NTSC",
+    "rate": {
+     "num": 30000,
+     "den": 1001
+    },
+    "width": 3840,
+    "height": 2160,
+    "media": [
+     {
+      "id": "m1",
+      "name": "interview.mov",
+      "url": "D:/Shoot/interview.mov",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 54000
+     },
+     {
+      "id": "m2",
+      "name": "room tone.mov",
+      "url": "D:/Shoot/room tone.mov",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 3000
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "V1",
+      "clips": [
+       {
+        "name": "Q1",
+        "mediaId": "m1",
+        "start": 1800,
+        "duration": 900,
+        "sourceStart": 1200,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true,
+        "transition": {
+         "frames": 15,
+         "kind": "wipe"
+        }
+       },
+       {
+        "name": "Q2",
+        "mediaId": "m1",
+        "start": 2700,
+        "duration": 600,
+        "sourceStart": 5000,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "A1",
+      "clips": [
+       {
+        "name": "Room",
+        "mediaId": "m2",
+        "start": 1800,
+        "duration": 1500,
+        "sourceStart": 100,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     }
+    ]
+   },
+   "otio": {
+    "OTIO_SCHEMA": "Timeline.1",
+    "global_start_time": null,
+    "metadata": {
+     "conzacut": {
+      "width": 3840,
+      "height": 2160,
+      "notes": []
+     }
+    },
+    "name": "NTSC",
+    "tracks": {
+     "OTIO_SCHEMA": "Stack.1",
+     "children": [
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1800.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 54000.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "interview.mov",
+           "target_url": "file:///D:/Shoot/interview.mov"
+          }
+         },
+         "metadata": {},
+         "name": "Q1",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 900.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1200.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Transition.1",
+         "enabled": true,
+         "in_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 29.97002997002997,
+          "value": 7.0
+         },
+         "metadata": {},
+         "name": "Wipe",
+         "out_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 29.97002997002997,
+          "value": 8.0
+         },
+         "transition_type": "SMPTE_Dissolve"
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 54000.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "interview.mov",
+           "target_url": "file:///D:/Shoot/interview.mov"
+          }
+         },
+         "metadata": {},
+         "name": "Q2",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 600.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 5000.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Video",
+       "markers": [],
+       "metadata": {},
+       "name": "V1",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1800.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 54000.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "interview.mov",
+           "target_url": "file:///D:/Shoot/interview.mov"
+          }
+         },
+         "metadata": {},
+         "name": "Q1",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 900.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1200.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Transition.1",
+         "enabled": true,
+         "in_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 29.97002997002997,
+          "value": 7.0
+         },
+         "metadata": {},
+         "name": "Wipe",
+         "out_offset": {
+          "OTIO_SCHEMA": "RationalTime.1",
+          "rate": 29.97002997002997,
+          "value": 8.0
+         },
+         "transition_type": "SMPTE_Dissolve"
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 54000.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "interview.mov",
+           "target_url": "file:///D:/Shoot/interview.mov"
+          }
+         },
+         "metadata": {},
+         "name": "Q2",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 600.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 5000.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Audio",
+       "markers": [],
+       "metadata": {},
+       "name": "V1 sound",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1800.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 3000.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 29.97002997002997,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "room tone.mov",
+           "target_url": "file:///D:/Shoot/room%20tone.mov"
+          }
+         },
+         "metadata": {},
+         "name": "Room",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 1500.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 29.97002997002997,
+           "value": 100.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Audio",
+       "markers": [],
+       "metadata": {},
+       "name": "A1",
+       "source_range": null
+      }
+     ],
+     "effects": [],
+     "enabled": true,
+     "markers": [],
+     "metadata": {},
+     "name": "tracks",
+     "source_range": null
+    }
+   },
+   "fcpxml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE fcpxml>\n<fcpxml version=\"1.10\">\n    <resources>\n        <format id=\"r1\" frameDuration=\"1001/30000s\" width=\"3840\" height=\"2160\"/>\n        <asset id=\"r2\" name=\"interview.mov\" start=\"0s\" duration=\"9009/5s\" hasVideo=\"1\" hasAudio=\"1\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///D:/Shoot/interview.mov\"/>\n        </asset>\n        <asset id=\"r3\" name=\"room tone.mov\" start=\"0s\" duration=\"1001/10s\" hasVideo=\"1\" hasAudio=\"1\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///D:/Shoot/room%20tone.mov\"/>\n        </asset>\n    </resources>\n    <library>\n        <event name=\"ConzaCut\">\n            <project name=\"NTSC\">\n                <sequence format=\"r1\" duration=\"11011/100s\" tcStart=\"0s\" tcFormat=\"DF\">\n                    <spine>\n                        <gap name=\"Gap\" offset=\"0s\" start=\"0s\" duration=\"3003/50s\"/>\n                        <asset-clip ref=\"r2\" offset=\"3003/50s\" name=\"Q1\" start=\"1001/25s\" duration=\"3003/100s\">\n                            <asset-clip ref=\"r3\" lane=\"-1\" offset=\"1001/25s\" name=\"Room\" start=\"1001/300s\" duration=\"1001/20s\" srcEnable=\"audio\"/>\n                        </asset-clip>\n                        <transition name=\"Wipe\" offset=\"2695693/30000s\" duration=\"1001/2000s\"/>\n                        <asset-clip ref=\"r2\" offset=\"9009/100s\" name=\"Q2\" start=\"1001/6s\" duration=\"1001/50s\"/>\n                    </spine>\n                </sequence>\n            </project>\n        </event>\n    </library>\n</fcpxml>\n",
+   "edl": "TITLE: NTSC\nFCM: DROP FRAME\n\n001  INTERVIE V     C        00:00:40;00 00:01:09;25 01:01:00;02 01:01:29;25\n* FROM CLIP NAME: Q1\n* SOURCE FILE: D:/Shoot/interview.mov\n\n002  INTERVIE A     C        00:00:40;00 00:01:09;25 01:01:00;02 01:01:29;25\n* FROM CLIP NAME: Q1\n* SOURCE FILE: D:/Shoot/interview.mov\n\n003  ROOMTONE A2    C        00:00:03;10 00:00:53;10 01:01:00;02 01:01:50;02\n* FROM CLIP NAME: Room\n* SOURCE FILE: D:/Shoot/room tone.mov\n\n004  INTERVIE V     C        00:01:09;25 00:01:09;25 01:01:29;25 01:01:29;25\n004  INTERVIE V     W001 015 00:02:46;17 00:03:06;26 01:01:29;25 01:01:50;02\n* FROM CLIP NAME: Q2\n* SOURCE FILE: D:/Shoot/interview.mov\n\n005  INTERVIE A     C        00:01:09;25 00:01:09;25 01:01:29;25 01:01:29;25\n005  INTERVIE A     W001 015 00:02:46;17 00:03:06;26 01:01:29;25 01:01:50;02\n* FROM CLIP NAME: Q2\n* SOURCE FILE: D:/Shoot/interview.mov\n\n",
+   "back": {
+    "otio": {
+     "name": "NTSC",
+     "rate": {
+      "num": 30000,
+      "den": 1001
+     },
+     "width": 3840,
+     "height": 2160,
+     "media": [
+      {
+       "id": "m1",
+       "name": "interview.mov",
+       "url": "D:/Shoot/interview.mov",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 54000
+      },
+      {
+       "id": "m2",
+       "name": "room tone.mov",
+       "url": "D:/Shoot/room tone.mov",
+       "hasVideo": false,
+       "hasAudio": true,
+       "still": false,
+       "duration": 3000
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Q1",
+         "mediaId": "m1",
+         "start": 1800,
+         "duration": 900,
+         "sourceStart": 1200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 15,
+          "kind": "wipe"
+         }
+        },
+        {
+         "name": "Q2",
+         "mediaId": "m1",
+         "start": 2700,
+         "duration": 600,
+         "sourceStart": 5000,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "A1",
+       "clips": [
+        {
+         "name": "Room",
+         "mediaId": "m2",
+         "start": 1800,
+         "duration": 1500,
+         "sourceStart": 100,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    },
+    "fcpxml": {
+     "name": "NTSC",
+     "rate": {
+      "num": 30000,
+      "den": 1001
+     },
+     "width": 3840,
+     "height": 2160,
+     "media": [
+      {
+       "id": "m1",
+       "name": "interview.mov",
+       "url": "D:/Shoot/interview.mov",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 54000,
+       "width": 3840,
+       "height": 2160
+      },
+      {
+       "id": "m2",
+       "name": "room tone.mov",
+       "url": "D:/Shoot/room tone.mov",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 3000,
+       "width": 3840,
+       "height": 2160
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Q1",
+         "mediaId": "m1",
+         "start": 1800,
+         "duration": 900,
+         "sourceStart": 1200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 15,
+          "kind": "wipe"
+         }
+        },
+        {
+         "name": "Q2",
+         "mediaId": "m1",
+         "start": 2700,
+         "duration": 600,
+         "sourceStart": 5000,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "A1",
+       "clips": [
+        {
+         "name": "Room",
+         "mediaId": "m2",
+         "start": 1800,
+         "duration": 1500,
+         "sourceStart": 100,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    },
+    "edl": {
+     "name": "NTSC",
+     "rate": {
+      "num": 30000,
+      "den": 1001
+     },
+     "width": 0,
+     "height": 0,
+     "media": [
+      {
+       "id": "m1",
+       "name": "interview.mov",
+       "url": "D:/Shoot/interview.mov",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false
+      },
+      {
+       "id": "m2",
+       "name": "room tone.mov",
+       "url": "D:/Shoot/room tone.mov",
+       "hasVideo": false,
+       "hasAudio": true,
+       "still": false
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Q1",
+         "mediaId": "m1",
+         "start": 1800,
+         "duration": 900,
+         "sourceStart": 1200,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true,
+         "transition": {
+          "frames": 15,
+          "kind": "wipe"
+         }
+        },
+        {
+         "name": "Q2",
+         "mediaId": "m1",
+         "start": 2700,
+         "duration": 600,
+         "sourceStart": 5000,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      },
+      {
+       "kind": "audio",
+       "name": "A2",
+       "clips": [
+        {
+         "name": "Room",
+         "mediaId": "m2",
+         "start": 1800,
+         "duration": 1500,
+         "sourceStart": 100,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "timeline": {
+    "name": "PAL",
+    "rate": {
+     "num": 25,
+     "den": 1
+    },
+    "width": 1080,
+    "height": 1920,
+    "media": [
+     {
+      "id": "m1",
+      "name": "slow \"mo\".mp4",
+      "url": "C:/a/slow \"mo\".mp4",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 500
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "V1",
+      "clips": [
+       {
+        "name": "Slow",
+        "mediaId": "m1",
+        "start": 0,
+        "duration": 100,
+        "sourceStart": 50,
+        "speed": 0.5,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "Off",
+        "mediaId": "m1",
+        "start": 100,
+        "duration": 50,
+        "sourceStart": 300,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": false
+       }
+      ]
+     }
+    ]
+   },
+   "otio": {
+    "OTIO_SCHEMA": "Timeline.1",
+    "global_start_time": null,
+    "metadata": {
+     "conzacut": {
+      "width": 1080,
+      "height": 1920,
+      "notes": []
+     }
+    },
+    "name": "PAL",
+    "tracks": {
+     "OTIO_SCHEMA": "Stack.1",
+     "children": [
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [
+          {
+           "OTIO_SCHEMA": "LinearTimeWarp.1",
+           "effect_name": "LinearTimeWarp",
+           "metadata": {},
+           "name": "",
+           "time_scalar": 0.5
+          }
+         ],
+         "enabled": true,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 500.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "slow \"mo\".mp4",
+           "target_url": "file:///C:/a/slow%20%22mo%22.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Slow",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 100.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 50.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": false,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 500.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "slow \"mo\".mp4",
+           "target_url": "file:///C:/a/slow%20%22mo%22.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Off",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 50.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 300.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Video",
+       "markers": [],
+       "metadata": {},
+       "name": "V1",
+       "source_range": null
+      },
+      {
+       "OTIO_SCHEMA": "Track.1",
+       "children": [
+        {
+         "OTIO_SCHEMA": "Gap.1",
+         "effects": [],
+         "enabled": true,
+         "markers": [],
+         "metadata": {},
+         "name": "",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 100.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 0.0
+          }
+         }
+        },
+        {
+         "OTIO_SCHEMA": "Clip.2",
+         "active_media_reference_key": "DEFAULT_MEDIA",
+         "effects": [],
+         "enabled": false,
+         "markers": [],
+         "media_references": {
+          "DEFAULT_MEDIA": {
+           "OTIO_SCHEMA": "ExternalReference.1",
+           "available_image_bounds": null,
+           "available_range": {
+            "OTIO_SCHEMA": "TimeRange.1",
+            "duration": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 500.0
+            },
+            "start_time": {
+             "OTIO_SCHEMA": "RationalTime.1",
+             "rate": 25.0,
+             "value": 0.0
+            }
+           },
+           "metadata": {},
+           "name": "slow \"mo\".mp4",
+           "target_url": "file:///C:/a/slow%20%22mo%22.mp4"
+          }
+         },
+         "metadata": {},
+         "name": "Off",
+         "source_range": {
+          "OTIO_SCHEMA": "TimeRange.1",
+          "duration": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 50.0
+          },
+          "start_time": {
+           "OTIO_SCHEMA": "RationalTime.1",
+           "rate": 25.0,
+           "value": 300.0
+          }
+         }
+        }
+       ],
+       "effects": [],
+       "enabled": true,
+       "kind": "Audio",
+       "markers": [],
+       "metadata": {},
+       "name": "V1 sound",
+       "source_range": null
+      }
+     ],
+     "effects": [],
+     "enabled": true,
+     "markers": [],
+     "metadata": {},
+     "name": "tracks",
+     "source_range": null
+    }
+   },
+   "fcpxml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE fcpxml>\n<fcpxml version=\"1.10\">\n    <resources>\n        <format id=\"r1\" frameDuration=\"1/25s\" width=\"1080\" height=\"1920\"/>\n        <asset id=\"r2\" name=\"slow &quot;mo&quot;.mp4\" start=\"0s\" duration=\"20s\" hasVideo=\"1\" hasAudio=\"1\" format=\"r1\">\n            <media-rep kind=\"original-media\" src=\"file:///C:/a/slow%20%22mo%22.mp4\"/>\n        </asset>\n    </resources>\n    <library>\n        <event name=\"ConzaCut\">\n            <project name=\"PAL\">\n                <sequence format=\"r1\" duration=\"6s\" tcStart=\"0s\" tcFormat=\"NDF\">\n                    <spine>\n                        <asset-clip ref=\"r2\" offset=\"0s\" name=\"Slow\" start=\"2s\" duration=\"4s\" srcEnable=\"video\">\n                            <timeMap>\n                                <timept time=\"0s\" value=\"2s\" interp=\"linear\"/>\n                                <timept time=\"4s\" value=\"4s\" interp=\"linear\"/>\n                            </timeMap>\n                        </asset-clip>\n                        <asset-clip ref=\"r2\" offset=\"4s\" name=\"Off\" start=\"12s\" duration=\"2s\" enabled=\"0\"/>\n                    </spine>\n                </sequence>\n            </project>\n        </event>\n    </library>\n</fcpxml>\n",
+   "edl": "TITLE: PAL\nFCM: NON-DROP FRAME\n\n001  SLOWMO   V     C        00:00:02:00 00:00:04:00 01:00:00:00 01:00:04:00\nM2   SLOWMO         012.5                00:00:02:00\n* FROM CLIP NAME: Slow\n* SOURCE FILE: C:/a/slow \"mo\".mp4\n\n* NOTE: Hidden clips were left out.\n",
+   "back": {
+    "otio": {
+     "name": "PAL",
+     "rate": {
+      "num": 25,
+      "den": 1
+     },
+     "width": 1080,
+     "height": 1920,
+     "media": [
+      {
+       "id": "m1",
+       "name": "slow \"mo\".mp4",
+       "url": "C:/a/slow \"mo\".mp4",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 500
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Slow",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 100,
+         "sourceStart": 50,
+         "speed": 0.5,
+         "sound": false,
+         "enabled": true
+        },
+        {
+         "name": "Off",
+         "mediaId": "m1",
+         "start": 100,
+         "duration": 50,
+         "sourceStart": 300,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": false
+        }
+       ]
+      }
+     ]
+    },
+    "fcpxml": {
+     "name": "PAL",
+     "rate": {
+      "num": 25,
+      "den": 1
+     },
+     "width": 1080,
+     "height": 1920,
+     "media": [
+      {
+       "id": "m1",
+       "name": "slow \"mo\".mp4",
+       "url": "C:/a/slow \"mo\".mp4",
+       "hasVideo": true,
+       "hasAudio": true,
+       "still": false,
+       "duration": 500,
+       "width": 1080,
+       "height": 1920
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Slow",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 100,
+         "sourceStart": 50,
+         "speed": 0.5,
+         "sound": false,
+         "enabled": true
+        },
+        {
+         "name": "Off",
+         "mediaId": "m1",
+         "start": 100,
+         "duration": 50,
+         "sourceStart": 300,
+         "speed": 1.0,
+         "sound": true,
+         "enabled": false
+        }
+       ]
+      }
+     ]
+    },
+    "edl": {
+     "name": "PAL",
+     "rate": {
+      "num": 25,
+      "den": 1
+     },
+     "width": 0,
+     "height": 0,
+     "media": [
+      {
+       "id": "m1",
+       "name": "slow \"mo\".mp4",
+       "url": "C:/a/slow \"mo\".mp4",
+       "hasVideo": true,
+       "hasAudio": false,
+       "still": false
+      }
+     ],
+     "tracks": [
+      {
+       "kind": "video",
+       "name": "V1",
+       "clips": [
+        {
+         "name": "Slow",
+         "mediaId": "m1",
+         "start": 0,
+         "duration": 100,
+         "sourceStart": 50,
+         "speed": 0.5,
+         "sound": false,
+         "enabled": true
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "foreign": [
+  {
+   "name": "otio",
+   "format": "otio",
+   "text": "{\n \"OTIO_SCHEMA\": \"Timeline.1\",\n \"name\": \"From another editor\",\n \"global_start_time\": {\n  \"OTIO_SCHEMA\": \"RationalTime.1\",\n  \"rate\": 24.0,\n  \"value\": 86400.0\n },\n \"metadata\": {},\n \"tracks\": {\n  \"OTIO_SCHEMA\": \"Stack.1\",\n  \"name\": \"tracks\",\n  \"metadata\": {},\n  \"source_range\": null,\n  \"effects\": [],\n  \"markers\": [],\n  \"children\": [\n   {\n    \"OTIO_SCHEMA\": \"Track.1\",\n    \"name\": \"Video 1\",\n    \"kind\": \"Video\",\n    \"metadata\": {},\n    \"source_range\": null,\n    \"effects\": [],\n    \"markers\": [],\n    \"children\": [\n     {\n      \"OTIO_SCHEMA\": \"Gap.1\",\n      \"name\": \"\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 0.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 12.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Clip.1\",\n      \"name\": \"A001_C002\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"media_reference\": {\n       \"OTIO_SCHEMA\": \"ExternalReference.1\",\n       \"name\": \"\",\n       \"metadata\": {},\n       \"target_url\": \"file:///Volumes/Media/A001_C002.mov\",\n       \"available_range\": {\n        \"OTIO_SCHEMA\": \"TimeRange.1\",\n        \"start_time\": {\n         \"OTIO_SCHEMA\": \"RationalTime.1\",\n         \"rate\": 24.0,\n         \"value\": 86400.0\n        },\n        \"duration\": {\n         \"OTIO_SCHEMA\": \"RationalTime.1\",\n         \"rate\": 24.0,\n         \"value\": 480.0\n        }\n       }\n      },\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 86448.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 48.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Transition.1\",\n      \"name\": \"Cross Dissolve\",\n      \"metadata\": {},\n      \"transition_type\": \"SMPTE_Dissolve\",\n      \"in_offset\": {\n       \"OTIO_SCHEMA\": \"RationalTime.1\",\n       \"rate\": 24.0,\n       \"value\": 6.0\n      },\n      \"out_offset\": {\n       \"OTIO_SCHEMA\": \"RationalTime.1\",\n       \"rate\": 24.0,\n       \"value\": 6.0\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Clip.1\",\n      \"name\": \"A001_C003\",\n      \"metadata\": {},\n      \"markers\": [],\n      \"effects\": [\n       {\n        \"OTIO_SCHEMA\": \"LinearTimeWarp.1\",\n        \"name\": \"\",\n        \"effect_name\": \"\",\n        \"metadata\": {},\n        \"time_scalar\": 0.5\n       },\n       {\n        \"OTIO_SCHEMA\": \"Effect.1\",\n        \"name\": \"Blur\",\n        \"effect_name\": \"Blur\",\n        \"metadata\": {}\n       }\n      ],\n      \"media_reference\": {\n       \"OTIO_SCHEMA\": \"MissingReference.1\",\n       \"name\": \"A001_C003.mov\",\n       \"metadata\": {}\n      },\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 10.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 36.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Stack.1\",\n      \"name\": \"Compound\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"children\": [],\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 0.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 24.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Clip.2\",\n      \"name\": \"Last\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"active_media_reference_key\": \"DEFAULT_MEDIA\",\n      \"media_references\": {\n       \"DEFAULT_MEDIA\": {\n        \"OTIO_SCHEMA\": \"ExternalReference.1\",\n        \"name\": \"\",\n        \"metadata\": {},\n        \"target_url\": \"file:///Volumes/Media/A001_C002.mov\",\n        \"available_range\": null\n       }\n      },\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 48.0,\n        \"value\": 172992.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 48.0,\n        \"value\": 48.0\n       }\n      }\n     }\n    ]\n   },\n   {\n    \"OTIO_SCHEMA\": \"Track.1\",\n    \"name\": \"Audio 1\",\n    \"kind\": \"Audio\",\n    \"metadata\": {},\n    \"source_range\": null,\n    \"effects\": [],\n    \"markers\": [],\n    \"children\": [\n     {\n      \"OTIO_SCHEMA\": \"Gap.1\",\n      \"name\": \"\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 0.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 12.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Clip.1\",\n      \"name\": \"A001_C002\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"media_reference\": {\n       \"OTIO_SCHEMA\": \"ExternalReference.1\",\n       \"name\": \"\",\n       \"metadata\": {},\n       \"target_url\": \"file:///Volumes/Media/A001_C002.mov\",\n       \"available_range\": {\n        \"OTIO_SCHEMA\": \"TimeRange.1\",\n        \"start_time\": {\n         \"OTIO_SCHEMA\": \"RationalTime.1\",\n         \"rate\": 24.0,\n         \"value\": 86400.0\n        },\n        \"duration\": {\n         \"OTIO_SCHEMA\": \"RationalTime.1\",\n         \"rate\": 24.0,\n         \"value\": 480.0\n        }\n       }\n      },\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 86448.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 48.0\n       }\n      }\n     },\n     {\n      \"OTIO_SCHEMA\": \"Clip.1\",\n      \"name\": \"VO\",\n      \"metadata\": {},\n      \"effects\": [],\n      \"markers\": [],\n      \"media_reference\": {\n       \"OTIO_SCHEMA\": \"ExternalReference.1\",\n       \"name\": \"\",\n       \"metadata\": {},\n       \"target_url\": \"file:///Volumes/Media/vo%20take%202.wav\",\n       \"available_range\": null\n      },\n      \"source_range\": {\n       \"OTIO_SCHEMA\": \"TimeRange.1\",\n       \"start_time\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 0.0\n       },\n       \"duration\": {\n        \"OTIO_SCHEMA\": \"RationalTime.1\",\n        \"rate\": 24.0,\n        \"value\": 60.0\n       }\n      }\n     }\n    ]\n   },\n   {\n    \"OTIO_SCHEMA\": \"Track.1\",\n    \"name\": \"Data\",\n    \"kind\": \"Subtitle\",\n    \"metadata\": {},\n    \"source_range\": null,\n    \"effects\": [],\n    \"markers\": [],\n    \"children\": []\n   }\n  ]\n }\n}",
+   "rate": {
+    "num": 24,
+    "den": 1
+   },
+   "timeline": {
+    "name": "From another editor",
+    "rate": {
+     "num": 24,
+     "den": 1
+    },
+    "width": 0,
+    "height": 0,
+    "media": [
+     {
+      "id": "m1",
+      "name": "A001_C002.mov",
+      "url": "/Volumes/Media/A001_C002.mov",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 480
+     },
+     {
+      "id": "m2",
+      "name": "A001_C003.mov",
+      "url": "A001_C003.mov",
+      "hasVideo": true,
+      "hasAudio": false,
+      "still": false
+     },
+     {
+      "id": "m3",
+      "name": "vo take 2.wav",
+      "url": "/Volumes/Media/vo take 2.wav",
+      "hasVideo": false,
+      "hasAudio": true,
+      "still": false
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "Video 1",
+      "clips": [
+       {
+        "name": "A001_C002",
+        "mediaId": "m1",
+        "start": 12,
+        "duration": 48,
+        "sourceStart": 48,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true,
+        "transition": {
+         "frames": 12,
+         "kind": "dissolve"
+        }
+       },
+       {
+        "name": "A001_C003",
+        "mediaId": "m2",
+        "start": 60,
+        "duration": 36,
+        "sourceStart": 10,
+        "speed": 0.5,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "Last",
+        "mediaId": "m1",
+        "start": 120,
+        "duration": 24,
+        "sourceStart": 86496,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "Audio 1",
+      "clips": [
+       {
+        "name": "VO",
+        "mediaId": "m3",
+        "start": 60,
+        "duration": 60,
+        "sourceStart": 0,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     }
+    ],
+    "notes": [
+     "Effects on clips were left out.",
+     "Nested stacks and tracks (compound clips) were left out; their time is kept as a gap.",
+     "Tracks other than video and audio were left out."
+    ]
+   }
+  },
+  {
+   "name": "fcpxml",
+   "format": "fcpxml",
+   "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE fcpxml>\n<fcpxml version=\"1.10\">\n  <resources>\n    <format id=\"r1\" name=\"FFVideoFormat1080p2398\" frameDuration=\"1001/24000s\" width=\"1920\" height=\"1080\"/>\n    <asset id=\"r2\" name=\"Interview\" uid=\"X\" start=\"3600s\" duration=\"120s\" hasVideo=\"1\" hasAudio=\"1\" format=\"r1\">\n      <media-rep kind=\"original-media\" src=\"file:///Users/editor/Media/Interview%20A.mov\"/>\n    </asset>\n    <asset id=\"r3\" name=\"Cutaway\" start=\"0s\" duration=\"30s\" hasVideo=\"1\" format=\"r1\" src=\"file:///Users/editor/Media/cutaway.mp4\"/>\n    <asset id=\"r4\" name=\"Song\" start=\"0s\" duration=\"200s\" hasAudio=\"1\" src=\"file:///Users/editor/Media/song.m4a\"/>\n    <effect id=\"r5\" name=\"Basic Title\" uid=\".../Titles.localized/Basic Text.localized/Basic Title.localized/Basic Title.moti\"/>\n  </resources>\n  <library>\n    <event name=\"Day 1\">\n      <project name=\"Interview cut\">\n        <sequence format=\"r1\" duration=\"48048/2400s\" tcStart=\"3600s\" tcFormat=\"NDF\">\n          <spine>\n            <gap name=\"Gap\" offset=\"0s\" start=\"3600s\" duration=\"24024/24000s\">\n              <asset-clip ref=\"r4\" lane=\"-1\" offset=\"3600s\" name=\"Song\" start=\"10s\" duration=\"12012/1200s\" audioRole=\"music\"/>\n            </gap>\n            <asset-clip ref=\"r2\" offset=\"24024/24000s\" name=\"Interview\" start=\"3610s\" duration=\"120120/24000s\" tcFormat=\"NDF\">\n              <asset-clip ref=\"r3\" lane=\"1\" offset=\"3612s\" name=\"Cutaway\" start=\"2s\" duration=\"48048/24000s\">\n                <adjust-transform scale=\"1.1 1.1\"/>\n              </asset-clip>\n              <title ref=\"r5\" lane=\"2\" offset=\"3611s\" name=\"Lower third\" duration=\"2s\"/>\n            </asset-clip>\n            <transition name=\"Cross Dissolve\" offset=\"132132/24000s\" duration=\"24024/24000s\"/>\n            <clip name=\"Wrapped\" offset=\"144144/24000s\" duration=\"72072/24000s\" start=\"0s\">\n              <video ref=\"r3\" offset=\"0s\" start=\"5s\" duration=\"10s\"/>\n              <timeMap>\n                <timept time=\"0s\" value=\"5s\" interp=\"linear\"/>\n                <timept time=\"72072/24000s\" value=\"144144/24000s\" interp=\"linear\"/>\n              </timeMap>\n            </clip>\n            <asset-clip ref=\"r2\" offset=\"216216/24000s\" name=\"Close\" start=\"3700s\" duration=\"48048/24000s\" srcEnable=\"video\">\n              <spine lane=\"1\" offset=\"3700s\">\n                <asset-clip ref=\"r3\" offset=\"3700s\" name=\"S1\" start=\"20s\" duration=\"24024/24000s\"/>\n                <asset-clip ref=\"r3\" offset=\"24024/24000s\" name=\"S2\" start=\"25s\" duration=\"24024/24000s\"/>\n              </spine>\n            </asset-clip>\n          </spine>\n        </sequence>\n      </project>\n    </event>\n  </library>\n</fcpxml>\n",
+   "rate": {
+    "num": 24,
+    "den": 1
+   },
+   "timeline": {
+    "name": "Interview cut",
+    "rate": {
+     "num": 24000,
+     "den": 1001
+    },
+    "width": 1920,
+    "height": 1080,
+    "media": [
+     {
+      "id": "m1",
+      "name": "Interview A.mov",
+      "url": "/Users/editor/Media/Interview A.mov",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false,
+      "duration": 2877,
+      "width": 1920,
+      "height": 1080
+     },
+     {
+      "id": "m2",
+      "name": "cutaway.mp4",
+      "url": "/Users/editor/Media/cutaway.mp4",
+      "hasVideo": true,
+      "hasAudio": false,
+      "still": false,
+      "duration": 719,
+      "width": 1920,
+      "height": 1080
+     },
+     {
+      "id": "m3",
+      "name": "song.m4a",
+      "url": "/Users/editor/Media/song.m4a",
+      "hasVideo": false,
+      "hasAudio": true,
+      "still": false,
+      "duration": 4795
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "V1",
+      "clips": [
+       {
+        "name": "Interview",
+        "mediaId": "m1",
+        "start": 24,
+        "duration": 120,
+        "sourceStart": 240,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true,
+        "transition": {
+         "frames": 24,
+         "kind": "dissolve"
+        }
+       },
+       {
+        "name": "Wrapped",
+        "mediaId": "m2",
+        "start": 144,
+        "duration": 72,
+        "sourceStart": 120,
+        "speed": 0.33499833499833503,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "Close",
+        "mediaId": "m1",
+        "start": 216,
+        "duration": 48,
+        "sourceStart": 2398,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "video",
+      "name": "V2",
+      "clips": [
+       {
+        "name": "Cutaway",
+        "mediaId": "m2",
+        "start": 72,
+        "duration": 48,
+        "sourceStart": 48,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "S1",
+        "mediaId": "m2",
+        "start": 216,
+        "duration": 24,
+        "sourceStart": 480,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "S2",
+        "mediaId": "m2",
+        "start": 240,
+        "duration": 24,
+        "sourceStart": 599,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "A1",
+      "clips": [
+       {
+        "name": "Song",
+        "mediaId": "m3",
+        "start": 0,
+        "duration": 240,
+        "sourceStart": 240,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     }
+    ],
+    "notes": [
+     "Effects and adjustments on clips were left out.",
+     "Titles were left out."
+    ]
+   }
+  },
+  {
+   "name": "edl",
+   "format": "edl",
+   "text": "TITLE: Premiere Sequence\nFCM: DROP FRAME\n\n001  AX       AA/V  C        00:00:10;00 00:00:15;00 01:00:00;00 01:00:05;00\n* FROM CLIP NAME: talk.mov\n* SOURCE FILE: C:\\Media\\talk.mov\n\n002  AX       V     C        00:00:30;00 00:00:30;00 01:00:05;00 01:00:05;00\n002  BROLL    V     D    030 00:01:00;00 00:01:06;00 01:00:05;00 01:00:11;00\n* FROM CLIP NAME: broll.mp4\n\n003  BROLL    V     C        00:02:00;00 00:02:08;00 01:00:11;00 01:00:15;00\nM2   BROLL       059.9                00:02:00;00\n* FROM CLIP NAME: broll.mp4\n\n004  AX       A2    C        00:00:00;00 00:00:10;00 01:00:02;00 01:00:12;00\n* FROM CLIP NAME: music.wav\n\n005  BL       K     C        00:00:00;00 00:00:01;00 01:00:15;00 01:00:16;00\n006  AX       A3    C        00:00:00;00 00:00:01;00 01:00:15;00 01:00:16;00\n",
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "timeline": {
+    "name": "Premiere Sequence",
+    "rate": {
+     "num": 30000,
+     "den": 1001
+    },
+    "width": 0,
+    "height": 0,
+    "media": [
+     {
+      "id": "m1",
+      "name": "talk.mov",
+      "url": "C:\\Media\\talk.mov",
+      "hasVideo": true,
+      "hasAudio": true,
+      "still": false
+     },
+     {
+      "id": "m2",
+      "name": "broll.mp4",
+      "url": "broll.mp4",
+      "hasVideo": true,
+      "hasAudio": false,
+      "still": false
+     },
+     {
+      "id": "m3",
+      "name": "music.wav",
+      "url": "music.wav",
+      "hasVideo": false,
+      "hasAudio": true,
+      "still": false
+     }
+    ],
+    "tracks": [
+     {
+      "kind": "video",
+      "name": "V1",
+      "clips": [
+       {
+        "name": "talk.mov",
+        "mediaId": "m1",
+        "start": 0,
+        "duration": 165,
+        "sourceStart": 300,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true,
+        "transition": {
+         "frames": 30,
+         "kind": "dissolve"
+        }
+       },
+       {
+        "name": "broll.mp4",
+        "mediaId": "m2",
+        "start": 165,
+        "duration": 165,
+        "sourceStart": 1813,
+        "speed": 1.0,
+        "sound": false,
+        "enabled": true
+       },
+       {
+        "name": "broll.mp4",
+        "mediaId": "m2",
+        "start": 330,
+        "duration": 120,
+        "sourceStart": 3596,
+        "speed": 1.9986633333333332,
+        "sound": false,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "A1",
+      "clips": [
+       {
+        "name": "talk.mov",
+        "mediaId": "m1",
+        "start": 0,
+        "duration": 150,
+        "sourceStart": 300,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "kind": "audio",
+      "name": "A2",
+      "clips": [
+       {
+        "name": "music.wav",
+        "mediaId": "m3",
+        "start": 60,
+        "duration": 300,
+        "sourceStart": 0,
+        "speed": 1.0,
+        "sound": true,
+        "enabled": true
+       }
+      ]
+     }
+    ],
+    "notes": [
+     "Events on channels other than video and the first two audio channels were left out."
+    ]
+   }
+  }
+ ],
+ "timecodes": [
+  {
+   "frames": 0,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:00:00;00"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:00:00;01"
+  },
+  {
+   "frames": 1799,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:00:59;29"
+  },
+  {
+   "frames": 1800,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:01:00;02"
+  },
+  {
+   "frames": 3597,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:01:59;29"
+  },
+  {
+   "frames": 17982,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "00:10:00;00"
+  },
+  {
+   "frames": 107892,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "01:00:00;00"
+  },
+  {
+   "frames": 215784,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "02:00:00;00"
+  },
+  {
+   "frames": 123457,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "tc": "01:08:39;11"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:00:00;00"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:00:00;01"
+  },
+  {
+   "frames": 1799,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:00:29;59"
+  },
+  {
+   "frames": 1800,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:00:30;00"
+  },
+  {
+   "frames": 3597,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:00:59;57"
+  },
+  {
+   "frames": 17982,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:04:59;58"
+  },
+  {
+   "frames": 107892,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:30:00;00"
+  },
+  {
+   "frames": 215784,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "01:00:00;00"
+  },
+  {
+   "frames": 123457,
+   "rate": {
+    "num": 60000,
+    "den": 1001
+   },
+   "tc": "00:34:19;41"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:00:00:00"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:00:00:01"
+  },
+  {
+   "frames": 1799,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:01:11:24"
+  },
+  {
+   "frames": 1800,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:01:12:00"
+  },
+  {
+   "frames": 3597,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:02:23:22"
+  },
+  {
+   "frames": 17982,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "00:11:59:07"
+  },
+  {
+   "frames": 107892,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "01:11:55:17"
+  },
+  {
+   "frames": 215784,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "02:23:51:09"
+  },
+  {
+   "frames": 123457,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "tc": "01:22:18:07"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:00:00:00"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:00:00:01"
+  },
+  {
+   "frames": 1799,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:01:14:23"
+  },
+  {
+   "frames": 1800,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:01:15:00"
+  },
+  {
+   "frames": 3597,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:02:29:21"
+  },
+  {
+   "frames": 17982,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "00:12:29:06"
+  },
+  {
+   "frames": 107892,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "01:14:55:12"
+  },
+  {
+   "frames": 215784,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "02:29:51:00"
+  },
+  {
+   "frames": 123457,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "tc": "01:25:44:01"
+  }
+ ],
+ "times": [
+  {
+   "frames": 0,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "0s"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "1001/30000s"
+  },
+  {
+   "frames": 30,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "1001/1000s"
+  },
+  {
+   "frames": 45,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "3003/2000s"
+  },
+  {
+   "frames": 1001,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "1002001/30000s"
+  },
+  {
+   "frames": 3600,
+   "rate": {
+    "num": 30000,
+    "den": 1001
+   },
+   "text": "3003/25s"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "0s"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "1/30s"
+  },
+  {
+   "frames": 30,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "1s"
+  },
+  {
+   "frames": 45,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "3/2s"
+  },
+  {
+   "frames": 1001,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "1001/30s"
+  },
+  {
+   "frames": 3600,
+   "rate": {
+    "num": 30,
+    "den": 1
+   },
+   "text": "120s"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "0s"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "1001/24000s"
+  },
+  {
+   "frames": 30,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "1001/800s"
+  },
+  {
+   "frames": 45,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "3003/1600s"
+  },
+  {
+   "frames": 1001,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "1002001/24000s"
+  },
+  {
+   "frames": 3600,
+   "rate": {
+    "num": 24000,
+    "den": 1001
+   },
+   "text": "3003/20s"
+  },
+  {
+   "frames": 0,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "0s"
+  },
+  {
+   "frames": 1,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "1/25s"
+  },
+  {
+   "frames": 30,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "6/5s"
+  },
+  {
+   "frames": 45,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "9/5s"
+  },
+  {
+   "frames": 1001,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "1001/25s"
+  },
+  {
+   "frames": 3600,
+   "rate": {
+    "num": 25,
+    "den": 1
+   },
+   "text": "144s"
+  }
+ ],
+ "reels": [
+  {
+   "file": "take 1.mp4",
+   "reel": "TAKE1"
+  },
+  {
+   "file": "A001_C002_0101AB.mov",
+   "reel": "A001C002"
+  },
+  {
+   "file": ".hidden",
+   "reel": "HIDDEN"
+  },
+  {
+   "file": "école.mov",
+   "reel": "COLE"
+  },
+  {
+   "file": "___.mp4",
+   "reel": "AX"
+  },
+  {
+   "file": "x",
+   "reel": "X"
+  }
+ ],
+ "urls": [
+  {
+   "path": "C:/Clips/take 1.mp4",
+   "url": "file:///C:/Clips/take%201.mp4",
+   "back": "C:/Clips/take 1.mp4"
+  },
+  {
+   "path": "/Users/me/a b.mov",
+   "url": "file:///Users/me/a%20b.mov",
+   "back": "/Users/me/a b.mov"
+  },
+  {
+   "path": "take 1.mp4",
+   "url": "take%201.mp4",
+   "back": "take 1.mp4"
+  },
+  {
+   "path": "D:\\x\\y.mov",
+   "url": "file:///D:/x/y.mov",
+   "back": "D:/x/y.mov"
+  },
+  {
+   "path": "https://example.com/a.mp4",
+   "url": "https://example.com/a.mp4",
+   "back": "https://example.com/a.mp4"
+  },
+  {
+   "path": "n%C3%A4me.mp4",
+   "url": "n%25C3%25A4me.mp4",
+   "back": "n%C3%A4me.mp4"
+  }
+ ]
+}

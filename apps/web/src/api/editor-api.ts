@@ -185,6 +185,7 @@ import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
 import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
 import { setStabilise } from "@/stabilise/measure";
+import { exportProjectTimeline, importProjectTimeline, isTimelineFormat } from "@/interchange/project";
 import { isStabiliseStrength } from "@/stabilise/steady";
 import { cutCount, groupCuts, multicamGroup, multicamSwitchCommand } from "@/multicam/group";
 import { syncMulticam } from "@/multicam/sync";
@@ -2513,6 +2514,23 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 				return await smoothJumpCuts({ editor, elementId: target, frames });
 			} catch (error) {
 				if (error instanceof EditorApiError) throw error;
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"project.exportTimeline": ({ format }) => {
+			requireProject();
+			const chosen = format ?? "otio";
+			if (!isTimelineFormat(chosen)) {
+				throw new EditorApiError({ code: "invalid_params", message: "format must be otio, fcpxml or edl" });
+			}
+			return exportProjectTimeline({ editor, format: chosen });
+		},
+		"project.importTimeline": ({ text, fileName }) => {
+			requireProject();
+			const body = requireString(text, "text");
+			try {
+				return importProjectTimeline({ editor, text: body, fileName: fileName ?? "" });
+			} catch (error) {
 				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
 			}
 		},

@@ -274,6 +274,51 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
+## Timeline files (OpenTimelineIO, FCPXML, EDL)
+
+**Export timeline…** (in the header) writes the timeline for another
+editor, the format by the extension you give: `.otio` (OpenTimelineIO
+JSON, every video and audio track; the default), `.fcpxml` (FCPXML 1.10:
+the main track is the storyline, the other tracks are connected clips on
+lanes above and below it) or `.edl` (CMX 3600: the main video track and
+two sound channels, record timecode from 01:00:00:00, drop frame at 29.97
+and 59.94). Video, picture and audio clips go in with their place, trims,
+a constant speed change, hidden clips, whether a video clip's own sound
+plays, and transitions (wipes as wipes, every other kind as a dissolve,
+centred on the cut). Text, stickers, effects, masks, keyframes, position
+changes, speed ramps and transitions in from nothing are left out; the
+status line names what was, and the file carries the same note where its
+format allows (an XML comment, `* NOTE:` lines). Media files are referred
+to by their paths, not copied.
+
+**Import timeline…** reads an OpenTimelineIO, FCPXML or EDL file (the
+format from the extension, else from the text; an EDL at the project's
+frame rate) onto new tracks, video above the existing ones bottom first so
+the stacking is kept, audio at the bottom, or onto the main track when the
+timeline is empty, in one undo step. A file is matched to the project's
+media by its path, then by its name; one the project does not have is
+brought in from where the timeline says it is or from beside the timeline
+file; any still missing are named. Read: OTIO `Clip.1` and `Clip.2`, gaps,
+transitions, linear time warps, files with a timecode start, other rates;
+FCPXML spines, gaps, connected clips at any depth, `clip` elements,
+secondary storylines and `timeMap` speed; EDL cuts, dissolves (the two-line
+form), wipes, `M2` speed, `B` / `AA/V` / `AA` channels and the `* FROM
+CLIP NAME:` and `* SOURCE FILE:` comments. Titles, compound and multicam
+clips, keys and effects are left out with a note. A sound on its own track
+that only repeats a video clip's (same file, place and trim) becomes that
+clip's sound.
+
+All of it is the shared `interchange` crate (`otio`, `fcpxml`, `edl`), with
+`editor::project_timeline` and `editor::timeline_import`; the web editor
+does the same through WASM. It is checked against
+`fixtures/interchange/cases.json`, written by an independent Python
+reference whose readers use the standard `json` and `xml.etree` parsers:
+three timelines written in each format to the byte (OTIO as JSON), read
+back, and one hand-written file per format in the style of another editor.
+The format details come from the OpenTimelineIO schema pages, Apple's
+FCPXML 1.10 DTD and published CMX 3600 examples; the files have not been
+opened in DaVinci Resolve, Premiere or Final Cut Pro.
+
 ## Stabilise
 
 **Stabilise** (an inspector section on video clips) holds a shaky camera

@@ -1,0 +1,15 @@
+[package]
+name = "interchange"
+description = "Project interchange: timelines to and from OpenTimelineIO, FCPXML and CMX 3600 EDL, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+roxmltree = "0.20"
+serde = { workspace = true }
+serde_json = { workspace = true }

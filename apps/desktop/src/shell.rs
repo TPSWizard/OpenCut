@@ -317,6 +317,53 @@ impl Shell {
         .detach();
     }
 
+    /// Asks where to write the timeline; `.otio`, `.fcpxml` or `.edl` picks
+    /// the format (OpenTimelineIO when none is given).
+    fn export_timeline(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let name = state.read(cx).project().name.clone();
+        let suggested = format!("{}.otio", bundle_file_name(&name));
+        let directory = std::env::current_dir().unwrap_or_default();
+        let receiver = cx.prompt_for_new_path(&directory, Some(&suggested));
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(mut path))) = receiver.await else {
+                return;
+            };
+            if path.extension().and_then(|e| e.to_str()).and_then(interchange::Format::parse).is_none() {
+                path.set_extension("otio");
+            }
+            state.update(cx, |state, cx| state.export_timeline_file(path, cx)).ok();
+        })
+        .detach();
+    }
+
+    /// Asks for an OpenTimelineIO, FCPXML or EDL file to bring in.
+    fn import_timeline(&mut self, cx: &mut Context<Self>) {
+        let Some(open) = &self.editor else {
+            return;
+        };
+        let state = open.state.clone();
+        let receiver = cx.prompt_for_paths(gpui::PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some(t("Import timeline").into()),
+        });
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
+            state.update(cx, |state, cx| state.import_timeline_file(path, cx)).ok();
+        })
+        .detach();
+    }
+
     fn with_state(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut EditorState, &mut Context<EditorState>)) {
         if let Some(open) = &self.editor {
             open.state.update(cx, f);
@@ -431,6 +478,18 @@ impl Render for Shell {
                     .variant(ButtonVariant::Outline)
                     .size(ButtonSize::Small)
                     .on_click(cx.listener(|this, _, _, cx| this.export_captions(cx))),
+            )
+            .child(
+                Button::new("import-timeline", t("Import timeline…"))
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.import_timeline(cx))),
+            )
+            .child(
+                Button::new("export-timeline", t("Export timeline…"))
+                    .variant(ButtonVariant::Outline)
+                    .size(ButtonSize::Small)
+                    .on_click(cx.listener(|this, _, _, cx| this.export_timeline(cx))),
             )
             .child(
                 Button::new("share-link", t("Share link"))

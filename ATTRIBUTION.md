@@ -449,3 +449,14 @@ this repository. Templates you save stay in your browser or in
   repository's own `jumpcut` estimate. No model is used or bundled. The test
   footage is synthesised: FFmpeg's `testsrc2` picture moved by cropping; the
   fixture's pictures are formulas.
+
+## Timeline files (`crates/interchange`, added 2026-11-27)
+
+- The OpenTimelineIO, FCPXML and CMX 3600 EDL writers and readers are our
+  own code for this repository, under its MIT licence, written from the
+  formats' public descriptions: the OpenTimelineIO serialized schema and
+  timeline structure pages (the project is Apache-2.0; no code or files
+  copied and no dependency), Apple's FCPXML 1.10 DTD as published in its
+  developer documentation, and published CMX 3600 EDL examples. XML is
+  parsed with `roxmltree` (MIT/Apache-2.0), already in the dependency tree.
+  The sample files in the fixture were written by hand for the tests.
