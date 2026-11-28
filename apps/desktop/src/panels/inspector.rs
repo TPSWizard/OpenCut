@@ -2941,6 +2941,61 @@ impl Render for InspectorPanel {
                         )
                         .child(deflicker_row);
 
+                    // Stabilise (`crates/stabilise`, row 107): the camera's
+                    // movement is measured once, then each frame is moved
+                    // as it is drawn; the strength can change any time.
+                    let current = editor::read_stabilise_strength(&element.params);
+                    let camera = match &element.kind {
+                        ElementKind::Video { media_id } => editor::read_stabilise_path(&element.params, media_id).map(|path| {
+                            (path.frames(), editor::stabilise_corrections(&element.params, media_id).map(|c| (c.zoom, c.needed)))
+                        }),
+                        _ => None,
+                    };
+                    let mut steady_row = div()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(4.))
+                        .child(Self::label_cell(t("Strength"), window));
+                    for strength in editor::StabiliseStrength::ALL {
+                        let label = match strength {
+                            editor::StabiliseStrength::Off => "Off",
+                            editor::StabiliseStrength::Light => "Light",
+                            editor::StabiliseStrength::Medium => "Medium",
+                            editor::StabiliseStrength::Strong => "Strong",
+                            editor::StabiliseStrength::Still => "Still",
+                        };
+                        let state = self.state.clone();
+                        steady_row = steady_row.child(
+                            Button::new(eid("steady-strength", label), t(label))
+                                .variant(if current == strength { ButtonVariant::Default } else { ButtonVariant::Outline })
+                                .size(ButtonSize::XSmall)
+                                .disabled(strength != editor::StabiliseStrength::Off && camera.is_none() && !has_ffmpeg)
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |state, cx| state.set_stabilise_selected(strength, cx));
+                                }),
+                        );
+                    }
+                    let steady_note = match camera {
+                        Some((frames, Some((zoom, needed)))) if needed > zoom + 1e-6 => tf(
+                            "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}×, and the edges still show at times (try a lighter strength).",
+                            &[("frames", &frames), ("zoom", &format!("{zoom:.2}"))],
+                        ),
+                        Some((frames, Some((zoom, _)))) => tf(
+                            "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}× to hide the edges.",
+                            &[("frames", &frames), ("zoom", &format!("{zoom:.2}"))],
+                        ),
+                        Some((frames, None)) => tf(
+                            "Holds a shaky camera steady without rewriting the file. {frames} frames measured.",
+                            &[("frames", &frames)],
+                        ),
+                        None => t("Holds a shaky camera steady without rewriting the file. The camera's movement is measured once when you pick a strength; Still holds it as on a tripod.").to_owned(),
+                    };
+                    content = content
+                        .child(self.heading(t("Stabilise"), window))
+                        .child(div().text_xs().text_color(colors.muted_foreground).child(steady_note))
+                        .child(steady_row);
+
                     // Stabilising (vid.stab) and in-between frames
                     // (minterpolate): a rewritten copy the clip then plays.
                     let mut strength_row = div()
@@ -2967,12 +3022,12 @@ impl Render for InspectorPanel {
                     let strength = self.stabilise_strength;
                     let state = self.state.clone();
                     content = content
-                        .child(self.heading(t("Stabilise"), window))
+                        .child(self.heading(t("Stabilised copy (vid.stab)"), window))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(colors.muted_foreground)
-                                .child(t("Smooths a shaky camera (vid.stab, two passes over the whole file) and zooms in just enough to hide the moving edges. Needs an FFmpeg build with vid.stab.")),
+                                .child(t("Writes a stabilised copy of the whole file with vid.stab (two passes) and zooms in just enough to hide the moving edges. Needs an FFmpeg build with vid.stab.")),
                         )
                         .child(strength_row)
                         .child(

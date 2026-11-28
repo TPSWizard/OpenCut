@@ -42,6 +42,7 @@ mod flicker;
 mod rich_text;
 mod multicam_sync;
 mod jump_cuts;
+mod steady;
 mod face_track;
 mod retakes;
 mod crossfade;

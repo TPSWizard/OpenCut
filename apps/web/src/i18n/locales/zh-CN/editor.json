@@ -416,5 +416,14 @@
   "Frames": "帧",
   "Smooth this clip's cuts": "平滑此片段的剪切",
   "Smooth every jump cut": "平滑所有跳切",
-  "Making in-between frames from the motion…": "正在根据运动生成中间帧…"
+  "Making in-between frames from the motion…": "正在根据运动生成中间帧…",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}×, and the edges still show at times (try a lighter strength).": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧；已放大 {zoom}×，但边缘有时仍会露出（可尝试较轻的强度）。",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}× to hide the edges.": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧；已放大 {zoom}× 以隐藏边缘。",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured.": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧。",
+  "Holds a shaky camera steady without rewriting the file. The camera's movement is measured once when you pick a strength; Still holds it as on a tripod.": "无需重写文件即可让抖动的镜头保持稳定。选择强度时会测量一次镜头的运动；“固定”会让镜头像架在三脚架上一样不动。",
+  "Measuring the camera's movement, frame by frame…": "正在逐帧测量镜头的运动…",
+  "Stabilise on: {frames} frames measured; zoomed in {zoom}× to hide the edges.": "防抖已开启：已测量 {frames} 帧；已放大 {zoom}× 以隐藏边缘。",
+  "Still": "固定",
+  "Stabilise": "防抖",
+  "Stabilising failed": "防抖失败"
 }

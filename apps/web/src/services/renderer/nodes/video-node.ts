@@ -15,6 +15,8 @@ export interface VideoNodeParams extends VisualNodeParams {
 	cutout?: { matteId: string; file: File; offset: number; inverted: boolean };
 	/** Deflicker (`@/deflicker/levels`): frames averaged and the measured levels, when on. */
 	deflicker?: { window: number; levels: string } | null;
+	/** Stabilise (`@/stabilise/steady`): the strength and the measured camera path, when on. */
+	stabilise?: { strength: import("@/stabilise/steady").StabiliseStrength; path: string } | null;
 }
 
 export interface ResolvedVideoNodeState extends ResolvedVisualSourceNodeState {

@@ -2,6 +2,7 @@ import { creditRollAt, readCreditRoll } from "@/titles/templates";
 import { cornerPinAt } from "@/corner-pin/pin";
 import { motionTransforms, readMotionBlur } from "@/motion-blur/blur";
 import { deflickerGainAt } from "@/deflicker/levels";
+import { type SteadyCorrection, steadyCorrectionAt, steadyTransform } from "@/stabilise/steady";
 import { readRichStyles } from "@/text/rich";
 import { faceTrackFacesAt } from "opencut-wasm";
 import { curveAt, textPathAt } from "@/text/curve";
@@ -243,11 +244,14 @@ function resolveVisualState({
 	context,
 	sourceWidth,
 	sourceHeight,
+	steady,
 }: {
 	params: VisualNodeParams;
 	context: ResolveContext;
 	sourceWidth: number;
 	sourceHeight: number;
+	/** Stabilise: the drawn frame's correction (video clips). */
+	steady?: SteadyCorrection | null;
 }): ResolvedVisualNodeState | null {
 	if (!isClipVisible({ params, time: context.time })) {
 		return null;
@@ -292,8 +296,11 @@ function resolveVisualState({
 	// An auto zoom punch-in scales the frame about its focus point
 	// (`zoom_offset` in the desktop renderer).
 	const zoomScale = params.clipZoom ? zoomAt({ zoom: params.clipZoom, seconds: localTime / TICKS_PER_SECOND }) : 1;
-	const zoomed = (base: Transform): Transform =>
-		params.clipZoom && zoomScale !== 1
+	// Stabilise (row 107) moves the frame first, in its own frame
+	// (`steady_transform` in the desktop renderer).
+	const zoomed = (keyed: Transform): Transform => {
+		const base = steady ? steadyTransform(keyed, steady, sourceWidth * containScale) : keyed;
+		return params.clipZoom && zoomScale !== 1
 			? (() => {
 					const zoom = zoomTransform({
 						zoom: params.clipZoom,
@@ -313,6 +320,7 @@ function resolveVisualState({
 					};
 				})()
 			: base;
+	};
 	const transform = zoomed(animated.transform);
 	// Motion blur: the transform half a shutter either side, with this
 	// frame's zoom (as the desktop renderer places them).
@@ -429,11 +437,17 @@ async function resolveVideoNode({
 		return null;
 	}
 
+	// Stabilise: the correction of the frame actually drawn, by its own
+	// timestamp (as deflicker below), the desktop's `editor::stabilise_correction`.
+	const steady = node.params.stabilise
+		? steadyCorrectionAt({ stabilise: node.params.stabilise, sourceSeconds: frame.timestamp })
+		: null;
 	const visualState = resolveVisualState({
 		params: node.params,
 		context,
 		sourceWidth: frame.canvas.width,
 		sourceHeight: frame.canvas.height,
+		steady,
 	});
 	if (!visualState) {
 		return null;

@@ -643,7 +643,7 @@
   "Strength": "强度",
   "Strong": "强",
   "Stabilise": "防抖",
-  "Smooths a shaky camera (vid.stab, two passes over the whole file) and zooms in just enough to hide the moving edges. Needs an FFmpeg build with vid.stab.": "平滑抖动的镜头（vid.stab，对整个文件处理两遍），并适度放大以隐藏晃动的边缘。需要带 vid.stab 的 FFmpeg。",
+  "Writes a stabilised copy of the whole file with vid.stab (two passes) and zooms in just enough to hide the moving edges. Needs an FFmpeg build with vid.stab.": "用 vid.stab 写出整个文件的防抖副本（处理两遍），并适度放大以隐藏晃动的边缘。需要带 vid.stab 的 FFmpeg。",
   "Stabilise clip": "片段防抖",
   "Frames": "帧数",
   "Smooth slow motion": "流畅慢动作",
@@ -1208,5 +1208,13 @@
   "Smooth jump cuts": "平滑跳切",
   "Where words or a pause were cut out of one take, in-between frames made from the motion bridge the jump; the clips and their sound stay as they are. Jump cuts on the timeline: {all}; at this clip: {here}; smoothed: {smoothed}.": "在同一条素材中剪掉词语或停顿的地方，根据运动生成的中间帧会衔接跳变；片段和声音保持不变。时间线上的跳切：{all}；此片段处：{here}；已平滑：{smoothed}。",
   "Smooth this clip's cuts": "平滑此片段的剪切",
-  "Smooth every jump cut": "平滑所有跳切"
+  "Smooth every jump cut": "平滑所有跳切",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}×, and the edges still show at times (try a lighter strength).": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧；已放大 {zoom}×，但边缘有时仍会露出（可尝试较轻的强度）。",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured; zoomed in {zoom}× to hide the edges.": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧；已放大 {zoom}× 以隐藏边缘。",
+  "Holds a shaky camera steady without rewriting the file. {frames} frames measured.": "无需重写文件即可让抖动的镜头保持稳定。已测量 {frames} 帧。",
+  "Holds a shaky camera steady without rewriting the file. The camera's movement is measured once when you pick a strength; Still holds it as on a tripod.": "无需重写文件即可让抖动的镜头保持稳定。选择强度时会测量一次镜头的运动；“固定”会让镜头像架在三脚架上一样不动。",
+  "Measuring the camera's movement, frame by frame…": "正在逐帧测量镜头的运动…",
+  "Stabilise on: {frames} frames measured; zoomed in {zoom}× to hide the edges.": "防抖已开启：已测量 {frames} 帧；已放大 {zoom}× 以隐藏边缘。",
+  "Still": "固定",
+  "Stabilised copy (vid.stab)": "防抖副本（vid.stab）"
 }

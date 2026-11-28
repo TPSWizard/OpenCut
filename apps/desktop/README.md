@@ -274,7 +274,43 @@ also bookmark the cuts; the cut picking is the same code on both sides
 (`crates/editor/src/shots.rs`, `apps/web/src/shots/detect.ts`). Speed
 changes are not followed when mapping cuts onto the timeline.
 
-## Stabilising and smooth slow motion
+## Stabilise
+
+**Stabilise** (an inspector section on video clips) holds a shaky camera
+steady without rewriting the file: Off, Light, Medium, Strong, or Still
+(one fixed camera for the whole clip, as on a tripod). The first strength
+picked measures the clip once; after that the strength changes at once.
+
+The part of the file the clip plays is read 192 pixels wide at the file's
+own frame rate (10 to 60 a second, else 30). For each pair of neighbouring
+frames the camera's movement is fitted as a similarity (shift, turn, zoom)
+to the dense motion from the shared `jumpcut` motion estimate, re-weighted
+with Tukey's biweight so something moving through the frame does not count,
+and leaving out points whose match in either frame is in the 6% band at the
+edges where new picture comes in. A move of more than a pixel is measured a
+second time on the next frame warped back by the first estimate, which
+takes out the few per cent a big move is under-measured by. The steps go on
+the clip as `stabilise.path` (tagged with the file it came from). When a
+frame is drawn, the camera path is smoothed with a Gaussian (Light 4,
+Medium 10, Strong 25 frames; Still: the average position) and the frame is
+moved by the difference, zoomed in just enough that no edge shows at any
+moment (at most 1.5×; past that the note says the edges show at times).
+The renderer adds the correction to the clip's own transform
+(`editor::steady_transform`), so it works with the clip's position, scale,
+turn, mirroring, keyframes and auto zoom.
+
+All of it is the shared `stabilise` crate (`frame_step`, `CameraPath`,
+`Corrections`), with `editor::stabilise_correction`; the web editor does the
+same through WASM. It is checked against `fixtures/stabilise/stabilise.json`,
+written by an independent Python reference (fits to 1e-9, frame steps to
+1e-6 and within a twentieth of a pixel of the true move). On a clip made by
+FFmpeg (a still picture panned 2 px a frame and shaken by up to 14 px), the
+measured steps are within 0.21 px of the true crop moves, and the rendered
+frames' shake goes from 15.0 px to 0.38 px a frame (Medium) and 0.23 px
+(Still). A clip that is picture-in-picture moves its whole box, edges and
+all (the correction moves the drawn frame, not the picture inside it).
+
+## Stabilised copy and smooth slow motion
 
 Two inspector sections on video clips rewrite the clip's file through
 FFmpeg into `~/.opencut/processed/` and point the clip at the copy, in one
@@ -283,7 +319,7 @@ with the audio, so trims, speed and keyframes carry over; it is ordinary
 media, so bundles carry it and the web editor plays it. A copy already made
 with the same settings is reused. Both live in `crates/media/src/motion.rs`.
 
-- **Stabilise** runs vid.stab in two passes (`vidstabdetect`, then
+- **Stabilised copy (vid.stab)** runs vid.stab in two passes (`vidstabdetect`, then
   `vidstabtransform` with `optzoom=1`, which zooms just enough to hide the
   moving edges, and a light sharpen). Strength sets the smoothing window:
   Light 10, Medium 20, Strong 40 frames. vid.stab is only in GPL FFmpeg

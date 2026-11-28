@@ -1,0 +1,16 @@
+[package]
+name = "stabilise"
+description = "Stabilisation: the camera's movement between frames, a smoothed camera path and the per-frame correction, shared by the desktop and the web (through WASM)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+jumpcut = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

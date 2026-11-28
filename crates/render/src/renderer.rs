@@ -323,7 +323,12 @@ impl Renderer {
         };
         // An auto zoom punch-in scales the drawn frame about its focus point
         // (the web app's `zoomTransform`).
+        // Stabilise (row 107) moves the frame first, in its own frame.
         let place = |transform: editor::LayerTransform| {
+            let transform = match &layer.steady {
+                Some(correction) => editor::steady_transform(transform, correction, base_width as f64),
+                None => transform,
+            };
             let mut zoomed = transform;
             if let Some(zoom) = layer.zoom {
                 let (offset_x, offset_y) = editor::zoom_offset(

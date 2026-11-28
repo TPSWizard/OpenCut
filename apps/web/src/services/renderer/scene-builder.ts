@@ -27,6 +27,7 @@ import { DEFAULT_BACKGROUND_BLUR_INTENSITY } from "@/background/blur";
 import { CORNER_PIN_ENABLED } from "@/corner-pin/pin";
 import { readMotionBlur } from "@/motion-blur/blur";
 import { deflickerParams } from "@/deflicker/levels";
+import { stabiliseParams } from "@/stabilise/steady";
 import { faceTrackFor } from "@/retouch/track";
 import type { ParamValues } from "@/params";
 
@@ -98,6 +99,7 @@ function buildElementNode({
 		if (element.type === "video" && mediaAsset.type === "video") {
 			return new VideoNode({
 				deflicker: deflickerParams(element.params, mediaAsset.id),
+				stabilise: stabiliseParams(element.params, mediaAsset.id),
 				faceTrack: faceTrackFor(element.params, mediaAsset.id),
 				mediaId: mediaAsset.id,
 				url: mediaAsset.url,

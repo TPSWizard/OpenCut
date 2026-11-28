@@ -26,6 +26,7 @@ trimedit = { workspace = true }
 richtext = { workspace = true }
 multicam = { workspace = true }
 jumpcut = { workspace = true }
+stabilise = { workspace = true }
 facetrack = { workspace = true }
 voice = { workspace = true }
 render = { workspace = true }

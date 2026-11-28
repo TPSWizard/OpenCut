@@ -184,6 +184,8 @@ import { CURVE_MAX, CURVE_MIN } from "@/text/curve";
 import { MOTION_BLUR_MAX, MOTION_BLUR_PARAM } from "@/motion-blur/blur";
 import { isDeflickerStrength } from "@/deflicker/levels";
 import { setDeflicker } from "@/deflicker/measure";
+import { setStabilise } from "@/stabilise/measure";
+import { isStabiliseStrength } from "@/stabilise/steady";
 import { cutCount, groupCuts, multicamGroup, multicamSwitchCommand } from "@/multicam/group";
 import { syncMulticam } from "@/multicam/sync";
 import { currentJumpCuts, smoothJumpCuts } from "@/jump-cuts/make";
@@ -2509,6 +2511,23 @@ export function createEditorApi({ editor }: { editor: EditorCore }): EditorApi {
 			const target = elementId ? resolveElement({ elementId, trackId }).element.id : undefined;
 			try {
 				return await smoothJumpCuts({ editor, elementId: target, frames });
+			} catch (error) {
+				if (error instanceof EditorApiError) throw error;
+				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });
+			}
+		},
+		"video.stabilise": async ({ elementId, trackId, strength }) => {
+			requireProject();
+			const { track, element } = resolveElement({ elementId, trackId });
+			if (element.type !== "video") {
+				throw new EditorApiError({ code: "invalid_params", message: "Stabilise works on video clips" });
+			}
+			if (!isStabiliseStrength(strength)) {
+				throw new EditorApiError({ code: "invalid_params", message: "strength must be off, light, medium, strong or still" });
+			}
+			try {
+				const result = await setStabilise({ editor, trackId: track.id, elementId: element.id, strength });
+				return { trackId: track.id, elementId: element.id, ...result };
 			} catch (error) {
 				if (error instanceof EditorApiError) throw error;
 				throw new EditorApiError({ code: "invalid_params", message: error instanceof Error ? error.message : String(error) });

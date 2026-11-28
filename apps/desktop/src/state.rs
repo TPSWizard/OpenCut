@@ -2425,6 +2425,75 @@ impl EditorState {
         .detach();
     }
 
+    /// Stabilise (row 107): sets the selected video clip's strength,
+    /// measuring its camera path first (on a background thread) when it has
+    /// none from its file; the strength and the path are one undo step.
+    pub(crate) fn set_stabilise_selected(&mut self, strength: editor::StabiliseStrength, cx: &mut Context<Self>) {
+        let Some(element) = self.selected_element() else { return };
+        let editor::ElementKind::Video { media_id } = &element.kind else {
+            self.set_status(t("This needs a video clip."), cx);
+            return;
+        };
+        let element_id = element.id.clone();
+        let mut params = editor::Params::new();
+        params.set(editor::STABILISE_STRENGTH, strength.as_str());
+        if strength == editor::StabiliseStrength::Off || editor::read_stabilise_path(&element.params, media_id).is_some() {
+            self.execute(
+                Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+                cx,
+            );
+            return;
+        }
+        let Some(media) = self.project().media_for(element).cloned() else { return };
+        let Some(ffmpeg) = self.ffmpeg.clone() else {
+            self.set_status(t("FFmpeg is needed to read video frames."), cx);
+            return;
+        };
+        let (Some(width), Some(height)) = (media.width, media.height) else {
+            self.set_status(t("The clip's frame size is unknown."), cx);
+            return;
+        };
+        let (a, b) = (
+            element.source_time(element.start_time).to_seconds_f64(),
+            element.source_time(element.end_time() - MediaTime::ONE_TICK).to_seconds_f64(),
+        );
+        let job = crate::stabilise::MeasureJob {
+            path: media.path.clone(),
+            size: (width, height),
+            fps: media.fps,
+            media_id: media.id.clone(),
+            from: a.min(b).max(0.0),
+            to: a.max(b),
+        };
+        self.set_status(t("Measuring the camera's movement, frame by frame…"), cx);
+        cx.spawn(async move |this, cx| {
+            let measured = cx.background_executor().spawn(async move { crate::stabilise::measure(&ffmpeg, &job) }).await;
+            this.update(cx, |state, cx| match measured {
+                Ok(camera) => {
+                    let frames = camera.frames();
+                    let zoom = format!("{:.2}", camera.corrections(strength).zoom);
+                    params.set(editor::STABILISE_PATH, camera.encode());
+                    let done = state.execute(
+                        Command::UpdateElement { element_id, patch: editor::ElementPatch { params: Some(params), ..Default::default() } },
+                        cx,
+                    );
+                    if done.is_some() {
+                        state.set_status(
+                            tf(
+                                "Stabilise on: {frames} frames measured; zoomed in {zoom}× to hide the edges.",
+                                &[("frames", &frames), ("zoom", &zoom)],
+                            ),
+                            cx,
+                        );
+                    }
+                }
+                Err(message) => state.set_status(message, cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     /// Smooth jump cuts (row 106): bridges the jump cuts at the selected
     /// clip (or all on the timeline) that have no bridge yet with `frames`
     /// in-between frames each, made on a background thread from the frames

@@ -37,6 +37,7 @@ mod subtitle_import;
 mod corner_pin;
 mod motion_blur;
 mod deflicker;
+mod stabilise;
 mod multicam_group;
 mod jump_cuts;
 pub use jump_cuts::{
@@ -192,6 +193,10 @@ pub use colour_match::{
 pub use cover::{
     COVER_SAMPLES, CoverBackground, CoverSettings, CoverShape, CoverScore, CoverStyle, CoverTitle, MAX_TITLE_LINES, cover_project,
     cover_sample_times, cover_size, cover_title, frame_score_bgra, frame_score_rgba, pick_cover_time, wrap_title,
+};
+pub use stabilise::{
+    STABILISE_PATH, STABILISE_STRENGTH, StabiliseStrength, read_stabilise_path, read_stabilise_strength, stabilise_correction,
+    stabilise_corrections, steady_transform,
 };
 pub use deflicker::{DEFLICKER_LEVELS, DEFLICKER_STRENGTH, DeflickerStrength, deflicker_gain, read_deflicker_levels, read_deflicker_strength};
 pub use motion_blur::{MOTION_BLUR_MAX, MOTION_BLUR_PARAM, motion_blur_half_shutter, read_motion_blur};

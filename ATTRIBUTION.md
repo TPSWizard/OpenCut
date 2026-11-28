@@ -439,3 +439,13 @@ this repository. Templates you save stay in your browser or in
   model is used or bundled. The test footage is synthesised: FFmpeg's
   `testsrc2` picture panned by cropping, and sine-tone sound; the fixture's
   pictures are formulas.
+
+## Stabilise (`crates/stabilise`, added 2026-11-27)
+
+- The camera-movement fit (least squares re-weighted with Tukey's
+  biweight, a textbook method), the camera path, its smoothing, the zoom
+  that hides the edges and the per-frame correction are our own code for
+  this repository, under its MIT licence; the motion between frames is the
+  repository's own `jumpcut` estimate. No model is used or bundled. The test
+  footage is synthesised: FFmpeg's `testsrc2` picture moved by cropping; the
+  fixture's pictures are formulas.

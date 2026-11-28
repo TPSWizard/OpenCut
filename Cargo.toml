@@ -34,6 +34,7 @@ members = [
   'crates/audiogram',
   'crates/musicfit',
   'crates/jumpcut',
+  'crates/stabilise',
   'crates/gifenc',
   'crates/facetrack',
   'crates/voice',
@@ -63,6 +64,7 @@ deflicker = { path = "crates/deflicker" }
 richtext = { path = "crates/richtext" }
 multicam = { path = "crates/multicam" }
 jumpcut = { path = "crates/jumpcut" }
+stabilise = { path = "crates/stabilise" }
 retakes = { path = "crates/retakes" }
 crossfade = { path = "crates/crossfade" }
 loudness = { path = "crates/loudness" }
@@ -124,3 +126,11 @@ incremental = false
 
 [profile.dev.package."*"]
 debug = false
+
+# The motion estimate runs per frame (jump cuts, stabilise); unoptimised it
+# is some 30 times slower.
+[profile.dev.package.jumpcut]
+opt-level = 3
+
+[profile.dev.package.stabilise]
+opt-level = 3

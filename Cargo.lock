@@ -1645,6 +1645,7 @@ dependencies = [
  "richtext",
  "serde",
  "serde_json",
+ "stabilise",
  "strokes",
  "subtitleparse",
  "tempfile",
@@ -4315,6 +4316,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "smallvec",
+ "stabilise",
  "strokes",
  "tempfile",
  "time",
@@ -4366,6 +4368,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "stabilise",
  "strokes",
  "subtitleparse",
  "textwarp",
@@ -5951,6 +5954,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9571ea910ebd84c86af4b3ed27f9dbdc6ad06f17c5f96146b2b671e2976744f"
 dependencies = [
  "bitflags 2.13.1",
+]
+
+[[package]]
+name = "stabilise"
+version = "0.1.0"
+dependencies = [
+ "jumpcut",
+ "serde_json",
 ]
 
 [[package]]

@@ -1328,6 +1328,25 @@ export interface EditorApiMethods {
 			bridges: { trackId: string; elementId: string; assetId: string; cutAt: number; frames: number; motion: number }[];
 		};
 	};
+	/**
+	 * Stabilise a video clip (row 107) without rewriting the file: the
+	 * camera's movement is measured once (the first time a strength is set),
+	 * then each frame is moved as it is drawn. `still` holds the camera as on
+	 * a tripod. `zoom` is how far the frame is zoomed in to hide its edges;
+	 * `edgesShow` when even the most zoom allowed does not hide them all.
+	 */
+	"video.stabilise": {
+		params: ApiElementLocator & { strength: "off" | "light" | "medium" | "strong" | "still" };
+		result: {
+			trackId: string;
+			elementId: string;
+			strength: "off" | "light" | "medium" | "strong" | "still";
+			frames: number;
+			measured: boolean;
+			zoom: number;
+			edgesShow: boolean;
+		};
+	};
 	"video.deflicker": {
 		params: ApiElementLocator & { strength: "off" | "light" | "medium" | "strong" };
 		result: {

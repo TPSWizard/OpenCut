@@ -93,6 +93,10 @@ pub struct LayerPlan {
     /// Deflicker: the frame's brightness gain (video clips with
     /// `deflicker.strength` on and measured levels), applied before effects.
     pub brightness_gain: Option<f32>,
+    /// Stabilise (row 107): the frame's correction at its source time
+    /// (video clips with `stabilise.strength` on and a measured camera
+    /// path); the renderer moves the drawn frame by it (`steady_transform`).
+    pub steady: Option<stabilise::Similarity>,
     /// The faces in the drawn frame (video and picture clips with a face
     /// track from this media, `facetrack`), as shares of the source frame;
     /// effects that work on faces only (Retouch) read them.
@@ -735,6 +739,11 @@ fn layer_plan(
         }
         _ => None,
     };
+    // Stabilise: the measured camera path's correction at this source time.
+    let steady = match &source {
+        LayerSource::Video { media_id, time } => crate::stabilise_correction(&element.params, media_id, time.to_seconds_f64()),
+        _ => None,
+    };
     Some(LayerPlan {
         element_id: element.id.clone(),
         track_id: track.id.clone(),
@@ -760,6 +769,7 @@ fn layer_plan(
             }),
         motion,
         brightness_gain,
+        steady,
         faces,
         roll: matches!(element.kind, ElementKind::Text)
             .then(|| crate::read_credit_roll(&params))
